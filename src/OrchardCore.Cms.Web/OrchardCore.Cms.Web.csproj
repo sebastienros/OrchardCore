@@ -21,6 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="..\OrchardCore\OrchardCore.Application.Cms.Targets\OrchardCore.Application.Cms.Targets.csproj" />
     <ProjectReference Include="..\OrchardCore\OrchardCore.Logging.NLog\OrchardCore.Logging.NLog.csproj" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="6.0.0-rc.1.21452.10" />
   </ItemGroup>
 
   <!-- Necessary as we reference the Project and not the Package -->
