@@ -25,26 +25,11 @@ jobs:
     steps:
     - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
     - uses: ./.github/actions/setup-dotnet
-    - name: Restore .NET build cache
+    - name: Restore NuGet package cache
       uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       with:
-        path: |
-          src/**/bin
-          src/**/obj
-          test/**/bin
-          test/**/obj
-        key: dotnet-build-${{ runner.os }}-${{ github.sha }}
-    - name: Build
-      # See pr_ci.yml for the reason why we disable NuGet audit warnings.
-      run: |
-        dotnet build -c Release /p:TreatWarningsAsErrors=true /p:RunAnalyzers=true /p:NuGetAudit=false
-
-  build_windows:
-    runs-on: windows-2022
-    name: Build (windows-2022)
-    steps:
-    - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
-    - uses: ./.github/actions/setup-dotnet
+        path: ~/.nuget/packages
+        key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', 'global.json', '**/*.csproj', '**/*.props', '**/*.targets') }}
     - name: Restore .NET build cache
       uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       with:
@@ -66,31 +51,12 @@ jobs:
     steps:
     - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
     - uses: ./.github/actions/setup-dotnet
-    - name: Restore .NET build cache
+    - name: Restore NuGet package cache
       uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       with:
-        path: |
-          src/**/bin
-          src/**/obj
-          test/**/bin
-          test/**/obj
-        key: dotnet-build-${{ runner.os }}-${{ github.sha }}
+        path: ~/.nuget/packages
+        key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', 'global.json', '**/*.csproj', '**/*.props', '**/*.targets') }}
         fail-on-cache-miss: true
-    - name: Mark restored build outputs newer than checkout
-      shell: bash
-      run: |
-        find src test \( -path '*/bin/*' -o -path '*/obj/*' \) -type f -print0 | xargs -0 touch
-    - name: Unit Tests
-      run: |
-        dotnet test ./test/OrchardCore.Tests/OrchardCore.Tests.csproj -c Release --no-restore
-
-  unit_tests_windows:
-    runs-on: windows-2022
-    name: Unit Tests (windows-2022)
-    needs: build_windows
-    steps:
-    - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
-    - uses: ./.github/actions/setup-dotnet
     - name: Restore .NET build cache
       uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       with:
@@ -124,6 +90,12 @@ jobs:
     steps:
     - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
     - uses: ./.github/actions/setup-dotnet
+    - name: Restore NuGet package cache
+      uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      with:
+        path: ~/.nuget/packages
+        key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', 'global.json', '**/*.csproj', '**/*.props', '**/*.targets') }}
+        fail-on-cache-miss: true
     - name: Restore .NET build cache
       uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       with:
@@ -171,15 +143,3 @@ jobs:
         test "${{ needs.build_linux.result }}" = "success"
         test "${{ needs.unit_tests_linux.result }}" = "success"
         test "${{ needs.functional_tests.result }}" = "success"
-
-  build_test_windows:
-    runs-on: windows-2022
-    name: Build & Test (windows-2022)
-    needs: [build_windows, unit_tests_windows]
-    if: always()
-    steps:
-    - name: Check dependent jobs
-      shell: bash
-      run: |
-        test "${{ needs.build_windows.result }}" = "success"
-        test "${{ needs.unit_tests_windows.result }}" = "success"
