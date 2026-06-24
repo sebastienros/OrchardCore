@@ -103,7 +103,7 @@ jobs:
         fail-on-cache-miss: true
     - name: Unit Tests
       run: |
-        dotnet test --project ./test/OrchardCore.Tests/OrchardCore.Tests.csproj -c Release --no-build
+        dotnet test ./test/OrchardCore.Tests/OrchardCore.Tests.csproj -c Release --no-build
 
   unit_tests_windows:
     runs-on: windows-2022
@@ -124,7 +124,7 @@ jobs:
         fail-on-cache-miss: true
     - name: Unit Tests
       run: |
-        dotnet test --project ./test/OrchardCore.Tests/OrchardCore.Tests.csproj -c Release --no-build
+        dotnet test ./test/OrchardCore.Tests/OrchardCore.Tests.csproj -c Release --no-build
 
   functional_tests:
     runs-on: ubuntu-24.04
@@ -161,7 +161,7 @@ jobs:
         pwsh test/OrchardCore.Tests.Functional/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
     - name: Functional Tests
       run: |
-        dotnet test --project test/OrchardCore.Tests.Functional/OrchardCore.Tests.Functional.csproj -c Release --no-build --filter-class "*${{ matrix.filter }}*"
+        dotnet test test/OrchardCore.Tests.Functional/OrchardCore.Tests.Functional.csproj -c Release --no-build --filter-class "*${{ matrix.filter }}*"
     - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       if: failure()
       with:
