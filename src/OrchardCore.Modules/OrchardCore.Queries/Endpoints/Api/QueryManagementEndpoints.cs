@@ -63,6 +63,7 @@ public static class QueryManagementEndpoints
             })
             .Accepts<QueryDefinitionDto>("application/json")
             .Produces<QueryDefinitionDto>(StatusCodes.Status201Created)
+            .ProducesProblem(StatusCodes.Status409Conflict)
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status403Forbidden);
@@ -101,7 +102,7 @@ public static class QueryManagementEndpoints
         builder.MapManagementPut("api/queries/named/{name}", UpdateAsync)
             .WithName("ApiUpdateQuery")
             .WithSummary("Updates a named query.")
-            .WithDescription("Updates a stored named query definition and allows renaming it by supplying a new definition name in the request body.")
+            .WithDescription("Updates a stored named query definition. The request body name must match the route name.")
             .WithCliCommand(new CliOperationMetadata(["queries"], "update")
             {
                 Capability = QueryManagementEndpointConventions.CapabilityName,
@@ -132,9 +133,9 @@ public static class QueryManagementEndpoints
                 },
             })
             .Produces<QueryDefinitionDto>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status204NoContent)
             .ProducesProblem(StatusCodes.Status401Unauthorized)
-            .ProducesProblem(StatusCodes.Status403Forbidden)
-            .ProducesProblem(StatusCodes.Status404NotFound);
+            .ProducesProblem(StatusCodes.Status403Forbidden);
 
         builder.MapManagementPost("api/queries/named/{name}/execute", ExecuteAsync)
             .WithName("ApiExecuteQuery")
@@ -270,7 +271,7 @@ public static class QueryManagementEndpoints
         return TypedResults.Ok(ToDefinitionDto(query));
     }
 
-    private static async Task<IResult> CreateAsync(
+    internal static async Task<IResult> CreateAsync(
         HttpContext httpContext,
         [FromServices] IAuthorizationService authorizationService,
         [FromServices] IQueryManager queryManager,
@@ -284,10 +285,23 @@ public static class QueryManagementEndpoints
             return httpContext.ApiForbidProblem();
         }
 
-        var validation = await ValidateDefinitionAsync(queryManager, querySources, descriptorProviders, localizer, definition, requireName: true);
+        definition ??= new();
+        NormalizeDefinition(definition, querySources, initializeProperties: true);
+        var validation = await ValidateDefinitionAsync(queryManager, querySources, descriptorProviders, localizer, definition, requireName: true, currentName: definition.Name);
         if (!validation.IsValid)
         {
             return TypedResults.Problem(detail: string.Join(" ", validation.Errors), statusCode: StatusCodes.Status400BadRequest);
+        }
+
+        var existing = await queryManager.GetQueryAsync(definition.Name);
+        if (existing is not null)
+        {
+            var existingDefinition = ToDefinitionDto(existing);
+            return AreEquivalent(definition, existingDefinition)
+                ? TypedResults.Created($"/api/queries/named/{Uri.EscapeDataString(existing.Name)}", existingDefinition)
+                : TypedResults.Problem(
+                    detail: $"A query named '{definition.Name}' already exists with a different definition.",
+                    statusCode: StatusCodes.Status409Conflict);
         }
 
         var query = await queryManager.NewAsync(definition.Source, ToQueryData(definition));
@@ -296,7 +310,7 @@ public static class QueryManagementEndpoints
         return TypedResults.Created($"/api/queries/named/{Uri.EscapeDataString(query.Name)}", ToDefinitionDto(query));
     }
 
-    private static async Task<IResult> UpdateAsync(
+    internal static async Task<IResult> UpdateAsync(
         HttpContext httpContext,
         [FromServices] IAuthorizationService authorizationService,
         [FromServices] IQueryManager queryManager,
@@ -311,13 +325,22 @@ public static class QueryManagementEndpoints
             return httpContext.ApiForbidProblem();
         }
 
+        definition ??= new();
+        NormalizeDefinition(definition, querySources, initializeProperties: false);
+        definition.Name ??= name;
+        if (!string.Equals(name, definition.Name, StringComparison.Ordinal))
+        {
+            return TypedResults.Problem(
+                detail: "The query name in the request body must match the route name. Query renames require a dedicated rename operation.",
+                statusCode: StatusCodes.Status400BadRequest);
+        }
+
         var query = await queryManager.GetQueryAsync(name);
         if (query is null)
         {
             return httpContext.ApiNotFoundProblem();
         }
 
-        definition.Name ??= name;
         definition.Source ??= query.Source;
         definition.Schema ??= ParseJsonNode(query.Schema);
         definition.ParameterSchema ??= ParseJsonNode(query.ParameterSchema);
@@ -331,15 +354,10 @@ public static class QueryManagementEndpoints
 
         await queryManager.UpdateAsync(query, ToQueryData(definition));
 
-        if (!string.Equals(name, query.Name, StringComparison.Ordinal))
-        {
-            await queryManager.DeleteQueryAsync(name);
-        }
-
         return TypedResults.Ok(ToDefinitionDto(query));
     }
 
-    private static async Task<IResult> DeleteAsync(
+    internal static async Task<IResult> DeleteAsync(
         HttpContext httpContext,
         [FromServices] IAuthorizationService authorizationService,
         [FromServices] IQueryManager queryManager,
@@ -353,7 +371,7 @@ public static class QueryManagementEndpoints
         var query = await queryManager.GetQueryAsync(name);
         if (query is null)
         {
-            return httpContext.ApiNotFoundProblem();
+            return TypedResults.NoContent();
         }
 
         await queryManager.DeleteQueryAsync(name);
@@ -563,4 +581,33 @@ public static class QueryManagementEndpoints
 
         return node is JsonValue value && value.TryGetValue<bool>(out _);
     }
+
+    private static void NormalizeDefinition(QueryDefinitionDto definition, IEnumerable<IQuerySource> querySources, bool initializeProperties)
+    {
+        if (definition is null)
+        {
+            return;
+        }
+
+        definition.Name = definition.Name?.Trim();
+        definition.Source = definition.Source?.Trim();
+        if (initializeProperties)
+        {
+            definition.Properties ??= [];
+        }
+
+        var source = querySources.FirstOrDefault(candidate => string.Equals(candidate.Name, definition.Source, StringComparison.OrdinalIgnoreCase));
+        if (source is not null)
+        {
+            definition.Source = source.Name;
+        }
+    }
+
+    private static bool AreEquivalent(QueryDefinitionDto left, QueryDefinitionDto right)
+        => string.Equals(left.Name, right.Name, StringComparison.Ordinal)
+            && string.Equals(left.Source, right.Source, StringComparison.Ordinal)
+            && left.ReturnContentItems == right.ReturnContentItems
+            && JsonNode.DeepEquals(left.Schema, right.Schema)
+            && JsonNode.DeepEquals(left.ParameterSchema, right.ParameterSchema)
+            && JsonNode.DeepEquals(left.Properties, right.Properties);
 }

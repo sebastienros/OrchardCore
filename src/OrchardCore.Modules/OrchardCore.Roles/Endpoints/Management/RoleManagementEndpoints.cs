@@ -67,6 +67,7 @@ internal static class RoleManagementEndpoints
             .Accepts<RoleCreateRequest>("application/json")
             .Produces<RoleResponse>(StatusCodes.Status201Created)
             .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status409Conflict)
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status403Forbidden);
@@ -102,8 +103,7 @@ internal static class RoleManagementEndpoints
             .Produces<RoleOperationResponse>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status401Unauthorized)
-            .ProducesProblem(StatusCodes.Status403Forbidden)
-            .ProducesProblem(StatusCodes.Status404NotFound);
+            .ProducesProblem(StatusCodes.Status403Forbidden);
 
         return builder;
     }
@@ -181,15 +181,28 @@ internal static class RoleManagementEndpoints
         {
             modelState.AddModelError(nameof(RoleCreateRequest.RoleName), localizer["Invalid role name."]);
         }
-        else if (await roleManager.FindByNameAsync(roleName) != null)
-        {
-            modelState.AddModelError(nameof(RoleCreateRequest.RoleName), localizer["The role name is already in use."]);
-        }
-
         var permissionNames = ValidatePermissions(request.PermissionNames ?? [], permissionCatalog, modelState);
         if (!modelState.IsValid)
         {
             return httpContext.ApiValidationProblem(modelState: modelState);
+        }
+
+        if (await roleManager.FindByNameAsync(roleName) is Role existing)
+        {
+            var assignedPermissions = existing.RoleClaims
+                .Where(claim => claim.ClaimType == Permission.ClaimType)
+                .Select(claim => claim.ClaimValue)
+                .ToHashSet(StringComparer.Ordinal);
+
+            if (string.Equals(existing.RoleDescription, request.RoleDescription, StringComparison.Ordinal)
+                && assignedPermissions.SetEquals(permissionNames))
+            {
+                return TypedResults.Created($"/{RoutePrefix}/{Uri.EscapeDataString(existing.RoleName)}", await ToResponseAsync(existing, authorizationService, roleService, permissionCatalog));
+            }
+
+            return TypedResults.Problem(
+                detail: localizer["A role named '{0}' already exists with a different definition.", roleName],
+                statusCode: StatusCodes.Status409Conflict);
         }
 
         var role = new Role
@@ -266,7 +279,11 @@ internal static class RoleManagementEndpoints
         var role = await roleManager.FindByIdAsync(roleId);
         if (role is null)
         {
-            return httpContext.ApiNotFoundProblem(detail: localizer["Role not found."]);
+            return TypedResults.Ok(new RoleOperationResponse
+            {
+                RoleId = roleId,
+                Action = "delete",
+            });
         }
 
         if (await roleService.IsSystemRoleAsync(role.RoleName))

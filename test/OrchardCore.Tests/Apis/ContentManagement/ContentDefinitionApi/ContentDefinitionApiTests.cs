@@ -62,12 +62,16 @@ public class ContentDefinitionApiTests
                     },
                 },
             }, new ModelStateDictionary());
+            var repeatedPartState = new ModelStateDictionary();
+            var repeatedPart = await InvokeAsync<ContentPartDefinitionDto>(service, "CreatePartAsync", part, repeatedPartState);
 
             var field = await InvokeAsync<ContentPartFieldDefinitionDto>(service, "CreateFieldAsync", "RemoteTextPart", new ContentPartFieldDefinitionDto
             {
                 Name = "RemoteText",
                 FieldName = fieldTypeName,
             }, new ModelStateDictionary());
+            var repeatedFieldState = new ModelStateDictionary();
+            var repeatedField = await InvokeAsync<ContentPartFieldDefinitionDto>(service, "CreateFieldAsync", "RemoteTextPart", field, repeatedFieldState);
 
             var type = await InvokeAsync<ContentTypeDefinitionDto>(service, "CreateTypeAsync", new ContentTypeDefinitionDto
             {
@@ -82,10 +86,18 @@ public class ContentDefinitionApiTests
                     },
                 ],
             }, new ModelStateDictionary());
+            var repeatedTypeState = new ModelStateDictionary();
+            var repeatedType = await InvokeAsync<ContentTypeDefinitionDto>(service, "CreateTypeAsync", type, repeatedTypeState);
 
             Assert.NotNull(part);
             Assert.NotNull(field);
             Assert.NotNull(type);
+            Assert.True(repeatedPartState.IsValid);
+            Assert.True(repeatedFieldState.IsValid);
+            Assert.True(repeatedTypeState.IsValid);
+            Assert.Equal(part.Name, repeatedPart.Name);
+            Assert.Equal(field.Name, repeatedField.Name);
+            Assert.Equal(type.Name, repeatedType.Name);
 
             part = await InvokeAsync<ContentPartDefinitionDto>(service, "GetPartAsync", "RemoteTextPart");
             type = await InvokeAsync<ContentTypeDefinitionDto>(service, "GetTypeAsync", "RemoteApiType");
@@ -94,6 +106,53 @@ public class ContentDefinitionApiTests
             Assert.True(part.Settings.ContentPartSettings.Reusable);
             Assert.Contains(part.Fields, createdField => createdField.Name == "RemoteText" && createdField.FieldName == fieldTypeName);
             Assert.Contains(type.Parts, createdPart => createdPart.Name == "RemoteTextPart" && createdPart.PartName == "RemoteTextPart");
+            Assert.Single(await InvokeAsync<IReadOnlyList<ContentPartDefinitionDto>>(service, "ListPartsAsync"), x => x.Name == "RemoteTextPart");
+            Assert.Single(await InvokeAsync<IReadOnlyList<ContentTypeDefinitionDto>>(service, "ListTypesAsync"), x => x.Name == "RemoteApiType");
+            Assert.Single(await InvokeAsync<IReadOnlyList<ContentPartFieldDefinitionDto>>(service, "ListFieldsAsync", "RemoteTextPart"));
+
+            var typeConflictState = new ModelStateDictionary();
+            type.DisplayName = "Different Display Name";
+            await InvokeAsync<ContentTypeDefinitionDto>(service, "CreateTypeAsync", type, typeConflictState);
+
+            var partConflictState = new ModelStateDictionary();
+            part.Settings.ContentPartSettings.Reusable = false;
+            await InvokeAsync<ContentPartDefinitionDto>(service, "CreatePartAsync", part, partConflictState);
+
+            var fieldConflictState = new ModelStateDictionary();
+            field.FieldName = "NumericField";
+            await InvokeAsync<ContentPartFieldDefinitionDto>(service, "CreateFieldAsync", "RemoteTextPart", field, fieldConflictState);
+
+            Assert.False(typeConflictState.IsValid);
+            Assert.False(partConflictState.IsValid);
+            Assert.False(fieldConflictState.IsValid);
+
+            var typeMismatchState = new ModelStateDictionary();
+            type.Name = "RenamedRemoteApiType";
+            await InvokeAsync<ContentTypeDefinitionDto>(service, "UpdateTypeAsync", "RemoteApiType", type, typeMismatchState);
+
+            var partMismatchState = new ModelStateDictionary();
+            part.Name = "RenamedRemoteTextPart";
+            await InvokeAsync<ContentPartDefinitionDto>(service, "UpdatePartAsync", "RemoteTextPart", part, partMismatchState);
+
+            var fieldMismatchState = new ModelStateDictionary();
+            field.Name = "RenamedRemoteText";
+            await InvokeAsync<ContentPartFieldDefinitionDto>(service, "UpdateFieldAsync", "RemoteTextPart", "RemoteText", field, fieldMismatchState);
+
+            Assert.False(typeMismatchState.IsValid);
+            Assert.False(partMismatchState.IsValid);
+            Assert.False(fieldMismatchState.IsValid);
+            Assert.NotNull(await InvokeAsync<ContentTypeDefinitionDto>(service, "GetTypeAsync", "RemoteApiType"));
+            Assert.Null(await InvokeAsync<ContentTypeDefinitionDto>(service, "GetTypeAsync", "RenamedRemoteApiType"));
+            Assert.NotNull(await InvokeAsync<ContentPartDefinitionDto>(service, "GetPartAsync", "RemoteTextPart"));
+            Assert.Null(await InvokeAsync<ContentPartDefinitionDto>(service, "GetPartAsync", "RenamedRemoteTextPart"));
+            Assert.NotNull(await InvokeAsync<ContentPartFieldDefinitionDto>(service, "GetFieldAsync", "RemoteTextPart", "RemoteText"));
+            Assert.Null(await InvokeAsync<ContentPartFieldDefinitionDto>(service, "GetFieldAsync", "RemoteTextPart", "RenamedRemoteText"));
+            Assert.True(await InvokeAsync<bool?>(service, "DeleteFieldAsync", "RemoteTextPart", "RemoteText"));
+            Assert.False(await InvokeAsync<bool?>(service, "DeleteFieldAsync", "RemoteTextPart", "RemoteText"));
+            Assert.True(await InvokeAsync<bool>(service, "DeleteTypeAsync", "RemoteApiType"));
+            Assert.False(await InvokeAsync<bool>(service, "DeleteTypeAsync", "RemoteApiType"));
+            Assert.True(await InvokeAsync<bool>(service, "DeletePartAsync", "RemoteTextPart"));
+            Assert.False(await InvokeAsync<bool>(service, "DeletePartAsync", "RemoteTextPart"));
         });
     }
 

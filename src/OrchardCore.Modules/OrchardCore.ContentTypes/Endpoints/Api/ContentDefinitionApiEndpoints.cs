@@ -84,8 +84,7 @@ internal static class ContentDefinitionApiEndpoints
             .WithCliCommand(Cli(["content", "types"], "delete", arguments: [new CliArgumentMetadata("name", 0)], requiresConfirmation: true))
             .Produces(StatusCodes.Status204NoContent)
             .ProducesProblem(StatusCodes.Status401Unauthorized)
-            .ProducesProblem(StatusCodes.Status403Forbidden)
-            .ProducesProblem(StatusCodes.Status404NotFound);
+            .ProducesProblem(StatusCodes.Status403Forbidden);
 
         group.MapGet("/part-types", ListPartTypesAsync)
             .WithName("ApiListContentPartTypes")
@@ -167,8 +166,7 @@ internal static class ContentDefinitionApiEndpoints
             .WithCliCommand(Cli(["content", "parts"], "delete", arguments: [new CliArgumentMetadata("name", 0)], requiresConfirmation: true))
             .Produces(StatusCodes.Status204NoContent)
             .ProducesProblem(StatusCodes.Status401Unauthorized)
-            .ProducesProblem(StatusCodes.Status403Forbidden)
-            .ProducesProblem(StatusCodes.Status404NotFound);
+            .ProducesProblem(StatusCodes.Status403Forbidden);
 
         group.MapGet("/parts/{partName}/fields", ListFieldsAsync)
             .WithName("ApiListContentPartFields")
@@ -229,8 +227,7 @@ internal static class ContentDefinitionApiEndpoints
             .WithCliCommand(Cli(["content", "fields"], "delete", arguments: [new CliArgumentMetadata("partName", 0), new CliArgumentMetadata("fieldName", 1)], requiresConfirmation: true))
             .Produces(StatusCodes.Status204NoContent)
             .ProducesProblem(StatusCodes.Status401Unauthorized)
-            .ProducesProblem(StatusCodes.Status403Forbidden)
-            .ProducesProblem(StatusCodes.Status404NotFound);
+            .ProducesProblem(StatusCodes.Status403Forbidden);
 
         return builder;
     }
@@ -290,7 +287,13 @@ internal static class ContentDefinitionApiEndpoints
     private static async Task<IResult> DeleteTypeAsync(string name, ContentDefinitionApiService service, IAuthorizationService authorizationService, HttpContext httpContext)
         => !await authorizationService.AuthorizeAsync(httpContext.User, ContentTypesPermissions.EditContentTypes)
             ? httpContext.ApiForbidProblem()
-            : await service.DeleteTypeAsync(name) ? TypedResults.NoContent() : httpContext.ApiNotFoundProblem();
+            : await DeleteTypeCoreAsync(name, service);
+
+    private static async Task<IResult> DeleteTypeCoreAsync(string name, ContentDefinitionApiService service)
+    {
+        await service.DeleteTypeAsync(name);
+        return TypedResults.NoContent();
+    }
 
     private static async Task<IResult> ListPartTypesAsync(ContentDefinitionApiService service, IAuthorizationService authorizationService, HttpContext httpContext, int? skip = null, int? take = null)
     {
@@ -367,7 +370,13 @@ internal static class ContentDefinitionApiEndpoints
     private static async Task<IResult> DeletePartAsync(string name, ContentDefinitionApiService service, IAuthorizationService authorizationService, HttpContext httpContext)
         => !await authorizationService.AuthorizeAsync(httpContext.User, ContentTypesPermissions.EditContentTypes)
             ? httpContext.ApiForbidProblem()
-            : await service.DeletePartAsync(name) ? TypedResults.NoContent() : httpContext.ApiNotFoundProblem();
+            : await DeletePartCoreAsync(name, service);
+
+    private static async Task<IResult> DeletePartCoreAsync(string name, ContentDefinitionApiService service)
+    {
+        await service.DeletePartAsync(name);
+        return TypedResults.NoContent();
+    }
 
     private static async Task<IResult> ListFieldsAsync(string partName, ContentDefinitionApiService service, IAuthorizationService authorizationService, HttpContext httpContext, int? skip = null, int? take = null)
     {
@@ -434,8 +443,8 @@ internal static class ContentDefinitionApiEndpoints
             return httpContext.ApiForbidProblem();
         }
 
-        var deleted = await service.DeleteFieldAsync(partName, fieldName);
-        return deleted == true ? TypedResults.NoContent() : httpContext.ApiNotFoundProblem();
+        await service.DeleteFieldAsync(partName, fieldName);
+        return TypedResults.NoContent();
     }
 
     private static CliOperationMetadata Cli(

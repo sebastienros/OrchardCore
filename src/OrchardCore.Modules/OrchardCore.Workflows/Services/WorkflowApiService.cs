@@ -62,6 +62,21 @@ internal sealed class WorkflowApiService
     public async Task<WorkflowTypeDto> CreateWorkflowTypeAsync(WorkflowTypeDto model, ModelStateDictionary modelState)
     {
         Normalize(model);
+        if (model.WorkflowTypeId is not null)
+        {
+            var existing = await _workflowTypeStore.GetAsync(model.WorkflowTypeId);
+            if (existing is not null)
+            {
+                var existingDto = ToDto(existing);
+                if (!AreEquivalent(model, existingDto))
+                {
+                    modelState.AddModelError(nameof(WorkflowTypeDto.WorkflowTypeId), S["A workflow type with the same identifier already exists with a different definition."]);
+                }
+
+                return existingDto;
+            }
+        }
+
         var workflowType = ToModel(model, new WorkflowType(), modelState);
         await ValidateWorkflowTypeAsync(workflowType, modelState, isCreate: true);
 
@@ -406,6 +421,11 @@ internal sealed class WorkflowApiService
             transition.DestinationActivityId = transition.DestinationActivityId?.Trim();
         }
     }
+
+    private bool AreEquivalent(WorkflowTypeDto left, WorkflowTypeDto right)
+        => JsonNode.DeepEquals(
+            JsonSerializer.SerializeToNode(left, _jsonSerializerOptions),
+            JsonSerializer.SerializeToNode(right, _jsonSerializerOptions));
 
     private static JsonObject Clone(JsonObject value)
         => value?.DeepClone() as JsonObject ?? [];

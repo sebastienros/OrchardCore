@@ -68,9 +68,9 @@ public class OwnedModuleEndpointMetadataTests
 
         AssertOperation(endpoints, "api/roles", "GET", "ApiListRoles", "Roles", ["roles"], "list", null, [200, 400, 401, 403]);
         AssertOperation(endpoints, "api/roles/{roleId}", "GET", "ApiGetRole", "Roles", ["roles"], "show", null, [200, 401, 403, 404]);
-        AssertOperation(endpoints, "api/roles", "POST", "ApiCreateRole", "Roles", ["roles"], "create", "application/json", [201, 400, 401, 403]);
+        AssertOperation(endpoints, "api/roles", "POST", "ApiCreateRole", "Roles", ["roles"], "create", "application/json", [201, 400, 401, 403, 409]);
         AssertOperation(endpoints, "api/roles/{roleId}", "PUT", "ApiUpdateRole", "Roles", ["roles"], "update", "application/json", [200, 400, 401, 403, 404]);
-        AssertOperation(endpoints, "api/roles/{roleId}", "DELETE", "ApiDeleteRole", "Roles", ["roles"], "delete", null, [200, 400, 401, 403, 404]);
+        AssertOperation(endpoints, "api/roles/{roleId}", "DELETE", "ApiDeleteRole", "Roles", ["roles"], "delete", null, [200, 400, 401, 403]);
     }
 
     private static RouteEndpoint[] CreateEndpoints()

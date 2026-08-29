@@ -107,6 +107,83 @@ public class WorkflowApiTests
     }
 
     [Fact]
+    public async Task WorkflowService_ExplicitStableIdCreateIsRetrySafe()
+    {
+        using var context = new SiteContext();
+
+        await context.InitializeAsync();
+        await EnableFeaturesAsync(context, "OrchardCore.Workflows");
+        await context.WaitForDeferredTasksAsync(TestContext.Current.CancellationToken);
+
+        var definition = new WorkflowTypeDto
+        {
+            WorkflowTypeId = "retry-safe-workflow",
+            Name = "Retry Safe Workflow",
+            IsEnabled = true,
+            Activities =
+            [
+                new ActivityRecordDto
+                {
+                    ActivityId = "set-output",
+                    Name = "SetOutputTask",
+                    IsStart = true,
+                    Properties = new JsonObject
+                    {
+                        ["OutputName"] = "result",
+                        ["Syntax"] = "JavaScript",
+                        ["Value"] = new JsonObject
+                        {
+                            ["Expression"] = "42",
+                        },
+                    },
+                },
+            ],
+        };
+
+        WorkflowTypeDto first = null;
+        await context.UsingTenantScopeAsync(async scope =>
+        {
+            var service = scope.ServiceProvider.GetRequiredService(GetServiceType("OrchardCore.Workflows.Services.WorkflowApiService", "OrchardCore.Workflows"));
+            var firstState = new ModelStateDictionary();
+            first = await InvokeAsync<WorkflowTypeDto>(service, "CreateWorkflowTypeAsync", definition, firstState);
+            Assert.True(firstState.IsValid);
+        });
+
+        await context.UsingTenantScopeAsync(async scope =>
+        {
+            var service = scope.ServiceProvider.GetRequiredService(GetServiceType("OrchardCore.Workflows.Services.WorkflowApiService", "OrchardCore.Workflows"));
+            var retryState = new ModelStateDictionary();
+            var retry = await InvokeAsync<WorkflowTypeDto>(service, "CreateWorkflowTypeAsync", definition, retryState);
+            Assert.True(retryState.IsValid);
+            Assert.Equal(first.WorkflowTypeId, retry.WorkflowTypeId);
+        });
+
+        await context.UsingTenantScopeAsync(async scope =>
+        {
+            var service = scope.ServiceProvider.GetRequiredService(GetServiceType("OrchardCore.Workflows.Services.WorkflowApiService", "OrchardCore.Workflows"));
+            var conflictState = new ModelStateDictionary();
+            var conflict = await InvokeAsync<WorkflowTypeDto>(service, "CreateWorkflowTypeAsync", new WorkflowTypeDto
+            {
+                WorkflowTypeId = definition.WorkflowTypeId,
+                Name = definition.Name,
+                IsEnabled = false,
+                Activities = definition.Activities,
+            }, conflictState);
+
+            Assert.False(conflictState.IsValid);
+            Assert.True(conflict.IsEnabled);
+            Assert.Single(await InvokeAsync<IReadOnlyList<WorkflowTypeDto>>(service, "ListWorkflowTypesAsync"), x => x.WorkflowTypeId == definition.WorkflowTypeId);
+            Assert.True(await InvokeAsync<bool>(service, "DeleteWorkflowTypeAsync", definition.WorkflowTypeId));
+        });
+
+        await context.UsingTenantScopeAsync(async scope =>
+        {
+            var service = scope.ServiceProvider.GetRequiredService(GetServiceType("OrchardCore.Workflows.Services.WorkflowApiService", "OrchardCore.Workflows"));
+            Assert.False(await InvokeAsync<bool>(service, "DeleteWorkflowTypeAsync", definition.WorkflowTypeId));
+        });
+    }
+
+    [Fact]
     public void WorkflowSchemaBuilder_RecursivePersistedProperties_ExportsDescriptionsDefaultsAndRebasedReferences()
     {
         var schemaBuilderType = GetServiceType("OrchardCore.Workflows.Services.WorkflowSchemaBuilder", "OrchardCore.Workflows");

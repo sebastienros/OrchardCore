@@ -93,6 +93,21 @@ internal sealed class ContentDefinitionApiService
     public async Task<ContentTypeDefinitionDto> CreateTypeAsync(ContentTypeDefinitionDto model, ModelStateDictionary modelState)
     {
         NormalizeType(model);
+        await NormalizePartReferencesAsync(model);
+        var existing = string.IsNullOrWhiteSpace(model.Name)
+            ? null
+            : await _contentDefinitionManager.LoadTypeDefinitionAsync(model.Name);
+        if (existing is not null)
+        {
+            var existingDto = ToDto(existing);
+            if (!AreEquivalent(model, existingDto))
+            {
+                modelState.AddModelError(nameof(ContentTypeDefinitionDto.Name), S["A content type with the same technical name already exists with a different definition."]);
+            }
+
+            return existingDto;
+        }
+
         await ValidateTypeAsync(model, modelState, isCreate: true);
 
         if (!modelState.IsValid)
@@ -118,15 +133,22 @@ internal sealed class ContentDefinitionApiService
     {
         NormalizeType(model, name);
 
-        if (await _contentDefinitionManager.LoadTypeDefinitionAsync(name) is null)
+        var existing = await _contentDefinitionManager.LoadTypeDefinitionAsync(name);
+        if (existing is null)
         {
             return null;
+        }
+
+        if (!string.Equals(name, model.Name, StringComparison.Ordinal))
+        {
+            modelState.AddModelError(nameof(ContentTypeDefinitionDto.Name), S["The content type name in the request body must match the route name. To rename a content type, use a dedicated rename operation."]);
+            return ToDto(existing);
         }
 
         await ValidateTypeAsync(model, modelState, isCreate: false, existingName: name);
         if (!modelState.IsValid)
         {
-            return ToDto(await _contentDefinitionManager.LoadTypeDefinitionAsync(name));
+            return ToDto(existing);
         }
 
         var definition = await BuildTypeDefinitionAsync(model, modelState);
@@ -155,6 +177,20 @@ internal sealed class ContentDefinitionApiService
     public async Task<ContentPartDefinitionDto> CreatePartAsync(ContentPartDefinitionDto model, ModelStateDictionary modelState)
     {
         NormalizePart(model);
+        var existing = string.IsNullOrWhiteSpace(model.Name)
+            ? null
+            : await _contentDefinitionManager.LoadPartDefinitionAsync(model.Name);
+        if (existing is not null)
+        {
+            var existingDto = ToDto(existing);
+            if (!AreEquivalent(model, existingDto))
+            {
+                modelState.AddModelError(nameof(ContentPartDefinitionDto.Name), S["A content part with the same technical name already exists with a different definition."]);
+            }
+
+            return existingDto;
+        }
+
         await ValidatePartAsync(model, modelState, isCreate: true);
 
         if (!modelState.IsValid)
@@ -180,15 +216,22 @@ internal sealed class ContentDefinitionApiService
     {
         NormalizePart(model, name);
 
-        if (await _contentDefinitionManager.LoadPartDefinitionAsync(name) is null)
+        var existing = await _contentDefinitionManager.LoadPartDefinitionAsync(name);
+        if (existing is null)
         {
             return null;
+        }
+
+        if (!string.Equals(name, model.Name, StringComparison.Ordinal))
+        {
+            modelState.AddModelError(nameof(ContentPartDefinitionDto.Name), S["The content part name in the request body must match the route name. To rename a content part, use a dedicated rename operation."]);
+            return ToDto(existing);
         }
 
         await ValidatePartAsync(model, modelState, isCreate: false, existingName: name);
         if (!modelState.IsValid)
         {
-            return ToDto(await _contentDefinitionManager.LoadPartDefinitionAsync(name));
+            return ToDto(existing);
         }
 
         var definition = BuildPartDefinition(model, modelState);
@@ -223,6 +266,17 @@ internal sealed class ContentDefinitionApiService
         }
 
         NormalizeField(model);
+        var existing = part.Fields.FirstOrDefault(x => string.Equals(x.Name, model.Name, StringComparison.OrdinalIgnoreCase));
+        if (existing is not null)
+        {
+            if (!AreEquivalent(model, existing))
+            {
+                modelState.AddModelError(nameof(ContentPartFieldDefinitionDto.Name), S["A content field with the same name already exists with a different definition."]);
+            }
+
+            return existing;
+        }
+
         part.Fields.Add(model);
 
         var updatedPart = await UpdatePartAsync(partName, part, modelState);
@@ -243,6 +297,12 @@ internal sealed class ContentDefinitionApiService
         if (index < 0)
         {
             return null;
+        }
+
+        if (!string.Equals(fieldName, model.Name, StringComparison.Ordinal))
+        {
+            modelState.AddModelError(nameof(ContentPartFieldDefinitionDto.Name), S["The content field name in the request body must match the route name. To rename a content field, use a dedicated rename operation."]);
+            return part.Fields[index];
         }
 
         part.Fields[index] = model;
@@ -465,6 +525,26 @@ internal sealed class ContentDefinitionApiService
             FieldName = definition.FieldDefinition.Name,
             Settings = ContentDefinitionSettingsDto.FromJsonObject<ContentPartFieldDefinitionSettingsDto>(definition.Settings),
         };
+
+    private bool AreEquivalent<T>(T left, T right)
+        => JsonNode.DeepEquals(
+            JsonSerializer.SerializeToNode(left, _serializerOptions),
+            JsonSerializer.SerializeToNode(right, _serializerOptions));
+
+    private async Task NormalizePartReferencesAsync(ContentTypeDefinitionDto model)
+    {
+        var definitions = (await _contentDefinitionManager.ListPartDefinitionsAsync())
+            .ToDictionary(definition => definition.Name, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var part in model.Parts)
+        {
+            if (!string.IsNullOrWhiteSpace(part.PartName)
+                && definitions.TryGetValue(part.PartName, out var definition))
+            {
+                part.PartName = definition.Name;
+            }
+        }
+    }
 
     private static void NormalizeType(ContentTypeDefinitionDto model, string name = null)
     {
