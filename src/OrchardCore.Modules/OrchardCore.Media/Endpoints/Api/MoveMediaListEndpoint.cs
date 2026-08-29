@@ -64,7 +64,7 @@ public static class MoveMediaListEndpoint
         string sourceFolder,
         string targetFolder)
     {
-        var (result, normalizedSourceFolder, normalizedTargetFolder) = await MoveAsync(httpContext, authorizationService, mediaFileStore, localizer, mediaNames, sourceFolder, targetFolder);
+        var (result, normalizedSourceFolder, normalizedTargetFolder) = await MoveAsync(httpContext, authorizationService, mediaFileStore, localizer, mediaNames, sourceFolder, targetFolder, allowCompleted: false);
 
         return result ?? TypedResults.Ok();
     }
@@ -78,7 +78,7 @@ public static class MoveMediaListEndpoint
         string sourceFolder,
         string targetFolder)
     {
-        var (result, normalizedSourceFolder, normalizedTargetFolder) = await MoveAsync(httpContext, authorizationService, mediaFileStore, localizer, mediaNames, sourceFolder, targetFolder);
+        var (result, normalizedSourceFolder, normalizedTargetFolder) = await MoveAsync(httpContext, authorizationService, mediaFileStore, localizer, mediaNames, sourceFolder, targetFolder, allowCompleted: true);
 
         return result ?? TypedResults.Ok(new MoveMediaBatchResultDto
         {
@@ -95,7 +95,8 @@ public static class MoveMediaListEndpoint
         IStringLocalizer<MediaApiEndpoints> localizer,
         string[] mediaNames,
         string sourceFolder,
-        string targetFolder)
+        string targetFolder,
+        bool allowCompleted)
     {
         if (!await authorizationService.AuthorizeAsync(httpContext.User, MediaPermissions.ManageMedia)
             || !await authorizationService.AuthorizeAsync(httpContext.User, MediaPermissions.ManageMediaFolder, (object)sourceFolder)
@@ -120,6 +121,24 @@ public static class MoveMediaListEndpoint
         {
             var sourcePath = mediaFileStore.Combine(sourceFolder, name);
             var targetPath = mediaFileStore.Combine(targetFolder, name);
+
+            if (allowCompleted)
+            {
+                var sourceFile = await mediaFileStore.GetFileInfoAsync(sourcePath);
+                var targetFile = await mediaFileStore.GetFileInfoAsync(targetPath);
+
+                if (sourceFile == null && targetFile != null)
+                {
+                    continue;
+                }
+
+                if (sourceFile == null || targetFile != null)
+                {
+                    filesOnError.Add(sourcePath);
+                    continue;
+                }
+            }
+
             try
             {
                 await mediaFileStore.MoveFileAsync(sourcePath, targetPath);

@@ -90,6 +90,28 @@ public class MediaEndpointHelpersTests
             });
     }
 
+    [Fact]
+    public async Task FilesAreEqualAsync_DifferentStreamChunkSizes_ComparesContent()
+    {
+        var first = Mock.Of<IFileStoreEntry>(entry => entry.Length == 7);
+        var second = Mock.Of<IFileStoreEntry>(entry => entry.Length == 7);
+        var mediaFileStore = new Mock<IMediaFileStore>();
+        mediaFileStore
+            .Setup(store => store.GetFileStreamAsync(first))
+            .ReturnsAsync(new ChunkedReadStream("content"u8.ToArray(), 1));
+        mediaFileStore
+            .Setup(store => store.GetFileStreamAsync(second))
+            .ReturnsAsync(new ChunkedReadStream("content"u8.ToArray(), 3));
+
+        var result = await MediaEndpointHelpers.FilesAreEqualAsync(
+            mediaFileStore.Object,
+            first,
+            second,
+            TestContext.Current.CancellationToken);
+
+        Assert.True(result);
+    }
+
     private static IAuthorizationService CreateAuthorizationService(params string[] allowedPaths)
     {
         var allowed = allowedPaths.ToHashSet(StringComparer.Ordinal);
@@ -130,5 +152,19 @@ public class MediaEndpointHelpersTests
             entry.SetupGet(item => item.IsDirectory).Returns(true);
             yield return entry.Object;
         }
+    }
+
+    private sealed class ChunkedReadStream : MemoryStream
+    {
+        private readonly int _chunkSize;
+
+        public ChunkedReadStream(byte[] buffer, int chunkSize)
+            : base(buffer)
+        {
+            _chunkSize = chunkSize;
+        }
+
+        public override ValueTask<int> ReadAsync(Memory<byte> destination, CancellationToken cancellationToken = default)
+            => base.ReadAsync(destination[..Math.Min(destination.Length, _chunkSize)], cancellationToken);
     }
 }

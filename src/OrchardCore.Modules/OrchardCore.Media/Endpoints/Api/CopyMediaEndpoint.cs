@@ -82,7 +82,7 @@ public static class CopyMediaEndpoint
         string oldPath,
         string newPath)
     {
-        var (result, copiedFile) = await CopyAsync(httpContext, authorizationService, mediaFileStore, options, localizer, oldPath, newPath);
+        var (result, copiedFile) = await CopyAsync(httpContext, authorizationService, mediaFileStore, options, localizer, oldPath, newPath, allowCompleted: false);
 
         return result ?? TypedResults.Ok(MediaEndpointHelpers.CreateFileResult(copiedFile, httpContext, contentTypeProvider, fileVersionProvider, mediaFileStore));
     }
@@ -98,7 +98,7 @@ public static class CopyMediaEndpoint
         string oldPath,
         string newPath)
     {
-        var (result, copiedFile) = await CopyAsync(httpContext, authorizationService, mediaFileStore, options, localizer, oldPath, newPath);
+        var (result, copiedFile) = await CopyAsync(httpContext, authorizationService, mediaFileStore, options, localizer, oldPath, newPath, allowCompleted: true);
 
         return result ?? TypedResults.Ok(new CopyMediaResultDto
         {
@@ -115,7 +115,8 @@ public static class CopyMediaEndpoint
         IOptions<MediaOptions> options,
         IStringLocalizer<MediaApiEndpoints> localizer,
         string oldPath,
-        string newPath)
+        string newPath,
+        bool allowCompleted)
     {
         if (!await authorizationService.AuthorizeAsync(httpContext.User, MediaPermissions.ManageMedia)
             || !await authorizationService.AuthorizeAsync(httpContext.User, MediaPermissions.ManageMediaFolder, (object)oldPath)
@@ -129,7 +130,8 @@ public static class CopyMediaEndpoint
             return (httpContext.ApiNotFoundProblem(), null);
         }
 
-        if (await mediaFileStore.GetFileInfoAsync(oldPath) == null)
+        var sourceFile = await mediaFileStore.GetFileInfoAsync(oldPath);
+        if (sourceFile == null)
         {
             return (httpContext.ApiNotFoundProblem(), null);
         }
@@ -141,8 +143,14 @@ public static class CopyMediaEndpoint
             return (httpContext.ApiValidationProblem(detail: localizer["This file extension is not allowed: {0}", newExtension]), null);
         }
 
-        if (await mediaFileStore.GetFileInfoAsync(newPath) != null)
+        var targetFile = await mediaFileStore.GetFileInfoAsync(newPath);
+        if (targetFile != null)
         {
+            if (allowCompleted && await MediaEndpointHelpers.FilesAreEqualAsync(mediaFileStore, sourceFile, targetFile, httpContext.RequestAborted))
+            {
+                return (null, targetFile);
+            }
+
             return (httpContext.ApiValidationProblem(detail: localizer["Cannot copy media because a file already exists with the same name"]), null);
         }
 

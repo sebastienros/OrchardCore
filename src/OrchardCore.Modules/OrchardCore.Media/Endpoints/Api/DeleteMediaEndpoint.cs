@@ -57,7 +57,7 @@ public static class DeleteMediaEndpoint
         IMediaFileStore mediaFileStore,
         string path)
     {
-        var result = await DeleteAsync(httpContext, authorizationService, mediaFileStore, path);
+        var result = await DeleteAsync(httpContext, authorizationService, mediaFileStore, path, ignoreMissing: false);
 
         return result ?? TypedResults.Ok();
     }
@@ -68,7 +68,7 @@ public static class DeleteMediaEndpoint
         IMediaFileStore mediaFileStore,
         string path)
     {
-        var result = await DeleteAsync(httpContext, authorizationService, mediaFileStore, path);
+        var result = await DeleteAsync(httpContext, authorizationService, mediaFileStore, path, ignoreMissing: true);
 
         return result ?? TypedResults.Ok(new DeleteMediaResultDto { Path = path });
     }
@@ -77,7 +77,8 @@ public static class DeleteMediaEndpoint
         HttpContext httpContext,
         IAuthorizationService authorizationService,
         IMediaFileStore mediaFileStore,
-        string path)
+        string path,
+        bool ignoreMissing)
     {
         if (!await authorizationService.AuthorizeAsync(httpContext.User, MediaPermissions.ManageMedia)
             || !await authorizationService.AuthorizeAsync(httpContext.User, MediaPermissions.ManageMediaFolder, (object)path))
@@ -90,7 +91,7 @@ public static class DeleteMediaEndpoint
             return httpContext.ApiNotFoundProblem();
         }
 
-        if (!await mediaFileStore.TryDeleteFileAsync(path))
+        if (!await mediaFileStore.TryDeleteFileAsync(path) && !ignoreMissing)
         {
             return httpContext.ApiNotFoundProblem();
         }

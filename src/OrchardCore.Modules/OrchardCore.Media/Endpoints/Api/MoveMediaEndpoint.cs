@@ -85,7 +85,7 @@ public static class MoveMediaEndpoint
         string oldPath,
         string newPath)
     {
-        var (result, movedFile) = await MoveAsync(httpContext, authorizationService, mediaFileStore, options, serviceProvider, localizer, oldPath, newPath);
+        var (result, movedFile) = await MoveAsync(httpContext, authorizationService, mediaFileStore, options, serviceProvider, localizer, oldPath, newPath, allowCompleted: false);
 
         return result ?? TypedResults.Ok(MediaEndpointHelpers.CreateFileResult(movedFile, httpContext, contentTypeProvider, fileVersionProvider, mediaFileStore));
     }
@@ -102,7 +102,7 @@ public static class MoveMediaEndpoint
         string oldPath,
         string newPath)
     {
-        var (result, movedFile) = await MoveAsync(httpContext, authorizationService, mediaFileStore, options, serviceProvider, localizer, oldPath, newPath);
+        var (result, movedFile) = await MoveAsync(httpContext, authorizationService, mediaFileStore, options, serviceProvider, localizer, oldPath, newPath, allowCompleted: true);
 
         return result ?? TypedResults.Ok(new MoveMediaResultDto
         {
@@ -120,7 +120,8 @@ public static class MoveMediaEndpoint
         IServiceProvider serviceProvider,
         IStringLocalizer<MediaApiEndpoints> localizer,
         string oldPath,
-        string newPath)
+        string newPath,
+        bool allowCompleted)
     {
         if (!await authorizationService.AuthorizeAsync(httpContext.User, MediaPermissions.ManageMedia)
             || !await authorizationService.AuthorizeAsync(httpContext.User, MediaPermissions.ManageMediaFolder, (object)oldPath)
@@ -134,11 +135,6 @@ public static class MoveMediaEndpoint
             return (httpContext.ApiNotFoundProblem(), null);
         }
 
-        if (await mediaFileStore.GetFileInfoAsync(oldPath) == null)
-        {
-            return (httpContext.ApiNotFoundProblem(), null);
-        }
-
         var newExtension = Path.GetExtension(newPath);
 
         if (!options.Value.AllowedFileExtensions.Contains(newExtension, StringComparer.OrdinalIgnoreCase))
@@ -146,7 +142,17 @@ public static class MoveMediaEndpoint
             return (httpContext.ApiValidationProblem(detail: localizer["This file extension is not allowed: {0}", newExtension]), null);
         }
 
-        if (await mediaFileStore.GetFileInfoAsync(newPath) != null)
+        var sourceFile = await mediaFileStore.GetFileInfoAsync(oldPath);
+        var targetFile = await mediaFileStore.GetFileInfoAsync(newPath);
+
+        if (sourceFile == null)
+        {
+            return allowCompleted && targetFile != null
+                ? (null, targetFile)
+                : (httpContext.ApiNotFoundProblem(), null);
+        }
+
+        if (targetFile != null)
         {
             return (httpContext.ApiValidationProblem(detail: localizer["Cannot move media because a file already exists with the same name"]), null);
         }

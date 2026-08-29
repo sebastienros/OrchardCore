@@ -31,7 +31,7 @@ public static class UploadMediaEndpoint
         builder.MapManagementPut("api/media/files/content", HandleStreamAsync)
             .WithName("ApiUploadMedia")
             .WithSummary("Uploads a media file from a binary stream.")
-            .WithDescription("Creates a media file from the request body stream. The legacy multipart upload endpoint remains available for the admin UI but is hidden from API discovery.")
+            .WithDescription("Creates or replaces a media file from the request body stream. The legacy multipart upload endpoint remains available for the admin UI but is hidden from API discovery.")
             .WithCliCommand(new CliOperationMetadata(["media", "files"], "upload")
             {
                 Capability = MediaApiEndpointConventions.CapabilityName,
@@ -244,47 +244,33 @@ public static class UploadMediaEndpoint
         var fileName = mediaNameNormalizerService.NormalizeFileName(request.FileName);
         var mediaFilePath = mediaFileStore.Combine(path, fileName);
 
-        if (await mediaFileStore.GetFileInfoAsync(mediaFilePath) != null)
-        {
-            return httpContext.ApiValidationProblem(detail: localizer["A file with this name already exists in the current folder."]);
-        }
-
         try
         {
             using var limitedBody = new SizeLimitedReadStream(
                 httpContext.Request.Body,
                 mediaOptions.MaxFileSize,
                 httpContext.Request.ContentLength);
-            Stream uploadStream = limitedBody;
-            MemoryStream bufferedBody = null;
-            if (!httpContext.Request.ContentLength.HasValue)
-            {
-                bufferedBody = new MemoryStream();
-                await limitedBody.CopyToAsync(bufferedBody, httpContext.RequestAborted);
-                bufferedBody.Position = 0;
-                uploadStream = bufferedBody;
-            }
+            using var bufferedBody = new MemoryStream();
+            await limitedBody.CopyToAsync(bufferedBody, httpContext.RequestAborted);
+            bufferedBody.Position = 0;
 
-            using (bufferedBody)
-            {
-                var createdPath = await mediaFileStore.CreateFileFromStreamAsync(
-                    fileCreationService,
-                    mediaFilePath,
-                    uploadStream,
-                    length: uploadStream.Length,
-                    contentType: httpContext.Request.ContentType,
-                    cancellationToken: httpContext.RequestAborted);
+            var createdPath = await mediaFileStore.CreateFileFromStreamAsync(
+                fileCreationService,
+                mediaFilePath,
+                bufferedBody,
+                overwrite: true,
+                length: bufferedBody.Length,
+                contentType: httpContext.Request.ContentType,
+                cancellationToken: httpContext.RequestAborted);
 
-                var mediaFile = await mediaFileStore.GetFileInfoAsync(createdPath);
+            var mediaFile = await mediaFileStore.GetFileInfoAsync(createdPath);
 
-                await MediaEndpointHelpers.PreCacheRemoteMediaAsync(mediaFile, serviceProvider, mediaFileStore, httpContext);
+            await MediaEndpointHelpers.PreCacheRemoteMediaAsync(mediaFile, serviceProvider, mediaFileStore, httpContext);
 
-                return TypedResults.Ok(MediaEndpointHelpers.CreateFileResult(mediaFile, httpContext, contentTypeProvider, fileVersionProvider, mediaFileStore));
-            }
+            return TypedResults.Ok(MediaEndpointHelpers.CreateFileResult(mediaFile, httpContext, contentTypeProvider, fileVersionProvider, mediaFileStore));
         }
         catch (PayloadTooLargeException)
         {
-            await mediaFileStore.TryDeleteFileAsync(mediaFilePath);
             return TypedResults.Problem(
                 detail: localizer["The file exceeds the maximum allowed size of {0} bytes.", mediaOptions.MaxFileSize],
                 statusCode: StatusCodes.Status413PayloadTooLarge);

@@ -82,7 +82,7 @@ public static class CreateFolderEndpoint
         string path,
         string name)
     {
-        var (result, folder) = await CreateFolderAsync(httpContext, authorizationService, mediaFileStore, mediaNameNormalizerService, options, attachedMediaFieldFileService, directoryTreeCache, localizer, path, name);
+        var (result, folder) = await CreateFolderAsync(httpContext, authorizationService, mediaFileStore, mediaNameNormalizerService, options, attachedMediaFieldFileService, directoryTreeCache, localizer, path, name, allowExisting: false);
 
         return result ?? TypedResults.Ok(MediaEndpointHelpers.CreateFolderResult(folder));
     }
@@ -99,7 +99,7 @@ public static class CreateFolderEndpoint
         string path,
         string name)
     {
-        var (result, folder) = await CreateFolderAsync(httpContext, authorizationService, mediaFileStore, mediaNameNormalizerService, options, attachedMediaFieldFileService, directoryTreeCache, localizer, path, name);
+        var (result, folder) = await CreateFolderAsync(httpContext, authorizationService, mediaFileStore, mediaNameNormalizerService, options, attachedMediaFieldFileService, directoryTreeCache, localizer, path, name, allowExisting: true);
 
         return result ?? TypedResults.Ok(new CreateFolderResultDto
         {
@@ -117,7 +117,8 @@ public static class CreateFolderEndpoint
         MediaDirectoryTreeCache directoryTreeCache,
         IStringLocalizer<MediaApiEndpoints> localizer,
         string path,
-        string name)
+        string name,
+        bool allowExisting)
     {
         if (string.IsNullOrEmpty(path))
         {
@@ -147,6 +148,11 @@ public static class CreateFolderEndpoint
         var mediaFolder = await mediaFileStore.GetDirectoryInfoAsync(newPath);
         if (mediaFolder != null)
         {
+            if (allowExisting)
+            {
+                return (null, mediaFolder);
+            }
+
             return (httpContext.ApiValidationProblem(detail: localizer["Cannot create folder because a folder already exists with the same name"]), null);
         }
 

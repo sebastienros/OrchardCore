@@ -245,6 +245,63 @@ internal static class MediaEndpointHelpers
         }
     }
 
+    public static async Task<bool> FilesAreEqualAsync(
+        IMediaFileStore mediaFileStore,
+        IFileStoreEntry first,
+        IFileStoreEntry second,
+        CancellationToken cancellationToken)
+    {
+        if (first.Length != second.Length)
+        {
+            return false;
+        }
+
+        await using var firstStream = await mediaFileStore.GetFileStreamAsync(first);
+        await using var secondStream = await mediaFileStore.GetFileStreamAsync(second);
+
+        var firstBuffer = new byte[81920];
+        var secondBuffer = new byte[81920];
+
+        while (true)
+        {
+            var firstRead = await ReadChunkAsync(firstStream, firstBuffer, cancellationToken);
+            var secondRead = await ReadChunkAsync(secondStream, secondBuffer, cancellationToken);
+
+            if (firstRead != secondRead)
+            {
+                return false;
+            }
+
+            if (firstRead == 0)
+            {
+                return true;
+            }
+
+            if (!firstBuffer.AsSpan(0, firstRead).SequenceEqual(secondBuffer.AsSpan(0, secondRead)))
+            {
+                return false;
+            }
+        }
+    }
+
+    private static async Task<int> ReadChunkAsync(Stream stream, byte[] buffer, CancellationToken cancellationToken)
+    {
+        var totalRead = 0;
+
+        while (totalRead < buffer.Length)
+        {
+            var read = await stream.ReadAsync(buffer.AsMemory(totalRead), cancellationToken);
+            if (read == 0)
+            {
+                break;
+            }
+
+            totalRead += read;
+        }
+
+        return totalRead;
+    }
+
     public static HashSet<string> GetRequestedExtensions(MediaOptions mediaOptions, string exts, bool fallback)
     {
         if (!string.IsNullOrWhiteSpace(exts))
