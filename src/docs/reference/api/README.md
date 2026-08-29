@@ -46,9 +46,11 @@ See [Authentication](authentication/README.md) for the OpenID Connect endpoints 
 
 ### Administration
 
+- [Custom settings](custom-settings/README.md)
 - [Features](features/README.md)
 - [Recipes](recipes/README.md)
 - [Roles](roles/README.md)
+- [Site settings](settings/README.md)
 - [Users](users/README.md)
 
 ### Hosting

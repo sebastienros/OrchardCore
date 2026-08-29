@@ -209,9 +209,11 @@ nav:
               - Templates: reference/api/templates/README.md
               - Workflows: reference/api/workflows/README.md
           - Administration:
+              - Custom settings: reference/api/custom-settings/README.md
               - Features: reference/api/features/README.md
               - Recipes: reference/api/recipes/README.md
               - Roles: reference/api/roles/README.md
+              - Site settings: reference/api/settings/README.md
               - Users: reference/api/users/README.md
           - Hosting:
               - Tenants: reference/api/tenants/README.md

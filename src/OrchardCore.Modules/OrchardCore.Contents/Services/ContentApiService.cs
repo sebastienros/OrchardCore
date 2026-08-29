@@ -597,8 +597,18 @@ internal sealed class ContentRemoteManagementCapabilityProvider : IRemoteManagem
             ]);
 }
 
-internal static class ContentItemSchemaBuilder
+/// <summary>
+/// Builds JSON schemas for content items from their content type definitions.
+/// </summary>
+public static class ContentItemSchemaBuilder
 {
+    /// <summary>
+    /// Builds a JSON schema for a content item with the supplied definition.
+    /// </summary>
+    /// <param name="definition">The content type definition.</param>
+    /// <param name="contentOptions">The registered content part and field types.</param>
+    /// <param name="serializerOptions">The JSON serializer options.</param>
+    /// <returns>The generated JSON schema.</returns>
     public static JsonObject BuildSchema(
         ContentTypeDefinition definition,
         ContentOptions contentOptions,
