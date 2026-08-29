@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -10,6 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using OrchardCore.DisplayManagement.ModelBinding;
 using OrchardCore.RemoteManagement;
+using OrchardCore.Security;
 using OrchardCore.Security.Services;
 using OrchardCore.Users.Controllers;
 using OrchardCore.Users.Models;
@@ -69,7 +71,9 @@ internal static class UserManagementEndpoints
             })
             .Accepts<UserCreateRequest>("application/json")
             .Produces<UserResponse>(StatusCodes.Status201Created)
+            .Produces<UserResponse>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status409Conflict)
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status403Forbidden);
@@ -119,10 +123,10 @@ internal static class UserManagementEndpoints
                 RequiresConfirmation = true,
             })
             .Produces<UserOperationResponse>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status204NoContent)
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status401Unauthorized)
-            .ProducesProblem(StatusCodes.Status403Forbidden)
-            .ProducesProblem(StatusCodes.Status404NotFound);
+            .ProducesProblem(StatusCodes.Status403Forbidden);
 
         return builder;
     }
@@ -182,6 +186,24 @@ internal static class UserManagementEndpoints
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        if (await userManager.FindByNameAsync(request.UserName) is User existingUser)
+        {
+            if (!await authorizationService.AuthorizeAsync(httpContext.User, UsersPermissions.EditUsers, existingUser))
+            {
+                return httpContext.ApiForbidProblem();
+            }
+
+            if (await MatchesCreateRequestAsync(existingUser, request, userManager))
+            {
+                return TypedResults.Ok(ToResponse(existingUser));
+            }
+
+            return TypedResults.Problem(
+                title: "Conflict",
+                detail: $"User '{request.UserName}' already exists with different settings.",
+                statusCode: StatusCodes.Status409Conflict);
+        }
+
         var user = new User
         {
             UserName = request.UserName,
@@ -207,10 +229,37 @@ internal static class UserManagementEndpoints
         await userService.CreateUserAsync(user, request.Password, modelState.AddModelError);
         if (!modelState.IsValid)
         {
+            if (await userManager.FindByNameAsync(request.UserName) is User concurrentUser &&
+                await authorizationService.AuthorizeAsync(httpContext.User, UsersPermissions.EditUsers, concurrentUser) &&
+                await MatchesCreateRequestAsync(concurrentUser, request, userManager))
+            {
+                return TypedResults.Ok(ToResponse(concurrentUser));
+            }
+
             return httpContext.ApiValidationProblem(modelState: modelState);
         }
 
         return TypedResults.Created($"/{RoutePrefix}/{Uri.EscapeDataString(user.UserId)}", ToResponse(user));
+    }
+
+    internal static Task<bool> MatchesCreateRequestAsync(
+        User existingUser,
+        UserCreateRequest request,
+        UserManager<IUser> userManager)
+    {
+        var existingRoles = existingUser.RoleNames ?? [];
+        var requestedRoles = (request.RoleNames ?? [])
+            .Where(roleName => !string.IsNullOrWhiteSpace(roleName))
+            .Distinct(StringComparer.OrdinalIgnoreCase);
+        var passwordMatches = PasswordMatches(existingUser, request.Password, userManager);
+
+        return Task.FromResult(string.Equals(existingUser.Email, request.Email, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(existingUser.PhoneNumber, request.PhoneNumber, StringComparison.Ordinal)
+            && existingUser.EmailConfirmed == request.EmailConfirmed
+            && existingUser.IsEnabled == request.IsEnabled
+            && existingRoles.Order(StringComparer.OrdinalIgnoreCase)
+                .SequenceEqual(requestedRoles.Order(StringComparer.OrdinalIgnoreCase), StringComparer.OrdinalIgnoreCase)
+            && passwordMatches);
     }
 
     internal static async Task<IResult> UpdateAsync(HttpContext httpContext, string userId, UserUpdateRequest request, UserManager<IUser> userManager, IUserService userService, IAuthorizationService authorizationService, IServiceProvider serviceProvider)
@@ -241,7 +290,7 @@ internal static class UserManagementEndpoints
             var authorizedRoleNames = await GetAuthorizedRoleNamesAsync(httpContext, serviceProvider, authorizationService, request.RoleNames, modelState);
             if (modelState.IsValid)
             {
-                await UpdateUserRolesAsync(serviceProvider, userManager, user, authorizedRoleNames);
+                await UpdateUserRolesAsync(serviceProvider, userManager, user, authorizedRoleNames, httpContext.User, authorizationService);
             }
         }
 
@@ -261,7 +310,7 @@ internal static class UserManagementEndpoints
             return httpContext.ApiValidationProblem(modelState: modelState);
         }
 
-        if (!string.IsNullOrWhiteSpace(request.Password))
+        if (!string.IsNullOrWhiteSpace(request.Password) && !PasswordMatches(user, request.Password, userManager))
         {
             await userService.ResetPasswordAsync(user.UserName, await userManager.GeneratePasswordResetTokenAsync(user), request.Password, modelState.AddModelError);
         }
@@ -284,6 +333,17 @@ internal static class UserManagementEndpoints
         }
 
         return TypedResults.Ok(ToResponse(user));
+    }
+
+    private static bool PasswordMatches(User user, string password, UserManager<IUser> userManager)
+    {
+        if (string.IsNullOrWhiteSpace(password))
+        {
+            return string.IsNullOrEmpty(user.PasswordHash);
+        }
+
+        return !string.IsNullOrEmpty(user.PasswordHash) &&
+            userManager.PasswordHasher.VerifyHashedPassword(user, user.PasswordHash, password) != PasswordVerificationResult.Failed;
     }
 
     internal static async Task<IResult> DisableAsync(HttpContext httpContext, string userId, UserManager<IUser> userManager, IUserService userService, IAuthorizationService authorizationService, IStringLocalizer<AdminController> localizer)
@@ -310,7 +370,7 @@ internal static class UserManagementEndpoints
     {
         if (await userManager.FindByIdAsync(userId) is not User user)
         {
-            return httpContext.ApiNotFoundProblem(detail: localizer["User not found."]);
+            return TypedResults.NoContent();
         }
 
         if (!await authorizationService.AuthorizeAsync(httpContext.User, UsersPermissions.DeleteUsers, user))
@@ -391,28 +451,41 @@ internal static class UserManagementEndpoints
         return authorizedRoleNames.ToArray();
     }
 
-    internal static async Task UpdateUserRolesAsync(IServiceProvider serviceProvider, UserManager<IUser> userManager, User user, IReadOnlyCollection<string> selectedRoleNames)
+    internal static async Task UpdateUserRolesAsync(
+        IServiceProvider serviceProvider,
+        UserManager<IUser> userManager,
+        User user,
+        IReadOnlyCollection<string> selectedRoleNames,
+        ClaimsPrincipal currentUser,
+        IAuthorizationService authorizationService)
     {
         var userRoleStore = serviceProvider.GetService<IUserRoleStore<IUser>>();
         if (userRoleStore is null)
         {
-            user.RoleNames = selectedRoleNames.ToArray();
             return;
         }
 
         var roleService = serviceProvider.GetService<IRoleService>();
         var currentUserRoleNames = await userRoleStore.GetRolesAsync(user, default);
         var rolesToRemove = currentUserRoleNames.Where(role => !selectedRoleNames.Contains(role, StringComparer.OrdinalIgnoreCase)).ToArray();
+        var assignableRoles = roleService is null
+            ? new Dictionary<string, IRole>(StringComparer.OrdinalIgnoreCase)
+            : (await roleService.GetAssignableRolesAsync()).ToDictionary(role => role.RoleName, StringComparer.OrdinalIgnoreCase);
+        var removedRole = false;
 
-        foreach (var role in rolesToRemove)
+        foreach (var roleName in rolesToRemove)
         {
-            var isAdminRole = roleService is not null
-                ? await roleService.IsAdminRoleAsync(role)
-                : string.Equals(role, OrchardCoreConstants.Roles.Administrator, StringComparison.OrdinalIgnoreCase);
+            if (!assignableRoles.TryGetValue(roleName, out var role) ||
+                !await authorizationService.AuthorizeAsync(currentUser, UsersPermissions.AssignRoleToUsers, role))
+            {
+                continue;
+            }
+
+            var isAdminRole = await roleService.IsAdminRoleAsync(roleName);
 
             if (isAdminRole)
             {
-                var enabledAdminUsers = (await userManager.GetUsersInRoleAsync(role))
+                var enabledAdminUsers = (await userManager.GetUsersInRoleAsync(roleName))
                     .Cast<User>()
                     .Where(candidate => candidate.IsEnabled)
                     .ToArray();
@@ -423,10 +496,11 @@ internal static class UserManagementEndpoints
                 }
             }
 
-            await userRoleStore.RemoveFromRoleAsync(user, userManager.NormalizeName(role), default);
+            await userRoleStore.RemoveFromRoleAsync(user, userManager.NormalizeName(roleName), default);
+            removedRole = true;
         }
 
-        if (rolesToRemove.Length > 0)
+        if (removedRole)
         {
             await userManager.UpdateSecurityStampAsync(user);
         }

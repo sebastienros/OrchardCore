@@ -69,11 +69,12 @@ internal static class TenantManagementEndpoints
             .WithCliCommand(new CliOperationMetadata(["tenants"], "create")
             {
                 Capability = TenantManagementApiEndpointConventions.CapabilityName,
-                InputMode = CliInputMode.Json,
             })
             .Accepts<TenantCreateRequest>("application/json")
             .Produces<TenantResponse>(StatusCodes.Status201Created)
+            .Produces<TenantResponse>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status409Conflict)
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status403Forbidden);
@@ -107,10 +108,10 @@ internal static class TenantManagementEndpoints
                 RequiresConfirmation = true,
             })
             .Produces<TenantOperationResponse>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status204NoContent)
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status401Unauthorized)
-            .ProducesProblem(StatusCodes.Status403Forbidden)
-            .ProducesProblem(StatusCodes.Status404NotFound);
+            .ProducesProblem(StatusCodes.Status403Forbidden);
 
         builder.MapManagementPost(RoutePrefix + "/{tenantName}:start", StartAsync)
             .WithName("ApiStartTenant")
@@ -321,16 +322,19 @@ internal static class TenantManagementEndpoints
             return authError;
         }
 
-        if (shellHost.TryGetSettings(request.Name, out _))
-        {
-            var modelState = new ModelStateDictionary();
-            modelState.AddModelError(nameof(TenantCreateRequest.Name), localizer["A tenant with the same name already exists."]);
-            return httpContext.ApiValidationProblem(modelState: modelState);
-        }
-
         var apiModel = request.ToApiModel();
         ApplyConfiguredDatabasePatterns(apiModel, tenantDatabasePatternResolver);
         ApplyPresetDatabaseConfiguration(apiModel, shellSettingsManager, databaseProviders);
+
+        if (shellHost.TryGetSettings(request.Name, out var existingSettings))
+        {
+            return MatchesCreateRequest(existingSettings, apiModel)
+                ? TypedResults.Ok(CreateTenantResponse(httpContext, existingSettings, dataProtectionProvider, clock))
+                : TypedResults.Problem(
+                    title: localizer["Conflict"],
+                    detail: localizer["Tenant '{0}' already exists with different settings.", request.Name],
+                    statusCode: StatusCodes.Status409Conflict);
+        }
 
         var validationState = new ModelStateDictionary();
         try
@@ -373,6 +377,16 @@ internal static class TenantManagementEndpoints
         }
         catch (Exception ex) when (!ex.IsFatal())
         {
+            if (shellHost.TryGetSettings(request.Name, out var concurrentSettings))
+            {
+                return MatchesCreateRequest(concurrentSettings, apiModel)
+                    ? TypedResults.Ok(CreateTenantResponse(httpContext, concurrentSettings, dataProtectionProvider, clock))
+                    : TypedResults.Problem(
+                        title: localizer["Conflict"],
+                        detail: localizer["Tenant '{0}' already exists with different settings.", request.Name],
+                        statusCode: StatusCodes.Status409Conflict);
+            }
+
             logger.LogError(ex, "An error occurred while saving tenant '{TenantName}'.", request.Name);
             return httpContext.ApiBadRequestProblem(detail: localizer["An error occurred while saving the tenant settings."]);
         }
@@ -479,6 +493,11 @@ internal static class TenantManagementEndpoints
 
         if (!shellSettings.IsDisabled())
         {
+            if (shellSettings.IsRunning())
+            {
+                return TypedResults.Ok(CreateTenantResponse(httpContext, shellSettings, dataProtectionProvider, clock));
+            }
+
             return httpContext.ApiBadRequestProblem(detail: localizer["You can only start a disabled tenant."]);
         }
 
@@ -508,6 +527,11 @@ internal static class TenantManagementEndpoints
 
         if (!shellSettings.IsRunning())
         {
+            if (shellSettings.IsDisabled())
+            {
+                return TypedResults.Ok(CreateTenantResponse(httpContext, shellSettings, dataProtectionProvider, clock));
+            }
+
             return httpContext.ApiBadRequestProblem(detail: localizer["You can only stop a running tenant."]);
         }
 
@@ -538,7 +562,7 @@ internal static class TenantManagementEndpoints
 
         if (!shellHost.TryGetSettings(tenantName, out var shellSettings))
         {
-            return httpContext.ApiNotFoundProblem(detail: localizer["Tenant not found: '{0}'.", tenantName]);
+            return TypedResults.NoContent();
         }
 
         if (!shellSettings.IsRemovable())
@@ -564,6 +588,23 @@ internal static class TenantManagementEndpoints
             State = nameof(TenantState.Disabled),
         });
     }
+
+    internal static bool MatchesCreateRequest(ShellSettings settings, TenantApiModel model)
+        => string.Equals(settings.Name, model.Name, StringComparison.OrdinalIgnoreCase)
+            && Equal(settings.RequestUrlHost, model.RequestUrlHost, StringComparison.OrdinalIgnoreCase)
+            && Equal(settings.RequestUrlPrefix, model.RequestUrlPrefix, StringComparison.OrdinalIgnoreCase)
+            && Equal(settings["Category"], model.Category, StringComparison.Ordinal)
+            && Equal(settings["Description"], model.Description, StringComparison.Ordinal)
+            && Equal(settings["DatabaseProvider"], model.DatabaseProvider, StringComparison.OrdinalIgnoreCase)
+            && Equal(settings["ConnectionString"], model.ConnectionString, StringComparison.Ordinal)
+            && Equal(settings["TablePrefix"], model.TablePrefix, StringComparison.Ordinal)
+            && Equal(settings["Schema"], model.Schema, StringComparison.Ordinal)
+            && Equal(settings["RecipeName"], model.RecipeName, StringComparison.OrdinalIgnoreCase)
+            && ReadFeatureProfiles(settings).Order(StringComparer.OrdinalIgnoreCase)
+                .SequenceEqual((model.FeatureProfiles ?? []).Order(StringComparer.OrdinalIgnoreCase), StringComparer.OrdinalIgnoreCase);
+
+    private static bool Equal(string left, string right, StringComparison comparison)
+        => string.Equals(left ?? string.Empty, right ?? string.Empty, comparison);
 
     internal static TenantResponse CreateTenantResponse(HttpContext httpContext, ShellSettings shellSettings, IDataProtectionProvider dataProtectionProvider, IClock clock)
     {

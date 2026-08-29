@@ -81,6 +81,12 @@ oc --context production content-item list
 oc logout production
 ```
 
+Delete one context with `oc context delete <name> --yes`. To delete every saved context and its stored credentials, use `oc context clear`; confirm the interactive prompt, or pass `--force` for non-interactive use:
+
+```bash
+oc context clear --force
+```
+
 A context represents and authenticates to exactly one tenant. From a context for the Default tenant, an administrator can prepare another running tenant for remote management:
 
 ```bash
@@ -108,10 +114,23 @@ oc <resource> <verb> [arguments] [options]
 Examples include:
 
 ```bash
+oc tenants create --name TenantA --request-url-prefix tenant-a --recipe-name SaaS
 oc content items list
 oc content items show 4abc...
 oc features enable OrchardCore.Media
 oc queries execute RecentPosts --body '{ "parameters": {} }'
+```
+
+`oc tenants create` creates an uninitialized tenant but no user account. Open
+the `setupUrl` in its response to run the selected recipe and create the
+initial administrator. After setup, enable Remote Management from the Default
+tenant context, add the initialized tenant URL as its own context, and
+authenticate directly:
+
+```bash
+oc tenants enable-remote-management TenantA
+oc context add tenant-a https://cms.example.com/tenant-a --current
+oc login
 ```
 
 JSON is written to standard output by default. Use `--output table|csv|tsv|yaml|toml|none` when another representation is needed. TOML omits properties whose value is `null`; root arrays and scalar values are emitted under `items` and `value`, respectively. JSON request bodies can come from `--body`, `--body-file`, or `--stdin`. Binary request bodies use `--file` or `--stdin`. Discovered option and argument names use lower kebab-case. List commands use zero-based `--skip` and `--take` options for paging.

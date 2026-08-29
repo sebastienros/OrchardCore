@@ -42,6 +42,18 @@ public class CliApplicationSchemaTests
         Assert.Same(create, selected);
     }
 
+    [Fact]
+    public void CreateRequiredBodyMessage_Operation_IncludesExactSchemaCommand()
+    {
+        var operation = CreateOperation("create", "string");
+
+        var message = CliApplication.CreateRequiredBodyMessage(operation, includeInputOptions: true);
+
+        Assert.Equal(
+            "A JSON request body is required. Provide --body, --body-file, or --stdin. Run 'oc widgets schema --operation create' to inspect its schema.",
+            message);
+    }
+
     private static OpenApiOperationDefinition CreateOperation(string verb, string valueType) =>
         new()
         {

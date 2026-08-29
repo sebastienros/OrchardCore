@@ -11,6 +11,7 @@ namespace OrchardCore.Cli;
 [JsonSerializable(typeof(StoredToken))]
 [JsonSerializable(typeof(ContextListOutput))]
 [JsonSerializable(typeof(ContextOutput))]
+[JsonSerializable(typeof(ContextClearOutput))]
 [JsonSerializable(typeof(LoginOutput))]
 [JsonSerializable(typeof(LogoutOutput))]
 [JsonSerializable(typeof(RefreshOutput))]

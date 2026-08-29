@@ -345,6 +345,7 @@ internal sealed class CliApplication
         command.Subcommands.Add(CreateContextShowCommand());
         command.Subcommands.Add(CreateContextUseCommand());
         command.Subcommands.Add(CreateContextDeleteCommand());
+        command.Subcommands.Add(CreateContextClearCommand());
         command.Subcommands.Add(CreateContextAddCommand());
         return command;
     }
@@ -453,6 +454,49 @@ internal sealed class CliApplication
                 IsCurrent = false,
                 HasStoredCredentials = false,
             }, CliJsonContext.Default.ContextOutput), cancellationToken);
+        });
+
+        return command;
+    }
+
+    private Command CreateContextClearCommand()
+    {
+        var command = new Command("clear", "Delete all saved contexts and their stored credentials");
+        var forceOption = new Option<bool>("--force") { Description = "Delete without prompting for confirmation" };
+        command.Options.Add(forceOption);
+
+        command.SetAction(async (parseResult, cancellationToken) =>
+        {
+            var contexts = _configuration.Contexts.ToArray();
+            if (contexts.Length > 0 &&
+                !parseResult.GetValue(forceOption) &&
+                !await ConfirmContextClearAsync(contexts.Length, Console.In, Console.Error, cancellationToken))
+            {
+                return await WriteOutputAsync(parseResult, CliUtilities.ToJsonElement(new ContextClearOutput
+                {
+                    Cleared = false,
+                }, CliJsonContext.Default.ContextClearOutput), cancellationToken);
+            }
+
+            var deletedCredentials = 0;
+            foreach (var context in contexts)
+            {
+                if (await _credentialStore.DeleteAsync(context.Name, cancellationToken))
+                {
+                    deletedCredentials++;
+                }
+            }
+
+            _configuration.Contexts.Clear();
+            _configuration.CurrentContext = null;
+            await _contextStore.SaveAsync(_configuration, cancellationToken);
+
+            return await WriteOutputAsync(parseResult, CliUtilities.ToJsonElement(new ContextClearOutput
+            {
+                Cleared = true,
+                DeletedContexts = contexts.Length,
+                DeletedCredentials = deletedCredentials,
+            }, CliJsonContext.Default.ContextClearOutput), cancellationToken);
         });
 
         return command;
@@ -1180,7 +1224,7 @@ internal sealed class CliApplication
         {
             if (operation.RequestBodyRequired)
             {
-                throw new CliException("A JSON request body is required. Provide --body, --body-file, or --stdin.");
+                throw new CliException(CreateRequiredBodyMessage(operation, includeInputOptions: true));
             }
 
             return null;
@@ -1207,7 +1251,7 @@ internal sealed class CliApplication
         {
             if (operation.RequestBodyRequired)
             {
-                throw new CliException("A JSON request body is required.");
+                throw new CliException(CreateRequiredBodyMessage(operation, includeInputOptions: false));
             }
 
             return null;
@@ -1216,6 +1260,16 @@ internal sealed class CliApplication
         var content = node.ToJsonString();
         ValidateDynamicJsonBody(content, operation);
         return CreateJsonContent(content, operation.RequestContentType ?? "application/json");
+    }
+
+    internal static string CreateRequiredBodyMessage(OpenApiOperationDefinition operation, bool includeInputOptions)
+    {
+        var schemaCommand = $"oc {string.Join(' ', operation.CliMetadata.CommandGroup)} schema --operation {operation.CliMetadata.Verb}";
+        var inputGuidance = includeInputOptions
+            ? " Provide --body, --body-file, or --stdin."
+            : string.Empty;
+
+        return $"A JSON request body is required.{inputGuidance} Run '{schemaCommand}' to inspect its schema.";
     }
 
     private static void ValidateDynamicJsonBody(string content, OpenApiOperationDefinition operation)
@@ -1414,6 +1468,20 @@ internal sealed class CliApplication
         }
     }
 
+    internal static async Task<bool> ConfirmContextClearAsync(
+        int contextCount,
+        TextReader input,
+        TextWriter promptWriter,
+        CancellationToken cancellationToken)
+    {
+        await promptWriter.WriteAsync($"Delete all {contextCount} saved context{(contextCount == 1 ? string.Empty : "s")} and stored credentials? [y/N] ");
+        await promptWriter.FlushAsync(cancellationToken);
+        var response = await input.ReadLineAsync(cancellationToken);
+
+        return string.Equals(response, "y", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(response, "yes", StringComparison.OrdinalIgnoreCase);
+    }
+
     private static Uri BuildRequestUri(Uri baseUri, string path, IReadOnlyDictionary<string, string> query)
     {
         var builder = new UriBuilder(new Uri(baseUri, path.TrimStart('/')));
@@ -1474,7 +1542,11 @@ internal sealed class CliApplication
             "version",
         ];
 
-        for (var index = 0; index < args.Length; index++)
+        var startIndex = args.Length > 0 && string.Equals(args[0], "oc", StringComparison.Ordinal)
+            ? 1
+            : 0;
+
+        for (var index = startIndex; index < args.Length; index++)
         {
             var argument = args[index];
             if (argument is "--context" or "-c" or "--output")

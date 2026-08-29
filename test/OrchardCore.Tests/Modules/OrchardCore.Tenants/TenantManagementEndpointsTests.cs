@@ -5,6 +5,7 @@ using OrchardCore.Environment.Shell;
 using OrchardCore.Environment.Shell.Models;
 using OrchardCore.RemoteManagement;
 using OrchardCore.Tenants.Endpoints.Management;
+using OrchardCore.Tenants.Models;
 using OrchardCore.Tenants.Services;
 
 namespace OrchardCore.Tests.Modules.OrchardCore.Tenants;
@@ -107,5 +108,66 @@ public class TenantManagementEndpointsTests
         Assert.True(response.CanDelete);
         Assert.False(response.CanStart);
         Assert.False(response.CanStop);
+    }
+
+    [Theory]
+    [InlineData("retry-safe", true)]
+    [InlineData("different", false)]
+    public async Task ContentEqualsAsync_Input_ReturnsExpectedResult(string content, bool expected)
+    {
+        var path = Path.GetTempFileName();
+        try
+        {
+            await File.WriteAllTextAsync(path, "retry-safe", TestContext.Current.CancellationToken);
+            await using var requestBody = new ShortReadStream(System.Text.Encoding.UTF8.GetBytes(content));
+
+            var result = await StaticFileManagementEndpoints.ContentEqualsAsync(
+                requestBody,
+                path,
+                TestContext.Current.CancellationToken);
+
+            Assert.Equal(expected, result);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void MatchesCreateRequest_IdenticalSettings_ReturnsTrue()
+    {
+        var settings = new ShellSettings
+        {
+            Name = "TenantA",
+            RequestUrlPrefix = "tenant-a",
+        };
+        settings["DatabaseProvider"] = "Sqlite";
+        settings["TablePrefix"] = "TenantA";
+        settings["RecipeName"] = "SaaS";
+        var model = new TenantApiModel
+        {
+            Name = "TenantA",
+            RequestUrlPrefix = "tenant-a",
+            DatabaseProvider = "Sqlite",
+            TablePrefix = "TenantA",
+            RecipeName = "SaaS",
+        };
+
+        Assert.True(TenantManagementEndpoints.MatchesCreateRequest(settings, model));
+
+        model.Description = "Different";
+        Assert.False(TenantManagementEndpoints.MatchesCreateRequest(settings, model));
+    }
+
+    private sealed class ShortReadStream : MemoryStream
+    {
+        public ShortReadStream(byte[] buffer)
+            : base(buffer)
+        {
+        }
+
+        public override ValueTask<int> ReadAsync(Memory<byte> destination, CancellationToken cancellationToken = default)
+            => base.ReadAsync(destination[..Math.Min(destination.Length, 2)], cancellationToken);
     }
 }

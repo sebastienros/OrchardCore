@@ -134,9 +134,9 @@ internal static class ContentManagementApiEndpoints
             .WithDescription("Deletes the latest version of a content item.")
             .WithCliCommand(Cli(["content", "items"], "delete", arguments: [new CliArgumentMetadata("contentItemId", 0)], requiresConfirmation: true))
             .Produces<ContentItem>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status204NoContent)
             .ProducesProblem(StatusCodes.Status401Unauthorized)
-            .ProducesProblem(StatusCodes.Status403Forbidden)
-            .ProducesProblem(StatusCodes.Status404NotFound);
+            .ProducesProblem(StatusCodes.Status403Forbidden);
 
         group.MapPost("/validate", ValidateCreateAsync)
             .WithName("ApiValidateContentItem")
@@ -282,7 +282,7 @@ internal static class ContentManagementApiEndpoints
             return httpContext.ApiForbidProblem();
         }
 
-        return contentItem is null ? httpContext.ApiNotFoundProblem() : Results.Json(contentItem, service.SerializerOptions);
+        return contentItem is null ? TypedResults.NoContent() : Results.Json(contentItem, service.SerializerOptions);
     }
 
     private static Task<IResult> ValidateCreateAsync(ContentItem model, ContentApiService service, HttpContext httpContext)

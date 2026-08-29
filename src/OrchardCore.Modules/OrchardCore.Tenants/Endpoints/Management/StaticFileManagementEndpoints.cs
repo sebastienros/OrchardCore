@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.FileProviders;
 using OrchardCore.RemoteManagement;
+using OrchardCore.Security;
 using OrchardCore.Tenants.Services;
 
 namespace OrchardCore.Tenants.Endpoints.Management;
@@ -16,6 +17,7 @@ internal static class StaticFileManagementEndpoints
     public static IEndpointRouteBuilder AddStaticFileManagementEndpoints(this IEndpointRouteBuilder builder)
     {
         builder.MapManagementGet(RoutePrefix, ListAsync)
+            .RequireAuthorization(policy => policy.AddRequirements(new PermissionRequirement(Permissions.ViewTenantStaticFiles)))
             .WithName("ApiListStaticFiles")
             .WithSummary("Lists tenant static files.")
             .WithDescription("Lists files and directories in the tenant static-file root. Use an empty path for the root directory.")
@@ -36,6 +38,7 @@ internal static class StaticFileManagementEndpoints
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         builder.MapManagementGet(RoutePrefix + "/file", GetAsync)
+            .RequireAuthorization(policy => policy.AddRequirements(new PermissionRequirement(Permissions.ViewTenantStaticFiles)))
             .WithName("ApiGetStaticFile")
             .WithSummary("Gets tenant static-file metadata.")
             .WithDescription("Returns metadata and the public URL for a tenant static file.")
@@ -51,6 +54,7 @@ internal static class StaticFileManagementEndpoints
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         builder.MapManagementPut(RoutePrefix + "/content", UploadAsync)
+            .RequireAuthorization(policy => policy.AddRequirements(new PermissionRequirement(Permissions.ManageTenantStaticFiles)))
             .WithName("ApiUploadStaticFile")
             .WithSummary("Uploads a tenant static file.")
             .WithDescription("Writes the binary request body to a path under the tenant static-file root. For example: oc static files upload styles/site.css --file ./site.css")
@@ -67,6 +71,7 @@ internal static class StaticFileManagementEndpoints
                 },
             })
             .Accepts<Stream>("application/octet-stream")
+            .Produces<StaticFileResponse>(StatusCodes.Status200OK)
             .Produces<StaticFileResponse>(StatusCodes.Status201Created)
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status401Unauthorized)
@@ -140,27 +145,78 @@ internal static class StaticFileManagementEndpoints
             return TypedResults.Problem(detail: "The static-file path resolves outside the tenant static-file root or traverses a symbolic link.", statusCode: StatusCodes.Status400BadRequest);
         }
 
-        if (!overwrite && File.Exists(physicalPath))
+        var fileExists = File.Exists(physicalPath);
+        if (!overwrite && fileExists)
         {
+            if (await ContentEqualsAsync(httpContext.Request.Body, physicalPath, httpContext.RequestAborted))
+            {
+                return TypedResults.Ok(ToResponse(httpContext, normalizedPath, fileProvider.GetFileInfo(normalizedPath)));
+            }
+
             return TypedResults.Problem(
                 detail: $"Static file '{normalizedPath}' already exists. Pass --overwrite true to replace it.",
                 statusCode: StatusCodes.Status409Conflict);
         }
 
         Directory.CreateDirectory(Path.GetDirectoryName(physicalPath)!);
-        await using (var stream = new FileStream(
-            physicalPath,
-            overwrite ? FileMode.Create : FileMode.CreateNew,
-            FileAccess.Write,
-            FileShare.None,
-            bufferSize: 81920,
-            FileOptions.Asynchronous))
+        var temporaryPath = $"{physicalPath}.{Guid.NewGuid():n}.tmp";
+        try
         {
-            await httpContext.Request.Body.CopyToAsync(stream, httpContext.RequestAborted);
+            await using (var stream = new FileStream(
+                temporaryPath,
+                FileMode.CreateNew,
+                FileAccess.Write,
+                FileShare.None,
+                bufferSize: 81920,
+                FileOptions.Asynchronous | FileOptions.WriteThrough))
+            {
+                await httpContext.Request.Body.CopyToAsync(stream, httpContext.RequestAborted);
+            }
+
+            File.Move(temporaryPath, physicalPath, overwrite);
+        }
+        finally
+        {
+            File.Delete(temporaryPath);
         }
 
         var file = fileProvider.GetFileInfo(normalizedPath);
-        return TypedResults.Created(ToPublicUrl(httpContext, normalizedPath), ToResponse(httpContext, normalizedPath, file));
+        return fileExists
+            ? TypedResults.Ok(ToResponse(httpContext, normalizedPath, file))
+            : TypedResults.Created(ToPublicUrl(httpContext, normalizedPath), ToResponse(httpContext, normalizedPath, file));
+    }
+
+    internal static async Task<bool> ContentEqualsAsync(Stream requestBody, string physicalPath, CancellationToken cancellationToken)
+    {
+        await using var existing = new FileStream(
+            physicalPath,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read,
+            bufferSize: 81920,
+            FileOptions.Asynchronous | FileOptions.SequentialScan);
+
+        var existingBuffer = new byte[81920];
+        var requestBuffer = new byte[81920];
+        while (true)
+        {
+            var existingRead = await existing.ReadAtLeastAsync(existingBuffer, existingBuffer.Length, throwOnEndOfStream: false, cancellationToken: cancellationToken);
+            var requestRead = await requestBody.ReadAtLeastAsync(requestBuffer, requestBuffer.Length, throwOnEndOfStream: false, cancellationToken: cancellationToken);
+            if (existingRead != requestRead)
+            {
+                return false;
+            }
+
+            if (existingRead == 0)
+            {
+                return true;
+            }
+
+            if (!existingBuffer.AsSpan(0, existingRead).SequenceEqual(requestBuffer.AsSpan(0, requestRead)))
+            {
+                return false;
+            }
+        }
     }
 
     internal static bool TryNormalizePath(string path, bool allowEmpty, out string normalizedPath)

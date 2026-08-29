@@ -16,7 +16,7 @@ Resource permissions are evaluated in addition to those two permissions:
 
 | Operation | Additional permission |
 | --- | --- |
-| List | `ListContent`, evaluated per content type |
+| List | `ListContent`, evaluated per content type, plus `ViewContent` for each published item or `PreviewContent` for each unpublished item |
 | Get or render a published version | `ViewContent` on the item |
 | Get or render a draft/latest unpublished version | `PreviewContent` on the item |
 | Create or update a draft; validate; create a draft version | `EditContent` on the item |
@@ -25,8 +25,9 @@ Resource permissions are evaluated in addition to those two permissions:
 | Get schema | At least one of `ListContent`, `EditContent`, or `ViewContent` for the type |
 
 Orchard Core's normal ownership and content-type permission rules apply when these permissions
-are evaluated. Listing omits content types for which the caller lacks `ListContent` rather than
-returning `403`.
+are evaluated. Listing omits content types for which the caller lacks `ListContent` and items
+for which the caller lacks resource-aware view or preview permission rather than returning
+`403`.
 
 Unauthenticated requests return `401 Unauthorized`. Any required permission failure returns
 `403 Forbidden` Problem Details:
@@ -93,6 +94,11 @@ Content item documents use the following exact, Pascal-cased well-known property
 | `Owner` | string or null | Creator user ID. |
 | `Author` | string or null | Last modifier's user name. |
 | `<part name>` | object | Content-type-specific part data. |
+
+`Author` is always controlled by the server. Changing a nonempty `Owner`
+requires `EditContentOwner` for the content item; otherwise the request is
+forbidden. Omitting `Owner` preserves the current owner or uses the
+authenticated creator for a new item.
 
 The remaining top-level members and all nested part/field members depend on the content
 definition and enabled modules. Use the schema endpoint for the current contract. The schema
@@ -263,9 +269,9 @@ returns `401`, `403`, or `404`.
 | `draft` | query | boolean | No | `false` |
 | body | body | content item | Yes | — |
 
-With no body `ContentItemId`, this creates an item. An ID that resolves to an existing item updates
-its required current draft for backward compatibility. An unknown body ID still enters the create
-path, and Orchard Core assigns a new generated ID. `draft=false` publishes after saving and
+With no body `ContentItemId`, this creates an item and retries can create additional items. A
+supplied ID is preserved, making the request retry-safe: an ID that resolves to an existing item
+updates its current state, while an unknown ID creates that exact logical item. `draft=false` publishes after saving and
 requires `EditContent` plus `PublishContent`; `draft=true` keeps a draft and requires `EditContent`.
 
 ```bash
@@ -309,8 +315,8 @@ Also returns `400`, `401`, `403`, or `404`.
 `POST /api/content/draft`
 
 The required body is a content item whose `ContentType` exists. Omit `ContentItemId` to create a
-draft. An unknown supplied ID also creates a draft with a new generated ID; an ID that resolves to
-an existing item is rejected by this create-only operation. Requires `EditContent`.
+draft with a generated ID. Supplying an ID creates that exact logical item; repeating the request
+returns the existing editable draft without creating another item. Requires `EditContent`.
 
 ```bash
 curl -X POST -H "Authorization: Bearer $TOKEN" \
@@ -346,8 +352,7 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
 }
 ```
 
-If the ID identifies an existing item, creation is not allowed and returns `404`. Also returns
-`400`, `401`, or `403`.
+Also returns `400`, `401`, or `403`.
 
 ### Update and publish a content item
 
@@ -478,7 +483,8 @@ Also returns `401`, `403`, or `404`.
 
 `POST /api/content/{contentItemId}/publish`
 
-`contentItemId` is required. No body or query parameters. The item must have a draft version.
+`contentItemId` is required. No body or query parameters. A draft version is published; if the
+item is already published, the current published item is returned without another transition.
 Requires `PublishContent`.
 
 ```bash
@@ -513,8 +519,9 @@ Also returns `401`, `403`, or `404`.
 
 `POST /api/content/{contentItemId}/unpublish`
 
-`contentItemId` is required. No body or query parameters. The item must have a published
-version. Requires `PublishContent`.
+`contentItemId` is required. No body or query parameters. A published version is unpublished; if
+the item is already unpublished, its latest version is returned without another transition.
+Requires `PublishContent`.
 
 ```bash
 curl -X POST -H "Authorization: Bearer $TOKEN" \
@@ -549,7 +556,8 @@ Also returns `401`, `403`, or `404`.
 `DELETE /api/content/{contentItemId}`
 
 `contentItemId` is required. No body or query parameters. Deletes the latest version through
-the content manager and requires `DeleteContent`.
+the content manager and requires `DeleteContent`. Repeating the deletion after the item is absent
+returns `204 No Content`.
 
 ```bash
 curl -X DELETE -H "Authorization: Bearer $TOKEN" \
@@ -577,7 +585,7 @@ curl -X DELETE -H "Authorization: Bearer $TOKEN" \
 }
 ```
 
-Also returns `401`, `403`, or `404`.
+Also returns `204`, `401`, or `403`.
 
 ### Validate a content item payload
 

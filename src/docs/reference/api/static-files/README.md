@@ -19,8 +19,10 @@ and require:
 - the **Access remote management API** permission
   (`AccessRemoteManagement`).
 
-There is no additional static-file-specific permission check. Obtain a token
-and configure authentication as described in
+List and show additionally require **View tenant static files**
+(`ViewTenantStaticFiles`). Upload and overwrite require the security-critical
+**Manage tenant static files** (`ManageTenantStaticFiles`) permission, which
+implies the view permission. Obtain a token and configure authentication as described in
 [Remote Management](../../modules/RemoteManagement/README.md#contexts-and-login).
 Antiforgery validation is disabled.
 
@@ -49,7 +51,7 @@ JSON property names use the exact camel casing shown below. JSON responses use
 | --- | --- | --- | --- |
 | List directory | `GET` | `/api/static-files` | `200 OK` |
 | Get file metadata | `GET` | `/api/static-files/file` | `200 OK` |
-| Upload file content | `PUT` | `/api/static-files/content` | `201 Created` |
+| Upload file content | `PUT` | `/api/static-files/content` | `200 OK` or `201 Created` |
 
 ## Paths, storage, and public content
 
@@ -167,7 +169,7 @@ curl --get 'https://cms.example.com/tenant-a/api/static-files' \
 - `401 Unauthorized` is returned when bearer authentication is absent or
   fails.
 - `403 Forbidden` is returned when the token lacks **Access remote management
-  API**.
+  API** or **View tenant static files**.
 - `404 Not Found` is returned when the directory does not exist.
 
 ```json
@@ -237,7 +239,7 @@ curl --get 'https://cms.example.com/tenant-a/api/static-files/file' \
 - `400 Bad Request` is returned for a missing, empty, rooted, or otherwise
   unsafe `path`.
 - `401 Unauthorized` and `403 Forbidden` are returned for authentication and
-  permission failures.
+  **View tenant static files** permission failures.
 - `404 Not Found` is returned when the path is absent or identifies a
   directory.
 
@@ -273,7 +275,7 @@ Content-Type: application/octet-stream
 | Header | `Authorization` | string | Yes | — | `Bearer <access-token>`. |
 | Header | `Content-Type` | string | No | — | The endpoint advertises `application/octet-stream`; the handler streams the body without inspecting this header. |
 | Query | `path` | string | Yes | — | Nonempty relative destination file path. |
-| Query | `overwrite` | boolean | No | `false` | `true` replaces an existing regular file; `false` returns `409`. |
+| Query | `overwrite` | boolean | No | `false` | `true` replaces an existing regular file. With `false`, identical existing content returns `200`; different content returns `409`. |
 | Body | — | binary stream | No | Zero bytes | Raw file bytes; an absent or zero-length body creates a zero-byte file. |
 
 There are no path parameters.
@@ -290,14 +292,16 @@ curl --request PUT \
 
 ### Responses
 
-- `201 Created` returns the uploaded file metadata. The `Location` header and
+- `201 Created` returns newly uploaded file metadata. The `Location` header and
   response `url` are the same tenant-relative public URL.
+- `200 OK` returns the existing metadata when the destination already contains
+  the exact request bytes, making an identical retry successful without rewriting.
 - `400 Bad Request` is returned for an unsafe logical path or a physical path
   that escapes the root or traverses a symbolic link.
 - `401 Unauthorized` and `403 Forbidden` are returned for authentication and
-  permission failures.
-- `409 Conflict` is returned when a regular file exists and `overwrite` is
-  `false`.
+  **Manage tenant static files** permission failures.
+- `409 Conflict` is returned when a regular file with different content exists
+  and `overwrite` is `false`.
 
 ```http
 HTTP/1.1 201 Created

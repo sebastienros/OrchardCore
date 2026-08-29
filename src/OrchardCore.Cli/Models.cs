@@ -252,6 +252,15 @@ internal sealed class ContextOutput
     public bool HasStoredCredentials { get; set; }
 }
 
+internal sealed class ContextClearOutput
+{
+    public bool Cleared { get; set; }
+
+    public int DeletedContexts { get; set; }
+
+    public int DeletedCredentials { get; set; }
+}
+
 internal sealed class LoginOutput
 {
     public string Context { get; set; } = string.Empty;

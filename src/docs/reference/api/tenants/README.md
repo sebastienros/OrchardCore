@@ -309,7 +309,9 @@ Content-Type: application/json
 ```
 
 Creates shell settings in the `Uninitialized` state. This operation does not
-run tenant setup; use the returned `setupUrl` to set up the tenant.
+run tenant setup and does not create a user account. Open the returned
+`setupUrl` to select the site settings and recipe and create the tenant's
+initial administrator account.
 
 ### Parameters
 
@@ -349,6 +351,41 @@ Server configuration can override submitted database values:
   a root/default connection string is nonempty, the root/default connection
   string and schema also replace submitted values.
 
+### CLI
+
+The CLI exposes each body property as an option while retaining `--body`,
+`--body-file`, and `--stdin` for complete JSON payloads:
+
+```bash
+oc tenants create \
+  --name TenantA \
+  --request-url-prefix tenant-a \
+  --database-provider Sqlite \
+  --table-prefix TenantA \
+  --recipe-name SaaS
+```
+
+When the host presets its database provider and generates table prefixes, the
+minimum practical command is:
+
+```bash
+oc tenants create --name TenantA --request-url-prefix tenant-a --recipe-name SaaS
+```
+
+Run `oc tenants schema --operation create` to inspect the authoritative JSON
+Schema, including required properties and constraints.
+
+After creation:
+
+1. Open the `setupUrl` from the command response.
+2. Complete setup by supplying the site name and initial administrator
+   username, email address, and password. The stored `recipeName` is executed
+   during this step.
+3. From the Default tenant context, run
+   `oc tenants enable-remote-management TenantA`.
+4. Register the initialized tenant using
+   `oc context add tenant-a <primaryUrl> --current`, then run `oc login`.
+
 ### Request
 
 ```bash
@@ -374,6 +411,10 @@ curl --request POST 'https://cms.example.com/api/tenants' \
 
 - `201 Created` returns the created [tenant](#tenant). The `Location` header is
   `/api/tenants/{percent-encoded-name}`.
+- `200 OK` returns the existing tenant when an identical create request is
+  retried.
+- `409 Conflict` is returned when that tenant name already exists with
+  different effective settings.
 - `400 Bad Request` returns Validation Problem Details for invalid fields, or
   Problem Details if validation or persistence fails.
 - `415 Unsupported Media Type` is returned when the required body is not sent
@@ -548,7 +589,9 @@ curl --request POST 'https://cms.example.com/api/tenants/TenantA:start' \
 
 - `200 OK` returns the tenant with `state` set to `Running`,
   `canStart: false`, and `canStop: true`.
-- `400 Bad Request` is returned unless the current state is `Disabled`.
+- `400 Bad Request` is returned unless the current state is `Disabled` or
+  already `Running`. An already-running tenant returns `200` without another
+  transition.
 - `401 Unauthorized`, `403 Forbidden`, and `404 Not Found` have the meanings
   described above.
 
@@ -614,7 +657,9 @@ curl --request POST 'https://cms.example.com/api/tenants/TenantA:stop' \
 
 - `200 OK` returns the tenant with `state` set to `Disabled`,
   `canStart: true`, `canStop: false`, and `canDelete: true`.
-- `400 Bad Request` is returned unless the current state is `Running`.
+- `400 Bad Request` is returned unless the current state is `Running` or
+  already `Disabled`. An already-disabled tenant returns `200` without another
+  transition.
 - `401 Unauthorized`, `403 Forbidden`, and `404 Not Found` have the meanings
   described above.
 
@@ -687,7 +732,7 @@ curl --request DELETE 'https://cms.example.com/api/tenants/TenantA' \
 - `401 Unauthorized` is returned when bearer authentication fails.
 - `403 Forbidden` is returned for normal authorization failures and when
   tenant removal is disabled.
-- `404 Not Found` is returned when `tenantName` is unknown.
+- `204 No Content` is returned when `tenantName` is already absent.
 
 ```json
 {

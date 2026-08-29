@@ -27,6 +27,8 @@ namespace OrchardCore.Contents.Services;
 
 internal sealed class ContentApiService
 {
+    private const int AuthorizationBatchSize = 100;
+
     private static readonly JsonMergeSettings s_updateJsonMergeSettings = new()
     {
         MergeArrayHandling = MergeArrayHandling.Replace,
@@ -92,19 +94,55 @@ internal sealed class ContentApiService
             return response;
         }
 
-        var query = _session.Query<ContentItem, ContentItemIndex>(index => index.ContentType.IsIn(allowedTypes.ToArray()));
-        query = status?.ToLowerInvariant() switch
+        async Task<IEnumerable<ContentItem>> LoadBatchAsync(int offset)
         {
-            "draft" => query.Where(index => index.Latest && !index.Published),
-            "latest" => query.Where(index => index.Latest),
-            _ => query.Where(index => index.Published),
-        };
+            var query = _session.Query<ContentItem, ContentItemIndex>(index => index.ContentType.IsIn(allowedTypes.ToArray()));
+            query = status?.ToLowerInvariant() switch
+            {
+                "draft" => query.Where(index => index.Latest && !index.Published),
+                "latest" => query.Where(index => index.Latest),
+                _ => query.Where(index => index.Published),
+            };
 
-        response.TotalCount = await query.CountAsync();
-        response.Items = (await query.OrderByDescending(index => index.ModifiedUtc)
-            .Skip(skip)
-            .Take(take)
-            .ListAsync()).ToList();
+            return await query.OrderByDescending(index => index.ModifiedUtc)
+                .ThenBy(index => index.Id)
+                .Skip(offset)
+                .Take(AuthorizationBatchSize)
+                .ListAsync();
+        }
+
+        var authorizedItems = new List<ContentItem>(take);
+        var authorizedCount = 0;
+        var offset = 0;
+
+        while (true)
+        {
+            var batch = (await LoadBatchAsync(offset)).ToArray();
+            foreach (var contentItem in batch)
+            {
+                if (!await CanViewContentItemAsync(_authorizationService, user, contentItem))
+                {
+                    continue;
+                }
+
+                if (authorizedCount >= skip && authorizedItems.Count < take)
+                {
+                    authorizedItems.Add(contentItem);
+                }
+
+                authorizedCount++;
+            }
+
+            if (batch.Length < AuthorizationBatchSize)
+            {
+                break;
+            }
+
+            offset += batch.Length;
+        }
+
+        response.TotalCount = authorizedCount;
+        response.Items = authorizedItems;
 
         return response;
     }
@@ -127,8 +165,10 @@ internal sealed class ContentApiService
             model.ContentItemId = contentItemId;
         }
 
-        var contentItem = await _contentManager.GetAsync(model.ContentItemId, VersionOptions.DraftRequired);
         var modelState = _updateModelAccessor.ModelUpdater.ModelState;
+        var contentItem = string.IsNullOrWhiteSpace(model.ContentItemId)
+            ? null
+            : await _contentManager.GetAsync(model.ContentItemId, VersionOptions.Latest);
 
         if (contentItem is null)
         {
@@ -138,8 +178,18 @@ internal sealed class ContentApiService
             }
 
             contentItem = await _contentManager.NewAsync(model.ContentType);
+            if (!string.IsNullOrWhiteSpace(model.ContentItemId))
+            {
+                contentItem.ContentItemId = model.ContentItemId;
+            }
+
             if (!await _authorizationService.AuthorizeAsync(user, CommonPermissions.EditContent, contentItem)
                 || (publish && !await _authorizationService.AuthorizeAsync(user, CommonPermissions.PublishContent, contentItem)))
+            {
+                return modelState.IsValid ? new ContentItem { ContentItemId = string.Empty } : null;
+            }
+
+            if (!await PrepareOwnershipAsync(_authorizationService, user, model, contentItem))
             {
                 return modelState.IsValid ? new ContentItem { ContentItemId = string.Empty } : null;
             }
@@ -159,7 +209,17 @@ internal sealed class ContentApiService
         {
             if (!allowUpdate)
             {
-                return null;
+                if (string.IsNullOrWhiteSpace(model.ContentItemId))
+                {
+                    return null;
+                }
+
+                if (!await _authorizationService.AuthorizeAsync(user, CommonPermissions.EditContent, contentItem))
+                {
+                    return new ContentItem { ContentItemId = string.Empty };
+                }
+
+                return contentItem;
             }
 
             if (!string.IsNullOrWhiteSpace(contentItemId) && !string.Equals(model.ContentItemId, contentItemId, StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(model.ContentItemId))
@@ -180,6 +240,12 @@ internal sealed class ContentApiService
                 return new ContentItem { ContentItemId = string.Empty };
             }
 
+            if (!await PrepareOwnershipAsync(_authorizationService, user, model, contentItem))
+            {
+                return new ContentItem { ContentItemId = string.Empty };
+            }
+
+            contentItem = await _contentManager.GetAsync(model.ContentItemId, VersionOptions.DraftRequired);
             contentItem.Merge(model, s_updateJsonMergeSettings);
             await _contentManager.UpdateAsync(contentItem);
 
@@ -216,7 +282,8 @@ internal sealed class ContentApiService
 
         if (!string.IsNullOrWhiteSpace(contentItemId) || !string.IsNullOrWhiteSpace(model.ContentItemId))
         {
-            contentItem = await _contentManager.GetAsync(contentItemId ?? model.ContentItemId, VersionOptions.DraftRequired);
+            var id = contentItemId ?? model.ContentItemId;
+            contentItem = await _contentManager.GetAsync(id, VersionOptions.Latest);
             if (contentItem is null)
             {
                 return null;
@@ -227,6 +294,12 @@ internal sealed class ContentApiService
                 return new ContentItemValidationResponse();
             }
 
+            if (!await PrepareOwnershipAsync(_authorizationService, user, model, contentItem))
+            {
+                return new ContentItemValidationResponse();
+            }
+
+            contentItem = await _contentManager.GetAsync(id, VersionOptions.DraftRequired);
             contentItem.Merge(model, s_updateJsonMergeSettings);
             await _contentManager.UpdateAsync(contentItem);
         }
@@ -239,6 +312,11 @@ internal sealed class ContentApiService
 
             contentItem = await _contentManager.NewAsync(model.ContentType);
             if (!await _authorizationService.AuthorizeAsync(user, CommonPermissions.EditContent, contentItem))
+            {
+                return new ContentItemValidationResponse();
+            }
+
+            if (!await PrepareOwnershipAsync(_authorizationService, user, model, contentItem))
             {
                 return new ContentItemValidationResponse();
             }
@@ -259,6 +337,33 @@ internal sealed class ContentApiService
             IsValid = modelState.IsValid,
             Errors = modelState.ToDictionary(entry => entry.Key, entry => entry.Value.Errors.Select(x => x.ErrorMessage).ToArray()),
         };
+    }
+
+    internal static Task<bool> CanViewContentItemAsync(
+        IAuthorizationService authorizationService,
+        ClaimsPrincipal user,
+        ContentItem contentItem)
+    {
+        var permission = contentItem.Published ? CommonPermissions.ViewContent : CommonPermissions.PreviewContent;
+        return authorizationService.AuthorizeAsync(user, permission, contentItem);
+    }
+
+    internal static async Task<bool> PrepareOwnershipAsync(
+        IAuthorizationService authorizationService,
+        ClaimsPrincipal user,
+        ContentItem model,
+        ContentItem contentItem)
+    {
+        model.Author = contentItem.Author;
+
+        if (string.IsNullOrEmpty(model.Owner))
+        {
+            model.Owner = contentItem.Owner;
+            return true;
+        }
+
+        return string.Equals(model.Owner, contentItem.Owner, StringComparison.Ordinal) ||
+            await authorizationService.AuthorizeAsync(user, CommonPermissions.EditContentOwner, contentItem);
     }
 
     public async Task<ContentItem> CreateDraftAsync(ClaimsPrincipal user, string contentItemId)
@@ -283,7 +388,15 @@ internal sealed class ContentApiService
         var contentItem = await _contentManager.GetAsync(contentItemId, VersionOptions.DraftRequired);
         if (contentItem is null)
         {
-            return null;
+            contentItem = await _contentManager.GetAsync(contentItemId, VersionOptions.Published);
+            if (contentItem is null)
+            {
+                return null;
+            }
+
+            return await _authorizationService.AuthorizeAsync(user, CommonPermissions.PublishContent, contentItem)
+                ? contentItem
+                : new ContentItem { ContentItemId = string.Empty };
         }
 
         if (!await _authorizationService.AuthorizeAsync(user, CommonPermissions.PublishContent, contentItem))
@@ -300,7 +413,15 @@ internal sealed class ContentApiService
         var contentItem = await _contentManager.GetAsync(contentItemId, VersionOptions.Published);
         if (contentItem is null)
         {
-            return null;
+            contentItem = await _contentManager.GetAsync(contentItemId, VersionOptions.Latest);
+            if (contentItem is null)
+            {
+                return null;
+            }
+
+            return await _authorizationService.AuthorizeAsync(user, CommonPermissions.PublishContent, contentItem)
+                ? contentItem
+                : new ContentItem { ContentItemId = string.Empty };
         }
 
         if (!await _authorizationService.AuthorizeAsync(user, CommonPermissions.PublishContent, contentItem))

@@ -264,9 +264,11 @@ Content-Type: application/json
 | Status | Meaning |
 | --- | --- |
 | `201 Created` | The user was created. |
+| `200 OK` | An identical create request was retried and the existing user is returned. |
 | `400 Bad Request` | Missing/malformed JSON; Identity validation failure; invalid/unauthorized role assignment. |
 | `401 Unauthorized` | The bearer token is absent or rejected. |
 | `403 Forbidden` | The caller cannot create this user. Role-assignment authorization failures are instead returned as `400` validation errors. |
+| `409 Conflict` | The requested user name already exists with different account settings, roles, or password. |
 
 ## Update a user
 
@@ -283,14 +285,18 @@ PUT /api/users/{userId}
 | Body | `userName` | string or `null` | No | `null` | Non-null replaces the user name and is Identity-validated. Omission/`null` leaves it unchanged. |
 | Body | `email` | string or `null` | No | `null` | Non-null replaces the email and is Identity-validated. An empty string can clear it when validators permit; omission/`null` leaves it unchanged. |
 | Body | `phoneNumber` | string or `null` | No | `null` | Non-null replaces the phone number; an empty string clears it. Omission/`null` leaves it unchanged. |
-| Body | `password` | string or `null` | No | `null` | A nonblank value resets the password using a generated reset token and the active password policy. Omission, `null`, empty, or whitespace leaves it unchanged. |
+| Body | `password` | string or `null` | No | `null` | A nonblank value resets the password using a generated reset token and the active password policy only when it differs from the current password. Omission, `null`, empty, whitespace, or the current password leaves it unchanged. |
 | Body | `emailConfirmed` | boolean or `null` | No | `null` | Non-null replaces the confirmation state. |
 | Body | `isEnabled` | boolean or `null` | No | `null` | Non-null enables/disables through `IUserService`; omission/`null` leaves state unchanged. |
-| Body | `roleNames` | array of strings or `null` | No | `null` | A non-null array replaces role membership after assignability/permission validation. Omission/`null` leaves roles unchanged. `[]` requests removal of all roles, subject to the sole-enabled-administrator safeguard. |
+| Body | `roleNames` | array of strings or `null` | No | `null` | A non-null array replaces role membership only for roles the caller may assign. Omission/`null` leaves roles unchanged. `[]` requests removal of every authorized role, subject to the sole-enabled-administrator safeguard; unauthorized current roles are preserved. |
 
 The JSON body itself is required.
 
-When roles change, removals occur before additions. The sole enabled user in the configured `Administrator` role retains that role even if it is absent from `roleNames`. Removing at least one role updates the security stamp.
+When roles change, removals occur before additions. Every addition and removal
+requires `AssignRoleToUsers` for that role. Current roles the caller cannot
+assign are preserved. The sole enabled user in the configured `Administrator`
+role retains that role even if it is absent from `roleNames`. Removing at least
+one role updates the security stamp.
 
 The endpoint updates the account fields before resetting the password or changing enabled state. It does not provide transactional rollback across those stages; a later validation failure can therefore follow an earlier persisted account update.
 
@@ -431,10 +437,10 @@ Accept: application/json
 | Status | Meaning |
 | --- | --- |
 | `200 OK` | The user was deleted. |
+| `204 No Content` | The user is already absent. |
 | `400 Bad Request` | The configured Identity user manager rejected deletion. |
 | `401 Unauthorized` | The bearer token is absent or rejected. |
 | `403 Forbidden` | The caller cannot delete this user. |
-| `404 Not Found` | The user manager cannot resolve `userId`. |
 
 ## Error and validation responses
 
@@ -546,7 +552,9 @@ Operation-specific permission failure:
 
 Invalid paging uses `Bad request` with either `Skip must be zero or greater and take must be greater than zero.` or `Take cannot exceed 200.` Authentication-policy responses are produced by the configured `Api` authentication handler; their body is handler-dependent.
 
-These endpoints do not emit `409 Conflict`. Duplicate names/emails and other Identity conflicts are returned as `400 Bad Request` validation problems.
+User creation emits `409 Conflict` when the requested user name already exists
+with different settings. Other Identity conflicts, including a duplicate email
+under another user name, are returned as `400 Bad Request` validation problems.
 
 ## Endpoint coverage and sources
 

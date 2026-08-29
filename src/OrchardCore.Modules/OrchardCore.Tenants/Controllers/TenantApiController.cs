@@ -253,6 +253,11 @@ public sealed class TenantApiController : ControllerBase
 
         if (!shellSettings.IsRunning())
         {
+            if (shellSettings.IsDisabled())
+            {
+                return Ok();
+            }
+
             return BadRequest(S["You can only disable a Running tenant."]);
         }
 
@@ -283,6 +288,11 @@ public sealed class TenantApiController : ControllerBase
 
         if (!shellSettings.IsDisabled())
         {
+            if (shellSettings.IsRunning())
+            {
+                return Ok();
+            }
+
             return BadRequest(S["You can only enable a Disabled tenant."]);
         }
 
@@ -308,7 +318,7 @@ public sealed class TenantApiController : ControllerBase
 
         if (!_shellHost.TryGetSettings(tenantName, out var shellSettings))
         {
-            return NotFound();
+            return NoContent();
         }
 
         if (!shellSettings.IsRemovable())

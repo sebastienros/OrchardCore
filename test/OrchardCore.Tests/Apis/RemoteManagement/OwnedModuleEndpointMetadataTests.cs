@@ -15,6 +15,7 @@ using OrchardCore.Recipes.Services;
 using OrchardCore.RemoteManagement;
 using OrchardCore.Roles.Endpoints.Management;
 using OrchardCore.Security;
+using OrchardCore.Security.Permissions;
 using OrchardCore.Security.Services;
 using OrchardCore.Tenants.Endpoints.Management;
 using OrchardCore.Tenants;
@@ -33,11 +34,21 @@ public class OwnedModuleEndpointMetadataTests
 
         AssertOperation(endpoints, "api/tenants", "GET", "ApiListTenants", "Tenants", ["tenants"], "list", null, [200, 400, 401, 403]);
         AssertOperation(endpoints, "api/tenants/{tenantName}", "GET", "ApiGetTenant", "Tenants", ["tenants"], "show", null, [200, 401, 403, 404]);
-        AssertOperation(endpoints, "api/tenants", "POST", "ApiCreateTenantManagement", "Tenants", ["tenants"], "create", "application/json", [201, 400, 401, 403]);
+        AssertOperation(endpoints, "api/tenants", "POST", "ApiCreateTenantManagement", "Tenants", ["tenants"], "create", "application/json", [200, 201, 400, 401, 403, 409]);
         AssertOperation(endpoints, "api/tenants/{tenantName}", "PUT", "ApiUpdateTenantManagement", "Tenants", ["tenants"], "update", "application/json", [200, 400, 401, 403, 404]);
-        AssertOperation(endpoints, "api/tenants/{tenantName}", "DELETE", "ApiDeleteTenant", "Tenants", ["tenants"], "delete", null, [200, 400, 401, 403, 404]);
+        AssertOperation(endpoints, "api/tenants/{tenantName}", "DELETE", "ApiDeleteTenant", "Tenants", ["tenants"], "delete", null, [200, 204, 400, 401, 403]);
         AssertOperation(endpoints, "api/tenants/{tenantName}:start", "POST", "ApiStartTenant", "Tenants", ["tenants"], "start", null, [200, 400, 401, 403, 404]);
         AssertOperation(endpoints, "api/tenants/{tenantName}:stop", "POST", "ApiStopTenant", "Tenants", ["tenants"], "stop", null, [200, 400, 401, 403, 404]);
+        Assert.Equal(
+            CliInputMode.Options,
+            endpoints.Single(endpoint =>
+                string.Equals(endpoint.RoutePattern.RawText, "api/tenants", StringComparison.Ordinal) &&
+                endpoint.Metadata.GetMetadata<IHttpMethodMetadata>()?.HttpMethods.Contains("POST", StringComparer.OrdinalIgnoreCase) == true)
+                .Metadata.GetRequiredMetadata<CliOperationMetadata>()
+                .InputMode);
+        AssertPermission(endpoints, "api/static-files", "GET", global::OrchardCore.Tenants.Permissions.ViewTenantStaticFiles);
+        AssertPermission(endpoints, "api/static-files/file", "GET", global::OrchardCore.Tenants.Permissions.ViewTenantStaticFiles);
+        AssertPermission(endpoints, "api/static-files/content", "PUT", global::OrchardCore.Tenants.Permissions.ManageTenantStaticFiles);
 
         AssertOperation(endpoints, "api/features", "GET", "ApiListFeatures", "Features", ["features"], "list", null, [200, 400, 401, 403]);
         AssertOperation(endpoints, "api/features/{featureId}", "GET", "ApiGetFeature", "Features", ["features"], "show", null, [200, 401, 403, 404]);
@@ -50,10 +61,10 @@ public class OwnedModuleEndpointMetadataTests
 
         AssertOperation(endpoints, "api/users", "GET", "ApiListUsers", "Users", ["users"], "list", null, [200, 400, 401, 403]);
         AssertOperation(endpoints, "api/users/{userId}", "GET", "ApiGetUser", "Users", ["users"], "show", null, [200, 401, 403, 404]);
-        AssertOperation(endpoints, "api/users", "POST", "ApiCreateUser", "Users", ["users"], "create", "application/json", [201, 400, 401, 403]);
+        AssertOperation(endpoints, "api/users", "POST", "ApiCreateUser", "Users", ["users"], "create", "application/json", [200, 201, 400, 401, 403, 409]);
         AssertOperation(endpoints, "api/users/{userId}", "PUT", "ApiUpdateUser", "Users", ["users"], "update", "application/json", [200, 400, 401, 403, 404]);
         AssertOperation(endpoints, "api/users/{userId}:disable", "POST", "ApiDisableUser", "Users", ["users"], "disable", null, [200, 400, 401, 403, 404]);
-        AssertOperation(endpoints, "api/users/{userId}", "DELETE", "ApiDeleteUser", "Users", ["users"], "delete", null, [200, 400, 401, 403, 404]);
+        AssertOperation(endpoints, "api/users/{userId}", "DELETE", "ApiDeleteUser", "Users", ["users"], "delete", null, [200, 204, 400, 401, 403]);
 
         AssertOperation(endpoints, "api/roles", "GET", "ApiListRoles", "Roles", ["roles"], "list", null, [200, 400, 401, 403]);
         AssertOperation(endpoints, "api/roles/{roleId}", "GET", "ApiGetRole", "Roles", ["roles"], "show", null, [200, 401, 403, 404]);
@@ -77,6 +88,7 @@ public class OwnedModuleEndpointMetadataTests
         builder.Services.AddSingleton(Options.Create(new TenantsOptions()));
         builder.Services.AddSingleton(Mock.Of<ITenantValidator>());
         builder.Services.AddSingleton<TenantDatabasePatternResolver>(_ => throw new NotSupportedException());
+        builder.Services.AddSingleton<TenantFileProvider>(_ => throw new NotSupportedException());
         builder.Services.AddSingleton(Mock.Of<IStringLocalizer<global::OrchardCore.Tenants.Controllers.TenantApiController>>());
         builder.Services.AddSingleton(NullLogger<global::OrchardCore.Tenants.Controllers.TenantApiController>.Instance);
 
@@ -103,6 +115,7 @@ public class OwnedModuleEndpointMetadataTests
         var app = builder.Build();
 
         TenantManagementEndpoints.AddTenantManagementEndpoints(app);
+        StaticFileManagementEndpoints.AddStaticFileManagementEndpoints(app);
         FeatureManagementEndpoints.AddFeatureManagementEndpoints(app);
         RecipeManagementEndpoints.AddRecipeManagementEndpoints(app);
         UserManagementEndpoints.AddUserManagementEndpoints(app);
@@ -162,5 +175,22 @@ public class OwnedModuleEndpointMetadataTests
             Assert.NotNull(accepts);
             Assert.Contains(expectedRequestContentType, accepts.ContentTypes);
         }
+    }
+
+    private static void AssertPermission(
+        IEnumerable<RouteEndpoint> endpoints,
+        string route,
+        string method,
+        Permission permission)
+    {
+        var endpoint = endpoints.Single(endpoint =>
+            string.Equals(endpoint.RoutePattern.RawText?.TrimStart('/'), route.TrimStart('/'), StringComparison.Ordinal) &&
+            endpoint.Metadata.GetMetadata<IHttpMethodMetadata>()?.HttpMethods.Contains(method, StringComparer.OrdinalIgnoreCase) == true);
+
+        Assert.Contains(
+            endpoint.Metadata.GetOrderedMetadata<AuthorizationPolicy>()
+                .SelectMany(policy => policy.Requirements)
+                .OfType<PermissionRequirement>(),
+            requirement => requirement.Permission == permission);
     }
 }
