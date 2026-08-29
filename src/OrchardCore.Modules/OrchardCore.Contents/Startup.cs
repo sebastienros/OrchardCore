@@ -47,6 +47,7 @@ using OrchardCore.Modules;
 using OrchardCore.Mvc.Core.Utilities;
 using OrchardCore.Navigation;
 using OrchardCore.Recipes;
+using OrchardCore.RemoteManagement;
 using OrchardCore.Security.Permissions;
 using OrchardCore.Settings.Deployment;
 using OrchardCore.Sitemaps.Builders;
@@ -195,6 +196,8 @@ public sealed class Startup : StartupBase
         services.AddDisplayDriver<ContentOptionsViewModel, ContentOptionsDisplayDriver>();
 
         services.AddScoped(typeof(IContentItemRecursionHelper<>), typeof(ContentItemRecursionHelper<>));
+        services.AddScoped<ContentApiService>();
+        services.AddSingleton<IRemoteManagementCapabilityProvider, ContentRemoteManagementCapabilityProvider>();
 
         services.AddSingleton<IContentsAdminListFilterParser>(sp =>
         {
@@ -215,9 +218,7 @@ public sealed class Startup : StartupBase
 
     public override void Configure(IApplicationBuilder builder, IEndpointRouteBuilder routes, IServiceProvider serviceProvider)
     {
-        routes.AddGetContentEndpoint()
-            .AddCreateContentEndpoint()
-            .AddDeleteContentEndpoint();
+        routes.AddContentManagementApiEndpoints();
 
         var itemControllerName = typeof(ItemController).ControllerName();
 

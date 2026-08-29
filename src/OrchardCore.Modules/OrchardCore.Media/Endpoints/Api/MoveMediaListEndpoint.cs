@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Localization;
 using OrchardCore.FileStorage;
 using OrchardCore.Media.ViewModels;
+using OrchardCore.RemoteManagement;
 
 namespace OrchardCore.Media.Endpoints.Api;
 
@@ -16,12 +17,20 @@ public static class MoveMediaListEndpoint
 {
     public static IEndpointRouteBuilder AddMoveMediaListEndpoint(this IEndpointRouteBuilder builder)
     {
-        builder.MapPost("api/media/MoveMediaList", HandleAsync)
+        builder.MapLegacyPost("api/media/MoveMediaList", HandleLegacyAsync)
+            .AddEndpointFilter<MediaApiAntiforgeryEndpointFilter>();
+
+        builder.MapManagementPost("api/media/files:move-batch", HandleAsync)
             .WithName("ApiMoveMediaList")
-            .WithTags("MediaApi")
-            .DisableAntiforgery()
-            .AddEndpointFilter<MediaApiAntiforgeryEndpointFilter>()
-            .Produces(StatusCodes.Status200OK)
+            .WithSummary("Moves multiple media files.")
+            .WithDescription("Moves a batch of media files from one folder to another after verifying both folder permissions.")
+            .WithCliCommand(new CliOperationMetadata(["media", "files"], "move-batch")
+            {
+                Capability = MediaApiEndpointConventions.CapabilityName,
+                InputMode = CliInputMode.Json,
+            })
+            .Accepts<MoveMediaBatchRequest>("application/json")
+            .Produces<MoveMediaBatchResultDto>(StatusCodes.Status200OK)
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status403Forbidden)
@@ -30,37 +39,87 @@ public static class MoveMediaListEndpoint
         return builder;
     }
 
-    [Authorize(Policy = MediaApiConstants.AuthorizationPolicyName)]
-    private static async Task<IResult> HandleAsync(
+    private static Task<IResult> HandleLegacyAsync(
+        HttpContext httpContext,
+        [FromServices] IAuthorizationService authorizationService,
+        [FromServices] IMediaFileStore mediaFileStore,
+        [FromServices] IStringLocalizer<MediaApiEndpoints> localizer,
+        [FromBody] MoveMedias model)
+        => HandleLegacyResultAsync(httpContext, authorizationService, mediaFileStore, localizer, model.mediaNames, model.sourceFolder, model.targetFolder);
+
+    private static Task<IResult> HandleAsync(
+        HttpContext httpContext,
+        [FromServices] IAuthorizationService authorizationService,
+        [FromServices] IMediaFileStore mediaFileStore,
+        [FromServices] IStringLocalizer<MediaApiEndpoints> localizer,
+        [FromBody] MoveMediaBatchRequest request)
+        => HandleManagementAsync(httpContext, authorizationService, mediaFileStore, localizer, request.MediaNames, request.SourceFolder, request.TargetFolder);
+
+    private static async Task<IResult> HandleLegacyResultAsync(
         HttpContext httpContext,
         IAuthorizationService authorizationService,
         IMediaFileStore mediaFileStore,
         IStringLocalizer<MediaApiEndpoints> localizer,
-        MoveMedias model)
+        string[] mediaNames,
+        string sourceFolder,
+        string targetFolder)
+    {
+        var (result, normalizedSourceFolder, normalizedTargetFolder) = await MoveAsync(httpContext, authorizationService, mediaFileStore, localizer, mediaNames, sourceFolder, targetFolder);
+
+        return result ?? TypedResults.Ok();
+    }
+
+    private static async Task<IResult> HandleManagementAsync(
+        HttpContext httpContext,
+        IAuthorizationService authorizationService,
+        IMediaFileStore mediaFileStore,
+        IStringLocalizer<MediaApiEndpoints> localizer,
+        string[] mediaNames,
+        string sourceFolder,
+        string targetFolder)
+    {
+        var (result, normalizedSourceFolder, normalizedTargetFolder) = await MoveAsync(httpContext, authorizationService, mediaFileStore, localizer, mediaNames, sourceFolder, targetFolder);
+
+        return result ?? TypedResults.Ok(new MoveMediaBatchResultDto
+        {
+            MediaNames = mediaNames,
+            SourceFolder = normalizedSourceFolder,
+            TargetFolder = normalizedTargetFolder,
+        });
+    }
+
+    private static async Task<(IResult Result, string SourceFolder, string TargetFolder)> MoveAsync(
+        HttpContext httpContext,
+        IAuthorizationService authorizationService,
+        IMediaFileStore mediaFileStore,
+        IStringLocalizer<MediaApiEndpoints> localizer,
+        string[] mediaNames,
+        string sourceFolder,
+        string targetFolder)
     {
         if (!await authorizationService.AuthorizeAsync(httpContext.User, MediaPermissions.ManageMedia)
-            || !await authorizationService.AuthorizeAsync(httpContext.User, MediaPermissions.ManageMediaFolder, (object)model.sourceFolder)
-            || !await authorizationService.AuthorizeAsync(httpContext.User, MediaPermissions.ManageMediaFolder, (object)model.targetFolder))
+            || !await authorizationService.AuthorizeAsync(httpContext.User, MediaPermissions.ManageMediaFolder, (object)sourceFolder)
+            || !await authorizationService.AuthorizeAsync(httpContext.User, MediaPermissions.ManageMediaFolder, (object)targetFolder))
         {
-            return httpContext.ApiForbidProblem();
+            return (httpContext.ApiForbidProblem(), null, null);
         }
 
-        if ((model.mediaNames == null) || (model.mediaNames.Length < 1)
-            || string.IsNullOrEmpty(model.sourceFolder)
-            || string.IsNullOrEmpty(model.targetFolder))
+        if (mediaNames == null || mediaNames.Length < 1
+            || string.IsNullOrEmpty(sourceFolder)
+            || string.IsNullOrEmpty(targetFolder))
         {
-            return httpContext.ApiNotFoundProblem();
+            return (httpContext.ApiNotFoundProblem(), null, null);
         }
 
-        model.sourceFolder = model.sourceFolder == "root" ? string.Empty : model.sourceFolder;
-        model.targetFolder = model.targetFolder == "root" ? string.Empty : model.targetFolder;
+        sourceFolder = sourceFolder == "root" ? string.Empty : sourceFolder;
+        targetFolder = targetFolder == "root" ? string.Empty : targetFolder;
 
         var filesOnError = new List<string>();
 
-        foreach (var name in model.mediaNames)
+        foreach (var name in mediaNames)
         {
-            var sourcePath = mediaFileStore.Combine(model.sourceFolder, name);
-            var targetPath = mediaFileStore.Combine(model.targetFolder, name);
+            var sourcePath = mediaFileStore.Combine(sourceFolder, name);
+            var targetPath = mediaFileStore.Combine(targetFolder, name);
             try
             {
                 await mediaFileStore.MoveFileAsync(sourcePath, targetPath);
@@ -73,9 +132,9 @@ public static class MoveMediaListEndpoint
 
         if (filesOnError.Count > 0)
         {
-            return httpContext.ApiValidationProblem(detail: localizer["Error when moving files. Maybe they already exist on the target folder? Files on error: {0}", string.Join(",", filesOnError)]);
+            return (httpContext.ApiValidationProblem(detail: localizer["Error when moving files. Maybe they already exist on the target folder? Files on error: {0}", string.Join(",", filesOnError)]), null, null);
         }
 
-        return TypedResults.Ok();
+        return (null, sourceFolder, targetFolder);
     }
 }

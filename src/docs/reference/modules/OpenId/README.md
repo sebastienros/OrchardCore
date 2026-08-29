@@ -30,6 +30,7 @@ Key points:
 
 Supported flows include:
 - [Authorization Code Flow](http://openid.net/specs/openid-connect-core-1_0.html)
+- [Device Authorization Grant](https://datatracker.ietf.org/doc/html/rfc8628)
 - [Implicit Flow](http://openid.net/specs/openid-connect-core-1_0.html)
 - [Hybrid Flow](http://openid.net/specs/openid-connect-core-1_0.html)
 - [Client Credentials Grant](https://tools.ietf.org/html/rfc6749)
@@ -60,11 +61,14 @@ to allow third-party resource servers to use the JWT tokens produced by the Orch
 - Enable Authorization Endpoint.
 - Enable Logout Endpoint.
 - Enable User Info Endpoint.
+- Enable Device Authorization Endpoint.
+- Enable End-User Verification Endpoint.
 - Allow Password Flow: It requires that the Token Endpoint is enabled. More info at <https://tools.ietf.org/html/rfc6749#section-1.3.3>
 - Allow Client Credentials Flow: It requires that the Token Endpoint is enabled. More info at <https://tools.ietf.org/html/rfc6749#section-1.3.4>
 - Allow Authorization Code Flow: It requires that the Authorization and Token Endpoints are enabled. More info at <http://openid.net/specs/openid-connect-core-1_0.html#CodeFlowAuth>
+- Allow Device Authorization Flow: It requires that the Device Authorization, End-User Verification, and Token Endpoints are enabled. More info at <https://datatracker.ietf.org/doc/html/rfc8628>
 - Allow Implicit Flow: It requires that the Authorization Endpoint is enabled. More info at <http://openid.net/specs/openid-connect-core-1_0.html#ImplicitFlowAuth>
-- Allow Refresh Token Flow: It allows refreshing the access token using a refresh token. It can be used in combination with Password Flow, Authorization Code Flow, and Hybrid Flow. More info at <http://openid.net/specs/openid-connect-core-1_0.html#RefreshTokens>
+- Allow Refresh Token Flow: It allows refreshing the access token using a refresh token. It can be used in combination with Password Flow, Authorization Code Flow, Device Authorization Flow, and Hybrid Flow. More info at <http://openid.net/specs/openid-connect-core-1_0.html#RefreshTokens>
 - Require Proof Key for Code Exchange: Global setting that applies PKCE to all registered clients whether or not the 'Require PKCE' flag was set in the Application settings page.
 
 A sample of OpenID Connect Settings recipe step:
@@ -83,6 +87,8 @@ A sample of OpenID Connect Settings recipe step:
       "EncryptionCertificateThumbprint": "BC34460ABEA2D576EA68E8FFCFEEB3F45C94FB0F",
       "EnableTokenEndpoint": true,
       "EnableAuthorizationEndpoint": false,
+      "EnableDeviceAuthorizationEndpoint": true,
+      "EnableEndUserVerificationEndpoint": true,
       "EnableIntrospectionEndpoint": false,
       "EnableLogoutEndpoint": true,
       "EnablePushedAuthorizationEndpoint": false,
@@ -91,6 +97,7 @@ A sample of OpenID Connect Settings recipe step:
       "AllowPasswordFlow": true,
       "AllowClientCredentialsFlow": false,
       "AllowAuthorizationCodeFlow": false,
+      "AllowDeviceAuthorizationFlow": false,
       "AllowRefreshTokenFlow": false,
       "AllowImplicitFlow": false,
       "RequireProofKeyForCodeExchange": false,
@@ -108,6 +115,9 @@ OpenID Connect apps require the following configuration.
 - Id: Unique identifier.
 - Client Id: Client identifier of the application. It has to be provided by a client when requesting a valid token.
 - Display Name: Display name associated with the current application.
+- Application Type:
+  - Web application: Uses fixed redirect URIs.
+  - Native application: Represents an installed application and permits loopback redirect URIs with an ephemeral port. Native applications must use the Public client type.
 - Type: There are two options:
   - Confidential: Confidential applications MUST send their client secret when communicating with the token and revocation endpoints. This guarantees that only the legit client can exchange an authorization code or get a refresh token.
   - Public: Public applications don't use client secret on their communications.
@@ -116,8 +126,9 @@ OpenID Connect apps require the following configuration.
   - Allow Password Flow: It requires that the Token Endpoint is enabled. More info at <https://tools.ietf.org/html/rfc6749#section-1.3.3>
   - Allow Client Credentials Flow: It requires that the Token Endpoint is enabled. More info at <https://tools.ietf.org/html/rfc6749#section-1.3.4>
   - Allow Authorization Code Flow: It requires that the Authorization and Token Endpoints are enabled. More info at <http://openid.net/specs/openid-connect-core-1_0.html#CodeFlowAuth>
+- Allow Device Authorization Flow: It requires that the Device Authorization endpoint is enabled. More info at <https://datatracker.ietf.org/doc/html/rfc8628>
   - Allow Implicit Flow: It requires that the Authorization Endpoint is enabled. More info at <http://openid.net/specs/openid-connect-core-1_0.html#ImplicitFlowAuth>
-  - Allow Refresh Token Flow: It allows refreshing the access token using a refresh token. It can be used in combination with Password Flow, Authorization Code Flow, and Hybrid Flow. More info at <http://openid.net/specs/openid-connect-core-1_0.html#RefreshTokens>
+  - Allow Refresh Token Flow: It allows refreshing the access token using a refresh token. It can be used in combination with Password Flow, Authorization Code Flow, Device Authorization Flow, and Hybrid Flow. More info at <http://openid.net/specs/openid-connect-core-1_0.html#RefreshTokens>
 - Normalized RoleNames: This configuration is only required if Client Credentials Flow is enabled. It determines the roles assigned to the app when it is authenticated using that flow.
 - Redirect Options: Those options are only required when Implicit Flow, Authorization Code Flow or Allow Hybrid Flow is required.
 - Logout Redirect Uri: logout callback URL.
@@ -133,6 +144,7 @@ A sample of OpenID Connect App recipe step:
       "name": "openidapplication",
       "ClientId": "openidtest",
       "DisplayName": "Open Id Test",
+      "ApplicationType": "web",
       "Type": "Confidential",
       "ClientSecret": "MyPassword",
       "EnableTokenEndpoint": true,
@@ -142,6 +154,7 @@ A sample of OpenID Connect App recipe step:
       "AllowPasswordFlow": true,
       "AllowClientCredentialsFlow": false,
       "AllowAuthorizationCodeFlow": false,
+      "AllowDeviceAuthorizationFlow": false,
       "AllowRefreshTokenFlow": false,
       "AllowImplicitFlow": false,
       "RequireProofKeyForCodeExchange": false,

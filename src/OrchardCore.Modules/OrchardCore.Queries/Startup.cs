@@ -1,17 +1,22 @@
 using Fluid;
 using Fluid.Values;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using OrchardCore.Deployment;
 using OrchardCore.DisplayManagement.Handlers;
 using OrchardCore.Liquid;
 using OrchardCore.Modules;
 using OrchardCore.Navigation;
+using OrchardCore.Queries.Endpoints.Api;
 using OrchardCore.Queries.Core.Services;
 using OrchardCore.Queries.Deployment;
 using OrchardCore.Queries.Drivers;
 using OrchardCore.Queries.Liquid;
 using OrchardCore.Queries.Recipes;
+using OrchardCore.Queries.Services;
 using OrchardCore.Recipes;
+using OrchardCore.RemoteManagement;
 using OrchardCore.Scripting;
 using OrchardCore.Security.Permissions;
 
@@ -27,6 +32,12 @@ public sealed class Startup : StartupBase
         services.AddNavigationProvider<AdminMenu>();
         services.AddDisplayDriver<Query, QueryDisplayDriver>();
         services.AddPermissionProvider<Permissions>();
+        services.AddSingleton<IRemoteManagementCapabilityProvider, QueriesRemoteManagementCapabilityProvider>();
+    }
+
+    public override void Configure(IApplicationBuilder app, IEndpointRouteBuilder routes, IServiceProvider serviceProvider)
+    {
+        routes.AddQueryManagementEndpoints();
     }
 }
 

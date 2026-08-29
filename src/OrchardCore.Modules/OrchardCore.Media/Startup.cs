@@ -45,6 +45,7 @@ using OrchardCore.Media.Settings;
 using OrchardCore.Media.Shortcodes;
 using OrchardCore.Media.TagHelpers;
 using OrchardCore.Media.ViewModels;
+using OrchardCore.RemoteManagement;
 using OrchardCore.Modules;
 using OrchardCore.Modules.FileProviders;
 using OrchardCore.Navigation;
@@ -163,6 +164,7 @@ public sealed class Startup : StartupBase
         });
 
         services.AddPermissionProvider<PermissionProvider>();
+        services.AddSingleton<IRemoteManagementCapabilityProvider, MediaRemoteManagementCapabilityProvider>();
         services.AddScoped<IAuthorizationHandler, ManageMediaFolderAuthorizationHandler>();
         services.AddNavigationProvider<AdminMenu>();
 
@@ -237,6 +239,7 @@ public sealed class Startup : StartupBase
             .AddGetMediaItemEndpoint()
             .AddGetMediaFieldItemsEndpoint()
             .AddGetAllMediaItemsEndpoint()
+            .AddGetTusFileInfoEndpoint()
             .AddCopyMediaEndpoint()
             .AddDeleteFolderEndpoint()
             .AddDeleteMediaEndpoint()

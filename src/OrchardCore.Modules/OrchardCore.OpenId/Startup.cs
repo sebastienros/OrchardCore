@@ -18,6 +18,7 @@ using OrchardCore.BackgroundTasks;
 using OrchardCore.Data.Migration;
 using OrchardCore.Deployment;
 using OrchardCore.DisplayManagement.Handlers;
+using OrchardCore.Environment.Shell;
 using OrchardCore.Environment.Shell.Builders;
 using OrchardCore.Modules;
 using OrchardCore.Navigation;
@@ -32,6 +33,7 @@ using OrchardCore.OpenId.Services.Handlers;
 using OrchardCore.OpenId.Settings;
 using OrchardCore.OpenId.Tasks;
 using OrchardCore.Recipes;
+using OrchardCore.RemoteManagement;
 using OrchardCore.RateLimits;
 using OrchardCore.Security;
 using OrchardCore.Security.Permissions;
@@ -171,6 +173,16 @@ public sealed class ServerStartup : StartupBase
             );
         }
 
+        if (settings.EndUserVerificationEndpointPath.HasValue)
+        {
+            routes.MapAreaControllerRoute(
+                name: "Access.Verify",
+                areaName: typeof(Startup).Namespace,
+                pattern: settings.EndUserVerificationEndpointPath.Value,
+                defaults: new { controller = "Access", action = "Verify" }
+            );
+        }
+
         if (settings.UserinfoEndpointPath.HasValue)
         {
             routes.MapAreaControllerRoute(
@@ -276,6 +288,26 @@ public sealed class ManagementStartup : StartupBase
     public override void ConfigureServices(IServiceCollection services)
     {
         services.AddNavigationProvider<ManagementAdminMenu>();
+    }
+}
+
+[Feature("OrchardCore.OpenId.RemoteManagement")]
+public sealed class RemoteManagementStartup : StartupBase
+{
+    public override void ConfigureServices(IServiceCollection services)
+    {
+        services.AddNavigationProvider<RemoteManagementAdminMenu>();
+        services.AddScoped<RemoteManagementConfigurationService>();
+        services.AddScoped<IRemoteManagementTenantConfigurationService, TenantRemoteManagementConfigurationService>();
+    }
+}
+
+[RequiredStartup]
+public sealed class RemoteManagementFeatureEventHandlerStartup : StartupBase
+{
+    public override void ConfigureServices(IServiceCollection services)
+    {
+        services.AddScoped<IFeatureEventHandler, RemoteManagementFeatureEventHandler>();
     }
 }
 

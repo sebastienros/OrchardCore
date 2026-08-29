@@ -22,11 +22,30 @@ namespace OrchardCore.Media.Endpoints.Api;
 /// </summary>
 internal static class MediaEndpointHelpers
 {
+    public const int DefaultTake = 50;
+    public const int MaximumTake = 200;
+
     public static readonly char[] InvalidFolderNameCharacters = ['\\', '/'];
 
     private static readonly char[] s_extensionSeparator = [' ', ','];
 
     private static readonly HashSet<string> s_emptySet = [];
+
+    public static Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult ValidatePaging(int skip, int take)
+    {
+        if (skip < 0 || take < 1)
+        {
+            return TypedResults.Problem(
+                detail: "Skip must be zero or greater and take must be greater than zero.",
+                statusCode: StatusCodes.Status400BadRequest);
+        }
+
+        return take > MaximumTake
+            ? TypedResults.Problem(
+                detail: $"Take cannot exceed {MaximumTake}.",
+                statusCode: StatusCodes.Status400BadRequest)
+            : null;
+    }
 
     public static FileStoreEntryDto CreateFileResult(
         IFileStoreEntry mediaFile,

@@ -61,3 +61,17 @@ using OrchardCore.OpenId;
         OpenIdConstants.Features.Core,
     ]
 )]
+
+[assembly: Feature(
+    Id = "OrchardCore.OpenId.RemoteManagement",
+    Name = "OpenID Connect Remote Management Configuration",
+    Description = "Configures the OpenID Connect services required for remote management.",
+    Category = "OpenID Connect",
+    EnabledByDependencyOnly = true,
+    Dependencies =
+    [
+        OpenIdConstants.Features.Management,
+        OpenIdConstants.Features.Server,
+        OpenIdConstants.Features.Validation,
+    ]
+)]

@@ -1,0 +1,70 @@
+{
+  "name": "RemoteManagement",
+  "displayName": "Orchard Core Remote Management",
+  "description": "Configures the OpenID Connect server, token validation, management scope, and public native client required by the Orchard Core CLI.",
+  "author": "The Orchard Core Team",
+  "website": "https://orchardcore.net",
+  "version": "1.0.0",
+  "issetuprecipe": false,
+  "categories": [ "api", "security" ],
+  "tags": [ "cli", "openid", "openapi", "remote-management" ],
+  "steps": [
+    {
+      "name": "feature",
+      "enable": [
+        "OrchardCore.RemoteManagement",
+        "OrchardCore.OpenId.Management",
+        "OrchardCore.OpenId.Server",
+        "OrchardCore.OpenId.Validation"
+      ]
+    },
+    {
+      "name": "OpenIdServerSettings",
+      "EnableTokenEndpoint": true,
+      "EnableAuthorizationEndpoint": true,
+      "EnableLogoutEndpoint": true,
+      "EnableDeviceAuthorizationEndpoint": true,
+      "EnableEndUserVerificationEndpoint": true,
+      "EnableRevocationEndpoint": true,
+      "AllowAuthorizationCodeFlow": true,
+      "AllowDeviceAuthorizationFlow": true,
+      "AllowClientCredentialsFlow": true,
+      "AllowRefreshTokenFlow": true,
+      "RequireProofKeyForCodeExchange": true
+    },
+    {
+      "name": "OpenIdValidationSettings",
+      "Tenant": "Default"
+    },
+    {
+      "name": "OpenIdScope",
+      "ScopeName": "orchardcore.management",
+      "DisplayName": "Orchard Core remote management",
+      "Description": "Allows a client to invoke Orchard Core remote management APIs.",
+      "Resources": "orchardcore"
+    },
+    {
+      "name": "OpenIdApplication",
+      "ClientId": "orchardcore-cli",
+      "DisplayName": "Orchard Core CLI",
+      "ApplicationType": "native",
+      "Type": "public",
+      "ConsentType": "explicit",
+      "AllowAuthorizationCodeFlow": true,
+      "AllowDeviceAuthorizationFlow": true,
+      "AllowRefreshTokenFlow": true,
+      "AllowLogoutEndpoint": true,
+      "AllowRevocationEndpoint": true,
+      "RequireProofKeyForCodeExchange": true,
+      "RedirectUris": "http://127.0.0.1/callback",
+      "PostLogoutRedirectUris": "http://127.0.0.1/",
+      "ScopeEntries": [
+        { "Name": "email" },
+        { "Name": "openid" },
+        { "Name": "profile" },
+        { "Name": "roles" },
+        { "Name": "orchardcore.management" }
+      ]
+    }
+  ]
+}

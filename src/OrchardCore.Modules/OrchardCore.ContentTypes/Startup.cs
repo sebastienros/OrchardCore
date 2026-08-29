@@ -1,16 +1,19 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Routing;
+using OrchardCore.ContentTypes.Services;
 using OrchardCore.ContentManagement;
 using OrchardCore.ContentTypes.Deployment;
 using OrchardCore.ContentTypes.Editors;
 using OrchardCore.ContentTypes.RecipeSteps;
-using OrchardCore.ContentTypes.Services;
 using OrchardCore.Deployment;
 using OrchardCore.Environment.Shell.Configuration;
 using OrchardCore.Modules;
 using OrchardCore.Navigation;
 using OrchardCore.Recipes;
 using OrchardCore.Recipes.Events;
+using OrchardCore.RemoteManagement;
 using OrchardCore.Security.Permissions;
 
 namespace OrchardCore.ContentTypes;
@@ -45,6 +48,7 @@ public sealed class Startup : StartupBase
         services.AddPermissionProvider<Permissions>();
         services.AddNavigationProvider<AdminMenu>();
         services.AddScoped<IContentDefinitionService, ContentDefinitionService>();
+        services.AddScoped<ContentDefinitionApiService>();
         services.AddScoped<IStereotypeService, StereotypeService>();
         services.AddScoped<IContentDefinitionDisplayHandler, ContentDefinitionDisplayCoordinator>();
         services.AddScoped<IContentDefinitionDisplayManager, DefaultContentDefinitionDisplayManager>();
@@ -60,6 +64,12 @@ public sealed class Startup : StartupBase
         services.AddRecipeExecutionStep<DeleteContentDefinitionStep>();
 
         services.AddTransient<IRecipeEventHandler, LuceneRecipeEventHandler>();
+        services.AddSingleton<IRemoteManagementCapabilityProvider, ContentDefinitionRemoteManagementCapabilityProvider>();
+    }
+
+    public override void Configure(IApplicationBuilder builder, IEndpointRouteBuilder routes, IServiceProvider serviceProvider)
+    {
+        routes.AddContentDefinitionApiEndpoints();
     }
 }
 

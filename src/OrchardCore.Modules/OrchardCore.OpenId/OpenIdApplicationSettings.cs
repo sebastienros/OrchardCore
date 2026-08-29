@@ -10,6 +10,7 @@ public class OpenIdApplicationSettings
     public string DisplayName { get; set; }
     public string RedirectUris { get; set; }
     public string PostLogoutRedirectUris { get; set; }
+    public string ApplicationType { get; set; }
     public string Type { get; set; }
     public string ConsentType { get; set; }
     public string ClientSecret { get; set; }
@@ -18,6 +19,7 @@ public class OpenIdApplicationSettings
     public bool AllowPasswordFlow { get; set; }
     public bool AllowClientCredentialsFlow { get; set; }
     public bool AllowAuthorizationCodeFlow { get; set; }
+    public bool AllowDeviceAuthorizationFlow { get; set; }
     public bool AllowRefreshTokenFlow { get; set; }
     public bool AllowHybridFlow { get; set; }
     public bool AllowImplicitFlow { get; set; }
@@ -45,6 +47,7 @@ internal static class OpenIdApplicationExtensions
         descriptor.ConsentType = model.ConsentType;
         descriptor.DisplayName = model.DisplayName;
         descriptor.ClientType = model.Type;
+        descriptor.ApplicationType = model.ApplicationType;
 
         if (!string.IsNullOrEmpty(model.ClientSecret))
         {
@@ -111,6 +114,15 @@ internal static class OpenIdApplicationExtensions
             descriptor.Permissions.Remove(OpenIddictConstants.Permissions.GrantTypes.RefreshToken);
         }
 
+        if (model.AllowDeviceAuthorizationFlow)
+        {
+            descriptor.Permissions.Add(OpenIddictConstants.Permissions.GrantTypes.DeviceCode);
+        }
+        else
+        {
+            descriptor.Permissions.Remove(OpenIddictConstants.Permissions.GrantTypes.DeviceCode);
+        }
+
         if (model.AllowAuthorizationCodeFlow || model.AllowHybridFlow || model.AllowImplicitFlow)
         {
             descriptor.Permissions.Add(OpenIddictConstants.Permissions.Endpoints.Authorization);
@@ -123,13 +135,23 @@ internal static class OpenIdApplicationExtensions
         }
 
         if (model.AllowAuthorizationCodeFlow || model.AllowHybridFlow ||
-            model.AllowClientCredentialsFlow || model.AllowPasswordFlow || model.AllowRefreshTokenFlow)
+            model.AllowClientCredentialsFlow || model.AllowDeviceAuthorizationFlow ||
+            model.AllowPasswordFlow || model.AllowRefreshTokenFlow)
         {
             descriptor.Permissions.Add(OpenIddictConstants.Permissions.Endpoints.Token);
         }
         else
         {
             descriptor.Permissions.Remove(OpenIddictConstants.Permissions.Endpoints.Token);
+        }
+
+        if (model.AllowDeviceAuthorizationFlow)
+        {
+            descriptor.Permissions.Add(OpenIddictConstants.Permissions.Endpoints.DeviceAuthorization);
+        }
+        else
+        {
+            descriptor.Permissions.Remove(OpenIddictConstants.Permissions.Endpoints.DeviceAuthorization);
         }
 
         if (model.AllowAuthorizationCodeFlow)

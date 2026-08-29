@@ -307,6 +307,7 @@ nav:
               - Recipes: reference/modules/Recipes/README.md
               - Redis: reference/modules/Redis/README.md
               - Remote Deployment: reference/modules/Deployment.Remote/README.md
+              - Remote Management: reference/modules/RemoteManagement/README.md
               - Response Compression: reference/modules/ResponseCompression/README.md
               - Roles: reference/modules/Roles/README.md
               - Sanitizer: reference/modules/Sanitizer/README.md

@@ -38,6 +38,7 @@ using OrchardCore.Settings.Deployment;
 using OrchardCore.Setup.Events;
 using OrchardCore.Users.Commands;
 using OrchardCore.Users.Controllers;
+using OrchardCore.Users.Endpoints.Management;
 using OrchardCore.Users.Core.Services;
 using OrchardCore.Users.DataMigrations;
 using OrchardCore.Users.Deployment;
@@ -238,6 +239,7 @@ public sealed class Startup : StartupBase
             }
         );
 
+        routes.AddUserManagementEndpoints();
         builder.UseAuthorization();
     }
 

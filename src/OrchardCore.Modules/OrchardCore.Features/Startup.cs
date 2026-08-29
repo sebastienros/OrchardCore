@@ -1,8 +1,11 @@
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using OrchardCore.Deployment;
 using OrchardCore.Features.Deployment;
 using OrchardCore.Features.Recipes.Executors;
 using OrchardCore.Features.Services;
+using OrchardCore.Features.Endpoints.Management;
 using OrchardCore.Modules;
 using OrchardCore.Navigation;
 using OrchardCore.Recipes;
@@ -20,8 +23,14 @@ public sealed class Startup : StartupBase
         services.AddRecipeExecutionStep<FeatureStep>();
         services.AddPermissionProvider<Permissions>();
         services.AddScoped<IModuleService, ModuleService>();
+        services.AddScoped<FeatureService>();
         services.AddNavigationProvider<AdminMenu>();
 
         services.AddDeployment<AllFeaturesDeploymentSource, AllFeaturesDeploymentStep, AllFeaturesDeploymentStepDriver>();
+    }
+
+    public override void Configure(IApplicationBuilder app, IEndpointRouteBuilder routes, IServiceProvider serviceProvider)
+    {
+        routes.AddFeatureManagementEndpoints();
     }
 }
