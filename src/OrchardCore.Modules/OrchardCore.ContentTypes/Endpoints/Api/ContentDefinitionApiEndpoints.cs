@@ -32,7 +32,7 @@ internal static class ContentDefinitionApiEndpoints
             .WithTags("Content Definitions")
             .WithSummary("Lists content type definitions.")
             .WithDescription("Returns all content type definitions that the current user can manage.")
-            .WithCliCommand(Cli(["content", "types"], "list", aliases: ["ls"], tableColumns:
+            .WithCliCommand(Cli(["content", "types"], "list", tableColumns:
             [
                 new CliTableColumnMetadata("items[].name", "Name"),
                 new CliTableColumnMetadata("items[].displayName", "Display Name"),
@@ -91,7 +91,7 @@ internal static class ContentDefinitionApiEndpoints
             .WithTags("Content Definitions")
             .WithSummary("Lists available content part types.")
             .WithDescription("Returns the registered content part types together with their basic JSON schemas.")
-            .WithCliCommand(Cli(["content", "part-types"], "list", aliases: ["ls"], tableColumns:
+            .WithCliCommand(Cli(["content", "part-types"], "list", tableColumns:
             [
                 new CliTableColumnMetadata("items[].name", "Name"),
                 new CliTableColumnMetadata("items[].attachable", "Attachable"),
@@ -107,18 +107,45 @@ internal static class ContentDefinitionApiEndpoints
             .WithTags("Content Definitions")
             .WithSummary("Lists available content field types.")
             .WithDescription("Returns the registered content field types together with their basic JSON schemas.")
-            .WithCliCommand(Cli(["content", "field-types"], "list", aliases: ["ls"], tableColumns: [new CliTableColumnMetadata("items[].name", "Name")]))
+            .WithCliCommand(Cli(["content", "field-types"], "list", tableColumns: [new CliTableColumnMetadata("items[].name", "Name")]))
             .Produces<ContentDefinitionListResponse<ContentDefinitionFieldTypeDescriptor>>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status403Forbidden);
+
+        group.MapGet("/settings", ListSettingsSchemasAsync)
+            .WithName("ApiListContentDefinitionSettingsSchemas")
+            .WithTags("Content Definitions")
+            .WithSummary("Lists content definition settings contracts.")
+            .WithDescription("Returns module-specific settings contracts contributed by enabled features.")
+            .WithCliCommand(Cli(["content", "settings"], "list", tableColumns:
+            [
+                new CliTableColumnMetadata("items[].name", "Name"),
+                new CliTableColumnMetadata("items[].scope", "Scope"),
+                new CliTableColumnMetadata("items[].appliesTo", "Applies To"),
+            ]))
+            .Produces<ContentDefinitionListResponse<ContentDefinitionSettingsSchemaDto>>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden);
+
+        group.MapGet("/settings/{name}", GetSettingsSchemaAsync)
+            .WithName("ApiGetContentDefinitionSettingsSchema")
+            .WithTags("Content Definitions")
+            .WithSummary("Gets a content definition settings contract.")
+            .WithDescription("Returns one module-specific settings contract and its JSON Schema.")
+            .WithCliCommand(Cli(["content", "settings"], "show", arguments: [new CliArgumentMetadata("name", 0)]))
+            .Produces<ContentDefinitionSettingsSchemaDto>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapGet("/parts", ListPartsAsync)
             .WithName("ApiListContentPartDefinitions")
             .WithTags("Content Definitions")
             .WithSummary("Lists content part definitions.")
             .WithDescription("Returns all content part definitions that the current user can manage.")
-            .WithCliCommand(Cli(["content", "parts"], "list", aliases: ["ls"], tableColumns: [new CliTableColumnMetadata("items[].name", "Name")]))
+            .WithCliCommand(Cli(["content", "parts"], "list", tableColumns: [new CliTableColumnMetadata("items[].name", "Name")]))
             .Produces<ContentDefinitionListResponse<ContentPartDefinitionDto>>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status401Unauthorized)
@@ -313,6 +340,28 @@ internal static class ContentDefinitionApiEndpoints
         }
 
         return Page(service.ListFieldTypes(), skip, take);
+    }
+
+    private static async Task<IResult> ListSettingsSchemasAsync(ContentDefinitionApiService service, IAuthorizationService authorizationService, HttpContext httpContext, int? skip = null, int? take = null)
+    {
+        if (!await authorizationService.AuthorizeAsync(httpContext.User, ContentTypesPermissions.ViewContentTypes))
+        {
+            return httpContext.ApiForbidProblem();
+        }
+
+        return Page(service.ListSettingsSchemas(), skip, take);
+    }
+
+    private static async Task<IResult> GetSettingsSchemaAsync(string name, ContentDefinitionApiService service, IAuthorizationService authorizationService, HttpContext httpContext)
+    {
+        if (!await authorizationService.AuthorizeAsync(httpContext.User, ContentTypesPermissions.ViewContentTypes))
+        {
+            return httpContext.ApiForbidProblem();
+        }
+
+        return service.GetSettingsSchema(name) is { } schema
+            ? TypedResults.Ok(schema)
+            : httpContext.ApiNotFoundProblem();
     }
 
     private static async Task<IResult> ListPartsAsync(ContentDefinitionApiService service, IAuthorizationService authorizationService, HttpContext httpContext, int? skip = null, int? take = null)

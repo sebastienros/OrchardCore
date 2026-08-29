@@ -8,6 +8,11 @@ description: Authors and manages Orchard Core content items through `oc`. Use fo
 Author against the live content-type schema. Content item JSON uses Pascal-cased
 well-known properties and type-specific part/field members.
 
+For page content, expect `FlowPart.Widgets` to hold the ordered section widgets.
+Collection-section widgets should hold inner components in semantic named Bags
+such as `Features.ContentItems` or `Slides.ContentItems`. Preserve this
+hierarchy during updates; do not flatten section and child fields onto the page.
+
 ## Authoring workflow
 
 ```bash
@@ -26,6 +31,15 @@ oc content items publish <id>
 
 Do not derive payloads from examples alone. Regenerate the schema after changing
 definitions or enabled features.
+
+`AutoroutePart.SetHomepage` is intentionally absent because it is a privileged
+transient editor command. Publish the intended item, then use:
+
+```bash
+oc settings set-home-content <content-item-id>
+```
+
+This command requires the Home Route feature and its dedicated permission.
 
 ## Minimal payload pattern
 
@@ -96,6 +110,15 @@ Run `oc content items --help` for installation-specific filters and options.
 - Reference uploaded media by the exact media path returned by
   `oc media files upload`.
 - Use `ContentPickerField` IDs for explicit related-content links.
+- Model page layout as typed section widgets in `FlowPart.Widgets`.
+- Put repeated embedded components in a named Bag on their owning section
+  widget, for example `FeatureGrid.Features.ContentItems`.
+- Give every embedded Flow/Bag widget or component a unique stable
+  `ContentItemId`, `ContentType`, and schema-valid content object. The API
+  generates only the root ID; editors and nested updates key embedded items by
+  their IDs.
+- Do not store layout markup in `HtmlBodyPart`; reserve HTML/Markdown fields for
+  authored prose within a semantic component.
 
 For bulk authoring, keep one JSON file per logical item, capture returned IDs in
 an external deployment manifest, and order operations so referenced taxonomy,

@@ -140,6 +140,32 @@ public sealed class ContentDefinitionFieldTypeDescriptor
 }
 
 /// <summary>
+/// Describes a module-specific content definition settings contract.
+/// </summary>
+public sealed class ContentDefinitionSettingsSchemaDto
+{
+    /// <summary>
+    /// Gets the JSON settings object name.
+    /// </summary>
+    public string Name { get; init; }
+
+    /// <summary>
+    /// Gets the content definition scope where the settings object is valid.
+    /// </summary>
+    public string Scope { get; init; }
+
+    /// <summary>
+    /// Gets the part or field type to which the settings apply.
+    /// </summary>
+    public string AppliesTo { get; init; }
+
+    /// <summary>
+    /// Gets the JSON Schema for the settings object value.
+    /// </summary>
+    public JsonObject Schema { get; init; } = [];
+}
+
+/// <summary>
 /// Represents a paged list of content-definition resources.
 /// </summary>
 public sealed class ContentDefinitionListResponse<T>

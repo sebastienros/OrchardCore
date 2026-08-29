@@ -30,7 +30,7 @@ internal static class WorkflowManagementApiEndpoints
             .WithTags("Workflows")
             .WithSummary("Lists workflow types.")
             .WithDescription("Returns the workflow types that the current user can manage.")
-            .WithCliCommand(Cli(["workflow", "types"], "list", aliases: ["ls"], tableColumns:
+            .WithCliCommand(Cli(["workflow", "types"], "list", tableColumns:
             [
                 new CliTableColumnMetadata("items[].workflowTypeId", "Id"),
                 new CliTableColumnMetadata("items[].name", "Name"),
@@ -100,7 +100,7 @@ internal static class WorkflowManagementApiEndpoints
             .WithTags("Workflows")
             .WithSummary("Lists workflow activity types.")
             .WithDescription("Returns the registered workflow activities together with their outcome names and basic property schemas.")
-            .WithCliCommand(Cli(["workflow", "activity-types"], "list", aliases: ["ls"], tableColumns:
+            .WithCliCommand(Cli(["workflow", "activity-types"], "list", tableColumns:
             [
                 new CliTableColumnMetadata("items[].name", "Name"),
                 new CliTableColumnMetadata("items[].category", "Category"),
@@ -161,7 +161,7 @@ internal static class WorkflowManagementApiEndpoints
             .WithTags("Workflows")
             .WithSummary("Lists workflow instances.")
             .WithDescription("Lists persisted workflow instances, optionally filtered by workflow type.")
-            .WithCliCommand(Cli(["workflow", "instances"], "list", aliases: ["ls"]))
+            .WithCliCommand(Cli(["workflow", "instances"], "list"))
             .Produces<WorkflowInstancesResponse>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status401Unauthorized)

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.AspNetCore.Routing;
+using OrchardCore.ContentTypes.Management;
 using OrchardCore.Environment.Shell;
 using OrchardCore.RemoteManagement;
 using OrchardCore.Tests.Apis.Context;
@@ -16,7 +17,7 @@ public class ContentAndWorkflowEndpointMetadataTests
 
         await context.InitializeAsync();
         await DisableFeaturesAsync(context, "OrchardCore.Features");
-        await EnableFeaturesAsync(context, "OrchardCore.ContentTypes", "OrchardCore.Workflows");
+        await EnableFeaturesAsync(context, "OrchardCore.ContentTypes", "OrchardCore.Autoroute", "OrchardCore.Flows", "OrchardCore.Workflows");
         await context.WaitForDeferredTasksAsync(TestContext.Current.CancellationToken);
         var warmup = await context.Client.GetAsync("__eptnametest?name=ApiListContentItems", TestContext.Current.CancellationToken);
         warmup.EnsureSuccessStatusCode();
@@ -27,6 +28,8 @@ public class ContentAndWorkflowEndpointMetadataTests
 
             AssertOperation(endpoints, "/api/content-definition/types", "GET", "ApiListContentTypeDefinitions", ["content", "types"], "list");
             AssertOperation(endpoints, "/api/content-definition/field-types", "GET", "ApiListContentFieldTypes", ["content", "field-types"], "list");
+            AssertOperation(endpoints, "/api/content-definition/settings", "GET", "ApiListContentDefinitionSettingsSchemas", ["content", "settings"], "list");
+            AssertOperation(endpoints, "/api/content-definition/settings/{name}", "GET", "ApiGetContentDefinitionSettingsSchema", ["content", "settings"], "show");
             AssertOperation(endpoints, "/api/content", "GET", "ApiListContentItems", ["content", "items"], "list");
             AssertOperation(endpoints, "/api/content/{contentItemId}/publish", "POST", "ApiPublishContentItem", ["content", "items"], "publish");
             AssertOperation(endpoints, "/api/content/schema/{contentType}", "GET", "ApiGetContentItemSchema", ["content", "items"], "schema");
@@ -34,6 +37,12 @@ public class ContentAndWorkflowEndpointMetadataTests
             AssertOperation(endpoints, "/api/workflows/activity-types", "GET", "ApiListWorkflowActivityTypes", ["workflow", "activity-types"], "list");
             AssertOperation(endpoints, "/api/workflows/types/{workflowTypeId}/execute", "POST", "ApiExecuteWorkflowType", ["workflow", "types"], "execute", CliInputMode.Json);
             AssertOperation(endpoints, "/api/workflows/instances/{workflowId}", "DELETE", "ApiCancelWorkflowInstance", ["workflow", "instances"], "cancel");
+            Assert.DoesNotContain(
+                endpoints
+                    .Select(endpoint => endpoint.Metadata.GetMetadata<CliOperationMetadata>())
+                    .Where(metadata => metadata is not null)
+                    .SelectMany(metadata => metadata.Aliases),
+                alias => string.Equals(alias, "ls", StringComparison.Ordinal));
 
             var capabilities = new List<RemoteManagementCapability>();
             foreach (var provider in scope.ServiceProvider.GetServices<IRemoteManagementCapabilityProvider>())
@@ -44,6 +53,20 @@ public class ContentAndWorkflowEndpointMetadataTests
             Assert.Contains(capabilities, capability => capability.Id == "content-definitions");
             Assert.Contains(capabilities, capability => capability.Id == "content-items");
             Assert.Contains(capabilities, capability => capability.Id == "workflows");
+
+            var settingsSchemas = scope.ServiceProvider
+                .GetServices<IContentDefinitionManagementSchemaProvider>()
+                .SelectMany(provider => provider.GetSchemas());
+            var autorouteSettings = Assert.Single(settingsSchemas, schema => schema.Name == "AutoroutePartSettings");
+            Assert.Equal(ContentDefinitionManagementSchemaScope.ContentTypePart, autorouteSettings.Scope);
+            Assert.Equal("AutoroutePart", autorouteSettings.AppliesTo);
+            Assert.Contains(settingsSchemas, schema =>
+                schema.Name == "FlowPartSettings" &&
+                schema.AppliesTo == "FlowPart");
+            Assert.Contains(settingsSchemas, schema =>
+                schema.Name == "BagPartSettings" &&
+                schema.AppliesTo == "BagPart");
+
         });
     }
 

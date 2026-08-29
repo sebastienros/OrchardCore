@@ -24,6 +24,36 @@
 Use widgets for embedded Flow/Bag components. Use ordinary `Content` stereotype
 for independently managed documents.
 
+## Flow-first page architecture
+
+Treat a page as ordered content sections, not as a designed HTML document.
+Attach one constrained `FlowPart` to the page and create a widget type for each
+semantic section: `Hero`, `RichTextSection`, `FeatureGrid`, `Carousel`,
+`Testimonials`, `FaqSection`, `LatestNews`, and `CallToAction`.
+
+Use a named Bag only inside a section that owns repeated embedded components:
+
+| Section widget | Named Bag | Inner component |
+| --- | --- | --- |
+| `FeatureGrid` | `Features` | `FeatureCard` |
+| `Carousel` | `Slides` | `CarouselSlide` |
+| `TeamSection` | `TeamMembers` | `TeamMember` |
+| `Testimonials` | `Testimonials` | `Testimonial` |
+| `FaqSection` | `Questions` | `FaqItem` |
+
+Create the inner component before its section. Give both stereotype `Widget`,
+then constrain the Bag by concrete content type and set the Bag display type
+used by its templates. Constrain the page Flow to section widgets, not inner
+cards/slides, so editors cannot place a card directly at page level.
+
+Prefer independently stored content plus a query or ListPart instead of Bag
+when children need routes, localization/workflow independent of the page,
+cross-page reuse, unbounded growth, or server-side paging.
+
+Never store section wrapper markup, Bootstrap/Tailwind grids, responsive
+classes, or JavaScript initialization in content fields. Store semantic values
+and let `Widget__<Type>` templates own design.
+
 ## Carousel
 
 Create a `CarouselSlide` widget with:
@@ -61,8 +91,8 @@ JSON differs by field type and enabled version.
 For the parent item contract, Flow stores embedded widgets under
 `FlowPart.Widgets`; a named Bag stores embedded items under
 `<AttachmentName>.ContentItems`. Obtain the schema for every embedded type and
-include each nested item's `ContentType`. Embedded items can use stable IDs when
-repeatable deployment requires them.
+include each nested item's `ContentType` and a unique stable `ContentItemId`.
+The API generates an ID only for the root item.
 
 ```json
 {
@@ -70,10 +100,12 @@ repeatable deployment requires them.
   "FlowPart": {
     "Widgets": [
       {
+        "ContentItemId": "1c18a63e-1d7d-43b7-9e99-034079f01e6f",
         "ContentType": "FeatureGrid",
         "Features": {
           "ContentItems": [
             {
+              "ContentItemId": "d3113f06-feb7-4111-8a34-311055b66a89",
               "ContentType": "FeatureCard",
               "FeatureCard": {
                 "Heading": { "Text": "Fast setup" }
@@ -83,10 +115,12 @@ repeatable deployment requires them.
         }
       },
       {
+        "ContentItemId": "5c642103-f74e-42bc-b8ad-74aee2a6c802",
         "ContentType": "Carousel",
         "Slides": {
           "ContentItems": [
             {
+              "ContentItemId": "ac623eda-916f-41b3-b625-95f922aadd89",
               "ContentType": "CarouselSlide",
               "CarouselSlide": {
                 "Heading": { "Text": "Welcome" },

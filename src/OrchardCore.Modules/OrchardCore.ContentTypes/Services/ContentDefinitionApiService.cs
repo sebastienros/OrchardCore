@@ -12,6 +12,7 @@ using OrchardCore.ContentManagement.Metadata.Models;
 using OrchardCore.ContentManagement.Metadata.Settings;
 using OrchardCore.ContentManagement.Utilities;
 using OrchardCore.ContentTypes.Events;
+using OrchardCore.ContentTypes.Management;
 using OrchardCore.ContentTypes.Models;
 using OrchardCore.ContentTypes.Services;
 using OrchardCore.Json;
@@ -25,6 +26,7 @@ internal sealed class ContentDefinitionApiService
     private readonly IContentDefinitionManager _contentDefinitionManager;
     private readonly IContentDefinitionService _contentDefinitionService;
     private readonly IEnumerable<IContentDefinitionEventHandler> _contentDefinitionEventHandlers;
+    private readonly IEnumerable<IContentDefinitionManagementSchemaProvider> _managementSchemaProviders;
     private readonly ContentOptions _contentOptions;
     private readonly JsonSerializerOptions _serializerOptions;
     private readonly IStringLocalizer S;
@@ -34,6 +36,7 @@ internal sealed class ContentDefinitionApiService
         IContentDefinitionManager contentDefinitionManager,
         IContentDefinitionService contentDefinitionService,
         IEnumerable<IContentDefinitionEventHandler> contentDefinitionEventHandlers,
+        IEnumerable<IContentDefinitionManagementSchemaProvider> managementSchemaProviders,
         IOptions<ContentOptions> contentOptions,
         IOptions<DocumentJsonSerializerOptions> serializerOptions,
         IStringLocalizer<ContentDefinitionApiService> stringLocalizer,
@@ -42,6 +45,7 @@ internal sealed class ContentDefinitionApiService
         _contentDefinitionManager = contentDefinitionManager;
         _contentDefinitionService = contentDefinitionService;
         _contentDefinitionEventHandlers = contentDefinitionEventHandlers;
+        _managementSchemaProviders = managementSchemaProviders;
         _contentOptions = contentOptions.Value;
         _serializerOptions = serializerOptions.Value.SerializerOptions;
         S = stringLocalizer;
@@ -89,6 +93,31 @@ internal sealed class ContentDefinitionApiService
             .Select(ToDto)
             .FirstOrDefault();
     }
+
+    public IReadOnlyList<ContentDefinitionSettingsSchemaDto> ListSettingsSchemas()
+        => _managementSchemaProviders
+            .SelectMany(provider => provider.GetSchemas())
+            .GroupBy(schema => schema.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .OrderBy(schema => schema.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(ToDto)
+            .ToArray();
+
+    public ContentDefinitionSettingsSchemaDto GetSettingsSchema(string name)
+        => _managementSchemaProviders
+            .SelectMany(provider => provider.GetSchemas())
+            .Where(schema => string.Equals(schema.Name, name, StringComparison.OrdinalIgnoreCase))
+            .Select(ToDto)
+            .FirstOrDefault();
+
+    private ContentDefinitionSettingsSchemaDto ToDto(ContentDefinitionManagementSchema schema)
+        => new()
+        {
+            Name = schema.Name,
+            Scope = schema.Scope.ToString(),
+            AppliesTo = schema.AppliesTo,
+            Schema = ContentDefinitionSchemaBuilder.BuildSchema(schema.Type, _serializerOptions),
+        };
 
     public async Task<ContentTypeDefinitionDto> CreateTypeAsync(ContentTypeDefinitionDto model, ModelStateDictionary modelState)
     {

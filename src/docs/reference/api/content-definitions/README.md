@@ -49,6 +49,8 @@ All request and response bodies use `application/json`. Property names shown bel
 | `DELETE` | `/types/{name}` | `EditContentTypes` | Delete a content type |
 | `GET` | `/part-types` | `ViewContentTypes` | List registered part types |
 | `GET` | `/field-types` | `ViewContentTypes` | List registered field types |
+| `GET` | `/settings` | `ViewContentTypes` | List module-specific settings contracts |
+| `GET` | `/settings/{name}` | `ViewContentTypes` | Get a module-specific settings JSON Schema |
 | `GET` | `/parts` | `ViewContentTypes` | List content parts |
 | `GET` | `/parts/{name}` | `ViewContentTypes` | Get a content part |
 | `POST` | `/parts` | `EditContentTypes` | Create a content part |
@@ -142,8 +144,23 @@ Built-in setting members are:
   `position`.
 
 The four container names above are Pascal-cased exactly as shown. Settings are extensible:
-other enabled features can add arbitrary members, so their complete schema is installation
-dependent.
+other enabled features can add arbitrary members. The base definition DTO
+preserves these values but cannot describe every module-specific settings
+object.
+
+Discover contracts contributed by enabled modules:
+
+```bash
+oc content settings list --take 200
+oc content settings show AutoroutePartSettings
+```
+
+Each result contains `name`, `scope` (`ContentType`, `ContentTypePart`,
+`ContentPart`, or `ContentPartField`), `appliesTo`, and a standalone `schema`.
+For example, the Autoroute feature contributes `AutoroutePartSettings` for the
+`AutoroutePart` attachment, while Flows contributes `FlowPartSettings` and
+`BagPartSettings`. Modules opt into this catalog, so an open settings bag does
+not imply that every accepted setting has a discoverable contract.
 
 ### Errors
 

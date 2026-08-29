@@ -9,6 +9,15 @@ The home route is stored in the site settings (`HomeRoute`). It is most often se
 - **Promote a content item to the homepage.** Content items expose a *Set as homepage* option (through the `Contents` feature), which points the home route at that item.
 - **Point to a controller action.** Modules and themes can set the home route to their own route values.
 
+Remote clients should not submit the transient
+`AutoroutePart.SetHomepage` property. Use the permission-gated command instead:
+
+```bash
+oc settings set-home-content <published-content-item-id>
+```
+
+See the [Home Route management API](../../api/home-route/README.md).
+
 ## Setting it from a recipe
 
 The home route is part of the site settings, so it can be set with the `settings` recipe step using the `HomeRoute` key:

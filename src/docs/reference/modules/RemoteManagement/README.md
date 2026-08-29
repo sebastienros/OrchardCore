@@ -62,6 +62,19 @@ For a terminal without a browser, use device authorization:
 oc login --grant device
 ```
 
+For multiple tenants, run one device flow per named context and approve each
+code as the intended tenant-local user:
+
+```bash
+oc --context news login --grant device
+oc --context marketing login --grant device
+```
+
+Tokens are stored separately per context and must not be copied between
+tenants. Browser credentials should be entered only in the tenant's HTTPS login
+page or by a trusted password manager; never put passwords in command
+arguments, logs, screenshots, chat, or browser automation scripts.
+
 For automation, register a confidential OpenID application with the minimum required roles and scopes. Set `OC_CLIENT_ID` and `OC_CLIENT_SECRET` for dynamic commands and initial API discovery:
 
 ```bash

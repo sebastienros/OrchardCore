@@ -9,6 +9,51 @@ Design the model before authoring content or templates. Work against the target
 tenant context because registered parts, fields, settings, and schemas depend on
 its enabled features.
 
+## Content-driven composition standard
+
+Default to this hierarchy for editable pages:
+
+```text
+Page content type
+└── FlowPart.Widgets (ordered page sections)
+    ├── Hero widget
+    ├── RichTextSection widget
+    ├── FeatureGrid widget
+    │   └── named BagPart "Features"
+    │       └── FeatureCard widgets
+    └── Carousel widget
+        └── named BagPart "Slides"
+            └── CarouselSlide widgets
+```
+
+Use `FlowPart` as the primary ordered page-section composer. Every direct Flow
+item must be a focused content type with stereotype `Widget`. Do not model page
+layout as one `HtmlBodyPart`, one large template-specific part, or raw markup.
+
+For a section that owns an ordered collection, attach a named `BagPart` to that
+section widget. Use semantic names such as `Features`, `Slides`, `TeamMembers`,
+`Testimonials`, or `Questions`; avoid generic names such as `Items` when the
+domain has a clearer term. Restrict `BagPartSettings.ContainedContentTypes` to
+the inner component types that belong in the section.
+
+Build inner component types first. Give each component only content-bearing
+fields such as heading, text, media, link, icon, or accessible label. Make
+reusable embedded components widgets so their display pipeline and
+`Widget__<Type>` templates remain predictable. Put section-level content and
+behavior—heading, introduction, item limit, semantic variant—on the section
+widget, not on every child.
+
+Keep presentation out of content:
+
+- use semantic choice fields such as `Emphasis = primary|secondary`, not
+  arbitrary CSS class fields;
+- use HTML/Markdown fields only for authored prose, never for grids, wrappers,
+  navigation, spacing, or responsive markup;
+- map semantic variants to classes and layout in Liquid templates;
+- keep global navigation in Menu content, not Flow;
+- use independently stored content plus queries/ListPart when collection items
+  need their own routes, workflow, reuse, or large-scale paging.
+
 For a composable content site, inspect and enable the required subset of:
 `OrchardCore.Contents`, `OrchardCore.ContentTypes`,
 `OrchardCore.ContentFields`, `OrchardCore.Title`,
@@ -29,12 +74,27 @@ oc --context site content fields schema
 Enable missing features, run `oc api refresh`, and repeat discovery. Never copy
 settings blindly from another tenant.
 
+The safe definition DTO preserves unknown settings values but its base schema
+cannot describe every enabled module. Discover contributed contracts:
+
+```bash
+oc content settings list --take 200
+oc content settings show AutoroutePartSettings
+oc content settings show FlowPartSettings
+oc content settings show BagPartSettings
+```
+
+Each contract reports its definition scope, target part/field type, and JSON
+Schema. Only settings providers contributed by enabled modules are available.
+
 Create definitions in dependency order:
 
-1. Create reusable custom parts and their fields.
-2. Create widget/content types consumed by Flow, Bag, List, Menu, or Taxonomy.
-3. Create aggregate/root content types and attach parts.
-4. Read every stored definition back before authoring content.
+1. Create reusable custom parts and fields.
+2. Create inner block/widget types such as `FeatureCard` or `CarouselSlide`.
+3. Create collection-section widgets and attach their named Bags.
+4. Create other section widgets.
+5. Create page types and attach a constrained `FlowPart`.
+6. Read every stored definition back before authoring content.
 
 ## Commands
 
@@ -107,7 +167,17 @@ Content type:
   },
   "parts": [
     { "name": "TitlePart", "partName": "TitlePart", "settings": {} },
-    { "name": "AutoroutePart", "partName": "AutoroutePart", "settings": {} },
+    {
+      "name": "AutoroutePart",
+      "partName": "AutoroutePart",
+      "settings": {
+        "AutoroutePartSettings": {
+          "AllowCustomPath": true,
+          "Pattern": "{{ ContentItem.DisplayText | slugify }}",
+          "AllowUpdatePath": true
+        }
+      }
+    },
     { "name": "ArticleDetails", "partName": "ArticleDetails", "settings": {} }
   ]
 }
@@ -121,9 +191,10 @@ are feature-contributed and tenant-specific.
 
 - Use **TitlePart** for editor-facing and display titles.
 - Use **AutoroutePart** for public URLs; use **AliasPart** for stable lookup keys.
-- Use **FlowPart** for ordered heterogeneous page sections editable as widgets.
+- Use **FlowPart** by default for ordered heterogeneous page sections editable
+  as focused widgets.
 - Use **BagPart** for ordered embedded items constrained to specific content
-  types; use it for structured repeated components.
+  types. Attach it with a semantic name inside a collection-section widget.
 - Use **ListPart** plus **ContainedPart** for independently stored children with
   their own lifecycle and routes.
 - Use **TaxonomyField** to classify content with reusable hierarchical terms.
@@ -189,11 +260,15 @@ Flow and named Bag settings live under the attachment's settings object:
 }
 ```
 
-Confirm exact JSON casing against the stored definition and live schema because
-definition settings are extensible.
+Confirm exact JSON casing with `content settings show` and the stored definition
+because definition settings are extensible. The base DTO schema intentionally
+uses an open settings bag; do not interpret that as a complete module contract.
 
 Read `references/modeling-patterns.md` for concrete carousel, blog/news, landing
 page, taxonomy, menu, and Liquid-shape designs.
+
+Use `orchardcore-cli-menus` when creating menu content or overriding the
+official Menu/MenuItem/MenuItemLink templates.
 
 ## Verify the model
 

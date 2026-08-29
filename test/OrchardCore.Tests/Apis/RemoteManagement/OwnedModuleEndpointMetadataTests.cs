@@ -9,6 +9,7 @@ using OrchardCore.Environment.Shell;
 using OrchardCore.Environment.Shell.Removing;
 using OrchardCore.Features.Endpoints.Management;
 using OrchardCore.Features.Services;
+using OrchardCore.HomeRoute.Endpoints;
 using OrchardCore.Modules;
 using OrchardCore.Recipes.Endpoints.Management;
 using OrchardCore.Recipes.Services;
@@ -20,6 +21,7 @@ using OrchardCore.Security.Services;
 using OrchardCore.Tenants.Endpoints.Management;
 using OrchardCore.Tenants;
 using OrchardCore.Tenants.Services;
+using OrchardCore.Themes.Endpoints.Management;
 using OrchardCore.Users.Endpoints.Management;
 using OrchardCore.Users.Services;
 
@@ -76,6 +78,11 @@ public class OwnedModuleEndpointMetadataTests
         AssertOperation(endpoints, "api/roles", "POST", "ApiCreateRole", "Roles", ["roles"], "create", "application/json", [201, 400, 401, 403, 409]);
         AssertOperation(endpoints, "api/roles/{roleId}", "PUT", "ApiUpdateRole", "Roles", ["roles"], "update", "application/json", [200, 400, 401, 403, 404]);
         AssertOperation(endpoints, "api/roles/{roleId}", "DELETE", "ApiDeleteRole", "Roles", ["roles"], "delete", null, [200, 400, 401, 403]);
+
+        AssertOperation(endpoints, "api/themes", "GET", "ApiListThemes", "Themes", ["themes"], "list", null, [200, 400, 401, 403]);
+        AssertOperation(endpoints, "api/themes/{themeId}:enable", "POST", "ApiEnableTheme", "Themes", ["themes"], "enable", null, [200, 400, 401, 403, 404]);
+        AssertOperation(endpoints, "api/themes/{themeId}:set-current", "POST", "ApiSetCurrentTheme", "Themes", ["themes"], "set-current", null, [200, 400, 401, 403, 404]);
+        AssertOperation(endpoints, "api/home-route/content/{contentItemId}", "PUT", "ApiSetHomeContent", "Home Route", ["settings"], "set-home-content", null, [200, 401, 403, 404]);
     }
 
     private static RouteEndpoint[] CreateEndpoints()
@@ -125,6 +132,8 @@ public class OwnedModuleEndpointMetadataTests
         RecipeManagementEndpoints.AddRecipeManagementEndpoints(app);
         UserManagementEndpoints.AddUserManagementEndpoints(app);
         RoleManagementEndpoints.AddRoleManagementEndpoints(app);
+        ThemeManagementEndpoints.AddThemeManagementEndpoints(app);
+        HomeRouteManagementEndpoints.AddHomeRouteManagementEndpoints(app);
 
         return ((IEndpointRouteBuilder)app).DataSources
             .SelectMany(dataSource => dataSource.Endpoints)

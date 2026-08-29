@@ -7,10 +7,33 @@ description: Creates and manages Orchard Core custom Liquid templates through `o
 
 Use the Templates module for tenant-stored Liquid shape overrides. Keep content
 structure in definitions, content values in items, and presentation in Liquid.
+An active site theme is required: custom templates extend the active theme's
+shape table and cannot replace the absence of a site theme.
+
+Render content-driven composition rather than rebuilding it in the page
+template. A page template should render its `FlowPart`; each section should use
+a `Widget__<SectionType>` template; collection-section templates should render
+or iterate their named Bag. Keep grids, classes, spacing, breakpoints, and
+client behavior in these Liquid templates, never in editor content.
 
 Ensure `OrchardCore.Templates`, `OrchardCore.Liquid`, and
 `OrchardCore.Resources` are enabled. Enable the part/field modules used by the
 model, then refresh discovery.
+
+For a tenant created with the `Blank` recipe, start from Safe Mode:
+
+```bash
+oc themes list --admin false --take 200
+oc themes set-current TheTheme
+oc features enable OrchardCore.Templates
+oc features enable OrchardCore.Liquid
+oc features enable OrchardCore.Resources
+oc api refresh --force
+```
+
+Use a theme ID returned by `themes list`; `TheTheme` is the standard host
+example. Confirm the root page renders before adding a custom `Layout`
+template. If the root is still in Safe Mode, fix theme selection first.
 
 ## Workflow
 
@@ -29,6 +52,35 @@ oc templates list --search Article
 ```
 
 ## Manage templates
+
+A complete minimal `Layout` template must render document metadata, resource
+zones, messages, and the content section:
+
+```liquid
+<!DOCTYPE html>
+<html lang="{{ Culture.Name }}" dir="{{ Culture.Dir }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ "PageTitle" | shape_new | shape_stringify }}</title>
+  {% resources type: "Meta" %}
+  {% resources type: "HeadLink" %}
+  {% resources type: "HeadScript" %}
+  {% resources type: "Stylesheet" %}
+</head>
+<body>
+  {% render_section "Header", required: false %}
+  {% render_section "Messages", required: false %}
+  <main id="main-content">
+    {% render_section "Content" %}
+  </main>
+  {% render_section "Footer", required: false %}
+  {% resources type: "FootScript" %}
+</body>
+</html>
+```
+
+Create it as template name `Layout` before relying on tenant CSS or scripts.
 
 `article-template.json`:
 
@@ -81,6 +133,10 @@ confirm the override with `oc content items render`.
   `{% resources type: "Stylesheet" %}` and scripts where applicable.
 - Keep query/filter business logic outside templates when a query or content
   list can provide the intended collection.
+- Keep page templates structural and small. Put section design in widget
+  templates and inner-card design in inner widget templates.
+- Map semantic content values to design classes explicitly; never render an
+  editor-provided CSS class with `raw`.
 
 Example media rendering:
 
@@ -108,7 +164,13 @@ curl -fsSI 'https://cms.example.com/tenant-a/styles/site.css?v=1'
 ```
 
 Check semantic HTML, encoded values, image alternative text, tenant-prefixed
-URLs, missing shapes, stylesheet requests, and responsive behavior.
+URLs, missing shapes, stylesheet requests, and responsive behavior. Require:
+
+- root route and representative content route return successful HTML;
+- CSS and JavaScript URLs return the expected content type;
+- every internal anchor target exists and keyboard focus reaches it;
+- browser console has no errors;
+- layout works at approximately 375px, 768px, and 1440px viewport widths.
 
 Canonical references:
 `src/docs/reference/api/templates/README.md`,

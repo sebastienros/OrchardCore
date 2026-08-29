@@ -33,6 +33,21 @@ Use `oc login --grant device` on a headless terminal. Browser login uses
 authorization code with PKCE. Human refresh tokens are stored in the OS
 credential store.
 
+For multiple tenants, start one device flow per context and complete each code
+as the intended tenant-local user:
+
+```bash
+oc --context news login --grant device
+oc --context marketing login --grant device
+oc --context commerce login --grant device
+```
+
+Do not reuse tokens across contexts. Device authorization can automate the CLI
+side, but a user must approve each code. For browser login, enter credentials
+only in the tenant's HTTPS login page or a trusted password manager. Never pass
+browser passwords through CLI arguments, chat, logs, screenshots, or browser
+automation scripts.
+
 For automation, use a dedicated confidential OpenID application with minimal
 permissions:
 
@@ -133,6 +148,8 @@ Load the narrowest relevant skill:
 - **Content authoring and lifecycle**: `orchardcore-cli-content-items`
 - **Images, files, and tenant CSS/static assets**: `orchardcore-cli-media`
 - **Custom Liquid templates and rendering**: `orchardcore-cli-templates`
+- **Installed site/admin theme selection**: `orchardcore-cli-themes`
+- **Menu content and official menu-shape rendering**: `orchardcore-cli-menus`
 - **Site Settings and Custom Settings**: `orchardcore-cli-settings`
 - **Features, recipes, queries, workflows, users, and roles**:
   `orchardcore-cli-automation`
@@ -141,6 +158,12 @@ For a complete site build, apply them in this order: create/setup tenant,
 enable required features, design definitions, upload media/static assets,
 create a draft fixture, create templates, render and refine the draft, publish
 content, then verify public routes.
+
+Use a content-driven model by default: page types compose ordered section
+widgets with `FlowPart`; collection-section widgets own semantic named
+`BagPart` attachments containing inner blocks/widgets. Keep design markup,
+classes, responsive behavior, and scripts in Liquid/templates and static
+assets—not in content fields.
 
 ## Failure handling
 

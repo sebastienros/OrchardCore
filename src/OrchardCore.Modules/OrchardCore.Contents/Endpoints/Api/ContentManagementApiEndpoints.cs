@@ -31,7 +31,7 @@ internal static class ContentManagementApiEndpoints
             .WithTags("Content Items")
             .WithSummary("Lists content items.")
             .WithDescription("Lists published, latest, or draft content items that the current user can access.")
-            .WithCliCommand(Cli(["content", "items"], "list", aliases: ["ls"]))
+            .WithCliCommand(Cli(["content", "items"], "list"))
             .Produces<ContentItemsResponse>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status403Forbidden);
