@@ -115,19 +115,22 @@ Examples include:
 
 ```bash
 oc tenants create --name TenantA --request-url-prefix tenant-a --recipe-name SaaS
+oc tenants setup TenantA --site-name "Tenant A" --user-name admin --email admin@example.com
 oc content items list
 oc content items show 4abc...
 oc features enable OrchardCore.Media
 oc queries execute RecentPosts --body '{ "parameters": {} }'
 ```
 
-`oc tenants create` creates an uninitialized tenant but no user account. Open
-the `setupUrl` in its response to run the selected recipe and create the
-initial administrator. After setup, enable Remote Management from the Default
-tenant context, add the initialized tenant URL as its own context, and
-authenticate directly:
+`oc tenants create` creates an uninitialized tenant but no user account. Run
+`oc tenants setup` to execute the selected recipe and create the initial
+administrator. It securely prompts for the password by default; automation can
+use `--password-env`, `--password-stdin`, or `--password-file`. After setup,
+enable Remote Management from the Default tenant context, add the initialized
+tenant URL as its own context, and authenticate directly:
 
 ```bash
+oc tenants setup TenantA --site-name "Tenant A" --user-name admin --email admin@example.com
 oc tenants enable-remote-management TenantA
 oc context add tenant-a https://cms.example.com/tenant-a --current
 oc login

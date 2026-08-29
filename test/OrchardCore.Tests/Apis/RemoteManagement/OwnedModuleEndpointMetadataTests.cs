@@ -35,6 +35,7 @@ public class OwnedModuleEndpointMetadataTests
         AssertOperation(endpoints, "api/tenants", "GET", "ApiListTenants", "Tenants", ["tenants"], "list", null, [200, 400, 401, 403]);
         AssertOperation(endpoints, "api/tenants/{tenantName}", "GET", "ApiGetTenant", "Tenants", ["tenants"], "show", null, [200, 401, 403, 404]);
         AssertOperation(endpoints, "api/tenants", "POST", "ApiCreateTenantManagement", "Tenants", ["tenants"], "create", "application/json", [200, 201, 400, 401, 403, 409]);
+        AssertOperation(endpoints, "api/tenants/{tenantName}:setup", "POST", "ApiSetupTenantManagement", "Tenants", ["tenants"], "setup", "application/json", [200, 400, 401, 403, 404, 409, 500]);
         AssertOperation(endpoints, "api/tenants/{tenantName}", "PUT", "ApiUpdateTenantManagement", "Tenants", ["tenants"], "update", "application/json", [200, 400, 401, 403, 404]);
         AssertOperation(endpoints, "api/tenants/{tenantName}", "DELETE", "ApiDeleteTenant", "Tenants", ["tenants"], "delete", null, [200, 204, 400, 401, 403]);
         AssertOperation(endpoints, "api/tenants/{tenantName}:start", "POST", "ApiStartTenant", "Tenants", ["tenants"], "start", null, [200, 400, 401, 403, 404]);
@@ -46,6 +47,10 @@ public class OwnedModuleEndpointMetadataTests
                 endpoint.Metadata.GetMetadata<IHttpMethodMetadata>()?.HttpMethods.Contains("POST", StringComparer.OrdinalIgnoreCase) == true)
                 .Metadata.GetRequiredMetadata<CliOperationMetadata>()
                 .InputMode);
+        var setupMetadata = endpoints.Single(endpoint =>
+            string.Equals(endpoint.RoutePattern.RawText, "api/tenants/{tenantName}:setup", StringComparison.Ordinal))
+            .Metadata.GetRequiredMetadata<CliOperationMetadata>();
+        Assert.Equal("password", Assert.Single(setupMetadata.SecretProperties));
         AssertPermission(endpoints, "api/static-files", "GET", global::OrchardCore.Tenants.Permissions.ViewTenantStaticFiles);
         AssertPermission(endpoints, "api/static-files/file", "GET", global::OrchardCore.Tenants.Permissions.ViewTenantStaticFiles);
         AssertPermission(endpoints, "api/static-files/content", "PUT", global::OrchardCore.Tenants.Permissions.ManageTenantStaticFiles);

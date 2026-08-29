@@ -51,6 +51,7 @@ public class OpenApiCliParserTests
                   "commandGroup": ["items"],
                   "verb": "delete",
                   "aliases": ["remove"],
+                  "secretProperties": ["reason"],
                   "requiresConfirmation": true,
                   "defaultJsonBody": "{}",
                   "arguments": [
@@ -73,6 +74,7 @@ public class OpenApiCliParserTests
         Assert.Equal("items", Assert.Single(operation.CliMetadata.CommandGroup));
         Assert.Equal("delete", operation.CliMetadata.Verb);
         Assert.Equal("remove", Assert.Single(operation.CliMetadata.Aliases));
+        Assert.Equal("reason", Assert.Single(operation.CliMetadata.SecretProperties));
         Assert.True(operation.CliMetadata.RequiresConfirmation);
         Assert.Equal("{}", operation.CliMetadata.DefaultJsonBody);
         Assert.Equal(0, Assert.Single(operation.CliMetadata.Arguments).Position);

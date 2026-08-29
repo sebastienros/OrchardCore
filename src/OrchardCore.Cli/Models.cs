@@ -2,6 +2,8 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using OrchardCore.RemoteManagement;
 
+using System.CommandLine;
+
 namespace OrchardCore.Cli;
 
 internal enum OutputFormat
@@ -161,6 +163,17 @@ internal sealed class RequestBodyPropertyDefinition
     public double? Minimum { get; set; }
 
     public double? Maximum { get; set; }
+}
+
+internal sealed class SecretBodyPropertyOptions
+{
+    public required RequestBodyPropertyDefinition Property { get; init; }
+
+    public required Option<string?> EnvironmentVariableOption { get; init; }
+
+    public required Option<FileInfo?> FileOption { get; init; }
+
+    public required Option<bool> StdinOption { get; init; }
 }
 
 internal sealed class OpenApiParameterDefinition

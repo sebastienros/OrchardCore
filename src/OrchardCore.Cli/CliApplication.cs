@@ -24,6 +24,8 @@ internal sealed class CliApplication
     private readonly Option<string?> _outputOption;
     private readonly Option<string?> _contextOption;
 
+    internal RootCommand RootCommand => _rootCommand;
+
     private CliApplication(
         RootCommand rootCommand,
         CliPaths paths,
@@ -792,6 +794,7 @@ internal sealed class CliApplication
         var positionalArguments = new List<(OpenApiParameterDefinition Parameter, Argument<string> Argument)>();
         var options = new List<(OpenApiParameterDefinition Parameter, Option<string?> Option)>();
         var bodyPropertyOptions = new List<(RequestBodyPropertyDefinition Property, Option<string?> Option)>();
+        var secretBodyPropertyOptions = new List<SecretBodyPropertyOptions>();
 
         foreach (var parameter in operation.Parameters.OrderBy(parameter => parameter.ArgumentPosition ?? int.MaxValue).ThenBy(parameter => parameter.Name, StringComparer.Ordinal))
         {
@@ -810,7 +813,9 @@ internal sealed class CliApplication
         }
 
         var yesOption = new Option<bool>("--yes") { Description = "Confirm destructive operations without a prompt" };
-        var bodyOption = new Option<string?>("--body") { Description = "Inline JSON request body" };
+        var bodyOption = operation.CliMetadata.SecretProperties.Count == 0
+            ? new Option<string?>("--body") { Description = "Inline JSON request body" }
+            : null;
         var bodyFileOption = new Option<FileInfo?>("--body-file") { Description = "Read the JSON request body from a file" };
         var stdinOption = new Option<bool>("--stdin") { Description = "Read the request body from standard input" };
         var fileOption = new Option<FileInfo?>("--file") { Description = "Read the binary request body from a file" };
@@ -822,7 +827,11 @@ internal sealed class CliApplication
 
         if (operation.HasJsonRequestBody)
         {
-            command.Options.Add(bodyOption);
+            if (bodyOption is not null)
+            {
+                command.Options.Add(bodyOption);
+            }
+
             command.Options.Add(bodyFileOption);
             command.Options.Add(stdinOption);
         }
@@ -837,7 +846,36 @@ internal sealed class CliApplication
         {
             foreach (var property in operation.RequestBodyProperties)
             {
-                var option = new Option<string?>($"--{CliUtilities.ToCliName(property.Name)}") { Description = property.Description, Required = property.Required };
+                if (operation.CliMetadata.SecretProperties.Contains(property.Name, StringComparer.OrdinalIgnoreCase))
+                {
+                    var propertyName = CliUtilities.ToCliName(property.Name);
+                    var environmentVariableOption = new Option<string?>($"--{propertyName}-env")
+                    {
+                        Description = $"Environment variable containing {property.Description ?? property.Name}",
+                    };
+                    var secretFileOption = new Option<FileInfo?>($"--{propertyName}-file")
+                    {
+                        Description = $"Read {property.Description ?? property.Name} from a file",
+                    };
+                    var secretStdinOption = new Option<bool>($"--{propertyName}-stdin")
+                    {
+                        Description = $"Read {property.Description ?? property.Name} from standard input",
+                    };
+
+                    command.Options.Add(environmentVariableOption);
+                    command.Options.Add(secretFileOption);
+                    command.Options.Add(secretStdinOption);
+                    secretBodyPropertyOptions.Add(new SecretBodyPropertyOptions
+                    {
+                        Property = property,
+                        EnvironmentVariableOption = environmentVariableOption,
+                        FileOption = secretFileOption,
+                        StdinOption = secretStdinOption,
+                    });
+                    continue;
+                }
+
+                var option = new Option<string?>($"--{CliUtilities.ToCliName(property.Name)}") { Description = property.Description };
                 command.Options.Add(option);
                 bodyPropertyOptions.Add((property, option));
             }
@@ -891,7 +929,7 @@ internal sealed class CliApplication
 
             HttpContent? body = operation.HasBinaryRequestBody
                 ? await ResolveBinaryBodyAsync(parseResult.GetValue(fileOption), parseResult.GetValue(stdinOption), cancellationToken)
-                : await ResolveDynamicJsonBodyAsync(parseResult, operation, bodyOption, bodyFileOption, stdinOption, bodyPropertyOptions, cancellationToken);
+                : await ResolveDynamicJsonBodyAsync(parseResult, operation, bodyOption, bodyFileOption, stdinOption, bodyPropertyOptions, secretBodyPropertyOptions, cancellationToken);
 
             var accessToken = await ResolveAccessTokenAsync(context, null, null, false, cancellationToken);
             var response = await SendApiRequestAsync(context, operation.Method, routePath, query, headers, body, accessToken, cancellationToken);
@@ -1201,13 +1239,15 @@ internal sealed class CliApplication
     private static async Task<HttpContent?> ResolveDynamicJsonBodyAsync(
         ParseResult parseResult,
         OpenApiOperationDefinition operation,
-        Option<string?> bodyOption,
+        Option<string?>? bodyOption,
         Option<FileInfo?> bodyFileOption,
         Option<bool> stdinOption,
         List<(RequestBodyPropertyDefinition Property, Option<string?> Option)> bodyPropertyOptions,
+        List<SecretBodyPropertyOptions> secretBodyPropertyOptions,
         CancellationToken cancellationToken)
     {
-        var explicitBody = await ResolveJsonBodyAsync(parseResult.GetValue(bodyOption), parseResult.GetValue(bodyFileOption), parseResult.GetValue(stdinOption), operation.RequestContentType ?? "application/json", cancellationToken);
+        var inlineBody = bodyOption is null ? null : parseResult.GetValue(bodyOption);
+        var explicitBody = await ResolveJsonBodyAsync(inlineBody, parseResult.GetValue(bodyFileOption), parseResult.GetValue(stdinOption), operation.RequestContentType ?? "application/json", cancellationToken);
         if (explicitBody is not null)
         {
             ValidateDynamicJsonBody(await explicitBody.ReadAsStringAsync(cancellationToken), operation);
@@ -1220,7 +1260,7 @@ internal sealed class CliApplication
             return CreateJsonContent(operation.CliMetadata.DefaultJsonBody, operation.RequestContentType ?? "application/json");
         }
 
-        if (bodyPropertyOptions.Count == 0)
+        if (bodyPropertyOptions.Count == 0 && secretBodyPropertyOptions.Count == 0)
         {
             if (operation.RequestBodyRequired)
             {
@@ -1247,6 +1287,29 @@ internal sealed class CliApplication
             node[property.Name] = CliUtilities.ConvertToJsonNode(value, property.Type ?? "string");
         }
 
+        foreach (var secretOptions in secretBodyPropertyOptions)
+        {
+            var value = await ResolveSecretValueAsync(parseResult, secretOptions, cancellationToken);
+            if (value is null)
+            {
+                if (secretOptions.Property.Required)
+                {
+                    value = ReadSecretFromConsole(secretOptions.Property.Name);
+                }
+                else
+                {
+                    continue;
+                }
+            }
+
+            if (secretOptions.Property.Required && string.IsNullOrEmpty(value))
+            {
+                throw new CliException($"The secret value for '{secretOptions.Property.Name}' cannot be empty.");
+            }
+
+            node[secretOptions.Property.Name] = value;
+        }
+
         if (node.Count == 0)
         {
             if (operation.RequestBodyRequired)
@@ -1261,6 +1324,84 @@ internal sealed class CliApplication
         ValidateDynamicJsonBody(content, operation);
         return CreateJsonContent(content, operation.RequestContentType ?? "application/json");
     }
+
+    internal static async Task<string?> ResolveSecretValueAsync(
+        ParseResult parseResult,
+        SecretBodyPropertyOptions options,
+        CancellationToken cancellationToken)
+    {
+        var environmentVariable = parseResult.GetValue(options.EnvironmentVariableOption);
+        var file = parseResult.GetValue(options.FileOption);
+        var readFromStdin = parseResult.GetValue(options.StdinOption);
+        var sourceCount = (string.IsNullOrWhiteSpace(environmentVariable) ? 0 : 1) + (file is null ? 0 : 1) + (readFromStdin ? 1 : 0);
+
+        if (sourceCount > 1)
+        {
+            var propertyName = CliUtilities.ToCliName(options.Property.Name);
+            throw new CliException($"Use only one of --{propertyName}-env, --{propertyName}-file, or --{propertyName}-stdin.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(environmentVariable))
+        {
+            return global::System.Environment.GetEnvironmentVariable(environmentVariable)
+                ?? throw new CliException($"Environment variable '{environmentVariable}' is not set.");
+        }
+
+        if (file is not null)
+        {
+            var value = await File.ReadAllTextAsync(file.FullName, cancellationToken);
+            return RemoveTrailingLineEnding(value);
+        }
+
+        if (readFromStdin)
+        {
+            var value = await Console.In.ReadToEndAsync(cancellationToken);
+            return RemoveTrailingLineEnding(value);
+        }
+
+        return null;
+    }
+
+    private static string ReadSecretFromConsole(string propertyName)
+    {
+        if (Console.IsInputRedirected)
+        {
+            var optionName = CliUtilities.ToCliName(propertyName);
+            throw new CliException($"A secret value is required. Provide --{optionName}-env, --{optionName}-file, or --{optionName}-stdin.");
+        }
+
+        Console.Error.Write($"{propertyName}: ");
+        var value = new StringBuilder();
+        while (true)
+        {
+            var key = Console.ReadKey(intercept: true);
+            if (key.Key == ConsoleKey.Enter)
+            {
+                Console.Error.WriteLine();
+                return value.ToString();
+            }
+
+            if (key.Key == ConsoleKey.Backspace)
+            {
+                if (value.Length > 0)
+                {
+                    value.Length--;
+                }
+
+                continue;
+            }
+
+            if (!char.IsControl(key.KeyChar))
+            {
+                value.Append(key.KeyChar);
+            }
+        }
+    }
+
+    internal static string RemoveTrailingLineEnding(string value)
+        => value.EndsWith("\r\n", StringComparison.Ordinal) ? value[..^2]
+            : value.EndsWith('\n') ? value[..^1]
+            : value;
 
     internal static string CreateRequiredBodyMessage(OpenApiOperationDefinition operation, bool includeInputOptions)
     {

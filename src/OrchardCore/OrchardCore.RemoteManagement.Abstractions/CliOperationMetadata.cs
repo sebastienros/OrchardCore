@@ -57,6 +57,11 @@ public sealed class CliOperationMetadata
     public IList<CliTableColumnMetadata> TableColumns { get; init; } = [];
 
     /// <summary>
+    /// Gets or initializes request body properties whose values must be collected through secret-safe CLI inputs.
+    /// </summary>
+    public IList<string> SecretProperties { get; init; } = [];
+
+    /// <summary>
     /// Gets or sets how the request body is supplied.
     /// </summary>
     public CliInputMode InputMode { get; set; } = CliInputMode.Options;

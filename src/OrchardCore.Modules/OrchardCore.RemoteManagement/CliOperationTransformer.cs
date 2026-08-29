@@ -76,6 +76,13 @@ internal sealed class CliOperationTransformer : IOpenApiOperationTransformer
                 .ToArray());
         }
 
+        if (metadata.SecretProperties.Count > 0)
+        {
+            extension["secretProperties"] = new JsonArray(metadata.SecretProperties
+                .Select(property => JsonValue.Create(property))
+                .ToArray());
+        }
+
         return extension;
     }
 }

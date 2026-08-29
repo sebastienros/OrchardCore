@@ -1,21 +1,29 @@
+using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Microsoft.Extensions.DependencyInjection;
+using OrchardCore.Abstractions.Setup;
 using OrchardCore.Data;
+using OrchardCore.Email;
 using OrchardCore.Environment.Shell;
 using OrchardCore.Environment.Shell.Models;
 using OrchardCore.Environment.Shell.Removing;
+using OrchardCore.Locking.Distributed;
 using OrchardCore.Modules;
 using OrchardCore.Mvc.ModelBinding;
+using OrchardCore.Recipes.Models;
 using OrchardCore.RemoteManagement;
+using OrchardCore.Setup.Services;
 using OrchardCore.Tenants.Controllers;
 using OrchardCore.Tenants.Models;
 using OrchardCore.Tenants.Services;
@@ -78,6 +86,26 @@ internal static class TenantManagementEndpoints
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status403Forbidden);
+
+        builder.MapManagementPost(RoutePrefix + "/{tenantName}:setup", SetupAsync)
+            .WithName("ApiSetupTenantManagement")
+            .WithSummary("Sets up a tenant.")
+            .WithDescription("Initializes a tenant, creates its administrator account, and executes its setup recipe.")
+            .WithCliCommand(new CliOperationMetadata(["tenants"], "setup")
+            {
+                Capability = TenantManagementApiEndpointConventions.CapabilityName,
+                Arguments = { new CliArgumentMetadata("tenantName", 0) },
+                SecretProperties = { "password" },
+            })
+            .Accepts<TenantSetupRequest>("application/json")
+            .Produces<TenantResponse>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status500InternalServerError)
+            .ProducesValidationProblem();
 
         builder.MapManagementPut(RoutePrefix + "/{tenantName}", UpdateAsync)
             .WithName("ApiUpdateTenantManagement")
@@ -471,6 +499,225 @@ internal static class TenantManagementEndpoints
         }
     }
 
+    internal static async Task<IResult> SetupAsync(
+        HttpContext httpContext,
+        string tenantName,
+        [FromBody] TenantSetupRequest request,
+        [FromServices] IShellHost shellHost,
+        [FromServices] ShellSettings currentShellSettings,
+        [FromServices] IShellSettingsManager shellSettingsManager,
+        [FromServices] IAuthorizationService authorizationService,
+        [FromServices] IDataProtectionProvider dataProtectionProvider,
+        [FromServices] IClock clock,
+        [FromServices] ISetupService setupService,
+        [FromServices] IEmailAddressValidator emailAddressValidator,
+        [FromServices] IOptions<IdentityOptions> identityOptions,
+        [FromServices] IEnumerable<DatabaseProvider> databaseProviders,
+        [FromServices] TenantDatabasePatternResolver tenantDatabasePatternResolver,
+        [FromServices] IDistributedLock distributedLock,
+        [FromServices] IStringLocalizer<TenantApiController> localizer,
+        [FromServices] ILogger<TenantApiController> logger)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (await AuthorizeManageTenantsAsync(httpContext, authorizationService, currentShellSettings, localizer) is { } authError)
+        {
+            return authError;
+        }
+
+        (var locker, var locked) = await distributedLock.TryAcquireLockAsync(
+            $"TENANT_SETUP_{tenantName.ToUpperInvariant()}",
+            TimeSpan.FromSeconds(3),
+            TimeSpan.FromHours(1));
+        if (!locked)
+        {
+            return TypedResults.Problem(
+                title: localizer["Conflict"],
+                detail: localizer["Tenant '{0}' is already being set up.", tenantName],
+                statusCode: StatusCodes.Status409Conflict);
+        }
+
+        await using var setupLock = locker;
+
+        if (!shellHost.TryGetSettings(tenantName, out var shellSettings))
+        {
+            return httpContext.ApiNotFoundProblem(detail: localizer["Tenant not found: '{0}'.", tenantName]);
+        }
+
+        if (shellSettings.IsRunning())
+        {
+            return TypedResults.Ok(CreateTenantResponse(httpContext, shellSettings, dataProtectionProvider, clock));
+        }
+
+        if (!shellSettings.IsUninitialized())
+        {
+            return TypedResults.Problem(
+                title: localizer["Conflict"],
+                detail: localizer["Tenant '{0}' cannot be set up while it is in the '{1}' state.", tenantName, shellSettings.State],
+                statusCode: StatusCodes.Status409Conflict);
+        }
+
+        var validationState = new ModelStateDictionary();
+        if (string.IsNullOrWhiteSpace(request.SiteName))
+        {
+            validationState.AddModelError(nameof(request.SiteName), localizer["The site name is required."]);
+        }
+
+        if (string.IsNullOrWhiteSpace(request.UserName))
+        {
+            validationState.AddModelError(nameof(request.UserName), localizer["The user name is required."]);
+        }
+        else if (request.UserName.Any(character => !identityOptions.Value.User.AllowedUserNameCharacters.Contains(character)))
+        {
+            validationState.AddModelError(nameof(request.UserName), localizer["User name '{0}' is invalid, can only contain letters or digits.", request.UserName]);
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Email))
+        {
+            validationState.AddModelError(nameof(request.Email), localizer["The email is required."]);
+        }
+        else if (!emailAddressValidator.Validate(request.Email))
+        {
+            validationState.AddModelError(nameof(request.Email), localizer["The email is invalid."]);
+        }
+
+        if (string.IsNullOrEmpty(request.Password))
+        {
+            validationState.AddModelError(nameof(request.Password), localizer["The password is required."]);
+        }
+
+        if (!validationState.IsValid)
+        {
+            return httpContext.ApiValidationProblem(modelState: validationState);
+        }
+
+        var databaseProviderLookup = databaseProviders.ToDictionary(provider => provider.Value, StringComparer.OrdinalIgnoreCase);
+        var databaseProvider = string.IsNullOrEmpty(shellSettings["DatabaseProvider"]) ? request.DatabaseProvider : shellSettings["DatabaseProvider"];
+        var connectionString = string.IsNullOrEmpty(shellSettings["ConnectionString"]) ? request.ConnectionString : shellSettings["ConnectionString"];
+        var tablePrefix = string.IsNullOrEmpty(shellSettings["TablePrefix"]) ? request.TablePrefix : shellSettings["TablePrefix"];
+        var schema = string.IsNullOrEmpty(shellSettings["Schema"]) ? request.Schema : shellSettings["Schema"];
+
+        var databasePatternResolution = tenantDatabasePatternResolver.Resolve(shellSettings);
+        if (!string.IsNullOrEmpty(databasePatternResolution.TablePrefixError))
+        {
+            validationState.AddModelError(nameof(request.TablePrefix), databasePatternResolution.TablePrefixError);
+        }
+        else if (databasePatternResolution.HasTablePrefixPattern)
+        {
+            tablePrefix = databasePatternResolution.TablePrefix;
+        }
+
+        if (!string.IsNullOrEmpty(databasePatternResolution.SchemaError))
+        {
+            validationState.AddModelError(nameof(request.Schema), databasePatternResolution.SchemaError);
+        }
+        else if (databasePatternResolution.HasSchemaPattern)
+        {
+            schema = databasePatternResolution.Schema;
+        }
+
+        using (var defaultSettings = shellSettingsManager.CreateDefaultSettings().AsDisposable())
+        {
+            var presetProviderName = defaultSettings["DatabaseProvider"];
+            if (!string.IsNullOrEmpty(presetProviderName) &&
+                databaseProviderLookup.TryGetValue(presetProviderName, out var presetProvider))
+            {
+                databaseProvider = presetProviderName;
+                if (!presetProvider.HasConnectionString || !string.IsNullOrWhiteSpace(defaultSettings["ConnectionString"]))
+                {
+                    connectionString = defaultSettings["ConnectionString"];
+                    schema = defaultSettings["Schema"];
+                }
+            }
+        }
+
+        if (string.IsNullOrEmpty(databaseProvider))
+        {
+            validationState.AddModelError(nameof(request.DatabaseProvider), localizer["The database provider is required."]);
+        }
+        else if (!databaseProviderLookup.TryGetValue(databaseProvider, out var selectedProvider))
+        {
+            validationState.AddModelError(nameof(request.DatabaseProvider), localizer["The database provider is not supported."]);
+        }
+        else
+        {
+            databaseProvider = selectedProvider.Value;
+            if (selectedProvider.HasConnectionString && string.IsNullOrWhiteSpace(connectionString))
+            {
+                validationState.AddModelError(nameof(request.ConnectionString), localizer["The connection string is required for this database provider."]);
+            }
+        }
+
+        var recipeName = string.IsNullOrEmpty(shellSettings["RecipeName"]) ? request.RecipeName : shellSettings["RecipeName"];
+        RecipeDescriptor recipe = null;
+        if (string.IsNullOrWhiteSpace(recipeName))
+        {
+            validationState.AddModelError(nameof(request.RecipeName), localizer["The recipe name is required."]);
+        }
+        else
+        {
+            recipe = (await setupService.GetSetupRecipesAsync())
+                .FirstOrDefault(candidate => string.Equals(candidate.Name, recipeName, StringComparison.OrdinalIgnoreCase));
+            if (recipe is null)
+            {
+                validationState.AddModelError(nameof(request.RecipeName), localizer["Recipe '{0}' not found.", recipeName]);
+            }
+        }
+
+        if (!validationState.IsValid)
+        {
+            return httpContext.ApiValidationProblem(modelState: validationState);
+        }
+
+        var setupContext = new SetupContext
+        {
+            ShellSettings = shellSettings,
+            EnabledFeatures = null,
+            Errors = new Dictionary<string, string>(),
+            Recipe = recipe,
+            Properties = new Dictionary<string, object>
+            {
+                [SetupConstants.SiteName] = request.SiteName,
+                [SetupConstants.AdminUsername] = request.UserName,
+                [SetupConstants.AdminEmail] = request.Email,
+                [SetupConstants.AdminPassword] = request.Password,
+                [SetupConstants.SiteTimeZone] = string.IsNullOrWhiteSpace(request.SiteTimeZone)
+                    ? clock.GetSystemTimeZone().TimeZoneId
+                    : request.SiteTimeZone,
+                [SetupConstants.DatabaseProvider] = databaseProvider,
+                [SetupConstants.DatabaseConnectionString] = connectionString,
+                [SetupConstants.DatabaseTablePrefix] = tablePrefix,
+                [SetupConstants.DatabaseSchema] = schema,
+            },
+        };
+
+        try
+        {
+            _ = await setupService.SetupAsync(setupContext);
+        }
+        catch (Exception exception) when (!exception.IsFatal())
+        {
+            logger.LogError(exception, "An error occurred while setting up tenant '{TenantName}'.", tenantName);
+            return TypedResults.Problem(
+                title: localizer["Tenant setup failed"],
+                detail: localizer["An error occurred while running the setup. Consult the application logs for details."],
+                statusCode: StatusCodes.Status500InternalServerError);
+        }
+
+        if (setupContext.Errors.Count > 0)
+        {
+            foreach (var error in setupContext.Errors)
+            {
+                validationState.AddModelError(error.Key, error.Value);
+            }
+
+            return httpContext.ApiValidationProblem(modelState: validationState);
+        }
+
+        _ = shellHost.TryGetSettings(tenantName, out var updatedSettings);
+        return TypedResults.Ok(CreateTenantResponse(httpContext, updatedSettings ?? shellSettings, dataProtectionProvider, clock));
+    }
+
     internal static async Task<IResult> StartAsync(
         HttpContext httpContext,
         string tenantName,
@@ -837,6 +1084,45 @@ internal static class TenantManagementEndpoints
             RecipeName = RecipeName,
             FeatureProfiles = FeatureProfiles,
         };
+    }
+
+    internal sealed class TenantSetupRequest
+    {
+        [Required]
+        [Description("The site name.")]
+        public string SiteName { get; init; }
+
+        [Required]
+        [Description("The initial administrator user name.")]
+        public string UserName { get; init; }
+
+        [Required]
+        [System.ComponentModel.DataAnnotations.EmailAddress]
+        [Description("The initial administrator email address.")]
+        public string Email { get; init; }
+
+        [Required]
+        [DataType(DataType.Password)]
+        [Description("The initial administrator password.")]
+        public string Password { get; init; }
+
+        [Description("The setup recipe name. The tenant's configured recipe takes precedence.")]
+        public string RecipeName { get; init; }
+
+        [Description("The site time zone. Defaults to the server time zone.")]
+        public string SiteTimeZone { get; init; }
+
+        [Description("The database provider. The tenant's configured provider takes precedence.")]
+        public string DatabaseProvider { get; init; }
+
+        [Description("The database connection string. The tenant's configured connection string takes precedence.")]
+        public string ConnectionString { get; init; }
+
+        [Description("The database table prefix. The tenant's configured prefix takes precedence.")]
+        public string TablePrefix { get; init; }
+
+        [Description("The database schema. The tenant's configured schema takes precedence.")]
+        public string Schema { get; init; }
     }
 
     internal sealed class TenantListResponse

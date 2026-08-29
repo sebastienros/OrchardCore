@@ -90,6 +90,11 @@ internal static class OpenApiCliParser
             metadata.Aliases.Add(alias);
         }
 
+        foreach (var property in CliUtilities.ReadStringArray(extensionElement, "secretProperties"))
+        {
+            metadata.SecretProperties.Add(property);
+        }
+
         if (extensionElement.TryGetProperty("arguments", out var argumentsElement) && argumentsElement.ValueKind == JsonValueKind.Array)
         {
             foreach (var argumentElement in argumentsElement.EnumerateArray())

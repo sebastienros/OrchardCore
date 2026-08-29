@@ -52,6 +52,7 @@ responses use `application/json`; Problem Details responses use
 | List tenants | `GET` | `/api/tenants` | `200 OK` |
 | Get tenant | `GET` | `/api/tenants/{tenantName}` | `200 OK` |
 | Create tenant | `POST` | `/api/tenants` | `201 Created`, equivalent retry `200 OK`, conflict `409 Conflict` |
+| Set up tenant | `POST` | `/api/tenants/{tenantName}:setup` | `200 OK` |
 | Update tenant | `PUT` | `/api/tenants/{tenantName}` | `200 OK` |
 | Delete tenant | `DELETE` | `/api/tenants/{tenantName}` | `200 OK`, already absent `204 No Content` |
 | Start tenant | `POST` | `/api/tenants/{tenantName}:start` | `200 OK` |
@@ -309,9 +310,9 @@ Content-Type: application/json
 ```
 
 Creates shell settings in the `Uninitialized` state. This operation does not
-run tenant setup and does not create a user account. Open the returned
-`setupUrl` to select the site settings and recipe and create the tenant's
-initial administrator account.
+run tenant setup and does not create a user account. Use
+[`oc tenants setup`](#set-up-a-tenant) or open the returned `setupUrl` to
+execute the recipe and create the tenant's initial administrator account.
 
 ### Parameters
 
@@ -384,10 +385,8 @@ Schema, including required properties and constraints.
 
 After creation:
 
-1. Open the `setupUrl` from the command response.
-2. Complete setup by supplying the site name and initial administrator
-   username, email address, and password. The stored `recipeName` is executed
-   during this step.
+1. Run `oc tenants setup TenantA` and supply the site name and initial
+   administrator details. The stored `recipeName` is executed during this step.
 3. From the Default tenant context, run
    `oc tenants enable-remote-management TenantA`.
 4. Register the initialized tenant using
@@ -461,6 +460,72 @@ Location: /api/tenants/TenantA
   "canDelete": true
 }
 ```
+
+## Set up a tenant
+
+```http
+POST /api/tenants/{tenantName}:setup
+Content-Type: application/json
+```
+
+Initializes an `Uninitialized` tenant, creates its administrator account, and
+executes its setup recipe. Database and recipe values saved by tenant creation
+take precedence over values in this request. Server database presets and tenant
+table-prefix or schema patterns also apply. When `siteTimeZone` is omitted, the
+server time zone is used.
+
+The command prompts for the password without echoing it when run interactively:
+
+```bash
+oc tenants setup TenantA \
+  --site-name "Tenant A" \
+  --user-name admin \
+  --email admin@example.com
+```
+
+For automation, provide exactly one secret source:
+
+```bash
+oc tenants setup TenantA \
+  --site-name "Tenant A" \
+  --user-name admin \
+  --email admin@example.com \
+  --password-env OC_TENANT_ADMIN_PASSWORD
+```
+
+`--password-stdin` reads the password from standard input, and
+`--password-file <path>` reads it from a file. A single trailing line ending is
+removed from standard-input and file values. Prefer the masked prompt for
+interactive use, an environment variable supplied by the CI secret store for
+automation, or a short-lived owner-readable file when a platform mounts secrets
+as files. Avoid inline `--body` values because command lines can be retained in
+shell history and process listings; `--body` is therefore not exposed for this
+secret-bearing operation. A complete JSON body can still be read safely from
+`--stdin` or `--body-file`.
+
+### JSON body
+
+| Property | Type | Required | Behavior |
+| --- | --- | --- | --- |
+| `siteName` | string | Yes | Site name. |
+| `userName` | string | Yes | Initial administrator user name. |
+| `email` | string | Yes | Valid initial administrator email address. |
+| `password` | string | Yes | Initial administrator password. Secret CLI input rules apply. |
+| `recipeName` | string or null | No | Used when tenant creation did not save a recipe. |
+| `siteTimeZone` | string or null | No | Defaults to the server time zone. |
+| `databaseProvider` | string or null | No | Used when tenant creation did not save a provider. |
+| `connectionString` | string or null | No | Used when tenant creation did not save a connection string. |
+| `tablePrefix` | string or null | No | Used when tenant creation did not save a prefix. |
+| `schema` | string or null | No | Used when tenant creation did not save a schema. |
+
+A successful request returns the initialized [tenant](#tenant). Retrying after
+the tenant reaches `Running` returns that tenant without executing setup again.
+Setup requests for the same tenant are serialized with a distributed lock; a
+request that cannot acquire the lock returns `409 Conflict`.
+Unknown tenants return `404`; tenants in another transitional state return
+`409`; invalid input or setup-component errors return Validation Problem
+Details. Authentication and Default-tenant authorization requirements are the
+same as other tenant management operations.
 
 ## Update a tenant
 
