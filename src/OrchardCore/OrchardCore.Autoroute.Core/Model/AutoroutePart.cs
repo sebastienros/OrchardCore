@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Text.Json.Serialization;
 using OrchardCore.ContentManagement;
 
 namespace OrchardCore.Autoroute.Models;
@@ -15,7 +16,7 @@ public class AutoroutePart : ContentPart
     /// <summary>
     /// Whether to make the content item the homepage once it's published.
     /// </summary>
-    [Description("Whether the content item becomes the site homepage when published.")]
+    [JsonIgnore]
     public bool SetHomepage { get; set; }
 
     /// <summary>

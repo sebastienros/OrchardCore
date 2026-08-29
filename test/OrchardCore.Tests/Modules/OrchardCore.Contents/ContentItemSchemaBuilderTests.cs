@@ -7,13 +7,16 @@ using OrchardCore.ContentFields.Fields;
 using OrchardCore.Autoroute.Models;
 using OrchardCore.ContentManagement;
 using OrchardCore.ContentManagement.Metadata.Models;
+using OrchardCore.Contents.AuditTrail.Models;
 using OrchardCore.Contents.Models;
 using OrchardCore.Contents.Services;
+using OrchardCore.Forms.Models;
 using OrchardCore.Markdown.Fields;
 using OrchardCore.Media.Fields;
 using OrchardCore.Spatial.Fields;
 using OrchardCore.Taxonomies.Fields;
 using OrchardCore.Markdown.Models;
+using OrchardCore.Seo.Models;
 using OrchardCore.Title.Models;
 
 namespace OrchardCore.Tests.Modules.OrchardCore.Contents;
@@ -148,6 +151,31 @@ public class ContentItemSchemaBuilderTests
         Assert.Equal(expectedDescription, description?.GetValue<string>());
     }
 
+    [Fact]
+    public void BuildSchema_ProductionContentParts_DescribeNestedPropertiesAndExcludeTransientCommands()
+    {
+        var schema = BuildNestedPartSchema();
+        var properties = schema["properties"];
+
+        Assert.Null(properties?[nameof(AutoroutePart)]?["properties"]?[nameof(AutoroutePart.SetHomepage)]);
+        Assert.Null(properties?[nameof(AuditTrailPart)]?["properties"]?[nameof(AuditTrailPart.ShowComment)]);
+        Assert.Equal(
+            "The text displayed for the option.",
+            properties?[nameof(SelectPart)]?["properties"]?[nameof(SelectPart.Options)]?["items"]?
+                ["properties"]?[nameof(SelectOption.Text)]?["description"]?.GetValue<string>());
+        Assert.Equal(
+            "The form field whose value is evaluated.",
+            properties?[nameof(FormInputElementVisibilityPart)]?["properties"]?
+                [nameof(FormInputElementVisibilityPart.Groups)]?["items"]?["properties"]?
+                [nameof(FormVisibilityRuleGroup.Rules)]?["items"]?["properties"]?
+                [nameof(FormVisibilityRule.Field)]?["description"]?.GetValue<string>());
+        Assert.Equal(
+            "The value of the HTML meta element's name attribute.",
+            properties?[nameof(SeoMetaPart)]?["properties"]?[nameof(SeoMetaPart.CustomMetaTags)]?
+                ["items"]?["properties"]?[nameof(global::OrchardCore.ResourceManagement.MetaEntry.Name)]?
+                ["description"]?.GetValue<string>());
+    }
+
     private static JsonObject BuildSchema()
     {
         var services = new ServiceCollection();
@@ -225,7 +253,7 @@ public class ContentItemSchemaBuilderTests
         var partDefinition = new ContentPartDefinition(nameof(SchemaPart), fieldDefinitions, []);
         var typePartDefinition = new ContentTypePartDefinition(nameof(SchemaPart), partDefinition, []);
         var typeDefinition = new ContentTypeDefinition("Article", "Article", [typePartDefinition], []);
- 
+
         return ContentItemSchemaBuilder.BuildSchema(
             typeDefinition,
             contentOptions,
@@ -249,6 +277,36 @@ public class ContentItemSchemaBuilderTests
                 CreateTypePartDefinition(nameof(TitlePart)),
                 CreateTypePartDefinition(nameof(AutoroutePart)),
                 CreateTypePartDefinition(nameof(MarkdownBodyPart)),
+            ],
+            []);
+
+        return ContentItemSchemaBuilder.BuildSchema(
+            typeDefinition,
+            contentOptions,
+            new JsonSerializerOptions { TypeInfoResolver = new DefaultJsonTypeInfoResolver() });
+    }
+
+    private static JsonObject BuildNestedPartSchema()
+    {
+        var services = new ServiceCollection();
+        services.AddOptions();
+        services.AddContentPart<AutoroutePart>();
+        services.AddContentPart<AuditTrailPart>();
+        services.AddContentPart<SelectPart>();
+        services.AddContentPart<FormInputElementVisibilityPart>();
+        services.AddContentPart<SeoMetaPart>();
+
+        using var serviceProvider = services.BuildServiceProvider();
+        var contentOptions = serviceProvider.GetRequiredService<IOptions<ContentOptions>>().Value;
+        var typeDefinition = new ContentTypeDefinition(
+            "Nested",
+            "Nested",
+            [
+                CreateTypePartDefinition(nameof(AutoroutePart)),
+                CreateTypePartDefinition(nameof(AuditTrailPart)),
+                CreateTypePartDefinition(nameof(SelectPart)),
+                CreateTypePartDefinition(nameof(FormInputElementVisibilityPart)),
+                CreateTypePartDefinition(nameof(SeoMetaPart)),
             ],
             []);
 

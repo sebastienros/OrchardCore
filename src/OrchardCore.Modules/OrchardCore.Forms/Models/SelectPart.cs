@@ -17,8 +17,10 @@ public class SelectPart : ContentPart
 
 public class SelectOption
 {
+    [Description("The text displayed for the option.")]
     public string Text { get; set; }
 
+    [Description("The value submitted when the option is selected.")]
     public string Value { get; set; }
 }
 
