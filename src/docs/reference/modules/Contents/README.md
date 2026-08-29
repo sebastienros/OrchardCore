@@ -2,6 +2,10 @@
 
 This module provides Content Management services.
 
+## API reference
+
+See the [Content items management API](../../api/content-items/README.md) for OpenAPI operations that create, update, validate, publish, render, list, and delete content items.
+
 ## Content Life Cycle
 
 The content life cycle is managed through different content item versions. In Orchard Core, the content item could be:

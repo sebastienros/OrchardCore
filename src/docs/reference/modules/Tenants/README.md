@@ -2,6 +2,11 @@
 
 The `Tenants` module allows you to manage tenants from the admin.
 
+## API reference
+
+- [Tenant management API](../../api/tenants/README.md)
+- [Tenant static-file management API](../../api/static-files/README.md)
+
 ## Static File Provider Feature
 
 This feature registers a file provider for each tenant in order to serve custom files per tenant, even if they have the same names.

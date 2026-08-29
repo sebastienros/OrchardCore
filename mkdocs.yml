@@ -196,6 +196,25 @@ nav:
       - Managing the Orchard Core Red Hat Ecosystem Catalog certification: topics/red-hat-ecosystem-catalog-certification/README.md
       - Source Generators: topics/source-generators/README.md
   - Reference:
+      - API Reference:
+          - Overview: reference/api/README.md
+          - Protocol:
+              - Discovery and manifest: reference/api/discovery/README.md
+              - Authentication: reference/api/authentication/README.md
+          - Content:
+              - Content definitions: reference/api/content-definitions/README.md
+              - Content items: reference/api/content-items/README.md
+              - Media: reference/api/media/README.md
+              - Queries: reference/api/queries/README.md
+              - Workflows: reference/api/workflows/README.md
+          - Administration:
+              - Features: reference/api/features/README.md
+              - Recipes: reference/api/recipes/README.md
+              - Roles: reference/api/roles/README.md
+              - Users: reference/api/users/README.md
+          - Hosting:
+              - Tenants: reference/api/tenants/README.md
+              - Static files: reference/api/static-files/README.md
       - Modules:
           - Overview: reference/README.md
           - CMS Modules:
@@ -370,6 +389,7 @@ nav:
       - Opening and managing issues: contributing/managing-issues.md
       - Contributing code: contributing/contributing-code.md
       - Contributing documentation: contributing/contributing-documentation.md
+      - Documenting management APIs: contributing/documenting-management-apis.md
       - Reviewing pull requests: contributing/reviewing-pull-requests.md
       - Using agent skills: contributing/using-skills.md
       - Benchmarking: contributing/benchmarking.md

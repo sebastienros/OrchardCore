@@ -4,6 +4,12 @@ The Remote Management module exposes a versioned management protocol and tenant-
 
 The CLI uses OpenAPI as its management protocol. GraphQL remains available for application queries but is not required by `oc`.
 
+## API reference
+
+- [Management API overview](../../api/README.md)
+- [Discovery and manifest](../../api/discovery/README.md)
+- [Authentication](../../api/authentication/README.md)
+
 ## Enable and configure
 
 Enable **Remote Management** from **Configuration → Features**. This also enables the OpenAPI, OpenID authorization server, OpenID management, and OpenID token validation dependencies.

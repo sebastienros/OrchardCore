@@ -4,6 +4,10 @@ The Media module provides a UI to upload and organize binary files that can be u
 
 The media-processing liquid filters can also create custom sized images.
 
+## API reference
+
+See the [Media management API](../../api/media/README.md) for OpenAPI operations that browse and manage media files and folders.
+
 ## HTML filters
 
 The following filters allow for media manipulation:

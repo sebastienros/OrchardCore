@@ -1,5 +1,9 @@
 # Content Types (`OrchardCore.ContentTypes`)
 
+## API reference
+
+See the [Content definitions management API](../../api/content-definitions/README.md) for OpenAPI operations that manage content types, content parts, and content fields.
+
 ## View Components
 
 ### `SelectContentTypes`

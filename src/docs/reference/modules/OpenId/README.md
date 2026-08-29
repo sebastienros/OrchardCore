@@ -10,6 +10,10 @@
 - **OpenID Connect Authorization Server**
 - **OpenID Connect Client Integration**
 
+## Remote management authentication reference
+
+See [Management API authentication](../../api/authentication/README.md) for the OpenID Connect endpoints, grants, scopes, and request formats used by remote management clients.
+
 ## Core OpenID Connect Services
 
 This feature provides the essential services that underpin all other OpenID Connect features within Orchard Core. It includes fundamental components needed for secure communication, token handling, and user authentication.

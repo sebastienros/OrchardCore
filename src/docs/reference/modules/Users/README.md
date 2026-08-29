@@ -2,6 +2,10 @@
 
 The Users module enables authentication UI and user management.
 
+## API reference
+
+See the [User management API](../../api/users/README.md) for OpenAPI operations that list and manage users.
+
 ## Features
 
 The module contains the following features apart from the base feature:

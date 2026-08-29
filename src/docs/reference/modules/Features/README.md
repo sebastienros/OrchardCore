@@ -2,6 +2,10 @@
 
 The `OrchardCore.Features` module lets the administrator of a site manage the installed modules and enable or disable the features they provide.
 
+## API reference
+
+See the [Feature management API](../../api/features/README.md) for OpenAPI operations that list, enable, and disable features.
+
 ## Managing features
 
 Go to **Configuration** > **Features** in the admin (requires the `Manage features` permission). From there you can:

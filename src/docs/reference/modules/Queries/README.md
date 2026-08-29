@@ -2,6 +2,10 @@
 
 The queries module provides a management UI and APIs for querying data.
 
+## Management API reference
+
+See the [Query management API](../../api/queries/README.md) for OpenAPI operations that manage saved queries, inspect query-source schemas, and execute queries.
+
 ## Creating custom query sources
 
 ### Query
