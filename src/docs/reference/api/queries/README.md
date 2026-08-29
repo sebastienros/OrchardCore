@@ -38,7 +38,7 @@ https://host/{tenant-prefix}/api/queries
 | `GET` | `/api/queries/sources` | List enabled query sources | `ManageQueries` |
 | `POST` | `/api/queries/validate` | Validate without saving | `ManageQueries` |
 | `GET` | `/api/queries/named/{name}` | Get one definition | `ManageQueries` |
-| `PUT` | `/api/queries/named/{name}` | Update or rename a definition | `ManageQueries` |
+| `PUT` | `/api/queries/named/{name}` | Update a definition | `ManageQueries` |
 | `DELETE` | `/api/queries/named/{name}` | Delete a definition | `ManageQueries` |
 | `POST` | `/api/queries/named/{name}/execute` | Execute a named query | `ExecuteApi_{query-name}` |
 
@@ -257,7 +257,14 @@ curl -X POST -H 'Authorization: Bearer ACCESS_TOKEN' \
   'https://cms.example.com/tenant-a/api/queries'
 ```
 
-`201 Created` returns the saved definition and a URL-escaped resource location:
+`name` and `source` are trimmed, source casing is canonicalized to the enabled source name, and a
+null `properties` value is normalized to `{}`. If the normalized name already exists, exact
+equality of `name`, canonical `source`, `returnContentItems`, `schema`, `parameterSchema`, and
+`properties` makes the request an equivalent retry. An equivalent retry returns the existing
+definition with `201 Created`; a different definition with the same name returns `409 Conflict`.
+
+`201 Created` returns the saved or equivalent existing definition and a URL-escaped resource
+location:
 
 ```http
 Location: /api/queries/named/PublishedArticles
@@ -289,7 +296,7 @@ Location: /api/queries/named/PublishedArticles
 }
 ```
 
-Other responses: `401`, `403`.
+Other responses: `401`, `403`, or `409` when the name belongs to a different definition.
 
 ### Validate a definition
 
@@ -376,7 +383,7 @@ curl -H 'Authorization: Bearer ACCESS_TOKEN' \
 
 Other responses: `401`, `403`, `404`.
 
-### Update or rename a named query
+### Update a named query
 
 ```http
 PUT /api/queries/named/{name}
@@ -385,13 +392,16 @@ Content-Type: application/json
 
 `name` in the path identifies the existing definition. The body is a query definition. Omitted or null body properties `name`, `source`, `schema`, `parameterSchema`, and `properties` inherit their stored values. Because `returnContentItems` is a non-nullable boolean, omitting it supplies `false` rather than inheriting its old value.
 
-Supplying a different body `name` renames the query after validation. Name comparison for the rename is ordinal and case-sensitive.
+A blank body `name` inherits the route name. A nonblank body `name` must equal the route name
+using ordinal, case-sensitive comparison. A different value, including different casing, returns
+`400` before lookup or mutation. This management API does not expose a rename operation.
+Repeating a successful update converges the definition to the same values and returns `200`.
 
 ```bash
 curl -X PUT -H 'Authorization: Bearer ACCESS_TOKEN' \
   -H 'Content-Type: application/json' \
   -d '{
-    "name":"PublicArticles",
+    "name":"PublishedArticles",
     "returnContentItems":true,
     "properties":{
       "SqlQueryMetadata":{
@@ -406,7 +416,7 @@ curl -X PUT -H 'Authorization: Bearer ACCESS_TOKEN' \
 
 ```json
 {
-  "name": "PublicArticles",
+  "name": "PublishedArticles",
   "source": "Sql",
   "schema": null,
   "parameterSchema": null,
@@ -453,7 +463,8 @@ curl -X DELETE -H 'Authorization: Bearer ACCESS_TOKEN' \
 }
 ```
 
-Other responses: `401`, `403`, `404`.
+If the query is already absent, the convergent retry returns `204 No Content` with no body.
+Other responses are `401` or `403`.
 
 ### Execute a named query
 
@@ -493,6 +504,10 @@ curl -X POST -H 'Authorization: Bearer ACCESS_TOKEN' \
 ```
 
 `count` is an `int64` or null. It uses the result object's public `Count` when that value is an `int32` or `int64`; otherwise it counts `items`. Items preserve JSON nodes or are serialized from the returned CLR values.
+
+The stored query is resolved before its exact `ExecuteApi_{stored-query-name}` permission is
+checked; `ManageQueries` and `ExecuteApiAll` imply that permission. Each successful request
+executes the query again, so retrying this command is intentionally not idempotent.
 
 Other responses: `401`, `403`, `404`.
 

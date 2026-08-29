@@ -51,9 +51,9 @@ responses use `application/json`; Problem Details responses use
 | --- | --- | --- | --- |
 | List tenants | `GET` | `/api/tenants` | `200 OK` |
 | Get tenant | `GET` | `/api/tenants/{tenantName}` | `200 OK` |
-| Create tenant | `POST` | `/api/tenants` | `201 Created` |
+| Create tenant | `POST` | `/api/tenants` | `201 Created`, equivalent retry `200 OK`, conflict `409 Conflict` |
 | Update tenant | `PUT` | `/api/tenants/{tenantName}` | `200 OK` |
-| Delete tenant | `DELETE` | `/api/tenants/{tenantName}` | `200 OK` |
+| Delete tenant | `DELETE` | `/api/tenants/{tenantName}` | `200 OK`, already absent `204 No Content` |
 | Start tenant | `POST` | `/api/tenants/{tenantName}:start` | `200 OK` |
 | Stop tenant | `POST` | `/api/tenants/{tenantName}:stop` | `200 OK` |
 | Enable Remote Management | `POST` | `/api/tenants/{tenantName}:enable-remote-management` | `200 OK` |
@@ -326,7 +326,7 @@ There are no path or query parameters.
 
 | Property | Type | Required | Default | Constraints and behavior |
 | --- | --- | --- | --- | --- |
-| `name` | string | Yes | `""` when omitted | Nonempty and matched by `^\w+$`; it cannot duplicate another tenant, including `Default` case-insensitively. |
+| `name` | string | Yes | `""` when omitted | Nonempty and matched by `^\w+$`. An existing name is evaluated as a retry. |
 | `requestUrlHost` | string or null | No | `null` | Hosts are separated by commas or spaces. The host-and-prefix combination must not conflict with another tenant. |
 | `requestUrlPrefix` | string or null | No | `null` | At most one segment; `/` is rejected. The host-and-prefix combination must be unique. |
 | `category` | string or null | No | `null` | No additional endpoint constraint. |
@@ -350,6 +350,13 @@ Server configuration can override submitted database values:
   provider. When that provider does not require a connection string, or when
   a root/default connection string is nonempty, the root/default connection
   string and schema also replace submitted values.
+
+Retry equivalence is evaluated after these presets and patterns are applied. Name, host, prefix,
+database provider, and recipe compare case-insensitively. Category, description, connection
+string, table prefix, and schema compare ordinally. Null and empty strings are equivalent.
+Feature profiles compare as an order-independent, case-insensitive sequence. Tenant state,
+tenant ID, and secret are not compared. Concurrent creation applies the same result: equivalent
+effective settings return `200`, while different effective settings return `409`.
 
 ### CLI
 
@@ -411,8 +418,7 @@ curl --request POST 'https://cms.example.com/api/tenants' \
 
 - `201 Created` returns the created [tenant](#tenant). The `Location` header is
   `/api/tenants/{percent-encoded-name}`.
-- `200 OK` returns the existing tenant when an identical create request is
-  retried.
+- `200 OK` returns the existing tenant when an equivalent effective create request is retried.
 - `409 Conflict` is returned when that tenant name already exists with
   different effective settings.
 - `400 Bad Request` returns Validation Problem Details for invalid fields, or
@@ -456,20 +462,6 @@ Location: /api/tenants/TenantA
 }
 ```
 
-Validation error keys retain the model's Pascal casing:
-
-```json
-{
-  "title": "A validation error occurred.",
-  "status": 400,
-  "errors": {
-    "Name": [
-      "A tenant with the same name already exists."
-    ]
-  }
-}
-```
-
 ## Update a tenant
 
 ```http
@@ -502,6 +494,10 @@ There are no query parameters. The JSON body is required and has every
 property from [Create a tenant](#json-body) except `name`; all properties are
 optional. The same configuration overrides apply, while database connection
 validation is limited to an `Uninitialized` tenant as described above.
+
+Repeating a successful replacement converges the mutable settings to the same effective values
+and returns `200`. Settings that are immutable in the tenant's current state remain unchanged on
+every retry.
 
 ### Request
 
@@ -567,14 +563,14 @@ curl --request PUT 'https://cms.example.com/api/tenants/TenantA' \
 POST /api/tenants/{tenantName}:start
 ```
 
-Transitions a `Disabled` tenant to `Running`.
+Converges a `Disabled` or already `Running` tenant to `Running`.
 
 ### Parameters
 
 | Location | Name | Type | Required | Constraints |
 | --- | --- | --- | --- | --- |
 | Header | `Authorization` | string | Yes | `Bearer <access-token>`. |
-| Path | `tenantName` | string | Yes | Existing disabled tenant name; percent-encode it as one path segment before the `:start` suffix. |
+| Path | `tenantName` | string | Yes | Existing disabled or running tenant name; percent-encode it as one path segment before the `:start` suffix. |
 
 There are no query parameters and no request body.
 
@@ -635,14 +631,14 @@ curl --request POST 'https://cms.example.com/api/tenants/TenantA:start' \
 POST /api/tenants/{tenantName}:stop
 ```
 
-Transitions a `Running` tenant to `Disabled`.
+Converges a `Running` or already `Disabled` tenant to `Disabled`.
 
 ### Parameters
 
 | Location | Name | Type | Required | Constraints |
 | --- | --- | --- | --- | --- |
 | Header | `Authorization` | string | Yes | `Bearer <access-token>`. |
-| Path | `tenantName` | string | Yes | Existing running tenant name; percent-encode it as one path segment before the `:stop` suffix. |
+| Path | `tenantName` | string | Yes | Existing running or disabled tenant name; percent-encode it as one path segment before the `:stop` suffix. |
 
 There are no query parameters and no request body.
 
@@ -768,6 +764,10 @@ validation, creates or updates the `orchardcore.management` scope and
 `orchardcore-cli` public native application, grants **Access remote management
 API** to administrator roles, and reloads the tenant shell.
 
+Repeating a successful request revalidates and reapplies the same feature, OpenID Connect,
+permission, and application configuration without creating duplicate scope or application
+records, and returns `200`.
+
 This does not authenticate the Default-tenant caller as a user of the target
 tenant. Register the returned URL as a separate CLI context and authenticate
 directly to that tenant.
@@ -823,12 +823,27 @@ curl --request POST \
 }
 ```
 
+## Legacy tenant API compatibility
+
+The controller also retains the older `POST /api/tenants/create`,
+`POST /api/tenants/edit`, `POST /api/tenants/disable/{tenantName}`,
+`POST /api/tenants/enable/{tenantName}`, `POST /api/tenants/remove/{tenantName}`, and
+`POST /api/tenants/setup` routes. They use the older controller contract rather than the
+`AccessRemoteManagement` endpoint convention, but still require the `Api` authentication scheme,
+the Default tenant, and `ManageTenants`.
+
+Legacy enable and disable are convergent and return `200` when the tenant is already in the
+requested state. Legacy remove returns `204` when the tenant is already absent. Legacy edit
+preserves the existing tenant secret and generates one only when an uninitialized tenant has no
+secret. Legacy create returns `200` for initial creation and `201` with a stable setup URL when an
+existing tenant is retried. These compatibility routes are not part of the eight management
+routes summarized above.
+
 ## Validation and common errors
 
 Create and update can return these source-defined validation conditions:
 
-- a missing tenant name, an invalid `^\w+$` name, a duplicate name, or a name
-  conflicting with `Default`;
+- a missing tenant name or an invalid `^\w+$` name;
 - a nonexistent feature profile;
 - a prefix containing `/`, or a host-and-prefix combination already assigned
   to another tenant;

@@ -95,10 +95,11 @@ Content item documents use the following exact, Pascal-cased well-known property
 | `Author` | string or null | Last modifier's user name. |
 | `<part name>` | object | Content-type-specific part data. |
 
-`Author` is always controlled by the server. Changing a nonempty `Owner`
-requires `EditContentOwner` for the content item; otherwise the request is
-forbidden. Omitting `Owner` preserves the current owner or uses the
-authenticated creator for a new item.
+`Author` is always controlled by the server: any incoming value is discarded and replaced with
+the current server value. An omitted or empty `Owner` preserves the current owner, so ownership
+cannot be cleared; a new item uses the authenticated creator. Changing to a different nonempty
+owner requires `EditContentOwner` for the content item, and owner equality is ordinal and
+case-sensitive.
 
 The remaining top-level members and all nested part/field members depend on the content
 definition and enabled modules. Use the schema endpoint for the current contract. The schema
@@ -192,7 +193,13 @@ curl -H "Authorization: Bearer $TOKEN" \
   "https://localhost:5001/api/content?contentType=Article&status=published&skip=0&take=20"
 ```
 
-`200 OK` returns the total before paging and content items ordered by `ModifiedUtc` descending:
+The service first checks `ListContent` once per content type against a synthetic item. It then
+checks each real result with resource-aware `ViewContent` when published or `PreviewContent`
+otherwise. Types or items the caller cannot access are omitted rather than producing `403`.
+Authorization filtering happens before `skip` and `take`, so `totalCount` is the exact authorized
+count before paging. Results are ordered by `ModifiedUtc` descending and then index ID ascending.
+
+`200 OK` returns:
 
 ```json
 {
@@ -270,9 +277,13 @@ returns `401`, `403`, or `404`.
 | body | body | content item | Yes | — |
 
 With no body `ContentItemId`, this creates an item and retries can create additional items. A
-supplied ID is preserved, making the request retry-safe: an ID that resolves to an existing item
-updates its current state, while an unknown ID creates that exact logical item. `draft=false` publishes after saving and
-requires `EditContent` plus `PublishContent`; `draft=true` keeps a draft and requires `EditContent`.
+supplied ID is preserved: an unknown ID creates that exact logical item, while an existing ID
+updates its current state. A repeated save is a no-op only when the requested publication state
+already matches and the supplied content is equivalent. Equivalence compares supplied
+`ContentType`, `DisplayText`, and `Owner` exactly, ignores server-managed well-known properties,
+and requires deep JSON equality for every supplied custom top-level part or property. Omitted
+properties are not compared. `draft=false` publishes after saving and requires `EditContent` plus
+`PublishContent`; `draft=true` keeps a draft and requires `EditContent`.
 
 ```bash
 curl -X POST -H "Authorization: Bearer $TOKEN" \
@@ -315,13 +326,18 @@ Also returns `400`, `401`, `403`, or `404`.
 `POST /api/content/draft`
 
 The required body is a content item whose `ContentType` exists. Omit `ContentItemId` to create a
-draft with a generated ID. Supplying an ID creates that exact logical item; repeating the request
-returns the existing editable draft without creating another item. Requires `EditContent`.
+draft with a generated ID; that form is not retry-safe. Supplying an ID creates that exact logical
+item. If the ID already exists and the supplied content is equivalent by the comparison rules
+above, the endpoint returns the existing item with `201 Created` even when that item is currently
+published. Different content returns `400` validation Problem Details with key `ContentItemId`
+and message `A content item with this id already exists with different content.`. Requires
+`EditContent`; this operation does not return `409`.
 
 ```bash
 curl -X POST -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
+    "ContentItemId": "4xyz6d8qk2s9r1n7m5p3t0vabc",
     "ContentType": "Article",
     "DisplayText": "Draft article",
     "TitlePart": {
@@ -360,8 +376,9 @@ Also returns `400`, `401`, or `403`.
 
 `contentItemId` is a required string path parameter. The required content item body is merged
 into the required draft; arrays are replaced rather than concatenated. The route ID identifies
-the item. A nonblank `ContentType` must match its existing type. Requires `EditContent` and
-`PublishContent`.
+the item. A nonblank `ContentType` must match its existing type. An equivalent retry is a no-op
+when the item is already published; supplied fields use the comparison rules described above.
+Requires `EditContent` and `PublishContent`.
 
 ```bash
 curl -X PUT -H "Authorization: Bearer $TOKEN" \
@@ -405,7 +422,9 @@ Changing `ContentType` produces a `400` validation error with key `ContentType` 
 `PUT /api/content/{contentItemId}/draft`
 
 The path ID and content item body are required. The body is merged into the required draft,
-arrays are replaced, and the item remains unpublished. Requires `EditContent`.
+arrays are replaced, and the item remains unpublished. An equivalent retry is a no-op when the
+item is already unpublished; supplied fields use the comparison rules described above. Requires
+`EditContent`.
 
 ```bash
 curl -X PUT -H "Authorization: Bearer $TOKEN" \
@@ -449,7 +468,8 @@ Also returns `400`, `401`, `403`, or `404`.
 
 `contentItemId` is a required string path parameter. No body or query parameters are accepted.
 The latest version is passed to the content manager's draft-saving operation, then the required
-draft is returned. Requires `EditContent`.
+draft is returned. If an editable draft already exists, repeating the request returns that draft
+without creating another version. Requires `EditContent`.
 
 ```bash
 curl -X POST -H "Authorization: Bearer $TOKEN" \

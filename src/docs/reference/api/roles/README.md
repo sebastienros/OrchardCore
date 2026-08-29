@@ -221,7 +221,7 @@ POST /api/roles
 
 | Property | Type | Required | Default | Constraints |
 | --- | --- | --- | --- | --- |
-| `roleName` | string | Yes | `""` | Trimmed before use; must not be empty, contain `/`, or duplicate an existing role name. |
+| `roleName` | string | Yes | `""` | Trimmed before use; must not be empty or contain `/`. An existing role must be equivalent. |
 | `roleDescription` | string or `null` | No | `null` | Stored as supplied. |
 | `permissionNames` | array of strings | No | `[]` | Exact, case-sensitive installed permission names. Blank entries are ignored. Duplicates are removed case-insensitively. Every nonblank entry must exist in the current permission catalog. |
 
@@ -245,7 +245,10 @@ Accept: application/json
 
 ### `201 Created`
 
-The `Location` header is `/api/roles/{escaped-role-name}`.
+The `Location` header is `/api/roles/{escaped-role-name}`. The same status and existing role are
+returned for an equivalent retry. Equivalence requires an ordinal-exact description, including
+the distinction between null and empty, and set equality of directly assigned permission claims;
+permission order does not matter.
 
 ```http
 HTTP/1.1 201 Created
@@ -294,10 +297,11 @@ The actual `permissions` array includes the tenant's entire installed permission
 
 | Status | Meaning |
 | --- | --- |
-| `201 Created` | The role was created. |
+| `201 Created` | The role was created, or an existing role was exactly equivalent. |
 | `400 Bad Request` | Missing/malformed JSON, request validation failure, or an Identity role-manager error. |
 | `401 Unauthorized` | The bearer token is absent or rejected. |
 | `403 Forbidden` | A required permission is missing. |
+| `409 Conflict` | The resolved role name exists with a different description or directly assigned permission set. |
 
 ## Update a role
 
@@ -317,6 +321,10 @@ Role names cannot be changed by this endpoint.
 | Body | `permissionNames` | array of strings or `null` | No | `null` | A non-null array replaces assigned permission claims after the same validation as create; omission or `null` leaves them unchanged. For the administrator role, this property is ignored and all permissions remain effective. |
 
 The JSON body itself is required.
+
+Repeating a successful update converges the description and directly assigned permission set to
+the same values and returns `200`. Omitted/null properties continue to preserve their current
+values.
 
 ### Request
 
@@ -365,7 +373,7 @@ Returns the updated complete [role representation](#role-representation).
 
 | Status | Meaning |
 | --- | --- |
-| `200 OK` | The role was updated. |
+| `200 OK` | The role was updated or already had the requested values. |
 | `400 Bad Request` | Missing/malformed JSON, an unknown permission name, or an Identity role-manager error. |
 | `401 Unauthorized` | The bearer token is absent or rejected. |
 | `403 Forbidden` | A required permission is missing. |
@@ -402,17 +410,17 @@ Accept: application/json
 }
 ```
 
-`action` is always `delete`.
+`action` is always `delete`. If the role is already absent, the convergent retry returns the same
+`200 OK` body.
 
 ### Responses
 
 | Status | Meaning |
 | --- | --- |
-| `200 OK` | The non-system role was deleted. |
+| `200 OK` | The non-system role was deleted, or the role was already absent. |
 | `400 Bad Request` | The role is a system role, or the Identity role manager rejected deletion. |
 | `401 Unauthorized` | The bearer token is absent or rejected. |
 | `403 Forbidden` | A required permission is missing. |
-| `404 Not Found` | The role manager cannot resolve `roleId`. |
 
 ## Error and validation responses
 
@@ -508,7 +516,8 @@ Operation-specific permission failure:
 
 Invalid paging uses `Bad request` with either `Skip must be zero or greater and take must be greater than zero.` or `Take cannot exceed 200.` Authentication-policy responses are produced by the configured `Api` authentication handler; their body is handler-dependent.
 
-These endpoints do not emit `409 Conflict`. Duplicate role names and other role-manager conflicts are returned as `400 Bad Request` validation problems.
+Role creation returns `409 Conflict` when the resolved name belongs to a non-equivalent role.
+Other role-manager validation and persistence errors return `400 Bad Request`.
 
 ## Endpoint coverage and sources
 

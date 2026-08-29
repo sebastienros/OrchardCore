@@ -61,6 +61,20 @@ See [Authentication](authentication/README.md) for the OpenID Connect endpoints 
 - Collection operations that support paging use zero-based `skip` and a bounded `take`; their pages define the exact defaults and envelope.
 - Validation failures use the response representation documented for the operation. Do not assume that all modules return one global error shape.
 - Content items, query parameters, workflow definitions, and other extensible resources may contain feature-contributed properties. Use the tenant's OpenAPI document and schema operations as the authoritative contract for those dynamic portions.
+- Endpoint summary permissions are not always the complete authorization contract. Resource pages document additional per-item or related-resource checks, including whether inaccessible resources are filtered, rejected, or preserved.
+
+## Retrying mutations
+
+Do not infer retry behavior from the HTTP method alone. Each resource page documents the implemented contract for repeated mutations, including:
+
+- the status returned for an identical retry;
+- the fields used to decide whether an existing resource is equivalent or conflicting;
+- whether deletes and lifecycle transitions converge when the requested state already exists;
+- whether destination creation or replacement is atomic during concurrent requests;
+- stable client-supplied identifiers that make creation retry-safe;
+- partial-progress recovery for multi-step operations.
+
+Some operations are intentionally not idempotent. In particular, a create operation that only uses a server-generated identifier, an upload without a stable resource identity, or a command that starts an execution can produce a new resource or side effect on each successful request. The operation's API page calls out these exceptions.
 
 ## OpenAPI and CLI projection
 

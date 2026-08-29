@@ -180,6 +180,14 @@ names, duplicate part names, duplicate field names, unknown or non-attachable pa
 non-reusable attached parts, and unknown field types. These conflicts are validation errors;
 the API does not return `409 Conflict`.
 
+Create operations are retry-safe when the client keeps the same technical name and complete
+definition. Names and display names are trimmed, null settings and collections are normalized to
+empty values, and attached `partName` references use the stored definition's casing. If a
+definition with that name already exists, deep equality of the complete normalized definition,
+including array order, settings, attached parts or fields, field types, and values, returns the
+existing definition with `201 Created`. A different definition with the same name returns `400`
+validation Problem Details without changing the existing definition.
+
 ## Content type operations
 
 ### List content types
@@ -297,7 +305,8 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
 ```
 
 `201 Created` returns the created definition in the same shape and sets `Location` to
-`/api/content-definition/types/PressRelease`:
+`/api/content-definition/types/PressRelease`. An identical normalized retry also returns the
+existing definition with `201 Created`:
 
 ```json
 {
@@ -329,10 +338,11 @@ Also returns `400` validation Problem Details, `401`, or `403`.
 `PUT /api/content-definition/types/{name}`
 
 `name` is the required current technical name. The required JSON body uses the content type
-contract and replaces its parts and settings. A blank body `name` uses the route name. To update
-the selected definition in place, set the body `name` to the same value as the route. If the names
-differ, the current implementation stores the body-named definition without deleting the
-route-named definition; it does not perform an atomic rename.
+contract and replaces its parts and settings. A blank body `name` uses the route name. A nonblank
+body `name` must equal the route name using ordinal, case-sensitive comparison; otherwise the
+request returns `400` without changing either definition. This management API does not expose a
+rename operation. Repeating a successful replacement leaves the same complete definition and
+returns `200`.
 
 ```bash
 curl -X PUT -H "Authorization: Bearer $TOKEN" \
@@ -385,7 +395,8 @@ curl -X DELETE -H "Authorization: Bearer $TOKEN" \
   https://localhost:5001/api/content-definition/types/PressRelease
 ```
 
-`204 No Content` has no response body. Also returns `401`, `403`, or `404`.
+`204 No Content` has no response body. Deleting an already absent type is a convergent retry and
+also returns `204`. Other responses are `401` or `403`.
 
 ## Registered type operations
 
@@ -563,7 +574,8 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
 ```
 
 `201 Created` returns the complete definition and sets `Location` to
-`/api/content-definition/parts/ContactPart`:
+`/api/content-definition/parts/ContactPart`. An identical normalized retry also returns the
+existing definition with `201 Created`:
 
 ```json
 {
@@ -592,7 +604,10 @@ Also returns `400`, `401`, or `403`.
 `PUT /api/content-definition/parts/{name}`
 
 `name` is the required current name. The required content part body replaces all fields and
-settings; a blank body `name` becomes the route name.
+settings; a blank body `name` becomes the route name. A nonblank body `name` must equal the route
+name using ordinal, case-sensitive comparison. A different value, including different casing,
+returns `400` without mutation; this management API does not rename parts.
+Repeating a successful replacement leaves the same complete definition and returns `200`.
 
 ```bash
 curl -X PUT -H "Authorization: Bearer $TOKEN" \
@@ -640,7 +655,8 @@ curl -X DELETE -H "Authorization: Bearer $TOKEN" \
   https://localhost:5001/api/content-definition/parts/ContactPart
 ```
 
-`204 No Content` has no body. Also returns `401`, `403`, or `404`.
+`204 No Content` has no body. Deleting an already absent part is a convergent retry and also
+returns `204`. Other responses are `401` or `403`.
 
 ## Content field operations
 
@@ -731,7 +747,8 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
 ```
 
 `201 Created` returns the field and sets `Location` to
-`/api/content-definition/parts/ContactPart/fields/Email`:
+`/api/content-definition/parts/ContactPart/fields/Email`. An identical normalized retry also
+returns the existing field with `201 Created`:
 
 ```json
 {
@@ -754,6 +771,10 @@ Also returns `400`, `401`, `403`, or `404` when the part does not exist.
 
 Both path parameters are required. The required body uses the content field contract. A blank
 body `name` becomes route `fieldName`; the field type and settings replace the previous values.
+A nonblank body `name` must equal the route `fieldName` using ordinal, case-sensitive comparison.
+A different value, including different casing, returns `400` without mutation; this management
+API does not rename fields. Repeating a successful replacement leaves the same complete field
+definition and returns `200`.
 
 ```bash
 curl -X PUT -H "Authorization: Bearer $TOKEN" \
@@ -799,7 +820,9 @@ curl -X DELETE -H "Authorization: Bearer $TOKEN" \
   https://localhost:5001/api/content-definition/parts/ContactPart/fields/Email
 ```
 
-`204 No Content` has no body. Also returns `401`, `403`, or `404` for a missing part or field.
+`204 No Content` has no body. Deleting an already absent field is a convergent retry and also
+returns `204`; an absent parent part does not change that result. Other responses are `401` or
+`403`.
 
 ## Endpoint coverage and sources
 

@@ -284,7 +284,7 @@ There are no path parameters.
 
 ```bash
 curl --request PUT \
-  'https://cms.example.com/tenant-a/api/static-files/content?path=styles%2Fsite.css&overwrite=true' \
+  'https://cms.example.com/tenant-a/api/static-files/content?path=styles%2Fsite.css&overwrite=false' \
   --header 'Authorization: Bearer <access-token>' \
   --header 'Content-Type: application/octet-stream' \
   --data-binary '@site.css'
@@ -295,7 +295,8 @@ curl --request PUT \
 - `201 Created` returns newly uploaded file metadata. The `Location` header and
   response `url` are the same tenant-relative public URL.
 - `200 OK` returns the existing metadata when the destination already contains
-  the exact request bytes, making an identical retry successful without rewriting.
+  the exact request bytes with `overwrite=false`, making an identical retry successful without
+  rewriting. With `overwrite=true`, it returns the metadata after atomic replacement.
 - `400 Bad Request` is returned for an unsafe logical path or a physical path
   that escapes the root or traverses a symbolic link.
 - `401 Unauthorized` and `403 Forbidden` are returned for authentication and
@@ -327,9 +328,15 @@ Location: /tenant-a/styles/site.css
 }
 ```
 
-When `overwrite=true`, the endpoint opens the destination with create
-semantics, truncates an existing regular file, and writes the new request
-body.
+The endpoint stages the complete body in a same-directory temporary file using write-through,
+then installs it with `File.Move`. With `overwrite=true`, replacement occurs only after the body
+is fully staged; the destination is never truncated or streamed in place.
+
+With `overwrite=false`, concurrent creates use conditional move semantics. A losing request
+compares its fully staged bytes with the winner: identical content returns `200`, while different
+content returns `409` with
+`Static file '<path>' already exists with different content.`. Existing different content uses
+the conflict response shown above.
 
 ## Errors
 

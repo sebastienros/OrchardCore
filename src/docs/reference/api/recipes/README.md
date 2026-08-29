@@ -283,7 +283,9 @@ To use only the current environment and recipe defaults, send:
 }
 ```
 
-`executionId` is dynamically generated as 32 lowercase hexadecimal characters. Recipe name fields come from the selected recipe.
+`executionId` is dynamically generated as 32 lowercase hexadecimal characters. Recipe name fields
+come from the selected recipe. Every successful request executes the recipe again and receives a
+new execution ID, so retrying this command is intentionally not idempotent.
 
 ### Responses
 

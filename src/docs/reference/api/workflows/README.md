@@ -95,7 +95,7 @@ All list envelopes contain the count before paging:
 
 | Property | Type | Required | Default/constraints |
 | --- | --- | --- | --- |
-| `workflowTypeId` | string or null | No | Trimmed. Generated on create when blank. On update, blank becomes the route ID. |
+| `workflowTypeId` | string or null | No | Trimmed. Generated on create when blank. A stable value makes create retries comparable. On update, blank becomes the route ID. |
 | `name` | string | Yes | Trimmed; must be unique case-insensitively. |
 | `isEnabled` | boolean | No | `false`. |
 | `isSingleton` | boolean | No | `false`; controls whether multiple instances may be spawned. |
@@ -109,7 +109,7 @@ Activity record:
 
 | Property | Type | Required | Default/constraints |
 | --- | --- | --- | --- |
-| `activityId` | string or null | No | Trimmed; generated when blank and must be unique within the graph. |
+| `activityId` | string or null | No | Trimmed and unique within the graph. On create with a stable `workflowTypeId`, an omitted or null ID becomes `{workflowTypeId}-activity-{one-based-index}`. A blank ID uses the normal server generator. |
 | `name` | string | Yes | Registered activity type name. |
 | `x` | integer | No | `0`; designer coordinate. |
 | `y` | integer | No | `0`; designer coordinate. |
@@ -283,8 +283,16 @@ Also returns `401`, `403`, or `404`.
 
 `POST /api/workflows/types`
 
-The required JSON body uses the workflow type contract. `workflowTypeId` may be omitted and
-activity IDs may be omitted; the server generates missing IDs.
+The required JSON body uses the workflow type contract. With an explicit stable `workflowTypeId`,
+an equivalent retry returns the existing type with `201 Created`. Equivalence is deep equality of
+the complete normalized definition, including settings, activity and transition order, IDs,
+coordinates, flags, and properties. The same ID with a different definition returns `400`
+validation Problem Details under `WorkflowTypeId`.
+
+When a stable workflow ID is supplied, an omitted or null activity ID is generated
+deterministically as `{workflowTypeId}-activity-{one-based-index}`. A blank activity ID uses the
+normal activity ID generator. Omitting `workflowTypeId` uses a server-generated ID, so repeating
+that create can create another workflow type and is not retry-safe.
 
 ```bash
 curl -X POST -H "Authorization: Bearer $TOKEN" \
@@ -317,8 +325,8 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
   https://localhost:5001/api/workflows/types
 ```
 
-`201 Created` returns the saved type and sets `Location` to
-`/api/workflows/types/{generatedWorkflowTypeId}`:
+`201 Created` returns the saved or equivalent existing type and sets `Location` to
+`/api/workflows/types/{workflowTypeId}`:
 
 ```json
 {
@@ -356,7 +364,10 @@ Also returns `400`, `401`, or `403`.
 `PUT /api/workflows/types/{workflowTypeId}`
 
 The path ID and workflow type body are required. The body replaces graph and settings. A blank
-body ID uses the route ID.
+body ID uses the route ID. Unlike content definitions and queries, a nonblank body ID may differ
+from the route ID when it does not conflict with another workflow type; update does not reject
+that identity change solely because the route and body values differ. Repeating a successful
+complete replacement converges to the same workflow definition and returns `200`.
 
 ```bash
 curl -X PUT -H "Authorization: Bearer $TOKEN" \
@@ -435,7 +446,8 @@ curl -X DELETE -H "Authorization: Bearer $TOKEN" \
   https://localhost:5001/api/workflows/types/4workflowtype
 ```
 
-`204 No Content` has no body. Also returns `401`, `403`, or `404`.
+`204 No Content` has no body. Deleting an already absent workflow type is a convergent retry and
+also returns `204`. Other responses are `401` or `403`.
 
 ### Validate a workflow graph
 
@@ -609,7 +621,8 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
 ```
 
 The stored graph is returned; the empty arrays above represent a minimal response shape, not a
-valid graph for creation. Also returns `401`, `403`, or `404`.
+valid graph for creation. Enabling an already enabled type is a convergent retry and returns the
+same `200` representation. Also returns `401`, `403`, or `404`.
 
 ### Disable a workflow type
 
@@ -638,7 +651,8 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
 }
 ```
 
-Also returns `401`, `403`, or `404`.
+Disabling an already disabled type is a convergent retry and returns the same `200`
+representation. Also returns `401`, `403`, or `404`.
 
 ### Execute a workflow type
 
@@ -695,6 +709,9 @@ If the type is disabled, `400` has error key `IsEnabled` and message
 `The workflow type must be enabled before it can be executed.`. An unknown start activity uses
 key `StartActivityId` and message `The specified start activity does not exist.`. Also returns
 `401`, `403`, or `404`.
+
+Each successful request starts a workflow execution. Retrying this command is intentionally not
+idempotent, even when the body is unchanged.
 
 ## Workflow instance operations
 
@@ -785,7 +802,8 @@ curl -X DELETE -H "Authorization: Bearer $TOKEN" \
   https://localhost:5001/api/workflows/instances/4workflowinstance
 ```
 
-`204 No Content` has no body. Also returns `401`, `403`, or `404`.
+`204 No Content` has no body. Canceling an already absent workflow instance is a convergent retry
+and also returns `204`. Other responses are `401` or `403`.
 
 ## Endpoint coverage and sources
 

@@ -9,9 +9,11 @@ Derive the reference from all of the following:
 1. Endpoint mappings and their route, HTTP method, authorization, OpenAPI, and `x-oc-cli` metadata.
 2. Request and response model types, including JSON serialization attributes and generated naming policy.
 3. Handler and service behavior for defaults, validation, conflicts, and status codes.
-4. Endpoint metadata and integration tests.
+4. The underlying resource authorization checks, including per-item permissions and the handling of related resources the caller cannot access.
+5. Storage primitives that determine atomic creation, replacement, and concurrent conflict behavior.
+6. Endpoint metadata and integration tests.
 
-Do not infer casing, required fields, defaults, or status codes from a similar endpoint. When a schema is tenant- or feature-dependent, document the stable envelope and explicitly identify the dynamic portion.
+Do not infer casing, required fields, defaults, status codes, permissions, or retry behavior from a similar endpoint. Endpoint-level permission metadata can be only the first authorization gate; document additional per-resource checks and filtering. When a schema is tenant- or feature-dependent, document the stable envelope and explicitly identify the dynamic portion.
 
 ## Page location and navigation
 
@@ -57,6 +59,8 @@ Shared remote-management requirement and exact operation-specific permissions.
 
 Description and behavioral notes.
 
+For a mutation, state whether and how the same logical request can be retried. Define equivalence and conflict rules, stable identifiers, convergent state transitions, atomicity guarantees, and partial-progress recovery. Explicitly identify operations that create a new server-generated resource or execution on every successful request.
+
 ### Parameters
 
 | Location | Name | Type | Required | Description |
@@ -88,9 +92,12 @@ Before submitting a change, verify:
 
 - Every mapped management endpoint appears in the summary table and has an operation section.
 - Routes, methods, operation IDs, feature requirements, authentication schemes, and permissions match endpoint metadata.
+- Underlying resource permissions, per-item authorization, filtering, and preservation of inaccessible related resources are documented.
 - Every handler-produced status code is documented, including empty responses.
 - Request and response examples deserialize against the actual contracts.
 - Paging, filtering, sorting, concurrency, and lifecycle semantics are explicit where supported.
+- Every mutation documents repeated-request behavior: identical success, equivalence and conflict rules, stable identifiers, convergent deletes or transitions, and any intentional non-idempotent exception.
+- Atomic destination semantics and partial-progress recovery are documented when storage or multi-step operations make them relevant.
 - Dynamic or extensible schemas are identified rather than represented as closed contracts.
 - The owning module page and API reference navigation link to the canonical page.
 - `python -m mkdocs build --strict` succeeds.

@@ -71,7 +71,7 @@ Module docs are **not** auto-discovered from the manifest — every link is manu
 
 ## Workflow C: document a management API
 
-Read `references/api-reference.md` before documenting a new or changed OpenAPI management endpoint. Keep the detailed HTTP contract in `reference/api/<resource>/README.md`, link it from the owning module page, and add it under **Reference → API Reference** in `mkdocs.yml`.
+Read `references/api-reference.md` before documenting a new or changed OpenAPI management endpoint. Verify the contract from endpoint mappings, the underlying resource authorization checks, mutation handlers, storage primitives, and tests. Every mutating operation must document its retry and idempotency behavior, including equivalence rules, conflict responses, convergent lifecycle operations, and exceptions that intentionally create a new server-generated resource or execution on every request. Keep the detailed HTTP contract in `reference/api/<resource>/README.md`, link it from the owning module page, and add it under **Reference → API Reference** in `mkdocs.yml`.
 
 ## Markdown conventions
 

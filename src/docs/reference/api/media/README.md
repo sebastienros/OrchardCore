@@ -357,7 +357,9 @@ curl -X POST -H 'Authorization: Bearer ACCESS_TOKEN' \
 }
 ```
 
-Other responses: `400` when the normalized name contains a path separator, the parent is a system folder, or a file/folder already occupies the new path; `401`; `403`.
+An existing directory at the normalized path is an equivalent retry and returns the same `200`
+representation. Other responses are `400` when the normalized name contains a path separator,
+the parent is a system folder, or a file occupies the new path; `401`; `403`.
 
 ### Delete a folder
 
@@ -367,7 +369,7 @@ DELETE /api/media/folder?path={path}
 
 | Query parameter | Type | Required | Constraints |
 | --- | --- | --- | --- |
-| `path` | string | Yes | Must be a non-root, existing directory and not the configured users or attached-media system folder. |
+| `path` | string | Yes | Must be non-root, not the configured users or attached-media system folder, and not resolve to a file. |
 
 ```bash
 curl -X DELETE -H 'Authorization: Bearer ACCESS_TOKEN' \
@@ -382,7 +384,10 @@ curl -X DELETE -H 'Authorization: Bearer ACCESS_TOKEN' \
 }
 ```
 
-Other responses: `400` for root, protected system folders, or a path that resolves to a non-directory entry; `401`; `403`; `404` when deletion fails or the directory is absent.
+Deleting an already absent directory is a convergent retry and returns the same `200` response.
+Other responses are `400` for root, protected system folders, a path that resolves to a file, or
+an invalid path; `401`; `403`. An unexpected storage exception is not translated to `400` or
+`404` and propagates as a server error.
 
 ### Get directory content
 
@@ -564,7 +569,7 @@ Content-Type: application/octet-stream
 
 | Input | Type | Required | Constraints |
 | --- | --- | --- | --- |
-| `fileName` query | string | Yes | Must not be blank. It is normalized, its extension must be configured as allowed, and the resulting target must not already exist. |
+| `fileName` query | string | Yes | Must not be blank. It is normalized and its extension must be configured as allowed. Together with `path`, it is the stable target identity. |
 | `path` query | string | No | Target folder; root when omitted or empty. |
 | Request body | binary stream | Yes | Maximum `maxFileSize` bytes from `/api/media/constraints`. Both declared and streamed lengths are enforced. |
 
@@ -575,9 +580,13 @@ curl -X PUT -H 'Authorization: Bearer ACCESS_TOKEN' \
   'https://cms.example.com/tenant-a/api/media/files/content?path=images&fileName=logo.png'
 ```
 
-`200 OK` returns the created file representation.
+`200 OK` returns the created or replaced file representation. Upload uses replacement semantics:
+a new target, an identical retry, and different replacement content all return `200`. The body is
+fully buffered and size-checked before replacement, so `413` leaves an existing target unchanged.
 
-Other responses: `400` Validation Problem Details for a missing file name, disallowed extension, or existing target; `400` Problem Details for storage failures; `401`; `403`; `413` when the body exceeds `maxFileSize`; `500` for an unexpected upload failure.
+Other responses: `400` Validation Problem Details for a missing file name or disallowed
+extension; `400` Problem Details for storage failures; `401`; `403`; `413` when the body exceeds
+`maxFileSize`; `500` for an unexpected upload failure.
 
 Example `413`:
 
@@ -599,7 +608,7 @@ Content-Type: application/json
 | Body property | Type | Required | Constraints |
 | --- | --- | --- | --- |
 | `oldPath` | string | Yes | Existing source file. |
-| `newPath` | string | Yes | Allowed extension and no existing file at the destination. |
+| `newPath` | string | Yes | Allowed extension. An existing destination must be byte-for-byte identical to the source. |
 
 ```bash
 curl -X POST -H 'Authorization: Bearer ACCESS_TOKEN' \
@@ -628,7 +637,14 @@ curl -X POST -H 'Authorization: Bearer ACCESS_TOKEN' \
 }
 ```
 
-Other responses: `400` Validation Problem Details for a disallowed extension or occupied destination; `401`; `403`; `404` for an empty path or missing source.
+Copy creates the destination conditionally without overwriting it. Filesystem storage uses an
+exclusive copy, S3 uses `If-None-Match: *`, and Azure Blob Storage uses an equivalent destination
+condition. If a concurrent request wins, the destination is re-read: matching length and full
+stream content returns `200`, while different content returns `400` and remains unchanged.
+
+Other responses: `400` Validation Problem Details for a disallowed extension or non-equivalent
+occupied destination; `401`; `403`; `404` for an empty path or missing source. Copy does not
+return `409`.
 
 ### Move a file
 
@@ -637,7 +653,10 @@ POST /api/media/files:move
 Content-Type: application/json
 ```
 
-The body has the same `oldPath` and `newPath` contract as copy.
+The body has the same `oldPath` and `newPath` contract as copy. Destination creation is
+conditional and never overwrites a different file. Filesystem storage and hierarchical-namespace
+Azure storage use atomic rename; S3 and non-hierarchical Azure storage use conditional copy
+followed by source deletion.
 
 ```bash
 curl -X POST -H 'Authorization: Bearer ACCESS_TOKEN' \
@@ -666,7 +685,14 @@ curl -X POST -H 'Authorization: Bearer ACCESS_TOKEN' \
 }
 ```
 
-Other responses: `400` Validation Problem Details for a disallowed extension or occupied destination; `401`; `403`; `404` for an empty path or missing source.
+If only the destination exists, a retry treats the move as complete and returns `200`. If source
+and destination both exist with identical bytes, a retry deletes and verifies the source, emits
+the move event, and returns `200`. If both differ, `400` preserves both. This also recovers a
+conditional-copy success followed by source-deletion failure.
+
+Other responses: `400` Validation Problem Details for a disallowed extension or a different
+occupied destination; `401`; `403`; `404` for an empty path or when neither source nor destination
+exists.
 
 ### Delete a file
 
@@ -676,7 +702,7 @@ DELETE /api/media/file?path={path}
 
 | Query parameter | Type | Required | Constraints |
 | --- | --- | --- | --- |
-| `path` | string | Yes | Existing media file path. |
+| `path` | string | Yes | Non-empty media file path. |
 
 ```bash
 curl -X DELETE -H 'Authorization: Bearer ACCESS_TOKEN' \
@@ -691,7 +717,9 @@ curl -X DELETE -H 'Authorization: Bearer ACCESS_TOKEN' \
 }
 ```
 
-Other responses: `401`, `403`, and `404` for an empty path or when the file-store deletion fails.
+An absent non-empty path is a convergent retry and returns the same `200` response. Other
+responses are `401`, `403`, and `404` for an empty path. An unexpected storage exception is not
+translated to `404` and propagates as a server error.
 
 ### Delete several files
 
@@ -711,7 +739,8 @@ curl -X POST -H 'Authorization: Bearer ACCESS_TOKEN' \
   'https://cms.example.com/tenant-a/api/media/files:delete'
 ```
 
-`200 OK` echoes the requested paths after all deletions succeed:
+`200 OK` echoes the requested paths after all deletions succeed. Missing files are ignored, so a
+repeated or partially completed request converges to the same response:
 
 ```json
 {
@@ -722,7 +751,10 @@ curl -X POST -H 'Authorization: Bearer ACCESS_TOKEN' \
 }
 ```
 
-Other responses: `401`; `403`; `404` if `paths` is null or any deletion fails. Deletions before a failure are not rolled back.
+Other responses: `401`; `403`; `404` if `paths` is null. Every path is authorized before deletion
+starts. An unexpected storage exception is not translated to `404`; it propagates as a server
+error. Deletions completed before that exception are not rolled back, and retry ignores those
+now-absent paths and continues.
 
 ### Move several files
 
@@ -757,7 +789,10 @@ curl -X POST -H 'Authorization: Bearer ACCESS_TOKEN' \
 }
 ```
 
-Other responses: `400` Validation Problem Details when one or more store moves fail; `401`; `403`; `404` for a missing/empty file list or folder. Successful moves before a failure are not rolled back.
+Batch processing continues after individual failures. `400` Validation Problem Details lists
+failed moves; successful moves are not rolled back. Retrying completes remaining files and accepts
+already moved files using the same recovery rules as a single move. Other responses are `401`,
+`403`, or `404` for a missing/empty file list or folder.
 
 ### Get a completed TUS upload
 

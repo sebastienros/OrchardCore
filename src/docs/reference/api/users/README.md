@@ -261,10 +261,18 @@ Content-Type: application/json
 
 ### Responses
 
+Create retry lookup uses the normalized user name. Email and role names compare
+case-insensitively, phone number compares ordinally, and `emailConfirmed` and `isEnabled` must
+match exactly. Blank or duplicate requested roles are ignored. A blank password is equivalent
+only to a passwordless account; a nonblank password must verify against the current hash. The
+equivalent path still requires resource-aware `EditUsers` authorization for the existing user and
+does not mutate roles. Concurrent equivalent creation converges to `200`; a concurrent
+non-equivalent Identity failure can return `400`.
+
 | Status | Meaning |
 | --- | --- |
 | `201 Created` | The user was created. |
-| `200 OK` | An identical create request was retried and the existing user is returned. |
+| `200 OK` | An equivalent create request was retried and the existing user is returned. |
 | `400 Bad Request` | Missing/malformed JSON; Identity validation failure; invalid/unauthorized role assignment. |
 | `401 Unauthorized` | The bearer token is absent or rejected. |
 | `403 Forbidden` | The caller cannot create this user. Role-assignment authorization failures are instead returned as `400` validation errors. |
@@ -292,13 +300,21 @@ PUT /api/users/{userId}
 
 The JSON body itself is required.
 
-When roles change, removals occur before additions. Every addition and removal
-requires `AssignRoleToUsers` for that role. Current roles the caller cannot
-assign are preserved. The sole enabled user in the configured `Administrator`
-role retains that role even if it is absent from `roleNames`. Removing at least
-one role updates the security stamp.
+Before any role mutation, every requested addition is validated for existence, assignability, and
+`AssignRoleToUsers` authorization. An invalid or unauthorized requested addition returns `400`
+without changing roles. Every removal is checked independently against the same permission for
+that current role. Current unassignable or unauthorized roles are silently preserved when absent
+from `roleNames`; explicitly echoing such a role requests an unauthorized assignment and returns
+`400`. The sole enabled user in the configured `Administrator` role retains that role even when
+omitted. Authorized removals occur before additions, and any removal updates the security stamp.
 
-The endpoint updates the account fields before resetting the password or changing enabled state. It does not provide transactional rollback across those stages; a later validation failure can therefore follow an earlier persisted account update.
+The operation is not transactional across all stages. Role mutations occur before the subsequent
+Identity user update and are not rolled back if that update, password reset, or enabled-state
+change later fails.
+
+A successful repeated request converges the mutable account fields, authorized role membership,
+password, and enabled state to the requested values and returns `200`. Null/omitted fields retain
+their documented partial-update behavior, and a current password is a no-op.
 
 ### Request
 
@@ -552,9 +568,10 @@ Operation-specific permission failure:
 
 Invalid paging uses `Bad request` with either `Skip must be zero or greater and take must be greater than zero.` or `Take cannot exceed 200.` Authentication-policy responses are produced by the configured `Api` authentication handler; their body is handler-dependent.
 
-User creation emits `409 Conflict` when the requested user name already exists
-with different settings. Other Identity conflicts, including a duplicate email
-under another user name, are returned as `400 Bad Request` validation problems.
+User creation emits `409 Conflict` when the normalized requested user name already exists with
+different email, phone, confirmation state, enabled state, roles, or password. Other Identity
+conflicts, including a duplicate email under another user name, are returned as `400 Bad Request`
+validation problems.
 
 ## Endpoint coverage and sources
 
