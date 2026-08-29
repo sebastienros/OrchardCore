@@ -31,6 +31,12 @@ internal static class MediaEndpointHelpers
 
     private static readonly HashSet<string> s_emptySet = [];
 
+    public static bool IsBaseName(string name)
+        => !string.IsNullOrWhiteSpace(name)
+            && name is not "." and not ".."
+            && !name.Contains('/')
+            && !name.Contains('\\');
+
     public static Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult ValidatePaging(int skip, int take)
     {
         if (skip < 0 || take < 1)

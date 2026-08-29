@@ -114,19 +114,37 @@ public static class MoveMediaListEndpoint
         sourceFolder = sourceFolder == "root" ? string.Empty : sourceFolder;
         targetFolder = targetFolder == "root" ? string.Empty : targetFolder;
 
+        if (mediaNames.Any(name => !MediaEndpointHelpers.IsBaseName(name)))
+        {
+            return (httpContext.ApiValidationProblem(detail: localizer["Media names must not contain directory paths."]), null, null);
+        }
+
+        var paths = mediaNames
+            .Select(name => (
+                Source: mediaFileStore.Combine(sourceFolder, name),
+                Target: mediaFileStore.Combine(targetFolder, name)))
+            .ToArray();
+
+        foreach (var path in paths)
+        {
+            if (!await authorizationService.AuthorizeAsync(httpContext.User, MediaPermissions.ManageMediaFolder, (object)path.Source)
+                || !await authorizationService.AuthorizeAsync(httpContext.User, MediaPermissions.ManageMediaFolder, (object)path.Target))
+            {
+                return (httpContext.ApiForbidProblem(), null, null);
+            }
+        }
+
         var filesOnError = new List<string>();
 
-        foreach (var name in mediaNames)
+        foreach (var path in paths)
         {
-            var sourcePath = mediaFileStore.Combine(sourceFolder, name);
-            var targetPath = mediaFileStore.Combine(targetFolder, name);
             try
             {
-                await mediaFileStore.MoveFileAsync(sourcePath, targetPath);
+                await mediaFileStore.MoveFileAsync(path.Source, path.Target);
             }
             catch (FileStoreException)
             {
-                filesOnError.Add(sourcePath);
+                filesOnError.Add(path.Source);
             }
         }
 

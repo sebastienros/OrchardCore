@@ -105,6 +105,18 @@ public static class UploadMediaEndpoint
                 // Loop through each file in the request.
                 foreach (var file in files)
                 {
+                    if (!MediaEndpointHelpers.IsBaseName(file.FileName))
+                    {
+                        result.Add(new UploadFileResultDto
+                        {
+                            Name = file.FileName,
+                            Size = file.Length,
+                            Folder = path,
+                            Error = localizer["The file name must not contain a directory path."].ToString(),
+                        });
+                        continue;
+                    }
+
                     var extension = Path.GetExtension(file.FileName);
 
                     if (!allowedExtensions.Contains(extension))
@@ -126,11 +138,33 @@ public static class UploadMediaEndpoint
                     }
 
                     var fileName = mediaNameNormalizerService.NormalizeFileName(file.FileName);
+                    if (!MediaEndpointHelpers.IsBaseName(fileName))
+                    {
+                        result.Add(new UploadFileResultDto
+                        {
+                            Name = fileName,
+                            Size = file.Length,
+                            Folder = path,
+                            Error = localizer["The normalized file name must not contain a directory path."].ToString(),
+                        });
+                        continue;
+                    }
 
                     Stream stream = null;
                     try
                     {
                         var mediaFilePath = mediaFileStore.Combine(path, fileName);
+                        if (!await authorizationService.AuthorizeAsync(httpContext.User, MediaPermissions.ManageMediaFolder, (object)mediaFilePath))
+                        {
+                            result.Add(new UploadFileResultDto
+                            {
+                                Name = fileName,
+                                Size = file.Length,
+                                Folder = path,
+                                Error = localizer["You do not have permission to manage this media path."].ToString(),
+                            });
+                            continue;
+                        }
 
                         if (await mediaFileStore.GetFileInfoAsync(mediaFilePath) != null)
                         {
@@ -225,6 +259,11 @@ public static class UploadMediaEndpoint
             return httpContext.ApiValidationProblem(detail: localizer["A file name is required."]);
         }
 
+        if (!MediaEndpointHelpers.IsBaseName(request.FileName))
+        {
+            return httpContext.ApiValidationProblem(detail: localizer["The file name must not contain a directory path."]);
+        }
+
         var mediaOptions = options.Value;
         ApplyRequestSizeLimit(httpContext, mediaOptions.MaxFileSize);
         if (httpContext.Request.ContentLength > mediaOptions.MaxFileSize)
@@ -242,7 +281,16 @@ public static class UploadMediaEndpoint
         }
 
         var fileName = mediaNameNormalizerService.NormalizeFileName(request.FileName);
+        if (!MediaEndpointHelpers.IsBaseName(fileName))
+        {
+            return httpContext.ApiValidationProblem(detail: localizer["The normalized file name must not contain a directory path."]);
+        }
+
         var mediaFilePath = mediaFileStore.Combine(path, fileName);
+        if (!await authorizationService.AuthorizeAsync(httpContext.User, MediaPermissions.ManageMediaFolder, (object)mediaFilePath))
+        {
+            return httpContext.ApiForbidProblem();
+        }
 
         if (await mediaFileStore.GetFileInfoAsync(mediaFilePath) != null)
         {
