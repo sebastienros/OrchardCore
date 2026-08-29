@@ -73,7 +73,7 @@ public static class DeleteFolderEndpoint
         IStringLocalizer<MediaApiEndpoints> localizer,
         string path)
     {
-        var result = await DeleteAsync(httpContext, authorizationService, mediaFileStore, options, attachedMediaFieldFileService, directoryTreeCache, localizer, path, ignoreMissing: false);
+        var result = await DeleteAsync(httpContext, authorizationService, mediaFileStore, options, attachedMediaFieldFileService, directoryTreeCache, localizer, path);
 
         return result ?? TypedResults.Ok();
     }
@@ -88,7 +88,7 @@ public static class DeleteFolderEndpoint
         IStringLocalizer<MediaApiEndpoints> localizer,
         string path)
     {
-        var result = await DeleteAsync(httpContext, authorizationService, mediaFileStore, options, attachedMediaFieldFileService, directoryTreeCache, localizer, path, ignoreMissing: true);
+        var result = await DeleteAsync(httpContext, authorizationService, mediaFileStore, options, attachedMediaFieldFileService, directoryTreeCache, localizer, path);
 
         return result ?? TypedResults.Ok(new DeleteFolderResultDto { Path = path });
     }
@@ -101,8 +101,7 @@ public static class DeleteFolderEndpoint
         AttachedMediaFieldFileService attachedMediaFieldFileService,
         MediaDirectoryTreeCache directoryTreeCache,
         IStringLocalizer<MediaApiEndpoints> localizer,
-        string path,
-        bool ignoreMissing)
+        string path)
     {
         if (!await authorizationService.AuthorizeAsync(httpContext.User, MediaPermissions.ManageMedia)
             || !await authorizationService.AuthorizeAsync(httpContext.User, MediaPermissions.ManageMediaFolder, (object)path))
@@ -126,12 +125,7 @@ public static class DeleteFolderEndpoint
             return httpContext.ApiBadRequestProblem(detail: localizer["Cannot delete path because it is not a directory"]);
         }
 
-        if (ignoreMissing && mediaFolder == null && await mediaFileStore.GetFileInfoAsync(path) != null)
-        {
-            return httpContext.ApiBadRequestProblem(detail: localizer["Cannot delete path because it is not a directory"]);
-        }
-
-        if (await mediaFileStore.TryDeleteDirectoryAsync(path) == false && !ignoreMissing)
+        if (await mediaFileStore.TryDeleteDirectoryAsync(path) == false)
         {
             return httpContext.ApiNotFoundProblem();
         }

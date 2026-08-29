@@ -56,7 +56,7 @@ public static class DeleteMediaListEndpoint
         IMediaFileStore mediaFileStore,
         List<string> paths)
     {
-        var result = await DeleteAsync(httpContext, authorizationService, mediaFileStore, paths, ignoreMissing: false);
+        var result = await DeleteAsync(httpContext, authorizationService, mediaFileStore, paths);
 
         return result ?? TypedResults.Ok();
     }
@@ -67,7 +67,7 @@ public static class DeleteMediaListEndpoint
         IMediaFileStore mediaFileStore,
         List<string> paths)
     {
-        var result = await DeleteAsync(httpContext, authorizationService, mediaFileStore, paths, ignoreMissing: true);
+        var result = await DeleteAsync(httpContext, authorizationService, mediaFileStore, paths);
 
         return result ?? TypedResults.Ok(new DeleteMediaListResultDto { Paths = paths });
     }
@@ -76,8 +76,7 @@ public static class DeleteMediaListEndpoint
         HttpContext httpContext,
         IAuthorizationService authorizationService,
         IMediaFileStore mediaFileStore,
-        List<string> paths,
-        bool ignoreMissing)
+        List<string> paths)
     {
         if (paths == null)
         {
@@ -99,7 +98,7 @@ public static class DeleteMediaListEndpoint
 
         foreach (var path in paths)
         {
-            if (!await mediaFileStore.TryDeleteFileAsync(path) && !ignoreMissing)
+            if (!await mediaFileStore.TryDeleteFileAsync(path))
             {
                 return httpContext.ApiNotFoundProblem();
             }

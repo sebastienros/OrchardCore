@@ -85,7 +85,7 @@ public static class MoveMediaEndpoint
         string oldPath,
         string newPath)
     {
-        var (result, movedFile) = await MoveAsync(httpContext, authorizationService, mediaFileStore, options, serviceProvider, localizer, oldPath, newPath, allowCompleted: false);
+        var (result, movedFile) = await MoveAsync(httpContext, authorizationService, mediaFileStore, options, serviceProvider, localizer, oldPath, newPath);
 
         return result ?? TypedResults.Ok(MediaEndpointHelpers.CreateFileResult(movedFile, httpContext, contentTypeProvider, fileVersionProvider, mediaFileStore));
     }
@@ -102,7 +102,7 @@ public static class MoveMediaEndpoint
         string oldPath,
         string newPath)
     {
-        var (result, movedFile) = await MoveAsync(httpContext, authorizationService, mediaFileStore, options, serviceProvider, localizer, oldPath, newPath, allowCompleted: true);
+        var (result, movedFile) = await MoveAsync(httpContext, authorizationService, mediaFileStore, options, serviceProvider, localizer, oldPath, newPath);
 
         return result ?? TypedResults.Ok(new MoveMediaResultDto
         {
@@ -120,8 +120,7 @@ public static class MoveMediaEndpoint
         IServiceProvider serviceProvider,
         IStringLocalizer<MediaApiEndpoints> localizer,
         string oldPath,
-        string newPath,
-        bool allowCompleted)
+        string newPath)
     {
         if (!await authorizationService.AuthorizeAsync(httpContext.User, MediaPermissions.ManageMedia)
             || !await authorizationService.AuthorizeAsync(httpContext.User, MediaPermissions.ManageMediaFolder, (object)oldPath)
@@ -135,6 +134,11 @@ public static class MoveMediaEndpoint
             return (httpContext.ApiNotFoundProblem(), null);
         }
 
+        if (await mediaFileStore.GetFileInfoAsync(oldPath) == null)
+        {
+            return (httpContext.ApiNotFoundProblem(), null);
+        }
+
         var newExtension = Path.GetExtension(newPath);
 
         if (!options.Value.AllowedFileExtensions.Contains(newExtension, StringComparer.OrdinalIgnoreCase))
@@ -142,50 +146,12 @@ public static class MoveMediaEndpoint
             return (httpContext.ApiValidationProblem(detail: localizer["This file extension is not allowed: {0}", newExtension]), null);
         }
 
-        var sourceFile = await mediaFileStore.GetFileInfoAsync(oldPath);
-        var targetFile = await mediaFileStore.GetFileInfoAsync(newPath);
-
-        if (sourceFile == null)
+        if (await mediaFileStore.GetFileInfoAsync(newPath) != null)
         {
-            return allowCompleted && targetFile != null
-                ? (null, targetFile)
-                : (httpContext.ApiNotFoundProblem(), null);
-        }
-
-        if (targetFile != null)
-        {
-            if (allowCompleted &&
-                await MediaEndpointHelpers.TryCompleteMoveAsync(mediaFileStore, sourceFile, targetFile, serviceProvider, httpContext.RequestAborted))
-            {
-                await MediaEndpointHelpers.PreCacheRemoteMediaAsync(targetFile, serviceProvider, mediaFileStore, httpContext);
-                return (null, targetFile);
-            }
-
             return (httpContext.ApiValidationProblem(detail: localizer["Cannot move media because a file already exists with the same name"]), null);
         }
 
-        try
-        {
-            if (!await mediaFileStore.TryMoveFileAsync(oldPath, newPath))
-            {
-                sourceFile = await mediaFileStore.GetFileInfoAsync(oldPath);
-                targetFile = await mediaFileStore.GetFileInfoAsync(newPath);
-                if (!allowCompleted ||
-                    !await MediaEndpointHelpers.TryCompleteMoveAsync(mediaFileStore, sourceFile, targetFile, serviceProvider, httpContext.RequestAborted))
-                {
-                    return (httpContext.ApiValidationProblem(detail: localizer["Cannot move media because the target contains different content"]), null);
-                }
-            }
-        }
-        catch (FileStoreException) when (allowCompleted)
-        {
-            sourceFile = await mediaFileStore.GetFileInfoAsync(oldPath);
-            targetFile = await mediaFileStore.GetFileInfoAsync(newPath);
-            if (!await MediaEndpointHelpers.TryCompleteMoveAsync(mediaFileStore, sourceFile, targetFile, serviceProvider, httpContext.RequestAborted))
-            {
-                return (httpContext.ApiValidationProblem(detail: localizer["Cannot move media because the target contains different content"]), null);
-            }
-        }
+        await mediaFileStore.MoveFileAsync(oldPath, newPath);
 
         var movedFile = await mediaFileStore.GetFileInfoAsync(newPath);
         await MediaEndpointHelpers.PreCacheRemoteMediaAsync(movedFile, serviceProvider, mediaFileStore, httpContext);
