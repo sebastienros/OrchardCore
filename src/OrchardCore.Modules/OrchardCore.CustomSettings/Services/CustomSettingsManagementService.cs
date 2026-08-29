@@ -162,8 +162,22 @@ internal sealed class CustomSettingsManagementService
             return CustomSettingsManagementResult<JsonObject>.ValidationFailure(errors);
         }
 
-        await _contentManager.UpdateAsync(contentItem);
-        var validationResult = await _contentManager.ValidateAsync(contentItem);
+        ContentValidateResult validationResult;
+        try
+        {
+            await _contentManager.UpdateAsync(contentItem);
+            validationResult = await _contentManager.ValidateAsync(contentItem);
+        }
+        catch (JsonException exception)
+        {
+            await _session.CancelAsync();
+            return CustomSettingsManagementResult<JsonObject>.ValidationFailure(
+                new Dictionary<string, string[]>
+                {
+                    [string.Empty] = [$"The custom settings payload contains an invalid value: {exception.Message}"],
+                });
+        }
+
         if (!validationResult.Succeeded)
         {
             await _session.CancelAsync();
@@ -273,7 +287,7 @@ internal sealed class CustomSettingsManagementService
 
         return await IsAuthorizedAsync(user, definition)
             ? CustomSettingsManagementResult<ContentTypeDefinition>.Success(definition)
-            : CustomSettingsManagementResult<ContentTypeDefinition>.Forbidden();
+            : CustomSettingsManagementResult<ContentTypeDefinition>.NotFound();
     }
 
     private Task<bool> IsAuthorizedAsync(ClaimsPrincipal user, ContentTypeDefinition definition)

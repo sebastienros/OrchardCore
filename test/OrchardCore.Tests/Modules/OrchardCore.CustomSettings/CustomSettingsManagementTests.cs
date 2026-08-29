@@ -63,12 +63,38 @@ public class CustomSettingsManagementTests
 
         var result = await fixture.Service.UpdateAsync(_user, "Protected", []);
 
-        Assert.Equal(CustomSettingsManagementStatus.Forbidden, result.Status);
+        Assert.Equal(CustomSettingsManagementStatus.NotFound, result.Status);
         fixture.SiteService.Verify(service => service.LoadSiteSettingsAsync(), Times.Never);
         fixture.SiteService.Verify(service => service.GetSiteSettingsAsync(), Times.Never);
         fixture.ContentManager.Verify(manager => manager.NewAsync(It.IsAny<string>()), Times.Never);
         fixture.ContentManager.Verify(manager => manager.UpdateAsync(It.IsAny<ContentItem>()), Times.Never);
         fixture.ContentManager.Verify(manager => manager.ValidateAsync(It.IsAny<ContentItem>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_ContentHandlerJsonException_ReturnsValidationFailure()
+    {
+        var fixture = CreateFixture(
+            [CreateDefinition("MailSettings", "Mail", partNames: ["MailPart"])]);
+        fixture.ContentManager
+            .Setup(manager => manager.UpdateAsync(It.IsAny<ContentItem>()))
+            .ThrowsAsync(new JsonException("Text must be a string."));
+
+        var result = await fixture.Service.UpdateAsync(
+            _user,
+            "MailSettings",
+            new JsonObject
+            {
+                ["MailPart"] = new JsonObject
+                {
+                    ["Text"] = new JsonObject(),
+                },
+            });
+
+        Assert.Equal(CustomSettingsManagementStatus.ValidationFailed, result.Status);
+        Assert.Contains("invalid value", Assert.Single(result.Errors[string.Empty]), StringComparison.OrdinalIgnoreCase);
+        fixture.Session.Verify(session => session.CancelAsync(), Times.Once);
+        fixture.SiteService.Verify(service => service.UpdateSiteSettingsAsync(It.IsAny<ISite>()), Times.Never);
     }
 
     [Fact]

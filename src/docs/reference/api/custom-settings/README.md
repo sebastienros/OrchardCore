@@ -16,9 +16,9 @@ Every endpoint uses Orchard Core's `Api` authentication scheme, requires
 
 The dynamic `ManageCustomSettings_<name>` permission is evaluated for every definition. The
 `AccessRemoteManagement` permission does not imply access to any custom settings resource.
-Listing and shared settings schema discovery omit unauthorized definitions. An operation that
-targets an existing unauthorized definition returns `403 Forbidden`; an unknown name or a
-content type without the `CustomSettings` stereotype returns `404 Not Found`.
+Listing and shared settings schema discovery omit unauthorized definitions. Resource-specific
+operations return `404 Not Found` for both an unauthorized definition and an unknown name or
+content type without the `CustomSettings` stereotype, so existence is not disclosed.
 
 Authorization is completed before the site settings document is read or loaded for update and
 before content update or validation handlers run.
@@ -225,8 +225,8 @@ remain available only through this resource-specific API.
 | --- | --- |
 | `400 Bad Request` | Missing/malformed JSON, forbidden or undeclared property, content-type mismatch, or content validation failure |
 | `401 Unauthorized` | Missing or invalid `Api` bearer credentials |
-| `403 Forbidden` | Missing `AccessRemoteManagement` or the resource's dynamic custom settings permission |
-| `404 Not Found` | Unknown name or a content type without the `CustomSettings` stereotype |
+| `403 Forbidden` | Missing `AccessRemoteManagement` |
+| `404 Not Found` | Unknown, unauthorized, or non-`CustomSettings` resource |
 
 ## Endpoint coverage and sources
 

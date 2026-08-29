@@ -4,7 +4,7 @@ The Orchard Core management APIs expose tenant administration operations through
 
 Each API belongs to the feature that owns the underlying resource. Consequently, the operations available to a tenant depend on its enabled features.
 
-This reference currently covers 12 feature-owned management resource groups and two protocol groups. A tenant exposes only the groups contributed by its enabled features.
+This reference currently covers 14 feature-owned management resource groups and two protocol groups. A tenant exposes only the groups contributed by its enabled features.
 
 ## Before you begin
 
