@@ -3,10 +3,15 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization.Metadata;
 using Microsoft.Extensions.Options;
+using OrchardCore.ContentFields.Fields;
 using OrchardCore.ContentManagement;
 using OrchardCore.ContentManagement.Metadata.Models;
 using OrchardCore.Contents.Models;
 using OrchardCore.Contents.Services;
+using OrchardCore.Markdown.Fields;
+using OrchardCore.Media.Fields;
+using OrchardCore.Spatial.Fields;
+using OrchardCore.Taxonomies.Fields;
 
 namespace OrchardCore.Tests.Modules.OrchardCore.Contents;
 
@@ -96,6 +101,36 @@ public class ContentItemSchemaBuilderTests
                 StringComparison.Ordinal));
     }
 
+    [Fact]
+    public void BuildSchema_IncludesProductionContentFieldDescriptions()
+    {
+        var schema = BuildProductionFieldSchema();
+
+        AssertFieldDescription(schema, nameof(BooleanField), nameof(BooleanField.Value), "The Boolean value.");
+        AssertFieldDescription(schema, nameof(TextField), nameof(TextField.Text), "The plain text value.");
+        AssertFieldDescription(schema, nameof(HtmlField), nameof(HtmlField.Html), "The HTML content.");
+        AssertFieldDescription(schema, nameof(LinkField), nameof(LinkField.Url), "The link URL.");
+        AssertFieldDescription(schema, nameof(LinkField), nameof(LinkField.Text), "The text displayed for the link.");
+        AssertFieldDescription(schema, nameof(LinkField), nameof(LinkField.Target), "The browsing context in which to open the link, such as _blank.");
+        AssertFieldDescription(schema, nameof(MultiTextField), nameof(MultiTextField.Values), "The selected text values.");
+        AssertFieldDescription(schema, nameof(NumericField), nameof(NumericField.Value), "The numeric value, or null when unset.");
+        AssertFieldDescription(schema, nameof(DateTimeField), nameof(DateTimeField.Value), "The date and time in ISO 8601 format, or null when unset.");
+        AssertFieldDescription(schema, nameof(DateField), nameof(DateField.Value), "The date in ISO 8601 format, or null when unset.");
+        AssertFieldDescription(schema, nameof(TimeField), nameof(TimeField.Value), "The time of day in hh:mm:ss format, or null when unset.");
+        AssertFieldDescription(schema, nameof(YoutubeField), nameof(YoutubeField.EmbeddedAddress), "The URL used to embed the YouTube video.");
+        AssertFieldDescription(schema, nameof(YoutubeField), nameof(YoutubeField.RawAddress), "The original YouTube video URL.");
+        AssertFieldDescription(schema, nameof(ContentPickerField), nameof(ContentPickerField.ContentItemIds), "The IDs of the selected content items.");
+        AssertFieldDescription(schema, nameof(LocalizationSetContentPickerField), nameof(LocalizationSetContentPickerField.LocalizationSets), "The localization set IDs of the selected content items.");
+        AssertFieldDescription(schema, nameof(UserPickerField), nameof(UserPickerField.UserIds), "The IDs of the selected users.");
+        AssertFieldDescription(schema, nameof(MediaField), nameof(MediaField.Paths), "The paths of the selected media assets.");
+        AssertFieldDescription(schema, nameof(MediaField), nameof(MediaField.MediaTexts), "The alternative text values for the selected media assets, in the same order as Paths.");
+        AssertFieldDescription(schema, nameof(MarkdownField), nameof(MarkdownField.Markdown), "The Markdown content.");
+        AssertFieldDescription(schema, nameof(TaxonomyField), nameof(TaxonomyField.TaxonomyContentItemId), "The ID of the taxonomy content item.");
+        AssertFieldDescription(schema, nameof(TaxonomyField), nameof(TaxonomyField.TermContentItemIds), "The content item IDs of the selected taxonomy terms.");
+        AssertFieldDescription(schema, nameof(GeoPointField), nameof(GeoPointField.Latitude), "The latitude in decimal degrees from -90 to 90, or null when unset.");
+        AssertFieldDescription(schema, nameof(GeoPointField), nameof(GeoPointField.Longitude), "The longitude in decimal degrees from -180 to 180, or null when unset.");
+    }
+
     private static JsonObject BuildSchema()
     {
         var services = new ServiceCollection();
@@ -117,6 +152,79 @@ public class ContentItemSchemaBuilderTests
             typeDefinition,
             contentOptions,
             new JsonSerializerOptions { TypeInfoResolver = new DefaultJsonTypeInfoResolver() });
+    }
+
+    private static JsonObject BuildProductionFieldSchema()
+    {
+        var services = new ServiceCollection();
+        services.AddOptions();
+        services.AddContentPart<SchemaPart>();
+        services.AddContentField<BooleanField>();
+        services.AddContentField<TextField>();
+        services.AddContentField<HtmlField>();
+        services.AddContentField<LinkField>();
+        services.AddContentField<MultiTextField>();
+        services.AddContentField<NumericField>();
+        services.AddContentField<DateTimeField>();
+        services.AddContentField<DateField>();
+        services.AddContentField<TimeField>();
+        services.AddContentField<YoutubeField>();
+        services.AddContentField<ContentPickerField>();
+        services.AddContentField<LocalizationSetContentPickerField>();
+        services.AddContentField<UserPickerField>();
+        services.AddContentField<MediaField>();
+        services.AddContentField<MarkdownField>();
+        services.AddContentField<TaxonomyField>();
+        services.AddContentField<GeoPointField>();
+
+        using var serviceProvider = services.BuildServiceProvider();
+        var contentOptions = serviceProvider.GetRequiredService<IOptions<ContentOptions>>().Value;
+        var fieldTypes = new[]
+        {
+            typeof(BooleanField),
+            typeof(TextField),
+            typeof(HtmlField),
+            typeof(LinkField),
+            typeof(MultiTextField),
+            typeof(NumericField),
+            typeof(DateTimeField),
+            typeof(DateField),
+            typeof(TimeField),
+            typeof(YoutubeField),
+            typeof(ContentPickerField),
+            typeof(LocalizationSetContentPickerField),
+            typeof(UserPickerField),
+            typeof(MediaField),
+            typeof(MarkdownField),
+            typeof(TaxonomyField),
+            typeof(GeoPointField),
+        };
+        var fieldDefinitions = fieldTypes
+            .Select(fieldType => new ContentPartFieldDefinition(
+                new ContentFieldDefinition(fieldType.Name),
+                fieldType.Name,
+                []))
+            .ToArray();
+        var partDefinition = new ContentPartDefinition(nameof(SchemaPart), fieldDefinitions, []);
+        var typePartDefinition = new ContentTypePartDefinition(nameof(SchemaPart), partDefinition, []);
+        var typeDefinition = new ContentTypeDefinition("Article", "Article", [typePartDefinition], []);
+
+        return ContentItemSchemaBuilder.BuildSchema(
+            typeDefinition,
+            contentOptions,
+            new JsonSerializerOptions { TypeInfoResolver = new DefaultJsonTypeInfoResolver() });
+    }
+
+    private static void AssertFieldDescription(
+        JsonObject schema,
+        string fieldName,
+        string propertyName,
+        string expected)
+    {
+        var description = schema["properties"]?[nameof(SchemaPart)]?["properties"]?[fieldName]?
+            ["properties"]?[propertyName]?["description"]?.GetValue<string>();
+
+        Assert.Equal(expected, description);
     }
 
     private static IEnumerable<string> GetReferences(JsonNode node)
