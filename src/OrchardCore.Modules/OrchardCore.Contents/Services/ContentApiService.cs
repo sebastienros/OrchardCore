@@ -753,26 +753,37 @@ public static class ContentItemSchemaBuilder
 
     private sealed class ContentItemSchema
     {
+        [Description("The stable identifier shared by every version of the content item.")]
         public string ContentItemId { get; set; }
 
+        [Description("The identifier of this specific content item version.")]
         public string ContentItemVersionId { get; set; }
 
+        [Description("The content type that defines the item's available parts and fields.")]
         public string ContentType { get; set; }
 
+        [Description("The human-readable text used to identify the content item.")]
         public string DisplayText { get; set; }
 
+        [Description("Whether this is the latest version of the content item.")]
         public bool Latest { get; set; }
 
+        [Description("Whether this version is published.")]
         public bool Published { get; set; }
 
+        [Description("The UTC date and time when this version was last modified.")]
         public DateTime? ModifiedUtc { get; set; }
 
+        [Description("The UTC date and time when this version was published, or null when it is unpublished.")]
         public DateTime? PublishedUtc { get; set; }
 
+        [Description("The UTC date and time when the content item was created.")]
         public DateTime? CreatedUtc { get; set; }
 
+        [Description("The identifier of the user who owns the content item.")]
         public string Owner { get; set; }
 
+        [Description("The user name of the person who last modified this version.")]
         public string Author { get; set; }
     }
 }

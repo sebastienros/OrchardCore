@@ -717,7 +717,9 @@ curl -H "Authorization: Bearer $TOKEN" \
 ```
 
 `200 OK` returns a JSON Schema Draft 2020-12 document generated from the current content
-definition and registered CLR part/field types:
+definition and registered CLR part/field types. Property descriptions are
+derived from runtime annotations on those CLR models, so contributed parts and
+fields can describe their own JSON contract:
 
 ```json
 {

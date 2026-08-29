@@ -49,6 +49,18 @@ public class ContentItemSchemaBuilderTests
         Assert.Contains(nameof(ContentItem.CreatedUtc), properties);
         Assert.Contains(nameof(ContentItem.Owner), properties);
         Assert.Contains(nameof(ContentItem.Author), properties);
+        Assert.Equal(
+            "The content type that defines the item's available parts and fields.",
+            properties[nameof(ContentItem.ContentType)]?["description"]?.GetValue<string>());
+        Assert.Equal(
+            "The human-readable text used to identify the content item.",
+            properties[nameof(ContentItem.DisplayText)]?["description"]?.GetValue<string>());
+        Assert.Equal(
+            "The identifier of the user who owns the content item.",
+            properties[nameof(ContentItem.Owner)]?["description"]?.GetValue<string>());
+        Assert.Equal(
+            "The user name of the person who last modified this version.",
+            properties[nameof(ContentItem.Author)]?["description"]?.GetValue<string>());
 
         var part = Assert.IsType<JsonObject>(properties["Article/Part~1"]);
         var partProperties = Assert.IsType<JsonObject>(part["properties"]);
