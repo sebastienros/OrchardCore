@@ -4,6 +4,7 @@ using System.Text.Json.Nodes;
 using System.Text.Json.Serialization.Metadata;
 using Microsoft.Extensions.Options;
 using OrchardCore.ContentFields.Fields;
+using OrchardCore.Autoroute.Models;
 using OrchardCore.ContentManagement;
 using OrchardCore.ContentManagement.Metadata.Models;
 using OrchardCore.Contents.Models;
@@ -12,6 +13,8 @@ using OrchardCore.Markdown.Fields;
 using OrchardCore.Media.Fields;
 using OrchardCore.Spatial.Fields;
 using OrchardCore.Taxonomies.Fields;
+using OrchardCore.Markdown.Models;
+using OrchardCore.Title.Models;
 
 namespace OrchardCore.Tests.Modules.OrchardCore.Contents;
 
@@ -131,6 +134,20 @@ public class ContentItemSchemaBuilderTests
         AssertFieldDescription(schema, nameof(GeoPointField), nameof(GeoPointField.Longitude), "The longitude in decimal degrees from -180 to 180, or null when unset.");
     }
 
+    [Theory]
+    [InlineData(nameof(TitlePart), nameof(TitlePart.Title), "The title displayed for the content item.")]
+    [InlineData(nameof(AutoroutePart), nameof(AutoroutePart.Path), "The URL path for the content item, relative to the site's base URL.")]
+    [InlineData(nameof(MarkdownBodyPart), nameof(MarkdownBodyPart.Markdown), "The Markdown source for the content body.")]
+    public void BuildSchema_ProductionContentParts_IncludePropertyDescriptions(
+        string partName,
+        string propertyName,
+        string expectedDescription)
+    {
+        var schema = BuildBlogPostSchema();
+        var description = schema["properties"]?[partName]?["properties"]?[propertyName]?["description"];
+        Assert.Equal(expectedDescription, description?.GetValue<string>());
+    }
+
     private static JsonObject BuildSchema()
     {
         var services = new ServiceCollection();
@@ -208,6 +225,32 @@ public class ContentItemSchemaBuilderTests
         var partDefinition = new ContentPartDefinition(nameof(SchemaPart), fieldDefinitions, []);
         var typePartDefinition = new ContentTypePartDefinition(nameof(SchemaPart), partDefinition, []);
         var typeDefinition = new ContentTypeDefinition("Article", "Article", [typePartDefinition], []);
+ 
+        return ContentItemSchemaBuilder.BuildSchema(
+            typeDefinition,
+            contentOptions,
+            new JsonSerializerOptions { TypeInfoResolver = new DefaultJsonTypeInfoResolver() });
+    }
+
+    private static JsonObject BuildBlogPostSchema()
+    {
+        var services = new ServiceCollection();
+        services.AddOptions();
+        services.AddContentPart<TitlePart>();
+        services.AddContentPart<AutoroutePart>();
+        services.AddContentPart<MarkdownBodyPart>();
+
+        using var serviceProvider = services.BuildServiceProvider();
+        var contentOptions = serviceProvider.GetRequiredService<IOptions<ContentOptions>>().Value;
+        var typeDefinition = new ContentTypeDefinition(
+            "BlogPost",
+            "Blog Post",
+            [
+                CreateTypePartDefinition(nameof(TitlePart)),
+                CreateTypePartDefinition(nameof(AutoroutePart)),
+                CreateTypePartDefinition(nameof(MarkdownBodyPart)),
+            ],
+            []);
 
         return ContentItemSchemaBuilder.BuildSchema(
             typeDefinition,
@@ -223,9 +266,11 @@ public class ContentItemSchemaBuilderTests
     {
         var description = schema["properties"]?[nameof(SchemaPart)]?["properties"]?[fieldName]?
             ["properties"]?[propertyName]?["description"]?.GetValue<string>();
-
         Assert.Equal(expected, description);
     }
+
+    private static ContentTypePartDefinition CreateTypePartDefinition(string name) =>
+        new(name, new ContentPartDefinition(name, [], []), []);
 
     private static IEnumerable<string> GetReferences(JsonNode node)
     {
