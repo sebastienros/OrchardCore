@@ -161,6 +161,11 @@ public class DefaultMediaFileStore : IMediaFileStore
 
     public virtual async Task<bool> TryCopyFileAsync(string srcPath, string dstPath)
     {
+        if (await GetFileInfoAsync(dstPath) is not null)
+        {
+            return false;
+        }
+
         if (await GetFileInfoAsync(srcPath) is { Length: { } sourceSize })
         {
             await ValidateAvailableStorageAsync(sourceSize);
@@ -177,12 +182,14 @@ public class DefaultMediaFileStore : IMediaFileStore
 
     public virtual async Task<bool> TryMoveFileAsync(string oldPath, string newPath)
     {
-        if (!await _fileStore.TryMoveFileAsync(oldPath, newPath))
+        var context = new MediaMoveContext { OldPath = oldPath, NewPath = newPath };
+        await _mediaEventHandlers.InvokeAsync((handler, ctx) => handler.MediaMovingAsync(ctx), context, _logger);
+
+        if (!await _fileStore.TryMoveFileAsync(context.OldPath, context.NewPath))
         {
             return false;
         }
 
-        var context = new MediaMoveContext { OldPath = oldPath, NewPath = newPath };
         await _mediaEventHandlers.InvokeAsync((handler, ctx) => handler.MediaMovedAsync(ctx), context, _logger);
         return true;
     }

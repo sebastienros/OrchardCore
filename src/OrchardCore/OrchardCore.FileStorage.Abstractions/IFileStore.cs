@@ -117,18 +117,7 @@ public interface IFileStore
     /// <param name="oldPath">The path of the file to be renamed or moved.</param>
     /// <param name="newPath">The destination path.</param>
     /// <returns><c>true</c> when the file was moved; <c>false</c> when the destination already exists.</returns>
-    async Task<bool> TryMoveFileAsync(string oldPath, string newPath)
-    {
-        try
-        {
-            await MoveFileAsync(oldPath, newPath);
-            return true;
-        }
-        catch (ExistsFileStoreException)
-        {
-            return false;
-        }
-    }
+    Task<bool> TryMoveFileAsync(string oldPath, string newPath);
 
     /// <summary>
     /// Creates a copy of a file in the file store.
@@ -144,18 +133,7 @@ public interface IFileStore
     /// <param name="srcPath">The source file path.</param>
     /// <param name="dstPath">The destination path.</param>
     /// <returns><c>true</c> when the file was copied; <c>false</c> when the destination already exists.</returns>
-    async Task<bool> TryCopyFileAsync(string srcPath, string dstPath)
-    {
-        try
-        {
-            await CopyFileAsync(srcPath, dstPath);
-            return true;
-        }
-        catch (ExistsFileStoreException)
-        {
-            return false;
-        }
-    }
+    Task<bool> TryCopyFileAsync(string srcPath, string dstPath);
 
     /// <summary>
     /// Creates a stream to read the contents of a file in the file store.
