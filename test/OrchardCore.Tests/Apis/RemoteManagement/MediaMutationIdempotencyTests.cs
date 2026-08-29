@@ -109,6 +109,25 @@ public class MediaMutationIdempotencyTests
     }
 
     [Fact]
+    public async Task MoveEndpoint_SourceAndIdenticalTargetExist_CompletesInterruptedMove()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        await using var testApp = await MediaTestApp.CreateAsync();
+        await testApp.CreateFileAsync("source/file.txt", "content");
+        await testApp.CreateFileAsync("target/file.txt", "content");
+
+        var response = await testApp.Client.PostAsJsonAsync("api/media/files:move", new MoveMediaRequest
+        {
+            OldPath = "source/file.txt",
+            NewPath = "target/file.txt",
+        }, cancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Null(await testApp.Store.GetFileInfoAsync("source/file.txt"));
+        Assert.Equal("content", await testApp.ReadFileAsync("target/file.txt"));
+    }
+
+    [Fact]
     public async Task CopyEndpoint_OnlyAcceptsAnExistingIdenticalTargetAsCompleted()
     {
         var cancellationToken = TestContext.Current.CancellationToken;

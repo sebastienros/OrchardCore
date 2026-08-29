@@ -36,7 +36,6 @@ public class WorkflowApiTests
                 [
                     new ActivityRecordDto
                     {
-                        ActivityId = "set-output",
                         Name = "SetOutputTask",
                         IsStart = true,
                         Properties = new JsonObject
@@ -124,7 +123,6 @@ public class WorkflowApiTests
             [
                 new ActivityRecordDto
                 {
-                    ActivityId = "set-output",
                     Name = "SetOutputTask",
                     IsStart = true,
                     Properties = new JsonObject
@@ -153,6 +151,7 @@ public class WorkflowApiTests
         {
             var service = scope.ServiceProvider.GetRequiredService(GetServiceType("OrchardCore.Workflows.Services.WorkflowApiService", "OrchardCore.Workflows"));
             var retryState = new ModelStateDictionary();
+            definition.Activities[0].ActivityId = null;
             var retry = await InvokeAsync<WorkflowTypeDto>(service, "CreateWorkflowTypeAsync", definition, retryState);
             Assert.True(retryState.IsValid);
             Assert.Equal(first.WorkflowTypeId, retry.WorkflowTypeId);

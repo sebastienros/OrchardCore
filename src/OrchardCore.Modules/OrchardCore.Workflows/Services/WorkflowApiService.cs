@@ -62,6 +62,7 @@ internal sealed class WorkflowApiService
     public async Task<WorkflowTypeDto> CreateWorkflowTypeAsync(WorkflowTypeDto model, ModelStateDictionary modelState)
     {
         Normalize(model);
+        AssignStableActivityIds(model);
         if (model.WorkflowTypeId is not null)
         {
             var existing = await _workflowTypeStore.GetAsync(model.WorkflowTypeId);
@@ -419,6 +420,19 @@ internal sealed class WorkflowApiService
             transition.SourceActivityId = transition.SourceActivityId?.Trim();
             transition.SourceOutcomeName = transition.SourceOutcomeName?.Trim();
             transition.DestinationActivityId = transition.DestinationActivityId?.Trim();
+        }
+    }
+
+    private static void AssignStableActivityIds(WorkflowTypeDto model)
+    {
+        if (string.IsNullOrEmpty(model.WorkflowTypeId))
+        {
+            return;
+        }
+
+        for (var index = 0; index < model.Activities.Count; index++)
+        {
+            model.Activities[index].ActivityId ??= $"{model.WorkflowTypeId}-activity-{index + 1}";
         }
     }
 

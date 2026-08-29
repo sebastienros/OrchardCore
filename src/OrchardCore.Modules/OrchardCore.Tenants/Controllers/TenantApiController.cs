@@ -214,7 +214,7 @@ public sealed class TenantApiController : ControllerBase
                     shellSettings["Schema"] = model.Schema;
                     shellSettings["ConnectionString"] = model.ConnectionString;
                     shellSettings["RecipeName"] = model.RecipeName;
-                    shellSettings["Secret"] = Guid.NewGuid().ToString();
+                    shellSettings["Secret"] ??= Guid.NewGuid().ToString();
                 }
 
                 await _shellHost.UpdateShellSettingsAsync(shellSettings);

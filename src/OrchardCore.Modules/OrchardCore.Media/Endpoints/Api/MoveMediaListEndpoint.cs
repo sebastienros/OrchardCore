@@ -43,28 +43,31 @@ public static class MoveMediaListEndpoint
         HttpContext httpContext,
         [FromServices] IAuthorizationService authorizationService,
         [FromServices] IMediaFileStore mediaFileStore,
+        [FromServices] IServiceProvider serviceProvider,
         [FromServices] IStringLocalizer<MediaApiEndpoints> localizer,
         [FromBody] MoveMedias model)
-        => HandleLegacyResultAsync(httpContext, authorizationService, mediaFileStore, localizer, model.mediaNames, model.sourceFolder, model.targetFolder);
+        => HandleLegacyResultAsync(httpContext, authorizationService, mediaFileStore, serviceProvider, localizer, model.mediaNames, model.sourceFolder, model.targetFolder);
 
     private static Task<IResult> HandleAsync(
         HttpContext httpContext,
         [FromServices] IAuthorizationService authorizationService,
         [FromServices] IMediaFileStore mediaFileStore,
+        [FromServices] IServiceProvider serviceProvider,
         [FromServices] IStringLocalizer<MediaApiEndpoints> localizer,
         [FromBody] MoveMediaBatchRequest request)
-        => HandleManagementAsync(httpContext, authorizationService, mediaFileStore, localizer, request.MediaNames, request.SourceFolder, request.TargetFolder);
+        => HandleManagementAsync(httpContext, authorizationService, mediaFileStore, serviceProvider, localizer, request.MediaNames, request.SourceFolder, request.TargetFolder);
 
     private static async Task<IResult> HandleLegacyResultAsync(
         HttpContext httpContext,
         IAuthorizationService authorizationService,
         IMediaFileStore mediaFileStore,
+        IServiceProvider serviceProvider,
         IStringLocalizer<MediaApiEndpoints> localizer,
         string[] mediaNames,
         string sourceFolder,
         string targetFolder)
     {
-        var (result, normalizedSourceFolder, normalizedTargetFolder) = await MoveAsync(httpContext, authorizationService, mediaFileStore, localizer, mediaNames, sourceFolder, targetFolder, allowCompleted: false);
+        var (result, normalizedSourceFolder, normalizedTargetFolder) = await MoveAsync(httpContext, authorizationService, mediaFileStore, serviceProvider, localizer, mediaNames, sourceFolder, targetFolder, allowCompleted: false);
 
         return result ?? TypedResults.Ok();
     }
@@ -73,12 +76,13 @@ public static class MoveMediaListEndpoint
         HttpContext httpContext,
         IAuthorizationService authorizationService,
         IMediaFileStore mediaFileStore,
+        IServiceProvider serviceProvider,
         IStringLocalizer<MediaApiEndpoints> localizer,
         string[] mediaNames,
         string sourceFolder,
         string targetFolder)
     {
-        var (result, normalizedSourceFolder, normalizedTargetFolder) = await MoveAsync(httpContext, authorizationService, mediaFileStore, localizer, mediaNames, sourceFolder, targetFolder, allowCompleted: true);
+        var (result, normalizedSourceFolder, normalizedTargetFolder) = await MoveAsync(httpContext, authorizationService, mediaFileStore, serviceProvider, localizer, mediaNames, sourceFolder, targetFolder, allowCompleted: true);
 
         return result ?? TypedResults.Ok(new MoveMediaBatchResultDto
         {
@@ -92,6 +96,7 @@ public static class MoveMediaListEndpoint
         HttpContext httpContext,
         IAuthorizationService authorizationService,
         IMediaFileStore mediaFileStore,
+        IServiceProvider serviceProvider,
         IStringLocalizer<MediaApiEndpoints> localizer,
         string[] mediaNames,
         string sourceFolder,
@@ -127,7 +132,7 @@ public static class MoveMediaListEndpoint
                 var sourceFile = await mediaFileStore.GetFileInfoAsync(sourcePath);
                 var targetFile = await mediaFileStore.GetFileInfoAsync(targetPath);
 
-                if (sourceFile == null && targetFile != null)
+                if (await MediaEndpointHelpers.TryCompleteMoveAsync(mediaFileStore, sourceFile, targetFile, serviceProvider, httpContext.RequestAborted))
                 {
                     continue;
                 }
@@ -141,11 +146,26 @@ public static class MoveMediaListEndpoint
 
             try
             {
-                await mediaFileStore.MoveFileAsync(sourcePath, targetPath);
+                if (!await mediaFileStore.TryMoveFileAsync(sourcePath, targetPath))
+                {
+                    var sourceFile = await mediaFileStore.GetFileInfoAsync(sourcePath);
+                    var targetFile = await mediaFileStore.GetFileInfoAsync(targetPath);
+                    if (!allowCompleted ||
+                        !await MediaEndpointHelpers.TryCompleteMoveAsync(mediaFileStore, sourceFile, targetFile, serviceProvider, httpContext.RequestAborted))
+                    {
+                        filesOnError.Add(sourcePath);
+                    }
+                }
             }
             catch (FileStoreException)
             {
-                filesOnError.Add(sourcePath);
+                var sourceFile = await mediaFileStore.GetFileInfoAsync(sourcePath);
+                var targetFile = await mediaFileStore.GetFileInfoAsync(targetPath);
+                if (!allowCompleted ||
+                    !await MediaEndpointHelpers.TryCompleteMoveAsync(mediaFileStore, sourceFile, targetFile, serviceProvider, httpContext.RequestAborted))
+                {
+                    filesOnError.Add(sourcePath);
+                }
             }
         }
 

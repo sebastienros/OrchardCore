@@ -34,6 +34,21 @@ internal sealed class ContentApiService
         MergeArrayHandling = MergeArrayHandling.Replace,
     };
 
+    private static readonly string[] s_wellKnownContentItemProperties =
+    [
+        nameof(ContentItem.ContentItemId),
+        nameof(ContentItem.ContentItemVersionId),
+        nameof(ContentItem.ContentType),
+        nameof(ContentItem.DisplayText),
+        nameof(ContentItem.Latest),
+        nameof(ContentItem.Published),
+        nameof(ContentItem.ModifiedUtc),
+        nameof(ContentItem.PublishedUtc),
+        nameof(ContentItem.CreatedUtc),
+        nameof(ContentItem.Owner),
+        nameof(ContentItem.Author),
+    ];
+
     private readonly IContentManager _contentManager;
     private readonly IContentDefinitionManager _contentDefinitionManager;
     private readonly IAuthorizationService _authorizationService;
@@ -207,21 +222,6 @@ internal sealed class ContentApiService
         }
         else
         {
-            if (!allowUpdate)
-            {
-                if (string.IsNullOrWhiteSpace(model.ContentItemId))
-                {
-                    return null;
-                }
-
-                if (!await _authorizationService.AuthorizeAsync(user, CommonPermissions.EditContent, contentItem))
-                {
-                    return new ContentItem { ContentItemId = string.Empty };
-                }
-
-                return contentItem;
-            }
-
             if (!string.IsNullOrWhiteSpace(contentItemId) && !string.Equals(model.ContentItemId, contentItemId, StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(model.ContentItemId))
             {
                 modelState.AddModelError(nameof(ContentItem.ContentItemId), "The content item id in the request body must match the route value.");
@@ -243,6 +243,21 @@ internal sealed class ContentApiService
             if (!await PrepareOwnershipAsync(_authorizationService, user, model, contentItem))
             {
                 return new ContentItem { ContentItemId = string.Empty };
+            }
+
+            if (!allowUpdate)
+            {
+                if (!MatchesRequestedContent(contentItem, model))
+                {
+                    modelState.AddModelError(nameof(ContentItem.ContentItemId), "A content item with this id already exists with different content.");
+                }
+
+                return contentItem;
+            }
+
+            if (contentItem.Published == publish && MatchesRequestedContent(contentItem, model))
+            {
+                return contentItem;
             }
 
             contentItem = await _contentManager.GetAsync(model.ContentItemId, VersionOptions.DraftRequired);
@@ -366,6 +381,45 @@ internal sealed class ContentApiService
             await authorizationService.AuthorizeAsync(user, CommonPermissions.EditContentOwner, contentItem);
     }
 
+    internal static bool MatchesRequestedContent(ContentItem contentItem, ContentItem model)
+    {
+        if (!string.IsNullOrWhiteSpace(model.ContentType) &&
+            !string.Equals(contentItem.ContentType, model.ContentType, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        if (model.DisplayText is not null &&
+            !string.Equals(contentItem.DisplayText, model.DisplayText, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        if (model.Owner is not null &&
+            !string.Equals(contentItem.Owner, model.Owner, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        var requestedContent = JsonSerializer.SerializeToNode(model)?.AsObject() ?? [];
+        var existingContent = JsonSerializer.SerializeToNode(contentItem)?.AsObject() ?? [];
+        foreach (var propertyName in s_wellKnownContentItemProperties)
+        {
+            requestedContent.Remove(propertyName);
+            existingContent.Remove(propertyName);
+        }
+
+        foreach (var property in requestedContent)
+        {
+            if (!JsonNode.DeepEquals(existingContent[property.Key], property.Value))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     public async Task<ContentItem> CreateDraftAsync(ClaimsPrincipal user, string contentItemId)
     {
         var contentItem = await _contentManager.GetAsync(contentItemId, VersionOptions.Latest);
@@ -385,7 +439,7 @@ internal sealed class ContentApiService
 
     public async Task<ContentItem> PublishAsync(ClaimsPrincipal user, string contentItemId)
     {
-        var contentItem = await _contentManager.GetAsync(contentItemId, VersionOptions.DraftRequired);
+        var contentItem = await _contentManager.GetAsync(contentItemId, VersionOptions.Draft);
         if (contentItem is null)
         {
             contentItem = await _contentManager.GetAsync(contentItemId, VersionOptions.Published);

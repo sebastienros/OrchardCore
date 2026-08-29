@@ -154,7 +154,18 @@ public static class CopyMediaEndpoint
             return (httpContext.ApiValidationProblem(detail: localizer["Cannot copy media because a file already exists with the same name"]), null);
         }
 
-        await mediaFileStore.CopyFileAsync(oldPath, newPath);
+        if (!await mediaFileStore.TryCopyFileAsync(oldPath, newPath))
+        {
+            targetFile = await mediaFileStore.GetFileInfoAsync(newPath);
+            if (allowCompleted &&
+                targetFile != null &&
+                await MediaEndpointHelpers.FilesAreEqualAsync(mediaFileStore, sourceFile, targetFile, httpContext.RequestAborted))
+            {
+                return (null, targetFile);
+            }
+
+            return (httpContext.ApiValidationProblem(detail: localizer["Cannot copy media because a file already exists with different content"]), null);
+        }
 
         var copiedFile = await mediaFileStore.GetFileInfoAsync(newPath);
 

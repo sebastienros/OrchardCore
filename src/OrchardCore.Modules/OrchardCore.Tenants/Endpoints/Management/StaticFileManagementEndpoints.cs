@@ -173,7 +173,29 @@ internal static class StaticFileManagementEndpoints
                 await httpContext.Request.Body.CopyToAsync(stream, httpContext.RequestAborted);
             }
 
-            File.Move(temporaryPath, physicalPath, overwrite);
+            try
+            {
+                File.Move(temporaryPath, physicalPath, overwrite);
+            }
+            catch (IOException) when (!overwrite && File.Exists(physicalPath))
+            {
+                await using var temporary = new FileStream(
+                    temporaryPath,
+                    FileMode.Open,
+                    FileAccess.Read,
+                    FileShare.Read,
+                    bufferSize: 81920,
+                    FileOptions.Asynchronous | FileOptions.SequentialScan);
+
+                if (!await ContentEqualsAsync(temporary, physicalPath, httpContext.RequestAborted))
+                {
+                    return TypedResults.Problem(
+                        detail: $"Static file '{normalizedPath}' already exists with different content.",
+                        statusCode: StatusCodes.Status409Conflict);
+                }
+
+                fileExists = true;
+            }
         }
         finally
         {

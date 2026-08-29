@@ -154,10 +154,38 @@ public static class MoveMediaEndpoint
 
         if (targetFile != null)
         {
+            if (allowCompleted &&
+                await MediaEndpointHelpers.TryCompleteMoveAsync(mediaFileStore, sourceFile, targetFile, serviceProvider, httpContext.RequestAborted))
+            {
+                await MediaEndpointHelpers.PreCacheRemoteMediaAsync(targetFile, serviceProvider, mediaFileStore, httpContext);
+                return (null, targetFile);
+            }
+
             return (httpContext.ApiValidationProblem(detail: localizer["Cannot move media because a file already exists with the same name"]), null);
         }
 
-        await mediaFileStore.MoveFileAsync(oldPath, newPath);
+        try
+        {
+            if (!await mediaFileStore.TryMoveFileAsync(oldPath, newPath))
+            {
+                sourceFile = await mediaFileStore.GetFileInfoAsync(oldPath);
+                targetFile = await mediaFileStore.GetFileInfoAsync(newPath);
+                if (!allowCompleted ||
+                    !await MediaEndpointHelpers.TryCompleteMoveAsync(mediaFileStore, sourceFile, targetFile, serviceProvider, httpContext.RequestAborted))
+                {
+                    return (httpContext.ApiValidationProblem(detail: localizer["Cannot move media because the target contains different content"]), null);
+                }
+            }
+        }
+        catch (FileStoreException) when (allowCompleted)
+        {
+            sourceFile = await mediaFileStore.GetFileInfoAsync(oldPath);
+            targetFile = await mediaFileStore.GetFileInfoAsync(newPath);
+            if (!await MediaEndpointHelpers.TryCompleteMoveAsync(mediaFileStore, sourceFile, targetFile, serviceProvider, httpContext.RequestAborted))
+            {
+                return (httpContext.ApiValidationProblem(detail: localizer["Cannot move media because the target contains different content"]), null);
+            }
+        }
 
         var movedFile = await mediaFileStore.GetFileInfoAsync(newPath);
         await MediaEndpointHelpers.PreCacheRemoteMediaAsync(movedFile, serviceProvider, mediaFileStore, httpContext);
