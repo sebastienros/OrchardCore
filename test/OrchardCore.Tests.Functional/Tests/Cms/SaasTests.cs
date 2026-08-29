@@ -28,7 +28,7 @@ public sealed class SaasTests : IAsyncLifetime
         var page = await _fixture.CreatePageAsync();
         await page.GotoAndAssertOkAsync($"/{_fixture.Tenant.Prefix}");
         await Assertions.Expect(page.Locator("body")).ToHaveClassAsync("saas-page");
-        await Assertions.Expect(page.Locator("h1")).ToContainTextAsync("Your sites, connected and ready.");
+        await Assertions.Expect(page.Locator("h1")).ToContainTextAsync($"Welcome to {_fixture.Tenant.Name}");
         await page.CloseAsync();
     }
 
@@ -72,7 +72,7 @@ public sealed class SaasTests : IAsyncLifetime
         await page.SetViewportSizeAsync(1440, 900);
         await page.GotoAndAssertOkAsync($"{prefix}/login");
         await Assertions.Expect(page.Locator("body")).ToHaveClassAsync("saas-auth-page");
-        await Assertions.Expect(page.Locator(".saas-auth-intro")).ToBeVisibleAsync();
+        await Assertions.Expect(page.Locator(".saas-auth-header")).ToBeVisibleAsync();
 
         await page.LoginAsync(prefix);
 

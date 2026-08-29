@@ -21,31 +21,25 @@
 </head>
 <body class="saas-auth-page">
     <a class="saas-skip-link" href="#main-content">@T["Skip to main content"]</a>
-    <main id="main-content" class="saas-auth-shell">
-        <section class="saas-auth-intro" aria-label="@T["About {0}", Site.SiteName]">
+    <header class="saas-auth-header">
+        <div class="saas-container">
             <a class="saas-brand saas-brand--inverse" href="@Url.Content("~/")">
                 <span class="saas-brand__mark" aria-hidden="true">
                     <span></span><span></span><span></span>
                 </span>
                 <span>@Site.SiteName</span>
             </a>
-            <div class="saas-auth-intro__content">
-                <span class="saas-eyebrow">@T["Secure workspace"]</span>
-                <h2>@T["Manage your sites with confidence."]</h2>
-                <p>@T["Sign in to continue to your tenant administration and remote management tools."]</p>
+        </div>
+    </header>
+    <main id="main-content" class="saas-auth-main">
+        <div class="saas-auth-main__inner">
+            <a class="saas-auth-home" href="@Url.Content("~/")">&larr; @T["Back to site"]</a>
+            @await RenderSectionAsync("Header", required: false)
+            @await RenderSectionAsync("Messages", required: false)
+            <div class="saas-auth-card">
+                @await RenderBodyAsync()
             </div>
-            <p class="saas-auth-intro__footer">@T["Protected by Orchard Core"]</p>
-        </section>
-        <section class="saas-auth-main">
-            <div class="saas-auth-main__inner">
-                <a class="saas-auth-home" href="@Url.Content("~/")">&larr; @T["Back to site"]</a>
-                @await RenderSectionAsync("Header", required: false)
-                @await RenderSectionAsync("Messages", required: false)
-                <div class="saas-auth-card">
-                    @await RenderBodyAsync()
-                </div>
-            </div>
-        </section>
+        </div>
     </main>
     @await RenderSectionAsync("Footer", required: false)
     <resources type="FootScript" />

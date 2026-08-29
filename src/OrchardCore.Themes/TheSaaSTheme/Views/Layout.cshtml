@@ -23,7 +23,7 @@
     <a class="saas-skip-link" href="#main-content">@T["Skip to main content"]</a>
     <header class="saas-header">
         <div class="saas-container saas-header__inner">
-            <a class="saas-brand" href="@Url.Content("~/")" aria-label="@T["{0} home", Site.SiteName]">
+            <a class="saas-brand saas-brand--inverse" href="@Url.Content("~/")" aria-label="@T["{0} home", Site.SiteName]">
                 <span class="saas-brand__mark" aria-hidden="true">
                     <span></span><span></span><span></span>
                 </span>
@@ -41,13 +41,6 @@
             @await RenderBodyAsync()
         </div>
     </main>
-
-    <footer class="saas-footer">
-        <div class="saas-container saas-footer__inner">
-            <span class="saas-footer__brand">@Site.SiteName</span>
-            <span>@T["Securely manage every tenant from one place."]</span>
-        </div>
-    </footer>
 
     <resources type="FootScript" />
 </body>
