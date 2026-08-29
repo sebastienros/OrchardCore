@@ -19,52 +19,10 @@
       ]
     },
     {
-      "name": "OpenIdServerSettings",
-      "EnableTokenEndpoint": true,
-      "EnableAuthorizationEndpoint": true,
-      "EnableLogoutEndpoint": true,
-      "EnableDeviceAuthorizationEndpoint": true,
-      "EnableEndUserVerificationEndpoint": true,
-      "EnableRevocationEndpoint": true,
-      "AllowAuthorizationCodeFlow": true,
-      "AllowDeviceAuthorizationFlow": true,
-      "AllowClientCredentialsFlow": true,
-      "AllowRefreshTokenFlow": true,
-      "RequireProofKeyForCodeExchange": true
+      "name": "RemoteManagementConfiguration"
     },
     {
-      "name": "OpenIdValidationSettings",
-      "Tenant": "Default"
-    },
-    {
-      "name": "OpenIdScope",
-      "ScopeName": "orchardcore.management",
-      "DisplayName": "Orchard Core remote management",
-      "Description": "Allows a client to invoke Orchard Core remote management APIs.",
-      "Resources": "orchardcore"
-    },
-    {
-      "name": "OpenIdApplication",
-      "ClientId": "orchardcore-cli",
-      "DisplayName": "Orchard Core CLI",
-      "ApplicationType": "native",
-      "Type": "public",
-      "ConsentType": "explicit",
-      "AllowAuthorizationCodeFlow": true,
-      "AllowDeviceAuthorizationFlow": true,
-      "AllowRefreshTokenFlow": true,
-      "AllowLogoutEndpoint": true,
-      "AllowRevocationEndpoint": true,
-      "RequireProofKeyForCodeExchange": true,
-      "RedirectUris": "http://127.0.0.1/callback",
-      "PostLogoutRedirectUris": "http://127.0.0.1/",
-      "ScopeEntries": [
-        { "Name": "email" },
-        { "Name": "openid" },
-        { "Name": "profile" },
-        { "Name": "roles" },
-        { "Name": "orchardcore.management" }
-      ]
+      "name": "ReloadTenant"
     }
   ]
 }

@@ -299,6 +299,7 @@ public sealed class RemoteManagementStartup : StartupBase
         services.AddNavigationProvider<RemoteManagementAdminMenu>();
         services.AddScoped<RemoteManagementConfigurationService>();
         services.AddScoped<IRemoteManagementTenantConfigurationService, TenantRemoteManagementConfigurationService>();
+        services.AddRecipeExecutionStep<RemoteManagementConfigurationStep>();
     }
 }
 
