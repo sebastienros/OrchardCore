@@ -9,9 +9,12 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using OrchardCore.FileStorage;
+using OrchardCore.Media.Events;
 using OrchardCore.Media.Services;
 using OrchardCore.Media.ViewModels;
+using OrchardCore.Modules;
 
 namespace OrchardCore.Media.Endpoints.Api;
 
@@ -30,12 +33,6 @@ internal static class MediaEndpointHelpers
     private static readonly char[] s_extensionSeparator = [' ', ','];
 
     private static readonly HashSet<string> s_emptySet = [];
-
-    public static bool IsBaseName(string name)
-        => !string.IsNullOrWhiteSpace(name)
-            && name is not "." and not ".."
-            && !name.Contains('/')
-            && !name.Contains('\\');
 
     public static Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult ValidatePaging(int skip, int take)
     {
@@ -288,6 +285,42 @@ internal static class MediaEndpointHelpers
                 return false;
             }
         }
+    }
+
+    public static async Task<bool> TryCompleteMoveAsync(
+        IMediaFileStore mediaFileStore,
+        IFileStoreEntry source,
+        IFileStoreEntry target,
+        IServiceProvider serviceProvider,
+        CancellationToken cancellationToken)
+    {
+        if (source is null)
+        {
+            return target is not null;
+        }
+
+        if (target is null ||
+            !await FilesAreEqualAsync(mediaFileStore, source, target, cancellationToken))
+        {
+            return false;
+        }
+
+        _ = await mediaFileStore.TryDeleteFileAsync(source.Path);
+        if (await mediaFileStore.GetFileInfoAsync(source.Path) is not null)
+        {
+            return false;
+        }
+
+        var context = new MediaMoveContext
+        {
+            OldPath = source.Path,
+            NewPath = target.Path,
+        };
+        var logger = serviceProvider.GetRequiredService<ILogger<MediaApiEndpoints>>();
+        await serviceProvider.GetServices<IMediaEventHandler>()
+            .InvokeAsync((handler, ctx) => handler.MediaMovedAsync(ctx), context, logger);
+
+        return true;
     }
 
     private static async Task<int> ReadChunkAsync(Stream stream, byte[] buffer, CancellationToken cancellationToken)

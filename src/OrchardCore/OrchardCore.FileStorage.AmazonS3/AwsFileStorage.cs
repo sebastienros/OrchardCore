@@ -193,41 +193,17 @@ public class AwsFileStore : IFileStore
 
     public async Task<bool> TryMoveFileAsync(string oldPath, string newPath)
     {
-        var sourceMetadata = await GetRequiredMetadataAsync(oldPath);
-        if (!await TryCopyVersionAsync(oldPath, newPath, sourceMetadata))
-        {
-            GetObjectMetadataResponse targetMetadata;
-            try
-            {
-                targetMetadata = await GetRequiredMetadataAsync(newPath);
-            }
-            catch (FileStoreException)
-            {
-                return false;
-            }
-
-            if (sourceMetadata.ContentLength != targetMetadata.ContentLength ||
-                !await ObjectsAreEqualAsync(oldPath, sourceMetadata.ETag, newPath, targetMetadata.ETag))
-            {
-                return false;
-            }
-        }
-
-        try
-        {
-            var response = await _amazonS3Client.DeleteObjectAsync(new DeleteObjectRequest
-            {
-                BucketName = _options.BucketName,
-                Key = this.Combine(_basePrefix, oldPath),
-                IfMatch = sourceMetadata.ETag,
-            });
-
-            return response.IsSuccessful();
-        }
-        catch (AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.PreconditionFailed)
+        if (!await TryCopyFileAsync(oldPath, newPath))
         {
             return false;
         }
+
+        if (!await TryDeleteFileAsync(oldPath))
+        {
+            throw new FileStoreException($"File '{oldPath}' was copied to '{newPath}' but the source could not be deleted.");
+        }
+
+        return true;
     }
 
     public async Task CopyFileAsync(string srcPath, string dstPath)
@@ -294,61 +270,17 @@ public class AwsFileStore : IFileStore
             throw new ArgumentException($"The values for {nameof(srcPath)} and {nameof(dstPath)} must not be the same.");
         }
 
-        return await TryCopyVersionAsync(srcPath, dstPath, await GetRequiredMetadataAsync(srcPath));
-    }
-
-    private async Task<GetObjectMetadataResponse> GetRequiredMetadataAsync(string path)
-    {
         try
         {
-            return await _amazonS3Client.GetObjectMetadataAsync(new GetObjectMetadataRequest
-            {
-                BucketName = _options.BucketName,
-                Key = this.Combine(_basePrefix, path),
-            });
-        }
-        catch (AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.NotFound)
-        {
-            throw new FileStoreException($"File '{path}' does not exist.", ex);
-        }
-        catch (AmazonS3Exception ex)
-        {
-            throw new FileStoreException($"Error accessing file '{path}': {ex.Message}", ex);
-        }
-    }
-
-    private async Task<bool> TryCopyVersionAsync(
-        string srcPath,
-        string dstPath,
-        GetObjectMetadataResponse sourceMetadata)
-    {
-        try
-        {
-            using var source = await _amazonS3Client.GetObjectAsync(new GetObjectRequest
-            {
-                BucketName = _options.BucketName,
-                Key = this.Combine(_basePrefix, srcPath),
-                EtagToMatch = sourceMetadata.ETag,
-            });
-            var request = new PutObjectRequest
+            await using var source = await GetFileStreamAsync(srcPath);
+            var response = await _amazonS3Client.PutObjectAsync(new PutObjectRequest
             {
                 BucketName = _options.BucketName,
                 Key = this.Combine(_basePrefix, dstPath),
-                InputStream = source.ResponseStream,
+                InputStream = source,
                 IfNoneMatch = "*",
-                ContentType = sourceMetadata.ContentType,
-            };
-            request.Headers.CacheControl = sourceMetadata.CacheControl;
-            request.Headers.ContentDisposition = sourceMetadata.ContentDisposition;
-            request.Headers.ContentEncoding = sourceMetadata.ContentEncoding;
-            request.Headers.ContentLanguage = sourceMetadata.ContentLanguage;
+            });
 
-            foreach (var key in sourceMetadata.Metadata.Keys)
-            {
-                request.Metadata[key] = sourceMetadata.Metadata[key];
-            }
-
-            var response = await _amazonS3Client.PutObjectAsync(request);
             if (!response.IsSuccessful())
             {
                 throw new FileStoreException($"Error while copying file '{srcPath}'.");
@@ -367,60 +299,6 @@ public class AwsFileStore : IFileStore
         catch (AmazonS3Exception ex)
         {
             throw new FileStoreException($"Error while copying file '{srcPath}': {ex.Message}", ex);
-        }
-    }
-
-    private async Task<bool> ObjectsAreEqualAsync(
-        string firstPath,
-        string firstETag,
-        string secondPath,
-        string secondETag)
-    {
-        try
-        {
-            using var first = await _amazonS3Client.GetObjectAsync(new GetObjectRequest
-            {
-                BucketName = _options.BucketName,
-                Key = this.Combine(_basePrefix, firstPath),
-                EtagToMatch = firstETag,
-            });
-            using var second = await _amazonS3Client.GetObjectAsync(new GetObjectRequest
-            {
-                BucketName = _options.BucketName,
-                Key = this.Combine(_basePrefix, secondPath),
-                EtagToMatch = secondETag,
-            });
-
-            return await StreamsAreEqualAsync(first.ResponseStream, second.ResponseStream);
-        }
-        catch (AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.PreconditionFailed)
-        {
-            return false;
-        }
-    }
-
-    private static async Task<bool> StreamsAreEqualAsync(Stream first, Stream second)
-    {
-        var firstBuffer = new byte[81920];
-        var secondBuffer = new byte[81920];
-        while (true)
-        {
-            var firstRead = await first.ReadAtLeastAsync(firstBuffer, firstBuffer.Length, throwOnEndOfStream: false);
-            var secondRead = await second.ReadAtLeastAsync(secondBuffer, secondBuffer.Length, throwOnEndOfStream: false);
-            if (firstRead != secondRead)
-            {
-                return false;
-            }
-
-            if (firstRead == 0)
-            {
-                return true;
-            }
-
-            if (!firstBuffer.AsSpan(0, firstRead).SequenceEqual(secondBuffer.AsSpan(0, secondRead)))
-            {
-                return false;
-            }
         }
     }
 

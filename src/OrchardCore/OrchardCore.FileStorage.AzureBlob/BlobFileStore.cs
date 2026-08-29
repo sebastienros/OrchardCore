@@ -580,55 +580,38 @@ public class BlobFileStore : IFileStore
 
     public async Task<bool> TryMoveFileAsync(string oldPath, string newPath)
     {
-        try
+        await EnsureCapabilitiesAsync();
+
+        if (_capabilities?.SupportsAtomicMove == true)
         {
-            var oldBlob = GetBlobReference(oldPath);
-            var newBlob = GetBlobReference(newPath);
-            var sourceProperties = (await oldBlob.GetPropertiesAsync()).Value;
-
-            if (!await TryCopyVersionAsync(oldBlob, newBlob, sourceProperties.ETag))
-            {
-                BlobProperties targetProperties;
-                try
-                {
-                    targetProperties = (await newBlob.GetPropertiesAsync()).Value;
-                }
-                catch (RequestFailedException ex) when (ex.Status == 404)
-                {
-                    return false;
-                }
-
-                if (sourceProperties.ContentLength != targetProperties.ContentLength ||
-                    !await BlobsAreEqualAsync(oldBlob, sourceProperties.ETag, newBlob, targetProperties.ETag))
-                {
-                    return false;
-                }
-            }
-
             try
             {
-                var response = await oldBlob.DeleteIfExistsAsync(
-                    DeleteSnapshotsOption.IncludeSnapshots,
-                    new BlobRequestConditions { IfMatch = sourceProperties.ETag });
-                return response.Value;
+                var oldFullPath = this.Combine(_basePrefix, oldPath);
+                var newFullPath = this.Combine(_basePrefix, newPath);
+                await _dataLakeFileSystemClient.GetFileClient(oldFullPath).RenameAsync(newFullPath);
+                return true;
             }
-            catch (RequestFailedException ex) when (ex.Status == 412)
+            catch (RequestFailedException ex) when (ex.Status is 409 or 412)
             {
                 return false;
             }
+            catch (Exception ex)
+            {
+                throw new FileStoreException($"Cannot move file '{oldPath}' to '{newPath}'.", ex);
+            }
         }
-        catch (RequestFailedException ex) when (ex.Status == 404)
+
+        if (!await TryCopyFileAsync(oldPath, newPath))
         {
-            throw new FileStoreException($"Cannot move file '{oldPath}' because it does not exist.", ex);
+            return false;
         }
-        catch (FileStoreException)
+
+        if (!await TryDeleteFileAsync(oldPath))
         {
-            throw;
+            throw new FileStoreException($"File '{oldPath}' was copied to '{newPath}' but the source could not be deleted.");
         }
-        catch (Exception ex)
-        {
-            throw new FileStoreException($"Cannot move file '{oldPath}' to '{newPath}'.", ex);
-        }
+
+        return true;
     }
 
     public async Task CopyFileAsync(string srcPath, string dstPath)
@@ -696,8 +679,15 @@ public class BlobFileStore : IFileStore
                 throw new FileStoreException($"Cannot copy file '{srcPath}' because it does not exist.");
             }
 
-            var sourceProperties = (await oldBlob.GetPropertiesAsync()).Value;
-            return await TryCopyVersionAsync(oldBlob, GetBlobReference(dstPath), sourceProperties.ETag);
+            var operation = await GetBlobReference(dstPath).StartCopyFromUriAsync(
+                oldBlob.Uri,
+                new BlobCopyFromUriOptions
+                {
+                    DestinationConditions = new BlobRequestConditions { IfNoneMatch = ETag.All },
+                });
+
+            _ = await operation.WaitForCompletionAsync();
+            return true;
         }
         catch (RequestFailedException ex) when (ex.Status is 409 or 412)
         {
@@ -710,77 +700,6 @@ public class BlobFileStore : IFileStore
         catch (Exception ex)
         {
             throw new FileStoreException($"Cannot copy file '{srcPath}' to '{dstPath}'.", ex);
-        }
-    }
-
-    private static async Task<bool> TryCopyVersionAsync(
-        BlobClient source,
-        BlobClient destination,
-        ETag sourceETag)
-    {
-        try
-        {
-            var operation = await destination.StartCopyFromUriAsync(
-                source.Uri,
-                new BlobCopyFromUriOptions
-                {
-                    SourceConditions = new BlobRequestConditions { IfMatch = sourceETag },
-                    DestinationConditions = new BlobRequestConditions { IfNoneMatch = ETag.All },
-                });
-
-            _ = await operation.WaitForCompletionAsync();
-            return true;
-        }
-        catch (RequestFailedException ex) when (ex.Status is 409 or 412)
-        {
-            return false;
-        }
-    }
-
-    private static async Task<bool> BlobsAreEqualAsync(
-        BlobClient first,
-        ETag firstETag,
-        BlobClient second,
-        ETag secondETag)
-    {
-        try
-        {
-            var firstResponse = await first.DownloadStreamingAsync(new BlobDownloadOptions
-            {
-                Conditions = new BlobRequestConditions { IfMatch = firstETag },
-            });
-            var secondResponse = await second.DownloadStreamingAsync(new BlobDownloadOptions
-            {
-                Conditions = new BlobRequestConditions { IfMatch = secondETag },
-            });
-            await using var firstStream = firstResponse.Value.Content;
-            await using var secondStream = secondResponse.Value.Content;
-
-            var firstBuffer = new byte[81920];
-            var secondBuffer = new byte[81920];
-            while (true)
-            {
-                var firstRead = await firstStream.ReadAtLeastAsync(firstBuffer, firstBuffer.Length, throwOnEndOfStream: false);
-                var secondRead = await secondStream.ReadAtLeastAsync(secondBuffer, secondBuffer.Length, throwOnEndOfStream: false);
-                if (firstRead != secondRead)
-                {
-                    return false;
-                }
-
-                if (firstRead == 0)
-                {
-                    return true;
-                }
-
-                if (!firstBuffer.AsSpan(0, firstRead).SequenceEqual(secondBuffer.AsSpan(0, secondRead)))
-                {
-                    return false;
-                }
-            }
-        }
-        catch (RequestFailedException ex) when (ex.Status == 412)
-        {
-            return false;
         }
     }
 

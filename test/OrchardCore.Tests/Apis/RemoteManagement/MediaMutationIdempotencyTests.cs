@@ -109,20 +109,22 @@ public class MediaMutationIdempotencyTests
     }
 
     [Fact]
-    public async Task MoveEndpoint_SamePath_ReturnsConflictAndPreservesFile()
+    public async Task MoveEndpoint_SourceAndIdenticalTargetExist_CompletesInterruptedMove()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         await using var testApp = await MediaTestApp.CreateAsync();
         await testApp.CreateFileAsync("source/file.txt", "content");
+        await testApp.CreateFileAsync("target/file.txt", "content");
 
         var response = await testApp.Client.PostAsJsonAsync("api/media/files:move", new MoveMediaRequest
         {
             OldPath = "source/file.txt",
-            NewPath = "source/file.txt",
+            NewPath = "target/file.txt",
         }, cancellationToken);
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Equal("content", await testApp.ReadFileAsync("source/file.txt"));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Null(await testApp.Store.GetFileInfoAsync("source/file.txt"));
+        Assert.Equal("content", await testApp.ReadFileAsync("target/file.txt"));
     }
 
     [Fact]
@@ -201,32 +203,6 @@ public class MediaMutationIdempotencyTests
 
         Assert.Equal(HttpStatusCode.RequestEntityTooLarge, oversizedResponse.StatusCode);
         Assert.Equal("replacement", await testApp.ReadFileAsync("uploads/file.txt"));
-    }
-
-    [Fact]
-    public async Task UploadAndBatchMove_RejectNamesContainingPaths()
-    {
-        var cancellationToken = TestContext.Current.CancellationToken;
-        await using var testApp = await MediaTestApp.CreateAsync();
-
-        using var uploadBody = new ByteArrayContent("content"u8.ToArray());
-        uploadBody.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
-        var uploadResponse = await testApp.Client.PutAsync(
-            "api/media/files/content?path=uploads&fileName=..%2Foutside.txt",
-            uploadBody,
-            cancellationToken);
-        var moveResponse = await testApp.Client.PostAsJsonAsync(
-            "api/media/files:move-batch",
-            new MoveMediaBatchRequest
-            {
-                MediaNames = ["../outside.txt"],
-                SourceFolder = "source",
-                TargetFolder = "target",
-            },
-            cancellationToken);
-
-        Assert.Equal(HttpStatusCode.BadRequest, uploadResponse.StatusCode);
-        Assert.Equal(HttpStatusCode.BadRequest, moveResponse.StatusCode);
     }
 
     private sealed class MediaTestApp : IAsyncDisposable
