@@ -222,6 +222,12 @@ internal sealed class ContentApiService
         }
         else
         {
+            if (!await _authorizationService.AuthorizeAsync(user, CommonPermissions.EditContent, contentItem)
+                || (publish && !await _authorizationService.AuthorizeAsync(user, CommonPermissions.PublishContent, contentItem)))
+            {
+                return new ContentItem { ContentItemId = string.Empty };
+            }
+
             if (!string.IsNullOrWhiteSpace(contentItemId) && !string.Equals(model.ContentItemId, contentItemId, StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(model.ContentItemId))
             {
                 modelState.AddModelError(nameof(ContentItem.ContentItemId), "The content item id in the request body must match the route value.");
@@ -232,12 +238,6 @@ internal sealed class ContentApiService
             {
                 modelState.AddModelError(nameof(ContentItem.ContentType), "The content type cannot be changed.");
                 return contentItem;
-            }
-
-            if (!await _authorizationService.AuthorizeAsync(user, CommonPermissions.EditContent, contentItem)
-                || (publish && !await _authorizationService.AuthorizeAsync(user, CommonPermissions.PublishContent, contentItem)))
-            {
-                return new ContentItem { ContentItemId = string.Empty };
             }
 
             if (!await PrepareOwnershipAsync(_authorizationService, user, model, contentItem))
