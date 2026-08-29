@@ -206,6 +206,7 @@ nav:
               - Content items: reference/api/content-items/README.md
               - Media: reference/api/media/README.md
               - Queries: reference/api/queries/README.md
+              - Templates: reference/api/templates/README.md
               - Workflows: reference/api/workflows/README.md
           - Administration:
               - Features: reference/api/features/README.md

@@ -2,6 +2,14 @@
 
 The templates module allows editors to create custom Liquid templates.
 
+## Remote management
+
+When `OrchardCore.Templates` and `OrchardCore.RemoteManagement` are enabled, authenticated remote clients can list, inspect, create, replace, and delete custom templates through the Templates management API. Every operation requires both **Access remote management API** and the security-critical **Manage templates** permission.
+
+The `oc` CLI discovers the `templates` capability and exposes `templates list`, `templates show`, `templates create`, `templates update`, `templates delete`, and `templates schema` commands from the tenant OpenAPI document.
+
+See the [Templates management API reference](../../api/templates/README.md) for routes, request schemas, paging, permissions, and retry behavior.
+
 ## Available templates
 
 Templates can be defined using the web editor, or in a theme. Templates are distinguished by their name.  

@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using OrchardCore.ContentTypes.Editors;
 using OrchardCore.Deployment;
@@ -5,8 +7,10 @@ using OrchardCore.DisplayManagement;
 using OrchardCore.Modules;
 using OrchardCore.Navigation;
 using OrchardCore.Recipes;
+using OrchardCore.RemoteManagement;
 using OrchardCore.Security.Permissions;
 using OrchardCore.Templates.Deployment;
+using OrchardCore.Templates.Endpoints.Management;
 using OrchardCore.Templates.Recipes;
 using OrchardCore.Templates.Services;
 using OrchardCore.Templates.Settings;
@@ -25,6 +29,7 @@ public sealed class Startup : StartupBase
         services.AddPermissionProvider<Permissions>();
         services.AddNavigationProvider<AdminMenu>();
         services.AddRecipeExecutionStep<TemplateStep>();
+        services.AddSingleton<IRemoteManagementCapabilityProvider, TemplatesRemoteManagementCapabilityProvider>();
 
         // Template shortcuts in settings
         services.AddScoped<IContentPartDefinitionDisplayDriver, TemplateContentPartDefinitionDriver>();
@@ -35,6 +40,11 @@ public sealed class Startup : StartupBase
 
         services.AddScoped<AdminTemplatesManager>();
         services.AddPermissionProvider<AdminTemplatesPermissions>();
+    }
+
+    public override void Configure(IApplicationBuilder app, IEndpointRouteBuilder routes, IServiceProvider serviceProvider)
+    {
+        routes.AddTemplateManagementEndpoints();
     }
 }
 
