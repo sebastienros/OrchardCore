@@ -5,13 +5,14 @@ namespace OrchardCore.Cli;
 
 internal sealed class CliPaths
 {
-    public CliPaths(string rootDirectory)
+    public CliPaths(string rootDirectory, string? credentialsDirectory = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(rootDirectory);
 
         RootDirectory = rootDirectory;
         ConfigFilePath = Path.Combine(rootDirectory, "contexts.json");
         CacheDirectory = Path.Combine(rootDirectory, "cache");
+        CredentialsDirectory = credentialsDirectory ?? Path.Combine(rootDirectory, "credentials");
     }
 
     public string RootDirectory { get; }
@@ -20,13 +21,19 @@ internal sealed class CliPaths
 
     public string CacheDirectory { get; }
 
+    public string CredentialsDirectory { get; }
+
     public void EnsureRootDirectory()
     {
         Directory.CreateDirectory(RootDirectory);
         SetOwnerOnlyDirectory(RootDirectory);
     }
 
-    public static CliPaths CreateDefault() => new(GetDefaultRootDirectory());
+    public static CliPaths CreateDefault() => new(
+        GetDefaultRootDirectory(),
+        OperatingSystem.IsWindows()
+            ? null
+            : Path.Combine(GetUserHomeDirectory(), ".orchardcore", "credentials"));
 
     public static string NormalizeTenantUrl(string tenantUrl)
     {
@@ -62,6 +69,22 @@ internal sealed class CliPaths
         });
     }
 
+    public string GetCredentialFilePath(string contextName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(contextName);
+
+        EnsureRootDirectory();
+        var credentialsRoot = Path.GetDirectoryName(CredentialsDirectory)
+            ?? throw new InvalidOperationException("The credentials directory must have a parent directory.");
+        Directory.CreateDirectory(credentialsRoot);
+        SetOwnerOnlyDirectory(credentialsRoot);
+        Directory.CreateDirectory(CredentialsDirectory);
+        SetOwnerOnlyDirectory(CredentialsDirectory);
+
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(contextName.Trim().ToUpperInvariant()));
+        return Path.Combine(CredentialsDirectory, $"{Convert.ToHexString(bytes).ToLowerInvariant()}.json");
+    }
+
     private static string ComputeContextKey(string tenantUrl)
     {
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(NormalizeTenantUrl(tenantUrl)));
@@ -76,7 +99,7 @@ internal sealed class CliPaths
         }
     }
 
-    private static void SetOwnerOnlyDirectory(string path)
+    internal static void SetOwnerOnlyDirectory(string path)
     {
         if (!OperatingSystem.IsWindows())
         {
@@ -100,21 +123,25 @@ internal sealed class CliPaths
 
         if (OperatingSystem.IsMacOS())
         {
-            baseDirectory = Path.Combine(
-                global::System.Environment.GetFolderPath(
-                    global::System.Environment.SpecialFolder.UserProfile,
-                    global::System.Environment.SpecialFolderOption.Create),
-                "Library",
-                "Application Support");
+            baseDirectory = Path.Combine(GetUserHomeDirectory(), "Library", "Application Support");
             return Path.Combine(baseDirectory, "OrchardCore", "oc");
         }
 
         baseDirectory = global::System.Environment.GetEnvironmentVariable("XDG_CONFIG_HOME")
-            ?? Path.Combine(
-                global::System.Environment.GetFolderPath(
-                    global::System.Environment.SpecialFolder.UserProfile,
-                    global::System.Environment.SpecialFolderOption.Create),
-                ".config");
+            ?? Path.Combine(GetUserHomeDirectory(), ".config");
         return Path.Combine(baseDirectory, "orchardcore", "oc");
+    }
+
+    private static string GetUserHomeDirectory()
+    {
+        var home = global::System.Environment.GetFolderPath(
+            global::System.Environment.SpecialFolder.UserProfile,
+            global::System.Environment.SpecialFolderOption.Create);
+        if (string.IsNullOrWhiteSpace(home) || !Path.IsPathFullyQualified(home))
+        {
+            throw new InvalidOperationException("The user home directory could not be resolved.");
+        }
+
+        return home;
     }
 }

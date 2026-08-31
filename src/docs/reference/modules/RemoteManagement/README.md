@@ -54,7 +54,17 @@ oc context add production https://cms.example.com/tenant-a --current
 oc login
 ```
 
-Browser login uses OAuth authorization code with PKCE and a temporary loopback listener. Credentials are renewed silently with refresh tokens stored in Windows Credential Manager, macOS Keychain, or Linux Secret Service.
+Browser login uses OAuth authorization code with PKCE and a temporary loopback listener. Credentials are renewed silently with refresh tokens stored in Windows Credential Manager on Windows. On macOS, Linux, and other Unix-like systems, tokens are stored as plaintext owner-only files under `~/.orchardcore/credentials`.
+
+The Unix token directory uses mode `0700` and token files use mode `0600`.
+These permissions prevent access by other operating-system users but do not
+encrypt tokens at rest. Protect the user account and home directory as you
+would for other development credentials.
+
+The CLI does not read or migrate tokens previously written to macOS Keychain or
+Linux Secret Service, avoiding an operating-system credential prompt. Sign in
+once per context after upgrading; legacy entries can be removed with the
+platform's credential-management tools.
 
 For a terminal without a browser, use device authorization:
 

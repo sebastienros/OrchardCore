@@ -20,24 +20,107 @@ internal interface ICredentialStore
 
 internal static class CredentialStoreFactory
 {
-    public static ICredentialStore CreateDefault()
+    public static ICredentialStore CreateDefault(CliPaths paths)
     {
-        if (OperatingSystem.IsMacOS())
-        {
-            return new MacOsCredentialStore();
-        }
+        ArgumentNullException.ThrowIfNull(paths);
 
         if (OperatingSystem.IsWindows())
         {
             return new WindowsCredentialStore();
         }
 
-        if (OperatingSystem.IsLinux())
+        return new FileCredentialStore(paths);
+    }
+}
+
+internal sealed class FileCredentialStore : ICredentialStore
+{
+    private readonly CliPaths _paths;
+
+    public FileCredentialStore(CliPaths paths)
+    {
+        _paths = paths;
+    }
+
+    public string DisplayName => "plaintext-file";
+
+    public bool SupportsPersistentHumanTokens => true;
+
+    public async Task SaveAsync(string contextName, StoredToken token, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(contextName);
+        ArgumentNullException.ThrowIfNull(token);
+
+        var path = _paths.GetCredentialFilePath(contextName);
+        var temporaryPath = $"{path}.{Guid.NewGuid():n}.tmp";
+        try
         {
-            return new LinuxSecretServiceCredentialStore();
+            var options = new FileStreamOptions
+            {
+                Mode = FileMode.CreateNew,
+                Access = FileAccess.Write,
+                Share = FileShare.None,
+                BufferSize = 4096,
+                Options = FileOptions.Asynchronous | FileOptions.WriteThrough,
+            };
+            if (!OperatingSystem.IsWindows())
+            {
+                options.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+            }
+
+            var payload = Encoding.UTF8.GetBytes(CliUtilities.SerializeToken(token));
+            try
+            {
+                await using var stream = new FileStream(temporaryPath, options);
+                await stream.WriteAsync(payload, cancellationToken);
+                await stream.FlushAsync(cancellationToken);
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(payload);
+            }
+
+            File.Move(temporaryPath, path, overwrite: true);
+        }
+        finally
+        {
+            File.Delete(temporaryPath);
+        }
+    }
+
+    public async Task<StoredToken?> GetAsync(string contextName, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(contextName);
+
+        var path = _paths.GetCredentialFilePath(contextName);
+        if (!File.Exists(path))
+        {
+            return null;
         }
 
-        return new UnsupportedCredentialStore();
+        try
+        {
+            return CliUtilities.DeserializeToken(await File.ReadAllTextAsync(path, cancellationToken));
+        }
+        catch (FileNotFoundException)
+        {
+            return null;
+        }
+    }
+
+    public Task<bool> DeleteAsync(string contextName, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(contextName);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var path = _paths.GetCredentialFilePath(contextName);
+        if (!File.Exists(path))
+        {
+            return Task.FromResult(false);
+        }
+
+        File.Delete(path);
+        return Task.FromResult(true);
     }
 }
 

@@ -58,7 +58,7 @@ internal sealed class CliApplication
 
         var contextStore = new ContextStore(paths);
         var cacheService = new CacheService(paths);
-        var credentialStore = CredentialStoreFactory.CreateDefault();
+        var credentialStore = CredentialStoreFactory.CreateDefault(paths);
         var configuration = await contextStore.LoadAsync(cancellationToken);
         var oauthClient = new OAuthClient(httpClient, Console.Error);
 

@@ -30,8 +30,10 @@ oc --help
 ```
 
 Use `oc login --grant device` on a headless terminal. Browser login uses
-authorization code with PKCE. Human refresh tokens are stored in the OS
-credential store.
+authorization code with PKCE. On Windows, human tokens are encrypted by Windows
+Credential Manager. On macOS, Linux, and other Unix-like systems, they are
+plaintext owner-only files under `~/.orchardcore/credentials` (`0700`
+directory, `0600` files).
 
 For multiple tenants, start one device flow per context and complete each code
 as the intended tenant-local user:

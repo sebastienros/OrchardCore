@@ -21,6 +21,15 @@ The `orchardcore-cli` application has no secret, requires PKCE, uses explicit co
 
 The application is permitted to request `email`, `openid`, `profile`, `roles`, and `orchardcore.management`. The remote-management manifest advertises `openid`, `profile`, `roles`, `orchardcore.management`, and, when refresh tokens are enabled, `offline_access`.
 
+The CLI stores human access and refresh tokens in Windows Credential Manager on
+Windows. On macOS, Linux, and other Unix-like systems, it uses plaintext files
+under `~/.orchardcore/credentials`; the directory is restricted to mode `0700`
+and each token file to `0600`. File permissions isolate other operating-system
+users but do not provide encryption at rest.
+
+Legacy macOS Keychain and Linux Secret Service entries are not read or migrated;
+contexts require one new interactive login after switching storage.
+
 !!! important
     Enabling the server's client-credentials flow does not turn the public `orchardcore-cli` application into a confidential client. Create a separate confidential OpenID application with a secret, client-credentials and token-endpoint permissions, the management scope, and suitable application roles/permission claims.
 
