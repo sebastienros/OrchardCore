@@ -7,6 +7,7 @@ import secrets
 import subprocess
 import sys
 import urllib.parse
+import urllib.request
 
 fixture_path = Path(sys.argv[1]).resolve()
 state = json.loads(fixture_path.read_text())
@@ -63,17 +64,22 @@ assert oc('users','show',user_id)['roleNames'] == [prefix]
 oc('users','disable',user_id,'--yes')
 oc('users','delete',user_id,'--yes')
 oc('roles','delete',role_id,'--yes')
-# Static assets have a complete upload/inspect/delete lifecycle.
+# Custom CSS uses the same Media store and permissions as the admin library.
 css = Path(state['root']) / (prefix + '.css')
 css.write_text('/* CLI smoke */\nbody { color: #123; }\n')
-remote = prefix + '/style.css'
-oc('static','files','upload',remote,'--file',str(css))
-assert oc('static','files','show',remote)['length'] == css.stat().st_size
-oc('static','files','delete',remote,expected=1)
-oc('static','files','delete',remote,'--yes')
-oc('static','files','delete',remote,'--yes')
-oc('static','files','show',remote,expected=4)
-assert oc('static','files','list','--path',prefix)['totalCount'] == 0
+remote = prefix + '/style-v1.css'
+assert '.css' in oc('media','constraints','show')['allowedFileExtensions']
+oc('media','folders','create','--name',prefix)
+asset = oc('media','files','upload','style-v1.css','--path',prefix,'--file',str(css))
+assert asset['filePath'] == remote
+assert oc('media','files','show',remote)['size'] == css.stat().st_size
+with urllib.request.urlopen(urllib.parse.urljoin(state['url'], asset['url'])) as response:
+    assert response.read() == css.read_bytes()
+oc('media','files','delete',remote,expected=1)
+oc('media','files','delete',remote,'--yes')
+oc('media','files','show',remote,expected=4)
+assert oc('media','files','list','--path',prefix)['totalCount'] == 0
+oc('media','folders','delete',prefix,'--yes')
 report = {'passed':True,'steps':steps,'prefix':prefix}
 (Path(state['root']) / 'smoke.json').write_text(json.dumps(report,indent=2))
 print(json.dumps({'passed':True,'commands':len(steps)}))

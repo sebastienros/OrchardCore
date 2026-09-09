@@ -185,6 +185,9 @@ public sealed class UploadMediaStreamRequest
 /// </summary>
 public sealed class MediaConstraintsDto : PermittedStorageDto
 {
+    /// <summary>
+    /// Gets or sets the extensions the current caller is permitted to upload.
+    /// </summary>
     public IEnumerable<string> AllowedFileExtensions { get; set; } = [];
 
     public long MaxFileSize { get; set; }

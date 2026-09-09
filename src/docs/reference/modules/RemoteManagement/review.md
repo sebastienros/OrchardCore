@@ -17,7 +17,7 @@ implemented behavior, measured verification, and outstanding work.
 | Existing platform change | Tracking PR | Treatment |
 | --- | --- | --- |
 | Tenant media roots and recipe write containment | [19840](https://github.com/OrchardCMS/OrchardCore/pull/19840) | Defer platform changes; review new media APIs separately |
-| Application static file traversal | [19837](https://github.com/OrchardCMS/OrchardCore/pull/19837) | Defer platform changes; review new static-file APIs separately |
+| Application static file traversal | [19837](https://github.com/OrchardCMS/OrchardCore/pull/19837) | Defer platform changes; the new static-file management API has been removed |
 | Liquid authoring permissions and rendered HTML | [19820](https://github.com/OrchardCMS/OrchardCore/pull/19820) | Defer shared rendering changes; verify management endpoint authorization |
 | Media folder authorization | [19677](https://github.com/OrchardCMS/OrchardCore/pull/19677) | Avoid duplicating shared authorization changes |
 
@@ -44,6 +44,10 @@ and [OAuth for native apps](https://www.rfc-editor.org/rfc/rfc8252.html) as
 reference points; it does not claim protocol conformance from a unit-test pass.
 
 
+The original verification counts and static-file tests below are historical.
+The static-file management API was subsequently removed; custom assets now use
+Media. See the Media asset follow-up for current verification.
+
 ## API regression fixes
 
 - Field schemas now preserve boolean schema semantics when adding descriptions.
@@ -51,9 +55,8 @@ reference points; it does not claim protocol conformance from a unit-test pass.
   no longer receives a success response after the database session was cancelled.
 - Draft reads/rendering no longer create drafts. Validation uses detached content
   and does not fire update workflows. Route/body ID mismatches are rejected.
-- New static-file management reads/listings apply the same symlink boundary as
-  writes. These changes are specific to the new APIs, separate from upstream
-  application static-file resolution.
+- The former static-file management API received symlink-boundary checks before
+  its later removal. Those tests and that API are no longer shipped.
 - 32 targeted content, schema, and tenant tests passed after these fixes.
 
 ## Additional completed changes
@@ -75,9 +78,8 @@ reference points; it does not claim protocol conformance from a unit-test pass.
   It does not establish identity from ID-token claims and no longer decodes or
   persists unused ID tokens. This is not a general-purpose OpenID relying party.
 - Media-folder creation checks management permission before name processing and
-  returns a validation problem for empty names. Static files now support
-  permission-protected, confirmed deletion of one file, with convergent retries
-  and directory/symlink rejection.
+  returns a validation problem for empty names. The earlier static-file deletion
+  implementation was retired with the static-file management API.
 - Features, recipes, users, and roles now advertise their existing capabilities
   in the authenticated manifest. Live verification checks every projected
   operation's capability against that manifest.
@@ -126,14 +128,14 @@ live workflows; route authorization alone is not a full functional test.
 | --- | --- |
 | Discovery/authentication | Bootstrap, authenticated manifest, compatibility, all three OAuth grant implementations; live device and client credentials, rotation/revocation |
 | Content definitions/items | Live custom part/TextField/type creation, schemas, validation, unpublished drafts, readback/rendering, lifecycle and no-mutation regression tests |
-| Templates/media/static files | Blind template validation/create/read/delete and CSS upload/public read; media authorization and invalid folder input; static deletion/path/idempotency tests |
+| Templates/media | Blind template validation/create/read/delete; Media authorization and invalid folder input. Earlier static-file tests are historical; see the Media asset follow-up for the replacement workflow. |
 | Users/roles | Live least-privilege role creation, password environment input, user create/read/disable/delete; existing-resource denial probes |
 | Features/recipes/queries/workflows | Metadata and authorization probes plus C# tests; blind agents discovered query/activity/workflow schemas; live recipe/workflow execution was not part of their tasks |
 | Site/custom settings, home route, themes, tenants | Metadata/authorization and C# suite; no claim of a complete multi-tenant site-build or every deployment/provider combination |
 
 ## Discovered command inventory
 
-This fixture enabled all 16 documented management resource groups. Counts are
+The current fixture enables all 15 documented management resource groups. Counts are
 OpenAPI-projected operations, excluding static CLI commands and automatically
 synthesized `schema` commands. Feature-specific commands can differ on another
 tenant; inspect its help and schemas before constructing requests.
@@ -150,7 +152,6 @@ tenant; inspect its help and schemas before constructing requests.
 | `recipes` | 3 | [Reference](../../api/recipes/README.md) |
 | `roles` | 5 | [Reference](../../api/roles/README.md) |
 | `settings` | 3 | [Reference](../../api/settings/README.md) |
-| `static-files` | 4 | [Reference](../../api/static-files/README.md) |
 | `templates` | 5 | [Reference](../../api/templates/README.md) |
 | `tenants` | 9 | [Reference](../../api/tenants/README.md) |
 | `themes` | 3 | [Reference](../../api/themes/README.md) |
@@ -231,6 +232,43 @@ The [six-platform CI run](https://github.com/sebastienros/OrchardCore/actions/ru
 at `8aebecaf5` passed 105 tests on every platform, native publishing with warnings
 treated as errors, and archive/license/completion smoke checks for Windows,
 Linux, and macOS on x64 and Arm64.
+
+## Media asset follow-up
+
+Tenant static-file management routes, discovery metadata, and permissions have
+been removed. Tenant static serving remains a deployment feature. Custom CSS,
+JavaScript, SVG, and images now use the existing Media APIs and the same store
+and extension/folder permissions as the admin library. The client chooses the
+folder; the server does not introduce a special custom-asset directory.
+
+The constraints endpoint now lists the extensions the caller may upload,
+including restricted extensions only with `UploadRestrictedMedia`. Upload,
+copy, and move continue enforcing the existing extension policy.
+
+A live application-token test exposed a missing-user-folder authorization bug:
+`ManageOwnMediaContent` could grant access to another user's files because an
+absent folder name was combined with `_Users` and treated as the caller's own
+folder. The management handler now requires a nonempty user-folder name before
+applying own-folder authorization, matching the existing view handler. The
+upstream [Media authorization PR](https://github.com/OrchardCMS/OrchardCore/pull/19677)
+was inspected and does not contain this guard; its other shared changes remain
+deferred. The failing live read returned 200 before the fix and 403 afterward.
+
+Verification on September 9, 2026:
+
+| Check | Result |
+| --- | --- |
+| Host build | Passed, no warnings on the final incremental build |
+| Focused server tests | 51 passed, including eight missing-user-folder regressions |
+| CLI tests | 110 passed |
+| Live authorization | 116 projected operations, 352 probes, no unexpected statuses |
+| Media policy | 38 API requests passed: extension discovery, restricted/ordinary uploads, unknown extensions, overwrite refusal, copy/move restrictions, protected user-folder denial, retired routes, and cleanup; four public asset reads also succeeded |
+| CLI lifecycle | 32 commands passed, including custom CSS upload, metadata, listing, public byte comparison, confirmation refusal, deletion, and folder cleanup |
+
+Media uses extensible `IMediaFileStore`; a shared provider such as Azure Blob or
+Amazon S3 can make uploads available to all nodes configured for that tenant.
+The default local filesystem is not replicated. These live checks used a local
+store and do not verify a multi-node deployment or a remote storage provider.
 
 ## Boundaries and follow-up work
 

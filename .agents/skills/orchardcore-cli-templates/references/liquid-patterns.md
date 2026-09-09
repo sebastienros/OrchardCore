@@ -71,7 +71,8 @@ publication state, taxonomy filtering, and sorting in the list/query layer.
 ## Resources and media
 
 ```liquid
-{% style name:"tenant-site", src:"~/styles/site.css?v=1" %}
+{% assign stylesheet = "assets/styles/site-v1.css" | asset_url %}
+{% style name:"tenant-site", src:stylesheet %}
 
 {% assign media = Model.ContentItem.Content.ArticleDetails.HeroImage %}
 {% if media.Paths.first %}
@@ -82,10 +83,11 @@ publication state, taxonomy filtering, and sorting in the list/query layer.
 
 Requirements:
 
-- Upload static CSS before referencing it.
+- Upload CSS through Media before referencing it; follow the Media skill for
+  folder selection and restricted-extension permissions.
 - Upload media before saving media field paths.
 - Include alternative text.
 - Keep editor-controlled attributes in normal Liquid markup so they are
   HTML-encoded; do not pass them to `img_tag`.
 - Render registered resources in the layout.
-- Version replaced static assets because public cache lifetimes are long.
+- Use versioned filenames for updated assets because public cache lifetimes are long.

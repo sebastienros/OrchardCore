@@ -220,7 +220,6 @@ nav:
               - Users: reference/api/users/README.md
           - Hosting:
               - Tenants: reference/api/tenants/README.md
-              - Static files: reference/api/static-files/README.md
       - Modules:
           - Overview: reference/README.md
           - CMS Modules:

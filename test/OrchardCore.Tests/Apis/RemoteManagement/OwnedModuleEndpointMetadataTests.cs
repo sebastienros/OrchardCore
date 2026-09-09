@@ -16,7 +16,6 @@ using OrchardCore.Recipes.Services;
 using OrchardCore.RemoteManagement;
 using OrchardCore.Roles.Endpoints.Management;
 using OrchardCore.Security;
-using OrchardCore.Security.Permissions;
 using OrchardCore.Security.Services;
 using OrchardCore.Tenants.Endpoints.Management;
 using OrchardCore.Tenants;
@@ -53,9 +52,6 @@ public class OwnedModuleEndpointMetadataTests
             string.Equals(endpoint.RoutePattern.RawText, "api/tenants/{tenantName}:setup", StringComparison.Ordinal))
             .Metadata.GetRequiredMetadata<CliOperationMetadata>();
         Assert.Equal("password", Assert.Single(setupMetadata.SecretProperties));
-        AssertPermission(endpoints, "api/static-files", "GET", global::OrchardCore.Tenants.Permissions.ViewTenantStaticFiles);
-        AssertPermission(endpoints, "api/static-files/file", "GET", global::OrchardCore.Tenants.Permissions.ViewTenantStaticFiles);
-        AssertPermission(endpoints, "api/static-files/content", "PUT", global::OrchardCore.Tenants.Permissions.ManageTenantStaticFiles);
 
         AssertOperation(endpoints, "api/features", "GET", "ApiListFeatures", "Features", ["features"], "list", null, [200, 400, 401, 403]);
         AssertOperation(endpoints, "api/features/{featureId}", "GET", "ApiGetFeature", "Features", ["features"], "show", null, [200, 401, 403, 404]);
@@ -100,7 +96,6 @@ public class OwnedModuleEndpointMetadataTests
         builder.Services.AddSingleton(Options.Create(new TenantsOptions()));
         builder.Services.AddSingleton(Mock.Of<ITenantValidator>());
         builder.Services.AddSingleton<TenantDatabasePatternResolver>(_ => throw new NotSupportedException());
-        builder.Services.AddSingleton<TenantFileProvider>(_ => throw new NotSupportedException());
         builder.Services.AddSingleton(Mock.Of<IStringLocalizer<global::OrchardCore.Tenants.Controllers.TenantApiController>>());
         builder.Services.AddSingleton(NullLogger<global::OrchardCore.Tenants.Controllers.TenantApiController>.Instance);
 
@@ -127,7 +122,6 @@ public class OwnedModuleEndpointMetadataTests
         var app = builder.Build();
 
         TenantManagementEndpoints.AddTenantManagementEndpoints(app);
-        StaticFileManagementEndpoints.AddStaticFileManagementEndpoints(app);
         FeatureManagementEndpoints.AddFeatureManagementEndpoints(app);
         RecipeManagementEndpoints.AddRecipeManagementEndpoints(app);
         UserManagementEndpoints.AddUserManagementEndpoints(app);
@@ -189,22 +183,5 @@ public class OwnedModuleEndpointMetadataTests
             Assert.NotNull(accepts);
             Assert.Contains(expectedRequestContentType, accepts.ContentTypes);
         }
-    }
-
-    private static void AssertPermission(
-        IEnumerable<RouteEndpoint> endpoints,
-        string route,
-        string method,
-        Permission permission)
-    {
-        var endpoint = endpoints.Single(endpoint =>
-            string.Equals(endpoint.RoutePattern.RawText?.TrimStart('/'), route.TrimStart('/'), StringComparison.Ordinal) &&
-            endpoint.Metadata.GetMetadata<IHttpMethodMetadata>()?.HttpMethods.Contains(method, StringComparer.OrdinalIgnoreCase) == true);
-
-        Assert.Contains(
-            endpoint.Metadata.GetOrderedMetadata<AuthorizationPolicy>()
-                .SelectMany(policy => policy.Requirements)
-                .OfType<PermissionRequirement>(),
-            requirement => requirement.Permission == permission);
     }
 }

@@ -5,13 +5,18 @@ The `Tenants` module allows you to manage tenants from the admin.
 ## API reference
 
 - [Tenant management API](../../api/tenants/README.md)
-- [Tenant static-file management API](../../api/static-files/README.md)
 
 ## Static File Provider Feature
 
 This feature registers a file provider for each tenant in order to serve custom files per tenant, even if they have the same names.
 
 Once enabled on a tenant, a folder `wwwroot` is created in the `App_Data\Sites\[Tenant]` folder. Any file that is placed in this folder will be served under the same domain and prefix as the tenant.
+
+The default provider reads the local filesystem. It does not replicate files
+across nodes, and tenant distribution does not synchronize this directory.
+Provision these files through deployment. For assets uploaded at runtime,
+use [Media management](../../api/media/README.md), which supports configurable
+storage providers and the existing Media permissions.
 
 Any static file that is placed in the content root folder of the website will be served
 first.

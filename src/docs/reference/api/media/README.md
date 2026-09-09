@@ -22,6 +22,20 @@ Every management operation requires:
 
 All operations require `ManageMediaContent` (**Manage Media**). Folder-scoped operations also authorize `ManageMediaFolder` (**Manage All Media Folders**) against each affected path. Secure Media may restrict that authorization to particular folders. The list-all, tree, and constraints operations authorize the media root. The completed-upload lookup checks only `ManageMediaContent`.
 
+Uploads and copy/move destinations also enforce the configured extension policy.
+`AllowedFileExtensions` are available to Media managers; `RestrictedFileExtensions`
+require the existing `UploadRestrictedMedia` permission. By default `.css`, `.js`,
+and `.svg` are restricted. Extensions absent from both lists are rejected even
+with this permission. Comparisons are case-insensitive. See
+[Media configuration](../../modules/Media/README.md) for the policy and storage
+providers. These APIs use `IMediaFileStore`, the same extensible store as the UI;
+multi-node deployments must configure a shared backend to share uploads.
+
+An application identity without a personal Media folder cannot use
+`ManageOwnMediaContent` to access other users' folders. Grant the appropriate
+folder or other-users Media permission when that access is required; ordinary
+custom-asset folders follow the existing Media folder policy.
+
 `GET /api/media/localizations` is intentionally anonymous. It exposes only UI labels.
 
 An absent or invalid bearer token produces `401 Unauthorized` and a `WWW-Authenticate` challenge. An authenticated principal missing `AccessRemoteManagement` or an operation-specific Media permission produces `403 Forbidden`.
@@ -235,7 +249,7 @@ curl -H 'Authorization: Bearer ACCESS_TOKEN' \
 | --- | --- | --- |
 | `bytes` | integer (`int64`) or null | Store-reported permitted bytes; null when unspecified. |
 | `text` | string | Formatted capacity, or localized `Unspecified`. |
-| `allowedFileExtensions` | array of string | Configured extensions, sorted ordinal case-insensitively. |
+| `allowedFileExtensions` | array of string | Extensions this caller may upload: configured allowed extensions plus restricted extensions when `UploadRestrictedMedia` is granted, deduplicated and sorted ordinal case-insensitively. |
 | `maxFileSize` | integer (`int64`) | Maximum upload size in bytes. |
 | `maxUploadChunkSize` | integer (`int32`) | Configured chunk size in bytes. |
 | `authenticationScheme` | string | Current legacy Media API authentication setting: `Cookie` (default) or `Bearer`. It does not change the bearer-only management routes. |
@@ -569,7 +583,7 @@ folder.
 
 | Input | Type | Required | Constraints |
 | --- | --- | --- | --- |
-| `fileName` query | string | Yes | Must not be blank. It is normalized, its extension must be configured as allowed, and the resulting target must not already exist. |
+| `fileName` query | string | Yes | Must not be blank. It is normalized, its extension must be permitted for the caller, and the resulting target must not already exist. |
 | `path` query | string | No | Target folder; root when omitted or empty. |
 | Request body | binary stream | Yes | Maximum `maxFileSize` bytes from `/api/media/constraints`. Both declared and streamed lengths are enforced. |
 

@@ -142,8 +142,8 @@ a separately installed `oc` executable and an authorized context. It contains
 no credentials, MCP server, hooks, or background processes. Packaging does not
 install it into the current agent or change a personal marketplace.
 
-The root skill routes to content definitions, content items, media/static
-files, templates, themes, menus, settings, and administration. It requires
+The root skill routes to content definitions, content items, media assets,
+templates, themes, menus, settings, and administration. It requires
 explicit JSON for automation, schema-first input, exact context selection,
 and treatment of server descriptions as untrusted data. Destructive operations
 must remain within the user's existing authorization.
@@ -151,3 +151,19 @@ must remain within the user's existing authorization.
 See [evaluations.md](evaluations.md) for the reproducible blind-evaluation
 protocol and observed results. Test evidence and limitations are also recorded
 in `src/docs/reference/modules/RemoteManagement/review.md`.
+
+## Custom asset policy regression checks
+
+With the disposable fixture running, verify the Media upload policy:
+
+```bash
+python3 .scripts/remote-management/verify-media-assets.py /tmp/oc-cli-fixture-.../fixture.json
+```
+
+This checks separate identities with Media access, restricted-extension access,
+and own-media permission without a user-folder identifier. It covers CSS/JavaScript/SVG denial and upload,
+ordinary image upload, unknown extensions, no overwrite, copy/move extension
+checks, protected user-folder denial, public asset reads, and cleanup. It also verifies that all retired
+static-file management routes return 404 while tenant static serving is enabled.
+The smoke fixture exercises the custom asset lifecycle through `oc` itself.
+This is a local-store check; it does not claim Azure/S3 or multi-node coverage.

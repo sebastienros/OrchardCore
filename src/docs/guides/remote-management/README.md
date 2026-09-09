@@ -384,6 +384,36 @@ use `--password-env`, `--password-file`, or `--password-stdin` with individual
 property options; alternatively supply the entire request in a protected
 `--body-file` or `--stdin`. Do not combine a complete body with property options.
 
+## Upload custom styles and other assets
+
+Use the Media library for custom assets so the CLI and Orchard admin UI share
+files and permissions. After signing in, inspect `oc media constraints show`
+and choose a folder convention for your project. For example, with local
+`site.css` ready to upload:
+
+```bash
+oc media constraints show --output json
+oc media folders create --name assets
+oc media folders create --path assets --name styles
+oc media files upload site-v1.css --path assets/styles --file ./site.css
+oc media files show assets/styles/site-v1.css --output json
+```
+
+Create the folders only if they do not already exist. The upload needs Media
+management and destination-folder permission. By default CSS, JavaScript, and
+SVG additionally require **Upload media file extensions requiring additional
+permission** (`UploadRestrictedMedia`);
+ask your administrator for the appropriate access if the extension is absent
+from your constraints. Use the returned `url` to reference the stylesheet and
+`filePath` for Media fields or Liquid's `asset_url` filter. You can also find the
+file in the admin Media library. Uploads reject existing names, so choose a new
+versioned name when updating an asset.
+
+See [Media and custom assets](../../reference/modules/RemoteManagement/README.md#media-and-custom-assets)
+for shared storage across nodes and the [Media API](../../reference/api/media/README.md)
+for the complete contract. Tenant static files are deployment assets and have no
+management API.
+
 ## Troubleshooting and next steps
 
 | Symptom | Next step |

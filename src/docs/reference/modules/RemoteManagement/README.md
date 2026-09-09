@@ -197,24 +197,38 @@ Content-definition schemas include the built-in settings contracts while allowin
 }
 ```
 
-### Media and static files
+### Media and custom assets
 
-Use `media files` for files managed by Orchard's media store. Uploads enforce the media configuration, including allowed extensions and maximum file size:
-
-```bash
-oc media folders create --name articles
-oc media files upload header.png --path articles --file ./header.png
-```
-
-Use `static files` for tenant-owned web assets such as CSS or JavaScript. These commands are available when the `OrchardCore.Tenants.FileProvider` feature is enabled and operate on the tenant's static-file root:
+Use Media for images and custom CSS, JavaScript, or SVG assets. Uploads use the
+same store, folder permissions, extension policy, and size limits as the admin
+Media library. Inspect the caller's permitted extensions first:
 
 ```bash
-oc static files upload styles/site.css --file ./site.css
-oc static files list --path styles
-oc static files show styles/site.css
+oc media constraints show --output json
+oc media folders create --name assets
+oc media folders create --path assets --name styles
+oc media files upload site-v1.css --path assets/styles --file ./site.css
+oc media files show assets/styles/site-v1.css --output json
+oc media files list --path assets/styles --output table
 ```
 
-Paths are relative to their respective roots. Use `--stdin` instead of `--file` to stream either kind of upload from standard input.
+Choose your own folder convention in the client. Paths are media-store-relative;
+the positional upload argument is a base filename. CSS, JavaScript, and SVG
+require `UploadRestrictedMedia` by default, in addition to `ManageMediaContent`
+and permission for the destination folder. Extensions absent from both configured
+extension lists are rejected even with that permission. The constraints response
+includes restricted extensions only for callers permitted to upload them.
+
+Use the response's `url` for public access and `filePath` in media fields or the
+Liquid `asset_url` filter. Uploads reject existing files, so use versioned names
+for updates. Files appear in the admin Media library. See the
+[Media API](../../api/media/README.md) for authorization and mutation details.
+
+Media storage is extensible through `IMediaFileStore`; its default is local disk.
+To share uploads across nodes, configure the same shared backend, such as
+[Azure Blob](../Media.Azure/README.md) or [Amazon S3](../Media.AmazonS3/README.md),
+for the tenant on all nodes. Uploading to a local store does not replicate files.
+Tenant static files remain deployment assets and have no management API.
 
 Every static and discovered command supports `--help`. OpenAPI metadata is cached by tenant URL and ETag to reduce discovery requests. Help and completion read the cache offline. Successful mutations expire discovery metadata for the next online command. Use `oc api refresh --force` to bypass the cache and `oc api compatibility` for protocol checks.
 

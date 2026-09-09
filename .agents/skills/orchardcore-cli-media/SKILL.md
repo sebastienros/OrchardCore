@@ -1,27 +1,25 @@
 ---
 name: orchardcore-cli-media
-description: Manages Orchard Core Media and tenant static files through `oc`. Use for image/file folders, uploads, metadata, moves, copies, deletion, CSS/JS/static assets, safe paths, public URLs, and preparing media referenced by content items and Liquid templates.
+description: Manages Orchard Core Media assets through `oc`. Use for image/file folders, uploads, metadata, moves, copies, deletion, CSS/JS/static assets, safe paths, public URLs, and preparing media referenced by content items and Liquid templates.
 ---
 
-# Orchard Core CLI Media and Static Files
+# Orchard Core CLI Media
 
-Use Media for editor-managed assets referenced by content fields. Use the
-tenant File Provider for site-owned CSS, JavaScript, fonts, and other static
-files. Both are tenant-scoped but have different roots and public URLs.
+Use Media for runtime assets, including images, CSS, JavaScript, and SVG. They
+share the store and permissions used by the Orchard admin Media library. Tenant
+static files are deployment files and have no management API.
 
 ## Prepare the tenant
 
-```bash
-oc features enable OrchardCore.Media
-oc features enable OrchardCore.Tenants.FileProvider
-oc features enable OrchardCore.Resources
-oc api refresh --force
-oc media --help
-oc static files --help
-```
-
-The identity needs `AccessRemoteManagement` plus the Media or tenant-static-file
-permission required by each operation.
+Discover first with `oc media --help`. If Media is absent and feature changes
+are authorized, enable `OrchardCore.Media` and run `oc api refresh --force`.
+The identity needs `AccessRemoteManagement`, `ManageMediaContent`, and permission
+to manage the destination folder (`ManageMediaFolder`, or a Secure Media folder
+permission). Inspect `oc media constraints show --output json` before upload:
+`allowedFileExtensions` includes restricted extensions only when the caller has
+`UploadRestrictedMedia`. By default CSS, JavaScript, and SVG require that
+additional permission. Do not bypass this policy by switching stores, renaming
+files, or granting permissions without authorization.
 
 ## Upload image media
 
@@ -56,34 +54,54 @@ Run the corresponding `schema --operation <verb>` command before sending JSON.
 Media uploads do not overwrite an existing destination; choose a new name,
 delete intentionally, or use a documented move/copy workflow.
 
-## Upload tenant CSS and static assets
+## Upload custom assets
+
+Choose the folder in the client; `assets/styles` below is only a convention.
+Inspect existing folders before creating them. The upload argument is a base
+filename; `--path` selects the destination folder.
 
 ```bash
-oc static files upload styles/site.css --file ./site.css
-oc static files upload styles/site.css --overwrite true --file ./site.css
-oc static files list --path styles --output table
-oc static files show styles/site.css
+oc media constraints show --output json
+oc media folders create --name assets
+oc media folders create --path assets --name styles
+oc media files upload site-v1.css --path assets/styles --file ./site.css
+oc media files show assets/styles/site-v1.css --output json
+oc media files list --path assets/styles --output table
 ```
 
-The response URL is the public tenant URL, for example
-`/tenant-a/styles/site.css`, not an API route. Static responses are aggressively
-cached. Version file names or template query strings when replacing assets:
+Use the returned `url` for public access; resolve relative URLs against the
+tenant origin. Do not construct a server filesystem path or assume `/media`:
+storage may use a CDN or a remote provider. In Liquid, generate an asset URL
+from its returned `filePath`:
 
 ```liquid
-{% style name:"tenant-site", src:"~/styles/site.css?v=20260829-1" %}
-```
-
-The active layout must render stylesheet resources:
-
-```liquid
+{% assign stylesheet = "assets/styles/site-v1.css" | asset_url %}
+{% style name:"tenant-site", src:stylesheet %}
 {% resources type: "Stylesheet" %}
 ```
+
+Resource tags require `OrchardCore.Resources`. Register styles in the template
+and render stylesheet resources in its layout. Use versioned filenames for
+updates; uploads reject existing destinations. Only delete/replace an existing
+asset when authorized, after checking references. For authorized cleanup:
+
+```bash
+oc media files delete assets/styles/site-v1.css --yes
+oc media folders delete assets/styles --yes
+```
+
+Delete a folder only when its entire contents are authorized for removal.
+Verify deletion through Media listing; public/CDN caches may outlive removal.
+
+Media uses extensible `IMediaFileStore`. The default is local disk. Multiple
+nodes must use the same shared backend (for example Azure Blob or Amazon S3)
+and tenant configuration to share uploads. Uploading alone does not replicate
+local storage; do not claim a multi-node check from a single-node fixture.
 
 ## Path and upload safety
 
 - Use store-relative forward-slash paths with no leading slash.
 - Reject `.`/`..`, empty interior segments, and path separators in filenames.
-- Keep media and static paths separate.
 - Inspect upload extension/size constraints before transferring large assets.
 - Use `--file` for binary data; use `--stdin` only when the pipeline preserves
   bytes exactly.
@@ -94,21 +112,10 @@ The active layout must render stylesheet resources:
 
 ## Verify styling assets
 
-```bash
-curl -fsSI 'https://cms.example.com/tenant-a/styles/site.css?v=20260829-1'
-oc content items render <id> --version published --display-type Detail
-```
-
-Confirm the public response content type, template stylesheet registration,
-media URLs, image alternative text, and browser-computed styles.
+Fetch the returned public URL and compare bytes/content type with the uploaded
+asset. When a template references it, verify the rendered page and computed
+styles. Use returned `filePath` values for media fields, not public URLs.
 
 Canonical references:
-`src/docs/reference/api/media/README.md`,
-`src/docs/reference/api/static-files/README.md`, and
+`src/docs/reference/api/media/README.md` and
 `src/docs/reference/modules/Media/README.md`.
-
-Use `oc static files delete <path> --yes` for authorized removal of one static
-file, then verify it is absent from listing. The operation is retry-idempotent
-and rejects directory deletion. On older tenants, refresh discovery and check
-help: if deletion is unavailable, report the limitation rather than substituting
-media deletion or deleting local server files. Public caches may outlive removal.

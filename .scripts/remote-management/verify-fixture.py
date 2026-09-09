@@ -52,6 +52,9 @@ missing_resource_status = {
 }
 ids = set()
 capabilities = {capability['id'] for capability in manifest['capabilities']}
+assert 'static-files' not in capabilities
+assert not any('/static-files' in path for path in schema['paths'])
+
 for path, item in schema['paths'].items():
     for method, operation in item.items():
         if not isinstance(operation, dict) or 'x-oc-cli' not in operation:

@@ -61,7 +61,7 @@ public sealed class FileProviderStartup : StartupBase
 
     public override void ConfigureServices(IServiceCollection services)
     {
-        services.AddSingleton<TenantFileProvider>(serviceProvider =>
+        services.AddSingleton<ITenantFileProvider>(serviceProvider =>
         {
             var shellOptions = serviceProvider.GetRequiredService<IOptions<ShellOptions>>();
             var shellSettings = serviceProvider.GetRequiredService<ShellSettings>();
@@ -75,17 +75,10 @@ public sealed class FileProviderStartup : StartupBase
             return new TenantFileProvider(contentRoot);
         });
 
-        services.AddSingleton<ITenantFileProvider>(serviceProvider =>
-        {
-            return serviceProvider.GetRequiredService<TenantFileProvider>();
-        });
-
         services.AddSingleton<IStaticFileProvider>(serviceProvider =>
         {
             return serviceProvider.GetRequiredService<ITenantFileProvider>();
         });
-
-        services.AddSingleton<IRemoteManagementCapabilityProvider, StaticFileRemoteManagementCapabilityProvider>();
     }
 
     public override void Configure(IApplicationBuilder app, IEndpointRouteBuilder routes, IServiceProvider serviceProvider)
@@ -104,8 +97,6 @@ public sealed class FileProviderStartup : StartupBase
                 ctx.Context.Response.Headers[HeaderNames.CacheControl] = $"public, max-age={TimeSpan.FromDays(30).TotalSeconds}, s-max-age={TimeSpan.FromDays(365.25).TotalSeconds}";
             },
         });
-
-        routes.AddStaticFileManagementEndpoints();
     }
 
     private static string GetContentRoot(ShellOptions shellOptions, ShellSettings shellSettings) =>

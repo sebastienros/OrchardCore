@@ -168,7 +168,7 @@ Load the narrowest relevant skill:
 
 - **Content model design**: `orchardcore-cli-content-definitions`
 - **Content authoring and lifecycle**: `orchardcore-cli-content-items`
-- **Images, files, and tenant CSS/static assets**: `orchardcore-cli-media`
+- **Images, files, and custom CSS/JavaScript assets**: `orchardcore-cli-media`
 - **Custom Liquid templates and rendering**: `orchardcore-cli-templates`
 - **Installed site/admin theme selection**: `orchardcore-cli-themes`
 - **Menu content and official menu-shape rendering**: `orchardcore-cli-menus`
@@ -177,7 +177,7 @@ Load the narrowest relevant skill:
   `orchardcore-cli-automation`
 
 For a complete site build, apply them in this order: create/setup tenant,
-enable required features, design definitions, upload media/static assets,
+enable required features, design definitions, upload Media assets,
 create a draft fixture, create templates, render and refine the draft, publish
 content, then verify public routes.
 

@@ -58,7 +58,6 @@ See [Authentication](authentication/README.md) for the OpenID Connect endpoints 
 ### Hosting
 
 - [Tenants](tenants/README.md)
-- [Static files](static-files/README.md)
 
 ## Request and response conventions
 

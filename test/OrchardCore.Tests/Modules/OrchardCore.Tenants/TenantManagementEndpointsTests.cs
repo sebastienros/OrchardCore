@@ -28,35 +28,6 @@ namespace OrchardCore.Tests.Modules.OrchardCore.Tenants;
 public class TenantManagementEndpointsTests
 {
     [Fact]
-    public void DeleteStaticFile_RetryAndUnsafePaths_PreservesBoundary()
-    {
-        var scratch = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
-        var root = Path.Combine(scratch, "tenant");
-        Directory.CreateDirectory(root);
-        File.WriteAllText(Path.Combine(scratch, "outside.css"), "outside");
-        File.WriteAllText(Path.Combine(root, "site.css"), "inside");
-        Directory.CreateDirectory(Path.Combine(root, "styles"));
-        try
-        {
-            Assert.IsType<global::Microsoft.AspNetCore.Http.HttpResults.NoContent>(StaticFileManagementEndpoints.DeleteFile(root, "site.css"));
-            Assert.False(File.Exists(Path.Combine(root, "site.css")));
-            Assert.IsType<global::Microsoft.AspNetCore.Http.HttpResults.NoContent>(StaticFileManagementEndpoints.DeleteFile(root, "site.css"));
-            Assert.Equal(400, Assert.IsType<global::Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>(StaticFileManagementEndpoints.DeleteFile(root, "../outside.css")).StatusCode);
-            Assert.Equal(409, Assert.IsType<global::Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>(StaticFileManagementEndpoints.DeleteFile(root, "styles")).StatusCode);
-            if (!OperatingSystem.IsWindows())
-            {
-                File.CreateSymbolicLink(Path.Combine(root, "linked.css"), Path.Combine(scratch, "outside.css"));
-                Assert.Equal(400, Assert.IsType<global::Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>(StaticFileManagementEndpoints.DeleteFile(root, "linked.css")).StatusCode);
-            }
-            Assert.Equal("outside", File.ReadAllText(Path.Combine(scratch, "outside.css")));
-        }
-        finally
-        {
-            Directory.Delete(scratch, recursive: true);
-        }
-    }
-
-    [Fact]
     public async Task TenantCapabilityProvider_AdvertisesTenantManagement()
     {
         var capabilities = await new TenantRemoteManagementCapabilityProvider().GetCapabilitiesAsync();
@@ -67,69 +38,6 @@ public class TenantManagementEndpointsTests
         Assert.Equal(
             $"{RemoteManagementConstants.ProtocolMajorVersion}.{RemoteManagementConstants.ProtocolMinorVersion}",
             capability.Version);
-    }
-
-    [Theory]
-    [InlineData("", true, true, "")]
-    [InlineData("styles/site.css", false, true, "styles/site.css")]
-    [InlineData("/styles/site.css", false, false, "")]
-    [InlineData("../site.css", false, false, "")]
-    [InlineData("styles/site.css:stream", false, false, "")]
-    [InlineData("styles/\0.css", false, false, "")]
-    [InlineData("styles/./site.css", false, false, "")]
-    public void TryNormalizePath_Input_EnforcesRelativeSafePaths(string path, bool allowEmpty, bool expected, string expectedPath)
-    {
-        var result = StaticFileManagementEndpoints.TryNormalizePath(path, allowEmpty, out var normalizedPath);
-
-        Assert.Equal(expected, result);
-        Assert.Equal(expectedPath, normalizedPath);
-    }
-
-    [Fact]
-    public void TryResolvePhysicalPath_RootWithTrailingSeparator_ResolvesChild()
-    {
-        var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(root);
-
-        try
-        {
-            var result = StaticFileManagementEndpoints.TryResolvePhysicalPath(
-                root + Path.DirectorySeparatorChar,
-                "styles/site.css",
-                out var physicalPath);
-
-            Assert.True(result);
-            Assert.Equal(Path.Combine(root, "styles", "site.css"), physicalPath);
-        }
-        finally
-        {
-            Directory.Delete(root, recursive: true);
-        }
-    }
-
-    [Fact]
-    public void TryResolvePhysicalPath_DirectorySymlink_RejectsDirectoryAndDescendants()
-    {
-        if (OperatingSystem.IsWindows())
-        {
-            return; // Creating symlinks requires an elevated token or developer mode on Windows.
-        }
-
-        var scratch = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
-        var root = Path.Combine(scratch, "tenant");
-        var other = Path.Combine(scratch, "other");
-        Directory.CreateDirectory(root);
-        Directory.CreateDirectory(other);
-        try
-        {
-            Directory.CreateSymbolicLink(Path.Combine(root, "linked"), other);
-            Assert.False(StaticFileManagementEndpoints.TryResolvePhysicalPath(root, "linked", out _));
-            Assert.False(StaticFileManagementEndpoints.TryResolvePhysicalPath(root, "linked/site.css", out _));
-        }
-        finally
-        {
-            Directory.Delete(scratch, recursive: true);
-        }
     }
 
     [Fact]
@@ -179,30 +87,6 @@ public class TenantManagementEndpointsTests
         Assert.True(response.CanDelete);
         Assert.False(response.CanStart);
         Assert.False(response.CanStop);
-    }
-
-    [Theory]
-    [InlineData("retry-safe", true)]
-    [InlineData("different", false)]
-    public async Task ContentEqualsAsync_Input_ReturnsExpectedResult(string content, bool expected)
-    {
-        var path = Path.GetTempFileName();
-        try
-        {
-            await File.WriteAllTextAsync(path, "retry-safe", TestContext.Current.CancellationToken);
-            await using var requestBody = new ShortReadStream(System.Text.Encoding.UTF8.GetBytes(content));
-
-            var result = await StaticFileManagementEndpoints.ContentEqualsAsync(
-                requestBody,
-                path,
-                TestContext.Current.CancellationToken);
-
-            Assert.Equal(expected, result);
-        }
-        finally
-        {
-            File.Delete(path);
-        }
     }
 
     [Fact]
@@ -327,16 +211,5 @@ public class TenantManagementEndpointsTests
             "TENANT_SETUP_TENANTA",
             TimeSpan.FromSeconds(3),
             TimeSpan.FromHours(1)), Times.Once);
-    }
-
-    private sealed class ShortReadStream : MemoryStream
-    {
-        public ShortReadStream(byte[] buffer)
-            : base(buffer)
-        {
-        }
-
-        public override ValueTask<int> ReadAsync(Memory<byte> destination, CancellationToken cancellationToken = default)
-            => base.ReadAsync(destination[..Math.Min(destination.Length, 2)], cancellationToken);
     }
 }

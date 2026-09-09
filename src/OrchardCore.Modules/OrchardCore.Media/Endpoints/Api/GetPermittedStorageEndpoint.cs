@@ -21,7 +21,7 @@ public static class GetPermittedStorageEndpoint
         builder.MapManagementGet("api/media/constraints", HandleAsync)
             .WithName("ApiGetPermittedStorage")
             .WithSummary("Shows the media storage constraints.")
-            .WithDescription("Returns the configured media storage limits, authentication mode, and allowed file extensions for remote media management clients.")
+            .WithDescription("Returns the configured media storage limits, authentication mode, and file extensions the current user may upload, including restricted extensions when the user has UploadRestrictedMedia permission.")
             .WithCliCommand(new CliOperationMetadata(["media", "constraints"], "show")
             {
                 Capability = MediaApiEndpointConventions.CapabilityName,
@@ -72,12 +72,19 @@ public static class GetPermittedStorageEndpoint
         }
 
         var mediaOptions = options.Value;
+        var canUploadRestrictedMedia = await authorizationService.AuthorizeAsync(
+            httpContext.User,
+            MediaPermissions.UploadRestrictedMedia);
 
         return TypedResults.Ok(new MediaConstraintsDto
         {
             Bytes = bytes,
             Text = text,
-            AllowedFileExtensions = mediaOptions.AllowedFileExtensions.Order(StringComparer.OrdinalIgnoreCase).ToArray(),
+            AllowedFileExtensions = mediaOptions.AllowedFileExtensions
+                .Concat(canUploadRestrictedMedia ? mediaOptions.RestrictedFileExtensions : [])
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Order(StringComparer.OrdinalIgnoreCase)
+                .ToArray(),
             MaxFileSize = mediaOptions.MaxFileSize,
             MaxUploadChunkSize = mediaOptions.MaxUploadChunkSize,
             AuthenticationScheme = siteService.GetSettings<MediaApiSettings>().AuthenticationScheme.ToString(),

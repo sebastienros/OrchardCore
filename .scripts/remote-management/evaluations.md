@@ -39,12 +39,12 @@ query/workflow schemas without executing them.
 | gpt-5.6-luna | Validated, created, read back | Upload, metadata, list, and public bytes verified | Template deleted; static delete unavailable |
 
 Both independently found the missing static-file deletion capability. Sol
-also tried the exact-route DELETE fallback, which returned 404. The media
-skill now tells agents to report an unavailable operation on older servers
+also tried the exact-route DELETE fallback, which returned 404. At the time, the media
+skill was updated to tell agents to report an unavailable operation on older servers
 instead of substituting another storage API or local server-file deletion.
 A confirmed, permission-protected `static files delete` operation was added
-in response, with retry and path-boundary tests. The live functional check
-verifies its final behavior; the original blind results above are retained
+in response, with retry and path-boundary tests. The live functional check at that time
+verified its behavior; the original blind results above are retained
 rather than relabeled as complete successes.
 
 ## Repeatable protocol
@@ -64,3 +64,7 @@ These runs cover core authoring and template/static-file workflows. They do
 not establish skill efficiency for a full site build, tenant lifecycle,
 all field/settings combinations, live recipe/workflow executions, every
 media provider, or all supported shells and operating systems.
+
+The static-file workflow evaluated above has been retired. Custom assets now use
+Media, its folder authorization, and its restricted-extension permission. Those
+historical runs do not validate the replacement workflow.
