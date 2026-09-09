@@ -178,13 +178,11 @@ build/tests and all six native builds/tests/install checks pass.
 Only outputs under `src` are collected, excluding test/sample packages.
 The solution pack includes libraries, modules, themes, targets, and
 `OrchardCore.ProjectTemplates`. The CLI adds `OrchardCore.Cli` and six
-`OrchardCore.Cli.<rid>` NativeAOT implementation packages. All IDs retain the
-OrchardCore prefix. The workflow sets `FeedzPackageBuild=true` during build and
-pack so bundled themes use `OrchardCore.Themes.<theme>` package IDs (for example
-`OrchardCore.Themes.TheAdmin`), while their assembly/feature IDs stay unchanged.
-Project-reference dependencies pick up those package IDs automatically. Normal
-non-Feedz builds retain their existing package IDs.
-`prepare-feedz.py` rejects other IDs, missing implementations,
+`OrchardCore.Cli.<rid>` NativeAOT implementation packages. All packages retain
+their original IDs, including bundled themes such as `TheAdmin` and
+`TheBlogTheme`. Only the package version changes for this feed.
+`prepare-feedz.py` accepts the OrchardCore packages and existing bundled theme
+IDs, and rejects unexpected IDs, missing implementations,
 inconsistent dependencies, or templates stamped with a different version.
 Separately published translation packs retain the version pinned in
 `Directory.Packages.props`; they are restored, not republished.

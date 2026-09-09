@@ -46,14 +46,14 @@ jobs:
       - uses: ./.github/actions/setup-dotnet
       - name: Build libraries, modules, themes, and project templates
         run: >-
-          dotnet build OrchardCore.slnx -c Release -p:NuGetAudit=false -p:FeedzPackageBuild=true
+          dotnet build OrchardCore.slnx -c Release -p:NuGetAudit=false
           -p:Version="$PACKAGE_VERSION" -p:RepositoryUrl=https://github.com/sebastienros/OrchardCore
           -p:RepositoryCommit="$GITHUB_SHA"
       - name: Server tests
         run: dotnet test --project test/OrchardCore.Tests -c Release --no-build
       - name: Pack the solution, including project templates
         run: >-
-          dotnet pack OrchardCore.slnx -c Release --no-build -p:FeedzPackageBuild=true
+          dotnet pack OrchardCore.slnx -c Release --no-build
           -p:Version="$PACKAGE_VERSION" -p:RepositoryUrl=https://github.com/sebastienros/OrchardCore
           -p:RepositoryCommit="$GITHUB_SHA"
       - name: Upload library and template packages

@@ -22,7 +22,7 @@ class PrepareFeedzTests(unittest.TestCase):
         self.source.mkdir()
         self.output = self.root / 'output'
         for key in feedz.REQUIRED:
-            self.package('OrchardCore.' + key.removeprefix('orchardcore.'))
+            self.package(feedz.THEMES.get(key, 'OrchardCore.' + key.removeprefix('orchardcore.')))
 
     def package(self, package_id, version=VERSION, template_version=VERSION, dependency=None, folder='', dependency_version='0.0.1'):
         path = self.source / folder / f'{package_id}.{version}.nupkg'
@@ -55,6 +55,26 @@ class PrepareFeedzTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Unexpected package ID'):
             feedz.prepare(self.source, self.output, VERSION)
         self.assertFalse(self.output.exists())
+
+    def test_original_theme_ids_and_dependencies_are_preserved(self):
+        self.package('OrchardCore.Extra', dependency='TheBlogTheme', dependency_version=VERSION)
+        feedz.prepare(self.source, self.output, VERSION)
+        self.assertTrue((self.output / f'TheBlogTheme.{VERSION}.nupkg').exists())
+        packages = json.loads((self.output / 'packages.json').read_text())['packages']
+        self.assertIn('theblogtheme', packages)
+        self.assertNotIn('orchardcore.themes.theblogtheme', packages)
+
+    def test_renamed_theme_cannot_replace_original_package(self):
+        next(self.source.glob('TheBlogTheme.*')).unlink()
+        self.package('OrchardCore.Themes.TheBlogTheme')
+        with self.assertRaisesRegex(ValueError, 'Missing required packages: theblogtheme'):
+            feedz.prepare(self.source, self.output, VERSION)
+        self.assertFalse(self.output.exists())
+
+    def test_inconsistent_theme_dependency_is_rejected(self):
+        self.package('OrchardCore.Extra', dependency='TheBlogTheme')
+        with self.assertRaisesRegex(ValueError, 'inconsistent version'):
+            feedz.prepare(self.source, self.output, VERSION)
 
     def test_mixed_versions_are_rejected(self):
         self.package('OrchardCore.Extra', version='4.0.0-cli.122')

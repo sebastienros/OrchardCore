@@ -8,15 +8,21 @@ import xml.etree.ElementTree as ET
 import zipfile
 
 RIDS = ('linux-x64', 'linux-arm64', 'win-x64', 'win-arm64', 'osx-x64', 'osx-arm64')
+THEMES = {name.lower(): name for name in (
+    'SafeMode', 'TheAdmin', 'TheAgencyTheme', 'TheBlogTheme',
+    'TheComingSoonTheme', 'TheSaaSTheme', 'TheTheme')}
 REQUIRED = {
     'orchardcore.application.cms.targets', 'orchardcore.application.mvc.targets',
     'orchardcore.module.targets', 'orchardcore.theme.targets',
     'orchardcore.projecttemplates', 'orchardcore.remotemanagement', 'orchardcore.cli',
     *('orchardcore.cli.' + rid for rid in RIDS),
-    *('orchardcore.themes.' + name for name in (
-        'safemode', 'theadmin', 'theagencytheme', 'theblogtheme',
-        'thecomingsoontheme', 'thesaastheme', 'thetheme')),
+    *THEMES,
 }
+
+
+def is_build_package(package_id):
+    key = package_id.lower()
+    return key == 'orchardcore' or key.startswith('orchardcore.') or key in THEMES
 
 
 def prepare(source, destination, version):
@@ -35,7 +41,7 @@ def prepare(source, destination, version):
             metadata = ET.fromstring(archive.read(nuspecs[0])).find('./{*}metadata')
             package_id = metadata.findtext('{*}id')
             package_version = metadata.findtext('{*}version')
-            if not (package_id == 'OrchardCore' or package_id.startswith('OrchardCore.')):
+            if not is_build_package(package_id):
                 raise ValueError(f'Unexpected package ID: {package_id}')
             if package_version != version:
                 raise ValueError(f'{package_id}: expected version {version}, got {package_version}')
@@ -47,7 +53,7 @@ def prepare(source, destination, version):
                 continue
             packages[key] = path
             for dependency in metadata.findall('.//{*}dependency'):
-                if dependency.attrib['id'].lower() == 'orchardcore' or dependency.attrib['id'].lower().startswith('orchardcore.'):
+                if is_build_package(dependency.attrib['id']):
                     dependencies.append((package_id, dependency.attrib['id'].lower(), dependency.attrib.get('version')))
             if key == 'orchardcore.projecttemplates':
                 configs = [name for name in archive.namelist() if name.endswith('/.template.config/template.json')]
