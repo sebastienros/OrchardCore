@@ -53,7 +53,6 @@ with tempfile.TemporaryDirectory(prefix='oc-native-smoke-') as config:
         result = subprocess.run([str(exe), 'doctor', '--output', 'json'], env=env, capture_output=True, text=True, check=True, timeout=5)
         diagnostics = json.loads(result.stdout)
         assert version.startswith(diagnostics['cliVersion']), diagnostics
-        assert diagnostics['runtimeVersion'], diagnostics
         assert diagnostics['runtimeIdentifier'] == args.rid, diagnostics
         assert diagnostics['currentContext'] == ('offline' if configured else None), diagnostics
         assert not result.stderr, result.stderr

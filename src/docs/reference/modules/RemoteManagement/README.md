@@ -218,7 +218,7 @@ Paths are relative to their respective roots. Use `--stdin` instead of `--file` 
 
 Every static and discovered command supports `--help`. OpenAPI metadata is cached by tenant URL and ETag to reduce discovery requests. Help and completion read the cache offline. Successful mutations expire discovery metadata for the next online command. Use `oc api refresh --force` to bypass the cache and `oc api compatibility` for protocol checks.
 
-`oc --version` prints the CLI version number. Use `oc doctor` to inspect the CLI version, .NET runtime version, platform, local storage, and caches, or `oc doctor --output json` for structured diagnostics. Both commands work offline; `doctor` does not test server connectivity.
+`oc --version` prints the CLI version number. Use `oc doctor` to inspect the CLI version, platform, local storage, and caches, or `oc doctor --output json` for structured diagnostics. Both commands work offline; `doctor` does not test server connectivity.
 
 Set `OC_CONFIG_HOME` to an absolute directory to isolate contexts, caches, and Unix file credentials for testing. The default installation keeps the shared token-file location described above. `oc login --no-browser` prints the PKCE login URL instead of launching a browser; open it on the same computer as the CLI.
 

@@ -378,8 +378,6 @@ internal sealed class DoctorOutput
 {
     public string CliVersion { get; set; } = string.Empty;
 
-    public string RuntimeVersion { get; set; } = string.Empty;
-
     public string RuntimeIdentifier { get; set; } = string.Empty;
 
     public string OperatingSystem { get; set; } = string.Empty;

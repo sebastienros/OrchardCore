@@ -797,7 +797,6 @@ internal sealed class CliApplication
             var output = new DoctorOutput
             {
                 CliVersion = CliUtilities.CliVersion,
-                RuntimeVersion = global::System.Environment.Version.ToString(),
                 RuntimeIdentifier = System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier,
                 OperatingSystem = CliUtilities.DetermineOperatingSystem(),
                 ConfigDirectory = _paths.RootDirectory,

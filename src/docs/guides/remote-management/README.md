@@ -342,7 +342,7 @@ property options; alternatively supply the entire request in a protected
 Help and shell completion use cached metadata without contacting the server.
 After feature changes, successful mutations expire discovery caches so the next
 online command can refresh them. `oc --version` prints the CLI version number.
-`oc doctor` reports the CLI version, .NET runtime version, platform, and local
+`oc doctor` reports the CLI version, platform, and local
 storage and cache state without contacting the tenant. Use
 `oc doctor --output json` for structured diagnostics in scripts.
 For Bash completion, run `oc completion --shell bash > oc-completion.bash` and
