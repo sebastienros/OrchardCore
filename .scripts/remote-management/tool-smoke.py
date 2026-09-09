@@ -95,14 +95,16 @@ with tempfile.TemporaryDirectory(prefix='oc-tool-smoke-') as scratch:
                     '--source', str(directory), '--source', 'https://api.nuget.org/v3/index.json',
                     '--version', args.version],
                    env=env, check=True, timeout=120)
-    installed = tool_path / executable_name
+    # The SDK links the executable on Unix and writes an oc.cmd launcher on Windows.
+    installed = tool_path / ('oc.cmd' if os.name == 'nt' else 'oc')
+    assert installed.is_file(), list(tool_path.iterdir())
     # Run the installed command without dotnet on PATH or an available DOTNET_ROOT.
     native_env = env.copy()
     native_env['PATH'] = str(tool_path)
     for variable in ('DOTNET_ROOT', 'DOTNET_ROOT_ARM64', 'DOTNET_ROOT_X64', 'DOTNET_ROOT(x86)'):
         native_env[variable] = str(scratch / 'no-runtime')
     for command in ([], ['--version'], ['doctor', '--output', 'json']):
-        result = subprocess.run([str(installed), *command], env=native_env,
+        result = subprocess.run([str(installed), *command], env=native_env, shell=os.name == 'nt',
                                 capture_output=True, text=True, check=True, timeout=10)
         assert not result.stderr, result.stderr
         if not command:
