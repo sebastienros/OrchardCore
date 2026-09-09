@@ -807,3 +807,7 @@ Source-derived from:
 
 !!! note
     The source currently maps `GET /api/media/uploads/{uploadId}` from both the base Media startup and the TUS feature startup, although its handler dependency is registered by the TUS feature. The documented wire operation is one route/method pair and requires the TUS feature.
+
+The management folder-creation route checks `ManageMedia` before processing
+the folder name. An absent or blank name returns a validation problem (`400`)
+for an authorized caller; callers without the permission receive `403`.

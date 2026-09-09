@@ -27,6 +27,7 @@ using OrchardCore.Environment.Shell.Configuration;
 using OrchardCore.Environment.Shell.Scope;
 using OrchardCore.Liquid;
 using OrchardCore.Modules;
+using OrchardCore.RemoteManagement;
 using OrchardCore.Mvc.Core.Utilities;
 using OrchardCore.Navigation;
 using OrchardCore.RateLimits;
@@ -70,6 +71,7 @@ public sealed class Startup : StartupBase
 
     public override void ConfigureServices(IServiceCollection services)
     {
+        services.AddSingleton<IRemoteManagementCapabilityProvider, UserRemoteManagementCapabilityProvider>();
         services.AddShapeTableProvider<UserDisplayNameShapeTableProvider>();
 
         services.AddDataMigration<ExternalAuthenticationMigrations>();

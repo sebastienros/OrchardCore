@@ -28,6 +28,35 @@ namespace OrchardCore.Tests.Modules.OrchardCore.Tenants;
 public class TenantManagementEndpointsTests
 {
     [Fact]
+    public void DeleteStaticFile_RetryAndUnsafePaths_PreservesBoundary()
+    {
+        var scratch = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        var root = Path.Combine(scratch, "tenant");
+        Directory.CreateDirectory(root);
+        File.WriteAllText(Path.Combine(scratch, "outside.css"), "outside");
+        File.WriteAllText(Path.Combine(root, "site.css"), "inside");
+        Directory.CreateDirectory(Path.Combine(root, "styles"));
+        try
+        {
+            Assert.IsType<global::Microsoft.AspNetCore.Http.HttpResults.NoContent>(StaticFileManagementEndpoints.DeleteFile(root, "site.css"));
+            Assert.False(File.Exists(Path.Combine(root, "site.css")));
+            Assert.IsType<global::Microsoft.AspNetCore.Http.HttpResults.NoContent>(StaticFileManagementEndpoints.DeleteFile(root, "site.css"));
+            Assert.Equal(400, Assert.IsType<global::Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>(StaticFileManagementEndpoints.DeleteFile(root, "../outside.css")).StatusCode);
+            Assert.Equal(409, Assert.IsType<global::Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>(StaticFileManagementEndpoints.DeleteFile(root, "styles")).StatusCode);
+            if (!OperatingSystem.IsWindows())
+            {
+                File.CreateSymbolicLink(Path.Combine(root, "linked.css"), Path.Combine(scratch, "outside.css"));
+                Assert.Equal(400, Assert.IsType<global::Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult>(StaticFileManagementEndpoints.DeleteFile(root, "linked.css")).StatusCode);
+            }
+            Assert.Equal("outside", File.ReadAllText(Path.Combine(scratch, "outside.css")));
+        }
+        finally
+        {
+            Directory.Delete(scratch, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task TenantCapabilityProvider_AdvertisesTenantManagement()
     {
         var capabilities = await new TenantRemoteManagementCapabilityProvider().GetCapabilitiesAsync();

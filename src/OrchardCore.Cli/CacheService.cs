@@ -30,9 +30,34 @@ internal sealed class CacheService
         ArgumentNullException.ThrowIfNull(record);
 
         var path = _paths.GetCacheFilePath(tenantUrl, kind);
-        await using var stream = File.Create(path);
-        await JsonSerializer.SerializeAsync(stream, record, CliJsonContext.Default.CachedContentRecord, cancellationToken);
-        CliPaths.SetOwnerOnlyFile(path);
+        var temporaryPath = $"{path}.{Guid.NewGuid():n}.tmp";
+        try
+        {
+            await using (var stream = new FileStream(temporaryPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            {
+                await JsonSerializer.SerializeAsync(stream, record, CliJsonContext.Default.CachedContentRecord, cancellationToken);
+            }
+
+            CliPaths.SetOwnerOnlyFile(temporaryPath);
+            File.Move(temporaryPath, path, overwrite: true);
+        }
+        finally
+        {
+            File.Delete(temporaryPath);
+        }
+    }
+
+    public async Task InvalidateAsync(string tenantUrl, CancellationToken cancellationToken)
+    {
+        foreach (var kind in new[] { CacheKind.Manifest, CacheKind.OpenApi })
+        {
+            var record = await ReadAsync(tenantUrl, kind, cancellationToken);
+            if (record is not null)
+            {
+                record.ExpiresAt = DateTimeOffset.MinValue;
+                await WriteAsync(tenantUrl, kind, record, cancellationToken);
+            }
+        }
     }
 
     public async Task<CachedContentResult> GetOrRefreshAsync(

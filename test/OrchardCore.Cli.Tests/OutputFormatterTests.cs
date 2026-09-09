@@ -6,6 +6,26 @@ namespace OrchardCore.Cli.Tests;
 public class OutputFormatterTests
 {
     [Fact]
+    public async Task WriteAsync_TableWithControlCharacters_EscapesTerminalSequences()
+    {
+        using var document = JsonDocument.Parse("""[{"name":"hello\u001b[2J\nworld"}]""");
+        using var writer = new StringWriter();
+        await OutputFormatter.WriteAsync(new CommandOutput { Json = document.RootElement.Clone() }, OutputFormat.Table, writer, CancellationToken.None);
+        Assert.DoesNotContain('\u001b', writer.ToString());
+        Assert.Contains("\\u001b", writer.ToString());
+        Assert.Contains("\\u000a", writer.ToString());
+    }
+
+    [Fact]
+    public async Task WriteAsync_EmptyTable_ExplainsEmptyResult()
+    {
+        using var document = JsonDocument.Parse("[]");
+        using var writer = new StringWriter();
+        await OutputFormatter.WriteAsync(new CommandOutput { Json = document.RootElement.Clone() }, OutputFormat.Table, writer, CancellationToken.None);
+        Assert.Equal("No results.", writer.ToString().Trim());
+    }
+
+    [Fact]
     public async Task WriteAsync_WhenTableFormatIsRequested_UsesProvidedColumns()
     {
         using var document = JsonDocument.Parse("[{\"id\":\"a1\",\"name\":\"Alpha\"}]");
@@ -34,8 +54,8 @@ public class OutputFormatterTests
         }, OutputFormat.Yaml, writer, CancellationToken.None);
 
         var output = writer.ToString();
-        Assert.Contains("name: \"tenant\"", output, StringComparison.Ordinal);
-        Assert.Contains("enabled: true", output, StringComparison.Ordinal);
+        Assert.Contains("\"name\": \"tenant\"", output, StringComparison.Ordinal);
+        Assert.Contains("\"enabled\": true", output, StringComparison.Ordinal);
     }
 
     [Fact]

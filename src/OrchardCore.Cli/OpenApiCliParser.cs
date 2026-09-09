@@ -49,6 +49,7 @@ internal static class OpenApiCliParser
                     CliMetadata = metadata,
                 };
 
+                ParseParameters(operation, pathProperty.Value, root);
                 ParseParameters(operation, methodProperty.Value, root);
                 ParseRequestBody(operation, methodProperty.Value, root);
                 operations.Add(operation);
@@ -56,6 +57,18 @@ internal static class OpenApiCliParser
         }
 
         return operations;
+    }
+
+    private static List<string> ReadSchemaTypes(JsonElement schema)
+    {
+        if (schema.ValueKind != JsonValueKind.Object || !schema.TryGetProperty("type", out var type))
+        {
+            return [];
+        }
+
+        return type.ValueKind == JsonValueKind.Array
+            ? [.. type.EnumerateArray().Where(value => value.ValueKind == JsonValueKind.String).Select(value => value.GetString()!)]
+            : type.ValueKind == JsonValueKind.String ? [type.GetString()!] : [];
     }
 
     private static bool TryParseCliMetadata(JsonElement operationElement, JsonElement root, out CliOperationMetadata metadata)
@@ -144,7 +157,7 @@ internal static class OpenApiCliParser
             {
                 Name = CliUtilities.ReadRequiredString(resolved, "name"),
                 Location = CliUtilities.ReadRequiredString(resolved, "in"),
-                Type = schema.ValueKind == JsonValueKind.Object ? CliUtilities.ReadString(schema, "type") ?? "string" : "string",
+                Type = schema.ValueKind == JsonValueKind.Object ? ReadSchemaTypes(schema).FirstOrDefault(type => type != "null") ?? "string" : "string",
                 Required = resolved.TryGetProperty("required", out var requiredElement) && requiredElement.ValueKind == JsonValueKind.True,
                 Description = CliUtilities.ReadString(resolved, "description"),
             };
@@ -154,6 +167,7 @@ internal static class OpenApiCliParser
                 parameter.ArgumentPosition = position;
             }
 
+            operation.Parameters.RemoveAll(existing => existing.Name == parameter.Name && existing.Location == parameter.Location);
             operation.Parameters.Add(parameter);
         }
 
@@ -211,7 +225,7 @@ internal static class OpenApiCliParser
 
         operation.RequestBodySchema = CreateStandaloneSchema(bodySchema, root);
 
-        if (CliUtilities.ReadString(bodySchema, "type") != "object")
+        if (!ReadSchemaTypes(bodySchema).Contains("object"))
         {
             return;
         }
@@ -228,7 +242,8 @@ internal static class OpenApiCliParser
             var definition = new RequestBodyPropertyDefinition
             {
                 Name = property.Name,
-                Type = CliUtilities.ReadString(resolvedProperty, "type"),
+                Type = ReadSchemaTypes(resolvedProperty).FirstOrDefault(type => type != "null"),
+                AllowedTypes = ReadSchemaTypes(resolvedProperty),
                 Required = required.Contains(property.Name),
                 Description = CliUtilities.ReadString(resolvedProperty, "description"),
                 MinimumLength = ReadInt32(resolvedProperty, "minLength"),

@@ -78,7 +78,45 @@ internal static class StaticFileManagementEndpoints
             .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status409Conflict);
 
+        builder.MapManagementDelete(RoutePrefix + "/file", (TenantFileProvider fileProvider, string path) => DeleteFile(fileProvider.Root, path))
+            .RequireAuthorization(policy => policy.AddRequirements(new PermissionRequirement(Permissions.ManageTenantStaticFiles)))
+            .WithName("ApiDeleteStaticFile")
+            .WithSummary("Deletes a tenant static file.")
+            .WithDescription("Deletes one file beneath the tenant static-file root. Missing files return success; directories and symbolic links are rejected.")
+            .WithCliCommand(new CliOperationMetadata(["static", "files"], "delete")
+            {
+                Capability = StaticFileRemoteManagementCapabilityProvider.CapabilityName,
+                Arguments = { new CliArgumentMetadata("path", 0) },
+                RequiresConfirmation = true,
+            })
+            .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status409Conflict);
+
         return builder;
+    }
+
+    internal static IResult DeleteFile(string root, string path)
+    {
+        if (!TryNormalizePath(path, allowEmpty: false, out var normalizedPath)
+            || !TryResolvePhysicalPath(root, normalizedPath, out var physicalPath))
+        {
+            return TypedResults.Problem(detail: "The static-file path must be relative and cannot traverse symbolic links.", statusCode: StatusCodes.Status400BadRequest);
+        }
+
+        if (Directory.Exists(physicalPath))
+        {
+            return TypedResults.Problem(detail: "Only individual static files can be deleted; directories are not supported.", statusCode: StatusCodes.Status409Conflict);
+        }
+
+        if (File.Exists(physicalPath))
+        {
+            File.Delete(physicalPath);
+        }
+
+        return TypedResults.NoContent();
     }
 
     private static IResult ListAsync(HttpContext httpContext, TenantFileProvider fileProvider, [AsParameters] StaticFileListRequest request)

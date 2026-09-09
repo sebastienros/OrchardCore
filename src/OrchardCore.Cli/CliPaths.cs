@@ -29,11 +29,22 @@ internal sealed class CliPaths
         SetOwnerOnlyDirectory(RootDirectory);
     }
 
-    public static CliPaths CreateDefault() => new(
-        GetDefaultRootDirectory(),
-        OperatingSystem.IsWindows()
-            ? null
-            : Path.Combine(GetUserHomeDirectory(), ".orchardcore", "credentials"));
+    public static CliPaths CreateDefault()
+    {
+        var configuredRoot = global::System.Environment.GetEnvironmentVariable("OC_CONFIG_HOME");
+        if (!string.IsNullOrWhiteSpace(configuredRoot))
+        {
+            if (!Path.IsPathFullyQualified(configuredRoot))
+            {
+                throw new CliException("OC_CONFIG_HOME must be an absolute directory path.");
+            }
+
+            return new CliPaths(configuredRoot);
+        }
+
+        return new CliPaths(GetDefaultRootDirectory(), OperatingSystem.IsWindows()
+            ? null : Path.Combine(GetUserHomeDirectory(), ".orchardcore", "credentials"));
+    }
 
     public static string NormalizeTenantUrl(string tenantUrl)
     {

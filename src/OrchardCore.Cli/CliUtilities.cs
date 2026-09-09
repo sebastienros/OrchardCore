@@ -28,6 +28,7 @@ internal static class CliUtilities
 
         return value.Trim().ToLowerInvariant() switch
         {
+            "auto" => Console.IsOutputRedirected ? OutputFormat.Json : OutputFormat.Table,
             "json" => OutputFormat.Json,
             "table" => OutputFormat.Table,
             "csv" => OutputFormat.Csv,
@@ -204,7 +205,6 @@ internal static class CliUtilities
             TokenType = ReadString(document.RootElement, "token_type") ?? "Bearer",
             ExpiresIn = ReadInt32(document.RootElement, "expires_in") ?? 3600,
             Scope = ReadString(document.RootElement, "scope"),
-            IdToken = ReadString(document.RootElement, "id_token"),
             Error = ReadString(document.RootElement, "error"),
             ErrorDescription = ReadString(document.RootElement, "error_description"),
         };
@@ -240,12 +240,11 @@ internal static class CliUtilities
         ArgumentNullException.ThrowIfNull(response);
         ArgumentNullException.ThrowIfNull(discovery);
 
-        var issuer = discovery.Issuer;
-
-        if (!string.IsNullOrWhiteSpace(response.IdToken))
+        // This is an OAuth resource client. Identity claims from an ID token are
+        // neither used nor persisted; the authority comes from validated discovery.
+        if (string.IsNullOrWhiteSpace(response.AccessToken))
         {
-            issuer = ExtractJwtIssuer(response.IdToken);
-            EnsureIssuerMatches(discovery.Issuer, issuer);
+            throw new CliException("The token response did not contain an access token.");
         }
 
         return new StoredToken
@@ -254,8 +253,7 @@ internal static class CliUtilities
             RefreshToken = response.RefreshToken,
             TokenType = string.IsNullOrWhiteSpace(response.TokenType) ? "Bearer" : response.TokenType,
             Scope = response.Scope,
-            IdToken = response.IdToken,
-            Issuer = issuer,
+            Issuer = discovery.Issuer,
             ExpiresAt = DateTimeOffset.UtcNow.AddSeconds(response.ExpiresIn > 0 ? response.ExpiresIn : 3600),
         };
     }
@@ -273,20 +271,6 @@ internal static class CliUtilities
         {
             throw new CliException($"Issuer validation failed. Expected '{expectedValue}', received '{actualValue}'.");
         }
-    }
-
-    public static string ExtractJwtIssuer(string jwt)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(jwt);
-        var segments = jwt.Split('.');
-        if (segments.Length < 2)
-        {
-            throw new CliException("The ID token is not a valid JWT.");
-        }
-
-        var payloadBytes = DecodeBase64Url(segments[1]);
-        using var document = JsonDocument.Parse(payloadBytes);
-        return ReadRequiredString(document.RootElement, "iss");
     }
 
     public static byte[] DecodeBase64Url(string value)
@@ -376,7 +360,7 @@ internal static class CliUtilities
 
         return schemaType switch
         {
-            "integer" => int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var intValue)
+            "integer" => long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var intValue)
                 ? JsonValue.Create(intValue)
                 : throw new CliException($"'{value}' is not a valid integer."),
             "number" => double.TryParse(value, NumberStyles.Float | NumberStyles.AllowThousands, CultureInfo.InvariantCulture, out var doubleValue)
@@ -385,7 +369,8 @@ internal static class CliUtilities
             "boolean" => bool.TryParse(value, out var boolValue)
                 ? JsonValue.Create(boolValue)
                 : throw new CliException($"'{value}' is not a valid boolean."),
-            "array" => CreateArrayNode(value),
+            "array" => value.TrimStart().StartsWith('[') ? JsonNode.Parse(value) : CreateArrayNode(value),
+            "object" => JsonNode.Parse(value),
             _ => JsonValue.Create(value),
         };
     }

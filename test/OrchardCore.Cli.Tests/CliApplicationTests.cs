@@ -203,6 +203,47 @@ public class CliApplicationTests
         }
     }
 
+    [Fact]
+    public async Task CreateAsync_ExpiredCachedHelp_DoesNotContactTenant()
+    {
+        const string tenant = "https://offline.example/";
+        var paths = new CliPaths(TestPaths.CreateScratchDirectory(nameof(CreateAsync_ExpiredCachedHelp_DoesNotContactTenant)));
+        await new ContextStore(paths).SaveAsync(new CliConfiguration
+        {
+            CurrentContext = "offline",
+            Contexts = [new TenantContextRecord { Name = "offline", TenantUrl = tenant }],
+        }, CancellationToken.None);
+        await new CacheService(paths).WriteAsync(tenant, CacheKind.OpenApi, new CachedContentRecord
+        {
+            Content = """{"paths":{"/api/items":{"get":{"operationId":"ListItems","x-oc-cli":{"commandGroup":["items"],"verb":"list"}}}}}""",
+            ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(-1),
+        }, CancellationToken.None);
+        var handler = new RequestCountingHandler();
+        using var client = new HttpClient(handler);
+        var app = await CliApplication.CreateAsync(["--context=offline", "items", "--help"], paths, client, CancellationToken.None, new UnsupportedCredentialStore());
+        Assert.Equal(0, handler.RequestCount);
+        Assert.Contains(app.RootCommand.Subcommands, command => command.Name == "items");
+    }
+
+    [Fact]
+    public async Task ResolveJsonBodyAsync_ConflictingSources_RejectsBeforeReading()
+    {
+        await Assert.ThrowsAsync<CliException>(() => CliApplication.ResolveJsonBodyAsync("{}", new FileInfo("missing.json"), false, "application/json", CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task InvokeAsync_InvalidOutput_DoesNotDeleteContexts()
+    {
+        var paths = new CliPaths(TestPaths.CreateScratchDirectory(nameof(InvokeAsync_InvalidOutput_DoesNotDeleteContexts)));
+        var store = new ContextStore(paths);
+        await store.SaveAsync(new CliConfiguration { CurrentContext = "keep", Contexts = [new TenantContextRecord { Name = "keep", TenantUrl = "https://example.com/" }] }, CancellationToken.None);
+        using var client = new HttpClient();
+        var args = new[] { "context", "clear", "--force", "--output", "invalid" };
+        var app = await CliApplication.CreateAsync(args, paths, client, CancellationToken.None, new UnsupportedCredentialStore());
+        Assert.Equal(1, await app.InvokeAsync(args, TextWriter.Null));
+        Assert.Single((await store.LoadAsync(CancellationToken.None)).Contexts);
+    }
+
     private sealed class RequestCountingHandler : HttpMessageHandler
     {
         public int RequestCount { get; private set; }

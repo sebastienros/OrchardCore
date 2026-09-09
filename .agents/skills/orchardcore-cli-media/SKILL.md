@@ -106,3 +106,9 @@ Canonical references:
 `src/docs/reference/api/media/README.md`,
 `src/docs/reference/api/static-files/README.md`, and
 `src/docs/reference/modules/Media/README.md`.
+
+Use `oc static files delete <path> --yes` for authorized removal of one static
+file, then verify it is absent from listing. The operation is retry-idempotent
+and rejects directory deletion. On older tenants, refresh discovery and check
+help: if deletion is unavailable, report the limitation rather than substituting
+media deletion or deleting local server files. Public caches may outlive removal.

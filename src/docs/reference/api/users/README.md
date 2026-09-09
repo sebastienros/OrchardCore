@@ -593,3 +593,11 @@ Registration, permissions, user/role authorization, Identity validation, account
 - `src/OrchardCore.Modules/OrchardCore.Users/Services/DefaultUsersAdminListFilterProvider.cs`
 - `test/OrchardCore.Tests/Modules/OrchardCore.Users/UserManagementEndpointsTests.cs`
 - `test/OrchardCore.Tests/Apis/RemoteManagement/OwnedModuleEndpointMetadataTests.cs`
+
+## CLI secret input
+
+User create/update operations expose individual property options and protect
+`password` with `--password-env`, `--password-file`, and `--password-stdin`.
+The inline `--password` and `--body` options are intentionally unavailable.
+For complete JSON requests, use a protected `--body-file` or `--stdin`, without
+individual property options. User responses do not contain passwords or hashes.

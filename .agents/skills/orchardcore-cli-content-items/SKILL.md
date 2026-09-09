@@ -21,7 +21,8 @@ oc --context site content items validate --body-file article.json
 oc --context site content items create-draft --body-file article.json
 ```
 
-Read the returned `ContentItemId`, inspect the draft, render it, then publish:
+Read the returned `ContentItemId`, inspect and render the draft. Publish only
+when the user requested publication:
 
 ```bash
 oc content items show <id> --version draft
@@ -64,6 +65,11 @@ This command requires the Home Route feature and its dedicated permission.
 Use the actual part attachment names from `oc content types show Article`, not
 only CLR type names. Use the schema descriptions to select the correct field
 value property, such as `Text`, `Html`, `Markdown`, `Paths`, or referenced IDs.
+
+`show` defaults to a published version. Use `--version draft` for an existing
+draft or `--version latest` to inspect the newest version. A draft read returns
+404 if there is no draft; use `draft <id>` only when creating one is intended.
+`validate-update` does not persist changes or run update workflows.
 
 ## Lifecycle commands
 

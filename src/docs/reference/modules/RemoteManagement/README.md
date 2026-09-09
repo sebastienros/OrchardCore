@@ -4,6 +4,8 @@ The Remote Management module exposes a versioned management protocol and tenant-
 
 The CLI uses OpenAPI as its management protocol. GraphQL remains available for application queries but is not required by `oc`.
 
+Start with the illustrated [first-tenant walkthrough](../../../guides/remote-management/README.md).
+
 ## API reference
 
 - [Management API overview](../../api/README.md)
@@ -23,7 +25,7 @@ After enabling the feature, open **Settings → Remote Management**. The page ch
 
 The operation uses the current tenant name automatically, can be run repeatedly, and preserves unrelated OpenID Connect endpoints, grants, scopes, applications, roles, and redirect URIs. When the feature is enabled interactively, a one-time notification links administrators to this page.
 
-For automated deployments, the **Orchard Core Remote Management** recipe configures the same requirements. When applying the recipe to a tenant not named `Default`, set the `Tenant` value in its `OpenIdValidationSettings` step to the target tenant name.
+For automated deployments, the **Orchard Core Remote Management** recipe configures the same requirements. Its `RemoteManagementConfiguration` step resolves the current tenant automatically.
 
 The public bootstrap document is available at `/.well-known/orchardcore-management`. It contains only the protocol version, authentication authority, client ID, and supported grants. The authenticated `/api/management/manifest` endpoint additionally returns tenant identity, compatibility ranges, capabilities, OpenAPI coordinates, and documentation index information.
 
@@ -90,7 +92,7 @@ For automation, register a confidential OpenID application with the minimum requ
 ```bash
 export OC_CLIENT_ID=orchard-automation
 export OC_CLIENT_SECRET='<secret>'
-oc content-item list
+oc content items list
 ```
 
 For `oc login` and `oc api invoke`, the secret can instead be named with `--client-secret-env` or read from standard input with `--client-secret-stdin`. Client-credential tokens and secrets are not persisted. Implicit and password grants are not supported.
@@ -100,7 +102,7 @@ Manage multiple tenants with named contexts:
 ```bash
 oc context list
 oc context use staging
-oc --context production content-item list
+oc --context production content items list
 oc logout production
 ```
 
@@ -124,7 +126,7 @@ oc login
 oc content items list
 ```
 
-Direct authentication ensures tenant-local roles and permissions are enforced and newly created content is associated with the authenticated tenant user. Each context stores separate credentials, manifests, and OpenAPI metadata, so `--help` reflects that tenant's enabled features.
+Direct authentication ensures tenant-local roles and permissions are enforced and newly created content is associated with the authenticated tenant user. Each context stores separate credentials. Discovery caches are keyed by tenant URL, so aliases for the same URL share metadata; `--help` reflects that tenant's enabled features.
 
 ## Dynamic commands
 
@@ -159,7 +161,7 @@ oc context add tenant-a https://cms.example.com/tenant-a --current
 oc login
 ```
 
-JSON is written to standard output by default. Use `--output table|csv|tsv|yaml|toml|none` when another representation is needed. TOML omits properties whose value is `null`; root arrays and scalar values are emitted under `items` and `value`, respectively. JSON request bodies can come from `--body`, `--body-file`, or `--stdin`. Binary request bodies use `--file` or `--stdin`. Discovered option and argument names use lower kebab-case. List commands use zero-based `--skip` and `--take` options for paging.
+The default `--output auto` writes tables in a terminal and JSON when redirected. Use `--output json` explicitly for automation, or `--output table|csv|tsv|yaml|toml|none` for other representations. Tables shorten long cells; JSON preserves the full response. TOML omits properties whose value is `null`; root arrays and scalar values are emitted under `items` and `value`, respectively. JSON request bodies can come from `--body`, `--body-file`, or `--stdin`. Binary request bodies use `--file` or `--stdin`. Discovered option and argument names use lower kebab-case. List commands use zero-based `--skip` and `--take` options for paging.
 
 Every resource that accepts a request body exposes a `schema` verb. When all input operations use the same shape, the schema is returned directly:
 
@@ -211,7 +213,11 @@ oc static files show styles/site.css
 
 Paths are relative to their respective roots. Use `--stdin` instead of `--file` to stream either kind of upload from standard input.
 
-Every static and discovered command supports `--help`. OpenAPI metadata is cached by context and ETag to reduce discovery requests. Use `oc api refresh --force` to bypass the cache, and `oc api compatibility` or `oc doctor` to diagnose protocol and local-environment problems.
+Every static and discovered command supports `--help`. OpenAPI metadata is cached by tenant URL and ETag to reduce discovery requests. Help and completion read the cache offline. Successful mutations expire discovery metadata for the next online command. Use `oc api refresh --force` to bypass the cache, `oc api compatibility` for protocol checks, and `oc doctor` to inspect local storage and caches. `doctor` does not test server connectivity.
+
+Set `OC_CONFIG_HOME` to an absolute directory to isolate contexts, caches, and Unix file credentials for testing. The default installation keeps the shared token-file location described above. `oc login --no-browser` prints the PKCE login URL instead of launching a browser; open it on the same computer as the CLI.
+
+Generate shell completion with `oc completion --shell bash|zsh|fish|pwsh`. The generated script uses the CLI's cached command tree; no separate suggestion service is required.
 
 ## Raw API and documentation search
 

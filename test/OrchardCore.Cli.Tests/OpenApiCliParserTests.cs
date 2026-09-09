@@ -5,6 +5,36 @@ namespace OrchardCore.Cli.Tests;
 public class OpenApiCliParserTests
 {
     [Fact]
+    public void Parse_NullableTypesAndInheritedParameters_PreservesContract()
+    {
+        var operation = Assert.Single(OpenApiCliParser.Parse("""
+            {"paths":{"/items/{id}":{
+              "parameters":[{"name":"id","in":"path","required":true,"schema":{"type":"string"}},
+                {"name":"take","in":"query","schema":{"type":"integer"}}],
+              "put":{
+                "parameters":[{"name":"take","in":"query","description":"override","schema":{"type":"integer"}}],
+                "x-oc-cli":{"commandGroup":["items"],"verb":"update","inputMode":"options","arguments":[{"parameterName":"id","position":0}]},
+                "requestBody":{"content":{"application/json":{"schema":{
+                  "type":["object","null"],"properties":{
+                    "roles":{"type":["null","array"],"items":{"type":"string"}},
+                    "enabled":{"type":["boolean","null"]},
+                    "count":{"type":["integer","string"]}
+                  }
+                }}}}
+              }
+            }}}
+            """));
+        Assert.Equal(2, operation.Parameters.Count);
+        Assert.Equal(0, operation.Parameters.Single(parameter => parameter.Name == "id").ArgumentPosition);
+        Assert.Equal("override", operation.Parameters.Single(parameter => parameter.Name == "take").Description);
+        var roles = operation.RequestBodyProperties.Single(property => property.Name == "roles");
+        Assert.Equal("array", roles.Type);
+        Assert.Equal(["null", "array"], roles.AllowedTypes);
+        CliApplication.ValidateDynamicJsonBody("""{"roles":[],"enabled":null,"count":"2"}""", operation);
+        Assert.Throws<CliException>(() => CliApplication.ValidateDynamicJsonBody("""{"roles":"Editor"}""", operation));
+    }
+
+    [Fact]
     public void Parse_WhenCliMetadataExists_MapsCommandArgumentsAndRequestBody()
     {
         const string openApi = """

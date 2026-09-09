@@ -73,6 +73,9 @@ oc workflow instances cancel <workflow-id> --yes
 Use singular `workflow` in command groups. Discover activity schemas from the
 target tenant; enabled modules contribute activity types and properties.
 Workflow execution starts a new instance and may not be safe to retry.
+Workflow DTOs generally use camelCase, unlike PascalCase content-item
+properties. Preserve the casing in the live operation/activity schemas; do
+not copy content-item casing into workflow payloads.
 
 ## Users and roles
 
@@ -97,9 +100,10 @@ Apply least privilege. Every API still requires `AccessRemoteManagement`; grant
 only resource permissions needed by the automation identity. Use stable IDs
 and full replacement bodies where the live schema requires them. Never embed
 passwords or client secrets in checked-in JSON or command arguments.
-User create/update does not yet have the setup command's dedicated secret
-options. Supply password-bearing complete JSON through protected
-`--body-file` or `--stdin`, never inline `--body`.
+User create/update exposes `--password-env`, `--password-file`, and
+`--password-stdin`. Supply exactly one source, or put the complete payload
+in a protected `--body-file`/`--stdin`. Inline `--body` and `--password` are
+not exposed for secret-bearing operations. Inspect live help on older servers.
 
 ## Automation sequence
 

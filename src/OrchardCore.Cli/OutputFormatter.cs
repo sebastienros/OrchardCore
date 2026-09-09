@@ -43,11 +43,26 @@ internal static class OutputFormatter
     private static string FormatTable(JsonElement element, IReadOnlyList<CliTableColumnMetadata>? tableColumns)
     {
         var rows = ExtractRows(element, tableColumns, out var headers);
-        if (rows.Count == 0)
+        if ((tableColumns is null || tableColumns.Count == 0) && element.ValueKind == JsonValueKind.Object)
         {
-            return string.Empty;
+            if (element.TryGetProperty("items", out var items) && items.ValueKind == JsonValueKind.Array)
+            {
+                rows = ExtractRows(items, null, out headers);
+            }
+            else
+            {
+                headers = ["Property", "Value"];
+                rows = element.EnumerateObject().Select(property => new List<string> { property.Name, property.Value.ToString() }).ToList();
+            }
         }
 
+        if (rows.Count == 0)
+        {
+            return "No results.";
+        }
+
+        headers = headers.Select(FormatTerminalCell).ToList();
+        rows = rows.Select(row => row.Select(FormatTerminalCell).ToList()).ToList();
         var widths = headers.Select(header => header.Length).ToArray();
         for (var rowIndex = 0; rowIndex < rows.Count; rowIndex++)
         {
@@ -85,10 +100,10 @@ internal static class OutputFormatter
     {
         var rows = ExtractRows(element, tableColumns, out var headers);
         var builder = new StringBuilder();
-        builder.AppendLine(string.Join('\t', headers));
+        builder.AppendLine(string.Join('\t', headers.Select(EscapeTsv)));
         foreach (var row in rows)
         {
-            builder.AppendLine(string.Join('\t', row));
+            builder.AppendLine(string.Join('\t', row.Select(EscapeTsv)));
         }
 
         return builder.ToString().TrimEnd();
@@ -302,6 +317,32 @@ internal static class OutputFormatter
         builder.AppendLine();
     }
 
+    private static string FormatTerminalCell(string value)
+    {
+        var builder = new StringBuilder();
+        foreach (var character in value)
+        {
+            if (char.IsControl(character))
+            {
+                builder.Append($"\\u{(int)character:x4}");
+            }
+            else
+            {
+                builder.Append(character);
+            }
+
+            if (builder.Length > 80)
+            {
+                return builder.ToString(0, 77) + "...";
+            }
+        }
+
+        return builder.ToString();
+    }
+
+    private static string EscapeTsv(string value) => value.Replace("\\", "\\\\", StringComparison.Ordinal)
+        .Replace("\t", "\\t", StringComparison.Ordinal).Replace("\r", "\\r", StringComparison.Ordinal).Replace("\n", "\\n", StringComparison.Ordinal);
+
     private static string QuoteCsv(string value)
     {
         if (value.IndexOfAny([',', '"', '\r', '\n']) < 0)
@@ -370,6 +411,13 @@ internal static class OutputFormatter
     private static void WriteYaml(StringBuilder builder, JsonElement element, int indent)
     {
         var prefix = new string(' ', indent);
+        if ((element.ValueKind == JsonValueKind.Object && !element.EnumerateObject().Any()) ||
+            (element.ValueKind == JsonValueKind.Array && element.GetArrayLength() == 0))
+        {
+            builder.Append(prefix).AppendLine(element.GetRawText());
+            return;
+        }
+
         switch (element.ValueKind)
         {
             case JsonValueKind.Object:
@@ -377,12 +425,12 @@ internal static class OutputFormatter
                 {
                     if (property.Value.ValueKind is JsonValueKind.Object or JsonValueKind.Array)
                     {
-                        builder.Append(prefix).Append(property.Name).Append(':').AppendLine();
+                        builder.Append(prefix).Append(QuoteYaml(property.Name)).Append(':').AppendLine();
                         WriteYaml(builder, property.Value, indent + 2);
                     }
                     else
                     {
-                        builder.Append(prefix).Append(property.Name).Append(": ").Append(FormatScalar(property.Value)).AppendLine();
+                        builder.Append(prefix).Append(QuoteYaml(property.Name)).Append(": ").Append(FormatScalar(property.Value)).AppendLine();
                     }
                 }
 
@@ -417,5 +465,5 @@ internal static class OutputFormatter
         _ => element.ToString(),
     };
 
-    private static string QuoteYaml(string value) => $"\"{value.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal)}\"";
+    private static string QuoteYaml(string value) => $"\"{JsonEncodedText.Encode(value)}\"";
 }

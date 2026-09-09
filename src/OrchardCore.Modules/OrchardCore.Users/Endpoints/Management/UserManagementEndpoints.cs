@@ -67,7 +67,8 @@ internal static class UserManagementEndpoints
             .WithCliCommand(new CliOperationMetadata(["users"], "create")
             {
                 Capability = UserManagementApiEndpointConventions.CapabilityName,
-                InputMode = CliInputMode.Json,
+                InputMode = CliInputMode.Options,
+                SecretProperties = { "password" },
             })
             .Accepts<UserCreateRequest>("application/json")
             .Produces<UserResponse>(StatusCodes.Status201Created)
@@ -86,7 +87,8 @@ internal static class UserManagementEndpoints
             {
                 Capability = UserManagementApiEndpointConventions.CapabilityName,
                 Arguments = { new CliArgumentMetadata("userId", 0) },
-                InputMode = CliInputMode.Json,
+                InputMode = CliInputMode.Options,
+                SecretProperties = { "password" },
             })
             .Accepts<UserUpdateRequest>("application/json")
             .Produces<UserResponse>(StatusCodes.Status200OK)

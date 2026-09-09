@@ -1,6 +1,6 @@
 # Static-file management API
 
-The static-file management API lists, inspects, and uploads tenant-owned web
+The static-file management API lists, inspects, uploads, and deletes tenant-owned web
 assets. Files are stored beneath the current tenant's `App_Data` static-file
 root and are also exposed by the tenant's public static-file middleware.
 
@@ -12,7 +12,7 @@ configured on that tenant before a client can authenticate.
 
 ## Authentication and authorization
 
-All three management operations use the Orchard Core API authentication scheme
+All management operations use the Orchard Core API authentication scheme
 and require:
 
 - an authenticated bearer token; and
@@ -20,7 +20,7 @@ and require:
   (`AccessRemoteManagement`).
 
 List and show additionally require **View tenant static files**
-(`ViewTenantStaticFiles`). Upload and overwrite require the security-critical
+(`ViewTenantStaticFiles`). Upload, overwrite, and delete require the security-critical
 **Manage tenant static files** (`ManageTenantStaticFiles`) permission, which
 implies the view permission. Obtain a token and configure authentication as described in
 [Remote Management](../../modules/RemoteManagement/README.md#contexts-and-login).
@@ -52,6 +52,7 @@ JSON property names use the exact camel casing shown below. JSON responses use
 | List directory | `GET` | `/api/static-files` | `200 OK` |
 | Get file metadata | `GET` | `/api/static-files/file` | `200 OK` |
 | Upload file content | `PUT` | `/api/static-files/content` | `200 OK` or `201 Created` |
+| Delete one file | `DELETE` | `/api/static-files/file` | `204 No Content` |
 
 ## Paths, storage, and public content
 
@@ -396,3 +397,16 @@ Management reads, directory listings, and uploads reject paths that traverse
 symbolic links below the tenant static-file root. Listings omit symbolic-link
 entries. Paths containing control characters or a colon are rejected before
 filesystem access, including Windows alternate data stream syntax.
+
+## Delete one file
+
+```bash
+oc static files delete styles/site.css --yes
+```
+
+Send `DELETE /api/static-files/file?path=styles%2Fsite.css`. This requires
+`ManageTenantStaticFiles` and removes only the selected file. A missing file
+also returns `204`, making retries converge. Directories return `409` and are
+never recursively removed. Empty/rooted/traversal paths and symbolic links
+return `400`. Existing public/CDN caches may continue to serve an older copy
+until their cache lifetime expires or the operator invalidates them.

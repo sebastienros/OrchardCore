@@ -11,11 +11,13 @@ internal sealed class OAuthClient
 {
     private readonly HttpClient _httpClient;
     private readonly TextWriter _stderr;
+    private readonly Action<string> _launchBrowser;
 
-    public OAuthClient(HttpClient httpClient, TextWriter stderr)
+    public OAuthClient(HttpClient httpClient, TextWriter stderr, Action<string>? launchBrowser = null)
     {
         _httpClient = httpClient;
         _stderr = stderr;
+        _launchBrowser = launchBrowser ?? LaunchBrowser;
     }
 
     public async Task<OidcDiscoveryDocument> GetDiscoveryAsync(Uri authority, CancellationToken cancellationToken)
@@ -40,7 +42,7 @@ internal sealed class OAuthClient
         return discovery;
     }
 
-    public async Task<StoredToken> LoginWithAuthorizationCodeAsync(TenantContextRecord context, OidcDiscoveryDocument discovery, CancellationToken cancellationToken)
+    public async Task<StoredToken> LoginWithAuthorizationCodeAsync(TenantContextRecord context, OidcDiscoveryDocument discovery, CancellationToken cancellationToken, bool openBrowser = true)
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(discovery);
@@ -55,10 +57,17 @@ internal sealed class OAuthClient
 
         await using var listener = await LoopbackCallbackListener.StartAsync(cancellationToken);
         var authorizationUri = BuildAuthorizationUri(authorizationEndpoint, clientId, listener.RedirectUri, scope, state, challenge);
-        LaunchBrowser(authorizationUri);
-        await _stderr.WriteLineAsync($"Opening browser for '{context.Name}' login...");
+        if (openBrowser)
+        {
+            _launchBrowser(authorizationUri);
+            await _stderr.WriteLineAsync($"Opening browser for '{context.Name}' login...");
+        }
+        else
+        {
+            await _stderr.WriteLineAsync($"Open this URL in a browser on this computer: {authorizationUri}");
+        }
 
-        var (code, returnedState) = await listener.WaitForCallbackAsync(cancellationToken);
+        var (code, returnedState) = await listener.WaitForCallbackAsync(state, discovery.Issuer, cancellationToken);
         if (!string.Equals(returnedState, state, StringComparison.Ordinal))
         {
             throw new CliException("OAuth state validation failed.");
@@ -315,7 +324,7 @@ internal sealed class OAuthClient
             return Task.FromResult(new LoopbackCallbackListener(listener));
         }
 
-        public async Task<(string Code, string State)> WaitForCallbackAsync(CancellationToken cancellationToken)
+        public async Task<(string Code, string State)> WaitForCallbackAsync(string expectedState, string expectedIssuer, CancellationToken cancellationToken)
         {
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             timeout.CancelAfter(TimeSpan.FromMinutes(5));
@@ -329,21 +338,70 @@ internal sealed class OAuthClient
                 AutoFlush = true,
             };
 
-            var requestLine = await reader.ReadLineAsync(timeout.Token) ?? throw new CliException("The browser callback was empty.");
+            var requestLine = await ReadBoundedLineAsync(reader, timeout.Token) ?? throw new CliException("The browser callback was empty.");
             var requestTarget = requestLine.Split(' ', StringSplitOptions.RemoveEmptyEntries).ElementAtOrDefault(1)
                 ?? throw new CliException("The browser callback was malformed.");
 
-            while (!string.IsNullOrEmpty(await reader.ReadLineAsync(timeout.Token)))
+            var headerLength = 0;
+            string? header;
+            while (!string.IsNullOrEmpty(header = await ReadBoundedLineAsync(reader, timeout.Token)))
             {
+                headerLength += header.Length;
+                if (headerLength > 16384)
+                {
+                    throw new CliException("The browser callback headers are too large.");
+                }
             }
 
             var targetUri = new Uri($"http://127.0.0.1{requestTarget}", UriKind.Absolute);
+            if (!requestLine.StartsWith("GET /callback?", StringComparison.Ordinal) || targetUri.AbsolutePath != "/callback")
+            {
+                throw new CliException("The browser callback did not target the expected route.");
+            }
+
             var query = HttpUtility.ParseQueryString(targetUri.Query);
+            if (!string.Equals(query["state"], expectedState, StringComparison.Ordinal))
+            {
+                throw new CliException("OAuth state validation failed.");
+            }
+
+            if (query["iss"] is { } issuer)
+            {
+                CliUtilities.EnsureIssuerMatches(expectedIssuer, issuer);
+            }
+
+            if (query["error"] is not null)
+            {
+                throw new CliException("The authorization request was denied or could not be completed. Run 'oc login' to retry.");
+            }
+
             var code = query["code"] ?? throw new CliException("The browser callback did not include an authorization code.");
             var state = query["state"] ?? throw new CliException("The browser callback did not include state.");
 
-            await writer.WriteAsync("HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nConnection: close\r\n\r\n<html><body><p>Login complete. You can close this window.</p></body></html>");
+            await writer.WriteAsync("HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nConnection: close\r\n\r\n<html><body><p>Authorization received. Return to the terminal to check whether login completed.</p></body></html>");
             return (code, state);
+        }
+
+        private static async Task<string?> ReadBoundedLineAsync(StreamReader reader, CancellationToken cancellationToken)
+        {
+            var builder = new StringBuilder();
+            var character = new char[1];
+            while (await reader.ReadAsync(character.AsMemory(), cancellationToken) > 0)
+            {
+                if (character[0] == '\n')
+                {
+                    return builder.ToString().TrimEnd('\r');
+                }
+
+                if (builder.Length >= 8192)
+                {
+                    throw new CliException("The browser callback line is too large.");
+                }
+
+                builder.Append(character[0]);
+            }
+
+            return builder.Length == 0 ? null : builder.ToString();
         }
 
         public ValueTask DisposeAsync()

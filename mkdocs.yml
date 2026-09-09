@@ -139,6 +139,7 @@ nav:
       - External Resources: getting-started/external-resources.md
   - Guides:
       - Follow the Guides: guides/README.md
+      - Manage a tenant with the CLI: guides/remote-management/README.md
       - Create a modular application: guides/create-modular-application-mvc/README.md
       - Create a website: guides/create-cms-application/README.md
       - Leverage CSPROJ meta information: guides/leverage-csproj-meta-info/README.md
@@ -333,6 +334,7 @@ nav:
               - Redis: reference/modules/Redis/README.md
               - Remote Deployment: reference/modules/Deployment.Remote/README.md
               - Remote Management: reference/modules/RemoteManagement/README.md
+              - Remote Management verification: reference/modules/RemoteManagement/review.md
               - Response Compression: reference/modules/ResponseCompression/README.md
               - Roles: reference/modules/Roles/README.md
               - Sanitizer: reference/modules/Sanitizer/README.md

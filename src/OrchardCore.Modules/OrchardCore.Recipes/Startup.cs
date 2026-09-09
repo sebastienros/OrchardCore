@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using OrchardCore.Deployment;
 using OrchardCore.Modules;
+using OrchardCore.RemoteManagement;
 using OrchardCore.Navigation;
 using OrchardCore.Recipes.RecipeSteps;
 using OrchardCore.Recipes.Services;
@@ -18,6 +19,7 @@ public sealed class Startup : StartupBase
 {
     public override void ConfigureServices(IServiceCollection services)
     {
+        services.AddSingleton<IRemoteManagementCapabilityProvider, RecipeRemoteManagementCapabilityProvider>();
         services.AddNavigationProvider<AdminMenu>();
         services.AddPermissionProvider<RecipesPermissionProvider>();
         services.AddRecipeExecutionStep<CommandStep>();

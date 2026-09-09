@@ -12,6 +12,7 @@ using OrchardCore.Environment.Shell.Configuration;
 using OrchardCore.Environment.Extensions;
 using OrchardCore.Localization.Data;
 using OrchardCore.Modules;
+using OrchardCore.RemoteManagement;
 using OrchardCore.Navigation;
 using OrchardCore.Recipes;
 using OrchardCore.Roles.Deployment;
@@ -37,6 +38,7 @@ public sealed class Startup : StartupBase
 
     public override void ConfigureServices(IServiceCollection services)
     {
+        services.AddSingleton<IRemoteManagementCapabilityProvider, RoleRemoteManagementCapabilityProvider>();
         services.AddScoped<IUserClaimsProvider, RoleClaimsProvider>();
 
         services.AddDataMigration<SystemRolesMigrations>();

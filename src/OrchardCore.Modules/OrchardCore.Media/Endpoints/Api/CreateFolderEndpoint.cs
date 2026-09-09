@@ -99,6 +99,16 @@ public static class CreateFolderEndpoint
         string path,
         string name)
     {
+        if (!await authorizationService.AuthorizeAsync(httpContext.User, MediaPermissions.ManageMedia))
+        {
+            return httpContext.ApiForbidProblem();
+        }
+
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return httpContext.ApiValidationProblem(detail: localizer["A folder name is required."]);
+        }
+
         var (result, folder) = await CreateFolderAsync(httpContext, authorizationService, mediaFileStore, mediaNameNormalizerService, options, attachedMediaFieldFileService, directoryTreeCache, localizer, path, name);
 
         return result ?? TypedResults.Ok(new CreateFolderResultDto

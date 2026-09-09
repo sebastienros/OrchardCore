@@ -68,8 +68,6 @@ internal sealed class StoredToken
 
     public string? Scope { get; set; }
 
-    public string? IdToken { get; set; }
-
     public string Issuer { get; set; } = string.Empty;
 
     public DateTimeOffset ExpiresAt { get; set; }
@@ -137,8 +135,6 @@ internal sealed class TokenEndpointResponse
 
     public string? Scope { get; set; }
 
-    public string? IdToken { get; set; }
-
     public string? Error { get; set; }
 
     public string? ErrorDescription { get; set; }
@@ -146,6 +142,8 @@ internal sealed class TokenEndpointResponse
 
 internal sealed class RequestBodyPropertyDefinition
 {
+    public List<string> AllowedTypes { get; set; } = [];
+
     public string Name { get; set; } = string.Empty;
 
     public string? Type { get; set; }

@@ -64,8 +64,8 @@ internal sealed class CliApplication
 
         var outputOption = new Option<string?>("--output")
         {
-            Description = "Output format: json, table, csv, tsv, yaml, toml, none",
-            DefaultValueFactory = _ => "json",
+            Description = "Output format: auto (table in a terminal, JSON when redirected), json, table, csv, tsv, yaml, toml, none",
+            DefaultValueFactory = _ => "auto",
             Recursive = true,
         };
 
@@ -89,7 +89,9 @@ internal sealed class CliApplication
     {
         try
         {
-            return await _rootCommand.Parse(args).InvokeAsync(new InvocationConfiguration
+            var parsed = _rootCommand.Parse(args);
+            _ = CliUtilities.ParseOutputFormat(parsed.GetValue(_outputOption));
+            return await parsed.InvokeAsync(new InvocationConfiguration
             {
                 EnableDefaultExceptionHandler = false,
             });
@@ -144,7 +146,8 @@ internal sealed class CliApplication
 
         var cacheKey = context.TenantUrl;
         var cached = await _cacheService.ReadAsync(cacheKey, CacheKind.OpenApi, cancellationToken);
-        if (cached is null || cached.ExpiresAt <= DateTimeOffset.UtcNow)
+        var offlineHelp = args.Contains("--help") || args.Contains("-h") || args.Contains("-?") || args.Any(arg => arg.StartsWith("[suggest", StringComparison.Ordinal));
+        if (!offlineHelp && (cached is null || cached.ExpiresAt <= DateTimeOffset.UtcNow))
         {
             try
             {
@@ -234,6 +237,7 @@ internal sealed class CliApplication
         var command = new Command("login", "Authenticate against the selected Orchard Core tenant");
         var contextArgument = new Argument<string?>("context") { Description = "Context name (defaults to the current context)" };
         contextArgument.DefaultValueFactory = _ => null;
+        var noBrowserOption = new Option<bool>("--no-browser") { Description = "Print the browser login URL instead of opening it (browser must run on this computer)" };
         var grantOption = new Option<string?>("--grant") { Description = "Grant flow: browser, device, client-credentials", DefaultValueFactory = _ => "browser" };
         var clientIdOption = new Option<string?>("--client-id") { Description = "Client identifier for client credentials" };
         var clientSecretEnvOption = new Option<string?>("--client-secret-env") { Description = "Environment variable containing a client secret" };
@@ -241,6 +245,7 @@ internal sealed class CliApplication
 
         command.Arguments.Add(contextArgument);
         command.Options.Add(grantOption);
+        command.Options.Add(noBrowserOption);
         command.Options.Add(clientIdOption);
         command.Options.Add(clientSecretEnvOption);
         command.Options.Add(clientSecretStdinOption);
@@ -280,7 +285,7 @@ internal sealed class CliApplication
 
             var tokenSet = grantType switch
             {
-                "browser" => await _oauthClient.LoginWithAuthorizationCodeAsync(context, discovery, cancellationToken),
+                "browser" => await _oauthClient.LoginWithAuthorizationCodeAsync(context, discovery, cancellationToken, openBrowser: !parseResult.GetValue(noBrowserOption)),
                 "device" => await _oauthClient.LoginWithDeviceCodeAsync(context, discovery, cancellationToken),
                 _ => throw new CliException($"Unsupported grant type '{grantType}'.")
             };
@@ -471,6 +476,11 @@ internal sealed class CliApplication
         command.SetAction(async (parseResult, cancellationToken) =>
         {
             var contexts = _configuration.Contexts.ToArray();
+            if (contexts.Length > 0 && !parseResult.GetValue(forceOption) && (Console.IsInputRedirected || Console.IsOutputRedirected))
+            {
+                throw new CliException("Context clear requires confirmation. Use --force in non-interactive sessions.");
+            }
+
             if (contexts.Length > 0 &&
                 !parseResult.GetValue(forceOption) &&
                 !await ConfirmContextClearAsync(contexts.Length, Console.In, Console.Error, cancellationToken))
@@ -726,7 +736,7 @@ internal sealed class CliApplication
 
     private static Command CreateCompletionCommand()
     {
-        var command = new Command("completion", "Print basic completion instructions");
+        var command = new Command("completion", "Generate a shell completion script using cached tenant metadata");
         var shellOption = new Option<string?>("--shell") { Description = "Shell: bash, zsh, fish, pwsh", DefaultValueFactory = _ => "bash" };
         command.Options.Add(shellOption);
         command.SetAction(parseResult =>
@@ -734,10 +744,38 @@ internal sealed class CliApplication
             var shell = parseResult.GetValue(shellOption)?.Trim().ToLowerInvariant() ?? "bash";
             var text = shell switch
             {
-                "bash" => "Install dotnet-suggest, then run: dotnet suggest script bash | source /dev/stdin && dotnet-suggest register --command-path oc",
-                "zsh" => "Install dotnet-suggest, then run: dotnet suggest script zsh | source /dev/stdin && dotnet-suggest register --command-path oc",
-                "fish" => "Install dotnet-suggest, then run: dotnet suggest script fish | source && dotnet-suggest register --command-path oc",
-                "pwsh" => "Install dotnet-suggest, then run: dotnet suggest script powershell | Invoke-Expression; dotnet-suggest register --command-path oc",
+                "bash" => """
+                    _oc_complete() {
+                      COMPREPLY=()
+                      local candidate
+                      while IFS= read -r candidate; do COMPREPLY+=("$candidate"); done < <(oc "[suggest:${COMP_POINT}]" "$COMP_LINE" 2>/dev/null)
+                    }
+                    complete -F _oc_complete oc
+                    """,
+                "zsh" => """
+                    #compdef oc
+                    _oc_complete() {
+                      local -a candidates
+                      candidates=("${(@f)$(oc "[suggest:${CURSOR}]" "$BUFFER" 2>/dev/null)}")
+                      compadd -- "${candidates[@]}"
+                    }
+                    compdef _oc_complete oc
+                    """,
+                "fish" => """
+                    function __oc_complete
+                      set -l line (commandline -cp)
+                      oc "[suggest:"(string length -- "$line")"]" "$line" 2>/dev/null
+                    end
+                    complete -c oc -f -a '(__oc_complete)'
+                    """,
+                "pwsh" => """
+                    Register-ArgumentCompleter -Native -CommandName oc -ScriptBlock {
+                      param($wordToComplete, $commandAst, $cursorPosition)
+                      & oc "[suggest:$cursorPosition]" $commandAst.ToString() 2>$null | ForEach-Object {
+                        [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
+                      }
+                    }
+                    """,
                 _ => throw new CliException($"Unsupported shell '{shell}'.")
             };
 
@@ -749,7 +787,7 @@ internal sealed class CliApplication
 
     private Command CreateDoctorCommand()
     {
-        var command = new Command("doctor", "Inspect CLI environment, cache, and secure storage availability");
+        var command = new Command("doctor", "Inspect CLI environment, cache, and credential storage");
         command.SetAction(async (parseResult, cancellationToken) =>
         {
             var currentContext = ContextStore.FindContext(_configuration, parseResult.GetValue(_contextOption));
@@ -890,12 +928,21 @@ internal sealed class CliApplication
 
         command.SetAction(async (parseResult, cancellationToken) =>
         {
+            var context = RequireContext(parseResult.GetValue(_contextOption));
             if (operation.CliMetadata.RequiresConfirmation && !parseResult.GetValue(yesOption))
             {
-                throw new CliException("This operation is marked destructive. Re-run with --yes to confirm.");
-            }
+                if (Console.IsInputRedirected || Console.IsOutputRedirected)
+                {
+                    throw new CliException("This operation is marked destructive. Re-run with --yes to confirm.");
+                }
 
-            var context = RequireContext(parseResult.GetValue(_contextOption));
+                await Console.Error.WriteAsync($"Run {string.Join(' ', operation.CliMetadata.CommandGroup)} {operation.CliMetadata.Verb} on '{context.Name}' ({context.TenantUrl})? [y/N] ");
+                var answer = await Console.In.ReadLineAsync(cancellationToken);
+                if (!string.Equals(answer, "y", StringComparison.OrdinalIgnoreCase) && !string.Equals(answer, "yes", StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new CliException("Operation cancelled. No request was sent.");
+                }
+            }
             var routePath = operation.Path;
             var query = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -953,7 +1000,7 @@ internal sealed class CliApplication
             var next = current.Subcommands.FirstOrDefault(command => string.Equals(command.Name, segment, StringComparison.Ordinal));
             if (next is null)
             {
-                next = new Command(segment);
+                next = new Command(segment, $"Manage {segment.Replace('-', ' ')} for the selected tenant");
                 current.Subcommands.Add(next);
             }
 
@@ -1085,7 +1132,7 @@ internal sealed class CliApplication
             async (eTag, token) =>
             {
                 var request = new HttpRequestMessage(HttpMethod.Get, openApiUri);
-                CacheService.AddIfNoneMatchHeader(request, eTag ?? manifest.OpenApiETag);
+                CacheService.AddIfNoneMatchHeader(request, eTag);
                 AddAuthorization(request, accessToken);
                 return await _httpClient.SendAsync(request, token);
             },
@@ -1133,7 +1180,7 @@ internal sealed class CliApplication
         string? accessToken,
         CancellationToken cancellationToken)
     {
-        var request = new HttpRequestMessage(new HttpMethod(method.ToUpperInvariant()), BuildRequestUri(new Uri(context.TenantUrl, UriKind.Absolute), path, query))
+        using var request = new HttpRequestMessage(new HttpMethod(method.ToUpperInvariant()), BuildRequestUri(new Uri(context.TenantUrl, UriKind.Absolute), path, query))
         {
             Content = body,
         };
@@ -1176,6 +1223,11 @@ internal sealed class CliApplication
                 $"API request {request.Method} {request.RequestUri?.PathAndQuery} failed with {status}.",
                 details,
                 GetCorrelationId(response));
+        }
+
+        if (request.Method != HttpMethod.Get && request.Method != HttpMethod.Head)
+        {
+            await _cacheService.InvalidateAsync(context.TenantUrl, cancellationToken);
         }
 
         if (string.Equals(contentType, "application/json", StringComparison.OrdinalIgnoreCase)
@@ -1256,6 +1308,15 @@ internal sealed class CliApplication
         CancellationToken cancellationToken)
     {
         var inlineBody = bodyOption is null ? null : parseResult.GetValue(bodyOption);
+        var hasExplicitBody = inlineBody is not null || parseResult.GetValue(bodyFileOption) is not null || parseResult.GetValue(stdinOption);
+        var hasPropertyInput = bodyPropertyOptions.Any(entry => parseResult.GetValue(entry.Option) is not null)
+            || secretBodyPropertyOptions.Any(entry => parseResult.GetValue(entry.EnvironmentVariableOption) is not null
+                || parseResult.GetValue(entry.FileOption) is not null || parseResult.GetValue(entry.StdinOption));
+        if (hasExplicitBody && hasPropertyInput)
+        {
+            throw new CliException("Use either a complete JSON body or individual property options, not both.");
+        }
+
         var explicitBody = await ResolveJsonBodyAsync(inlineBody, parseResult.GetValue(bodyFileOption), parseResult.GetValue(stdinOption), operation.RequestContentType ?? "application/json", cancellationToken);
         if (explicitBody is not null)
         {
@@ -1422,7 +1483,7 @@ internal sealed class CliApplication
         return $"A JSON request body is required.{inputGuidance} Run '{schemaCommand}' to inspect its schema.";
     }
 
-    private static void ValidateDynamicJsonBody(string content, OpenApiOperationDefinition operation)
+    internal static void ValidateDynamicJsonBody(string content, OpenApiOperationDefinition operation)
     {
         using var document = JsonDocument.Parse(content);
         if (operation.RequestBodyProperties.Count == 0)
@@ -1447,7 +1508,9 @@ internal sealed class CliApplication
                 continue;
             }
 
-            if (property.Type is not null && !MatchesSchemaType(value, property.Type))
+            if (property.AllowedTypes.Count > 0
+                ? !property.AllowedTypes.Any(type => MatchesSchemaType(value, type))
+                : property.Type is not null && !MatchesSchemaType(value, property.Type))
             {
                 throw new CliException($"The request body property '{property.Name}' must be of type '{property.Type}'.");
             }
@@ -1488,6 +1551,7 @@ internal sealed class CliApplication
 
     private static bool MatchesSchemaType(JsonElement value, string type) => type switch
     {
+        "null" => value.ValueKind == JsonValueKind.Null,
         "array" => value.ValueKind == JsonValueKind.Array,
         "boolean" => value.ValueKind is JsonValueKind.True or JsonValueKind.False,
         "integer" => value.ValueKind == JsonValueKind.Number && value.TryGetInt64(out _),
@@ -1497,9 +1561,14 @@ internal sealed class CliApplication
         _ => true,
     };
 
-    private static async Task<HttpContent?> ResolveJsonBodyAsync(string? inlineBody, FileInfo? bodyFile, bool stdin, string contentType, CancellationToken cancellationToken)
+    internal static async Task<HttpContent?> ResolveJsonBodyAsync(string? inlineBody, FileInfo? bodyFile, bool stdin, string contentType, CancellationToken cancellationToken)
     {
-        if (!string.IsNullOrWhiteSpace(inlineBody))
+        if ((inlineBody is null ? 0 : 1) + (bodyFile is null ? 0 : 1) + (stdin ? 1 : 0) > 1)
+        {
+            throw new CliException("Use only one of --body, --body-file, or --stdin.");
+        }
+
+        if (inlineBody is not null)
         {
             return CreateJsonContent(inlineBody, contentType);
         }
@@ -1543,7 +1612,7 @@ internal sealed class CliApplication
 
     private static StringContent CreateJsonContent(string content, string contentType)
     {
-        _ = JsonDocument.Parse(content);
+        using var document = JsonDocument.Parse(content);
         return new StringContent(content, Encoding.UTF8, contentType);
     }
 
@@ -1557,13 +1626,14 @@ internal sealed class CliApplication
         HasStoredCredentials = await _credentialStore.GetAsync(GetCredentialKey(context), cancellationToken) is not null,
     };
 
-    private static string BuildClientCredentialsScope(TenantContextRecord context)
+    internal static string BuildClientCredentialsScope(TenantContextRecord context)
     {
         var scopes = context.Scopes.Count > 0
             ? context.Scopes.Where(scope =>
                 !string.Equals(scope, "openid", StringComparison.Ordinal) &&
                 !string.Equals(scope, "profile", StringComparison.Ordinal) &&
                 !string.Equals(scope, "email", StringComparison.Ordinal) &&
+                !string.Equals(scope, "roles", StringComparison.Ordinal) &&
                 !string.Equals(scope, "offline_access", StringComparison.Ordinal))
             : [RemoteManagementConstants.ManagementScope];
 
@@ -1669,6 +1739,11 @@ internal sealed class CliApplication
     {
         for (var index = 0; index < args.Length; index++)
         {
+            if (args[index].StartsWith("--context=", StringComparison.Ordinal) || args[index].StartsWith("-c=", StringComparison.Ordinal))
+            {
+                return args[index][(args[index].IndexOf('=') + 1)..];
+            }
+
             if ((string.Equals(args[index], "--context", StringComparison.Ordinal) || string.Equals(args[index], "-c", StringComparison.Ordinal)) && index + 1 < args.Length)
             {
                 return args[index + 1];

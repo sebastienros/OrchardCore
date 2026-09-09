@@ -3,6 +3,29 @@ namespace OrchardCore.Cli.Tests;
 public class CliUtilitiesTests
 {
     [Theory]
+    [InlineData("array", "[1,2]", "[1,2]")]
+    [InlineData("array", "Editor,Author", "[\"Editor\",\"Author\"]")]
+    [InlineData("object", "{\"limit\":3}", "{\"limit\":3}")]
+    [InlineData("integer", "2147483648", "2147483648")]
+    public void ConvertToJsonNode_StructuredOptions_PreservesTypes(string type, string input, string expected)
+    {
+        Assert.Equal(expected, CliUtilities.ConvertToJsonNode(input, type)!.ToJsonString());
+    }
+
+    [Fact]
+    public void CreateStoredToken_UntrustedIdToken_IsNotUsedAsIdentity()
+    {
+        var response = CliUtilities.ParseTokenResponse("""{"access_token":"access","id_token":"untrusted"}""");
+        var token = CliUtilities.CreateStoredToken(response, new OidcDiscoveryDocument
+        {
+            Issuer = "https://example.test/",
+            TokenEndpoint = "https://example.test/connect/token",
+        });
+        Assert.Equal("https://example.test/", token.Issuer);
+        Assert.DoesNotContain("untrusted", System.Text.Json.JsonSerializer.Serialize(token, CliJsonContext.Default.StoredToken));
+    }
+
+    [Theory]
     [InlineData("json", "Json")]
     [InlineData("table", "Table")]
     [InlineData("csv", "Csv")]
