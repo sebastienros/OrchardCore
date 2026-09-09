@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import struct
 import subprocess
 import tempfile
 import xml.etree.ElementTree as ET
@@ -21,6 +22,25 @@ directory = args.directory.resolve()
 executable_name = 'oc.exe' if args.rid.startswith('win-') else 'oc'
 pointer = directory / f'{PACKAGE_ID}.{args.version}.nupkg'
 implementation = directory / f'{PACKAGE_ID}.{args.rid}.{args.version}.nupkg'
+
+
+def has_clr_header(binary):
+    """Distinguish managed PE assemblies from Windows native support DLLs."""
+    # https://learn.microsoft.com/windows/win32/debug/pe-format
+    assert binary[:2] == b'MZ', 'Expected a Windows PE image'
+    pe = struct.unpack_from('<I', binary, 0x3c)[0]
+    assert binary[pe:pe + 4] == b'PE\0\0', 'Invalid PE signature'
+    optional_size = struct.unpack_from('<H', binary, pe + 20)[0]
+    optional = pe + 24
+    magic = struct.unpack_from('<H', binary, optional)[0]
+    assert magic in (0x10b, 0x20b), 'Expected PE32 or PE32+'
+    directories = 96 if magic == 0x10b else 112
+    count = struct.unpack_from('<I', binary, optional + directories - 4)[0]
+    if count <= 14:
+        return False
+    assert optional_size >= directories + 15 * 8, 'Truncated PE data directories'
+    clr_address, clr_size = struct.unpack_from('<II', binary, optional + directories + 14 * 8)
+    return clr_address != 0 or clr_size != 0
 
 
 def inspect_package(path, package_id, package_type):
@@ -48,10 +68,15 @@ def inspect_package(path, package_id, package_type):
         assert command.get('EntryPoint') == executable_name
         root = str(Path(settings_path).parent).replace('\\', '/')
         assert f'{root}/QRCoder.LICENSE.txt' in names
-        assert not any(name.endswith(('.dll', '.runtimeconfig.json', '.deps.json')) for name in names)
+        assert not any(name.endswith(('.runtimeconfig.json', '.deps.json')) for name in names)
+        for name in names:
+            if name.lower().endswith('.dll'):
+                assert not has_clr_header(package.read(name)), f'Managed assembly in native package: {name}'
         binary = package.read(f'{root}/{executable_name}')
         expected_magic = b'MZ' if args.rid.startswith('win-') else b'\x7fELF' if args.rid.startswith('linux-') else b'\xcf\xfa\xed\xfe'
         assert binary.startswith(expected_magic), 'Package must contain a native executable'
+        if args.rid.startswith('win-'):
+            assert not has_clr_header(binary), 'Tool entry point must be native'
         return hashlib.sha256(binary).hexdigest()
 
 
