@@ -40,9 +40,18 @@ with tempfile.TemporaryDirectory(prefix='oc-native-smoke-') as config:
     for shell in ('bash', 'zsh', 'fish', 'pwsh'):
         script = subprocess.run([str(exe), 'completion', '--shell', shell], env=env, capture_output=True, text=True, check=True).stdout
         script_path = directory / ('completion.' + shell)
-        script_path.write_text(script)
-        if shell in ('bash', 'zsh', 'fish') and shutil.which(shell):
+        script_path.write_text(script, newline="\n")
+        if os.name != 'nt' and shell in ('bash', 'zsh', 'fish') and shutil.which(shell):
             subprocess.run([shell, '-n', str(script_path)], check=True)
+        if shell == 'pwsh' and shutil.which('pwsh'):
+            completion_env = env.copy()
+            completion_env['OC_COMPLETION_SCRIPT'] = str(script_path)
+            completion_env['PATH'] = str(directory) + os.pathsep + env['PATH']
+            subprocess.run(['pwsh', '-NoProfile', '-NonInteractive', '-Command',
+                "& ([scriptblock]::Create((Get-Content -Raw $env:OC_COMPLETION_SCRIPT))); "
+                "$matches = (TabExpansion2 'oc co' 5).CompletionMatches.CompletionText; "
+                "if ('context' -notin $matches) { throw 'Native PowerShell completion did not suggest context' }"],
+                env=completion_env, check=True)
 report = {'rid':args.rid,'binaryBytes':exe.stat().st_size,'startupMilliseconds':samples,
           'medianStartupMilliseconds':statistics.median(samples),'sha256':hashlib.sha256(exe.read_bytes()).hexdigest()}
 (directory / 'verification.json').write_text(json.dumps(report,indent=2)+'\n')
