@@ -127,7 +127,6 @@ internal sealed class CliApplication
         _rootCommand.Subcommands.Add(CreateDocsCommand());
         _rootCommand.Subcommands.Add(CreateCompletionCommand());
         _rootCommand.Subcommands.Add(CreateDoctorCommand());
-        _rootCommand.Subcommands.Add(CreateVersionCommand());
     }
 
     private async Task AddDynamicCommandsAsync(string[] args, CancellationToken cancellationToken)
@@ -797,6 +796,8 @@ internal sealed class CliApplication
             var currentContext = ContextStore.FindContext(_configuration, parseResult.GetValue(_contextOption));
             var output = new DoctorOutput
             {
+                CliVersion = CliUtilities.CliVersion,
+                RuntimeVersion = global::System.Environment.Version.ToString(),
                 RuntimeIdentifier = System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier,
                 OperatingSystem = CliUtilities.DetermineOperatingSystem(),
                 ConfigDirectory = _paths.RootDirectory,
@@ -810,18 +811,6 @@ internal sealed class CliApplication
 
             return await WriteOutputAsync(parseResult, CliUtilities.ToJsonElement(output, CliJsonContext.Default.DoctorOutput), cancellationToken);
         });
-        return command;
-    }
-
-    private Command CreateVersionCommand()
-    {
-        var command = new Command("version", "Show CLI version information");
-        command.SetAction((parseResult, cancellationToken) => WriteOutputAsync(parseResult, CliUtilities.ToJsonElement(new VersionOutput
-        {
-            CliVersion = CliUtilities.CliVersion,
-            RuntimeVersion = global::System.Environment.Version.ToString(),
-            RuntimeIdentifier = System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier,
-        }, CliJsonContext.Default.VersionOutput), cancellationToken));
         return command;
     }
 
@@ -1768,7 +1757,6 @@ internal sealed class CliApplication
             "docs",
             "completion",
             "doctor",
-            "version",
         ];
 
         var startIndex = args.Length > 0 && string.Equals(args[0], "oc", StringComparison.Ordinal)
@@ -1778,6 +1766,11 @@ internal sealed class CliApplication
         for (var index = startIndex; index < args.Length; index++)
         {
             var argument = args[index];
+            if (argument == "--version")
+            {
+                return true;
+            }
+
             if (argument is "--context" or "-c" or "--output")
             {
                 index++;

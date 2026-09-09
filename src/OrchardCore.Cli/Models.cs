@@ -376,6 +376,10 @@ internal sealed class DocumentationShowOutput
 
 internal sealed class DoctorOutput
 {
+    public string CliVersion { get; set; } = string.Empty;
+
+    public string RuntimeVersion { get; set; } = string.Empty;
+
     public string RuntimeIdentifier { get; set; } = string.Empty;
 
     public string OperatingSystem { get; set; } = string.Empty;
@@ -393,13 +397,4 @@ internal sealed class DoctorOutput
     public bool HasManifestCache { get; set; }
 
     public bool HasDocumentationCache { get; set; }
-}
-
-internal sealed class VersionOutput
-{
-    public string CliVersion { get; set; } = string.Empty;
-
-    public string RuntimeVersion { get; set; } = string.Empty;
-
-    public string RuntimeIdentifier { get; set; } = string.Empty;
 }

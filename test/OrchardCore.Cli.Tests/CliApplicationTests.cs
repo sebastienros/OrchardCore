@@ -5,6 +5,28 @@ namespace OrchardCore.Cli.Tests;
 public class CliApplicationTests
 {
     [Theory]
+    [InlineData("--version")]
+    [InlineData("doctor")]
+    public async Task CreateAsync_LocalDiagnostics_DoesNotContactTenant(string command)
+    {
+        var paths = new CliPaths(TestPaths.CreateScratchDirectory(nameof(CreateAsync_LocalDiagnostics_DoesNotContactTenant)));
+        await new ContextStore(paths).SaveAsync(new CliConfiguration
+        {
+            CurrentContext = "offline",
+            Contexts = [new TenantContextRecord { Name = "offline", TenantUrl = "https://offline.example/" }],
+        }, CancellationToken.None);
+        var handler = new RequestCountingHandler();
+        using var client = new HttpClient(handler);
+        var args = new[] { "--context", "offline", command };
+
+        var app = await CliApplication.CreateAsync(args, paths, client, CancellationToken.None, new UnsupportedCredentialStore());
+
+        Assert.Equal(0, await app.InvokeAsync(args));
+        Assert.Equal(0, handler.RequestCount);
+        Assert.DoesNotContain(app.RootCommand.Subcommands, subcommand => subcommand.Name == "version");
+    }
+
+    [Theory]
     [InlineData(false, false)]
     [InlineData(true, false)]
     [InlineData(true, true)]

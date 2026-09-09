@@ -28,7 +28,7 @@ and `codex/**` branches, and on PR updates targeting the fork.
 3. Extract the downloaded artifact, then extract the `.tar.gz` or `.zip`
    native archive inside it. The artifact also includes its SHA-256 checksum
    and a verification record; the job summary identifies the built commit.
-4. Put the extracted directory on your `PATH` and run `oc version`.
+4. Put the extracted directory on your `PATH` and run `oc --version`.
 
 You must be signed into GitHub to download workflow artifacts. These builds
 are retained for 30 days and are unsigned development artifacts. For PR runs,
@@ -42,7 +42,7 @@ From a checkout containing `src/OrchardCore.Cli`, with the .NET SDK selected by
 
 ```bash
 dotnet publish src/OrchardCore.Cli -c Release -r osx-arm64 -o artifacts/oc
-./artifacts/oc/oc version
+./artifacts/oc/oc --version
 ```
 
 Replace `osx-arm64` with your runtime identifier: `osx-x64`, `linux-x64`,
@@ -341,7 +341,10 @@ property options; alternatively supply the entire request in a protected
 
 Help and shell completion use cached metadata without contacting the server.
 After feature changes, successful mutations expire discovery caches so the next
-online command can refresh them. `doctor` checks local state, not connectivity.
+online command can refresh them. `oc --version` prints the CLI version number.
+`oc doctor` reports the CLI version, .NET runtime version, platform, and local
+storage and cache state without contacting the tenant. Use
+`oc doctor --output json` for structured diagnostics in scripts.
 For Bash completion, run `oc completion --shell bash > oc-completion.bash` and
 source the file. Other supported shells are `zsh`, `fish`, and `pwsh`.
 

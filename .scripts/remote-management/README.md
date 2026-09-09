@@ -78,7 +78,7 @@ python3 .scripts/remote-management/native-smoke.py /tmp/oc-native osx-arm64
 
 Install documentation dependencies from `src/docs/requirements.txt` first.
 `native-smoke.py` runs the actual executable with isolated configuration,
-checks help/doctor/completion, measures five `version` processes, and packages
+checks help/doctor/completion, measures five `--version` processes, and packages
 binaries with completions, a verification record, and SHA-256 checksums.
 Budgets are 30 MiB for the executable and 2 seconds median process startup;
 the latter is a regression guard, not a cold-machine performance guarantee.

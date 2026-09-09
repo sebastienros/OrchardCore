@@ -21,7 +21,6 @@ namespace OrchardCore.Cli;
 [JsonSerializable(typeof(DocumentationSearchHit))]
 [JsonSerializable(typeof(DocumentationShowOutput))]
 [JsonSerializable(typeof(DoctorOutput))]
-[JsonSerializable(typeof(VersionOutput))]
 [JsonSerializable(typeof(string[]))]
 internal sealed partial class CliJsonContext : JsonSerializerContext
 {
