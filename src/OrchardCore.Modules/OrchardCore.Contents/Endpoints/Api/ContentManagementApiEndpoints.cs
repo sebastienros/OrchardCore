@@ -340,6 +340,11 @@ internal static class ContentManagementApiEndpoints
             return TypedResults.Problem(title: "Bad request", detail: "A content item payload is required.", statusCode: StatusCodes.Status400BadRequest);
         }
 
+        // Minimal API handlers do not run MVC's ModelBinderAccessorFilter. Keep one
+        // updater so service validation and the HTTP response observe the same errors.
+        var accessor = httpContext.RequestServices.GetRequiredService<IUpdateModelAccessor>();
+        var updater = accessor.ModelUpdater;
+        accessor.ModelUpdater = updater;
         var contentItem = await service.SaveAsync(httpContext.User, model, publish, allowCreate, allowUpdate, contentItemId);
         if (ContentApiService.IsForbidden(contentItem))
         {
@@ -351,7 +356,7 @@ internal static class ContentManagementApiEndpoints
             return httpContext.ApiNotFoundProblem();
         }
 
-        var modelState = httpContext.RequestServices.GetRequiredService<IUpdateModelAccessor>().ModelUpdater.ModelState;
+        var modelState = updater.ModelState;
         if (!modelState.IsValid)
         {
             return ValidationProblem(modelState);

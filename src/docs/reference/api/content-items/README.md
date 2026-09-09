@@ -772,3 +772,15 @@ Contracts and behavior were also derived from:
 * `src/OrchardCore/OrchardCore.ContentManagement.Abstractions/ContentItemConverter.cs`
 * `test/OrchardCore.Tests/Modules/OrchardCore.Contents/ContentItemSchemaBuilderTests.cs`
 * `test/OrchardCore.Tests/Apis/RemoteManagement/ContentAndWorkflowEndpointMetadataTests.cs`
+
+### Read and validation side effects
+
+`show --version draft` reads an existing draft; it returns `404` when an item
+has only a published version. Use the explicit `draft` command to create a
+draft version. Reading or rendering a draft never creates one.
+
+`validate-update` validates a detached copy and does not run content update
+workflows or persist a draft. Route/body identifier mismatches are rejected.
+Content validation errors are returned as HTTP 400 Validation Problem Details,
+including when the request is handled through minimal API endpoints.
+An unchanged save of a published item is idempotent and creates no extra version.

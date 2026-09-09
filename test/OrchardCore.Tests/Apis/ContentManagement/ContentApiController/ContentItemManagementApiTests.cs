@@ -13,6 +13,35 @@ namespace OrchardCore.Tests.Apis.ContentManagement.ContentApiController;
 public class ContentItemManagementApiTests
 {
     [Fact]
+    public async Task GetDraft_PublishedItem_DoesNotCreateDraft()
+    {
+        using var context = new BlogPostApiControllerContext();
+        await context.InitializeAsync();
+        var id = context.BlogPost.ContentItemId;
+        var response = await context.Client.GetAsync($"api/content/{id}?version=draft", TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        await context.UsingTenantScopeAsync(async scope =>
+        {
+            var manager = scope.ServiceProvider.GetRequiredService<IContentManager>();
+            Assert.Null(await manager.GetAsync(id, VersionOptions.Draft));
+            Assert.NotNull(await manager.GetAsync(id, VersionOptions.Published));
+        });
+    }
+
+    [Fact]
+    public async Task Update_RouteBodyIdMismatch_ReturnsValidationProblem()
+    {
+        using var context = new BlogPostApiControllerContext();
+        await context.InitializeAsync();
+        var response = await context.Client.PutAsJsonAsync($"api/content/{context.BlogPost.ContentItemId}", new ContentItem
+        {
+            ContentItemId = "different-id",
+            ContentType = "BlogPost",
+        });
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task ContentService_ListsGetsAndDescribesSchema()
     {
         using var context = new SiteContext();

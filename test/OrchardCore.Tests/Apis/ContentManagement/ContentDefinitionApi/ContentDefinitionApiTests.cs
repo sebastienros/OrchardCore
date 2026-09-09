@@ -14,6 +14,23 @@ namespace OrchardCore.Tests.Apis.ContentManagement.ContentDefinitionApi;
 public class ContentDefinitionApiTests
 {
     [Fact]
+    public void ContentDefinitionSchemaBuilder_DescribedUnconstrainedProperty_PreservesBooleanSchema()
+    {
+        var builderType = GetServiceType("OrchardCore.ContentTypes.Services.ContentDefinitionSchemaBuilder", "OrchardCore.ContentTypes");
+        var method = builderType.GetMethod("BuildSchema", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)!;
+        var schema = (JsonObject)method.Invoke(null, [typeof(DescribedSchema), JsonSerializerOptions.Web])!;
+        var value = schema["properties"]!["value"]!;
+        Assert.Equal("An arbitrary JSON value.", value["description"]!.GetValue<string>());
+        Assert.True(value["allOf"]![0]!.GetValue<bool>());
+    }
+
+    private sealed class DescribedSchema
+    {
+        [System.ComponentModel.Description("An arbitrary JSON value.")]
+        public object Value { get; set; }
+    }
+
+    [Fact]
     public void ContentPartDefinitionSchema_DescribesKnownSettings()
     {
         var schema = JsonSerializerOptions.Web.GetJsonSchemaAsNode(typeof(ContentPartDefinitionDto));

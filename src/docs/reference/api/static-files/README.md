@@ -389,3 +389,10 @@ derived from `StaticFileManagementEndpoints.cs`, `TenantFileProvider.cs`,
 `StaticFileRemoteManagementCapabilityProvider.cs`, the
 `OrchardCore.Tenants.FileProvider` startup and manifest declarations, endpoint
 metadata tests, and static-file path-resolution tests.
+
+### Symbolic links
+
+Management reads, directory listings, and uploads reject paths that traverse
+symbolic links below the tenant static-file root. Listings omit symbolic-link
+entries. Paths containing control characters or a colon are rejected before
+filesystem access, including Windows alternate data stream syntax.

@@ -48,3 +48,15 @@ reference points; it does not claim protocol conformance from a unit-test pass.
 Continue with API authorization and mutation behavior, OAuth flows and refresh,
 NativeAOT execution, human output, documentation walkthroughs, skill packaging,
 and blind evaluations on different models. Record actual outcomes here.
+
+## API regression fixes
+
+- Field schemas now preserve boolean schema semantics when adding descriptions.
+- Content validation and HTTP responses share one model updater; invalid content
+  no longer receives a success response after the database session was cancelled.
+- Draft reads/rendering no longer create drafts. Validation uses detached content
+  and does not fire update workflows. Route/body ID mismatches are rejected.
+- New static-file management reads/listings apply the same symlink boundary as
+  writes. These changes are specific to the new APIs, separate from upstream
+  application static-file resolution.
+- 32 targeted content, schema, and tenant tests passed after these fixes.

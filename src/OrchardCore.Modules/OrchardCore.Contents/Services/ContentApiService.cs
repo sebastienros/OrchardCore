@@ -175,12 +175,18 @@ internal sealed class ContentApiService
             return null;
         }
 
+        var modelState = _updateModelAccessor.ModelUpdater.ModelState;
         if (!string.IsNullOrWhiteSpace(contentItemId))
         {
+            if (!string.IsNullOrWhiteSpace(model.ContentItemId) && !string.Equals(model.ContentItemId, contentItemId, StringComparison.Ordinal))
+            {
+                modelState.AddModelError(nameof(ContentItem.ContentItemId), "The content item id in the request body must match the route value.");
+                return model;
+            }
+
             model.ContentItemId = contentItemId;
         }
 
-        var modelState = _updateModelAccessor.ModelUpdater.ModelState;
         var contentItem = string.IsNullOrWhiteSpace(model.ContentItemId)
             ? null
             : await _contentManager.GetAsync(model.ContentItemId, VersionOptions.Latest);
@@ -314,9 +320,17 @@ internal sealed class ContentApiService
                 return new ContentItemValidationResponse();
             }
 
-            contentItem = await _contentManager.GetAsync(id, VersionOptions.DraftRequired);
+            if (!string.IsNullOrWhiteSpace(model.ContentType) && !string.Equals(model.ContentType, contentItem.ContentType, StringComparison.Ordinal))
+            {
+                return new ContentItemValidationResponse
+                {
+                    Errors = new Dictionary<string, string[]> { [nameof(ContentItem.ContentType)] = ["The content type cannot be changed."] },
+                };
+            }
+
+            // Validation works on a detached copy, without creating a draft or firing update workflows.
+            contentItem = JsonSerializer.Deserialize<ContentItem>(JsonSerializer.Serialize(contentItem, SerializerOptions), SerializerOptions);
             contentItem.Merge(model, s_updateJsonMergeSettings);
-            await _contentManager.UpdateAsync(contentItem);
         }
         else
         {
@@ -433,8 +447,9 @@ internal sealed class ContentApiService
             return new ContentItem { ContentItemId = string.Empty };
         }
 
+        contentItem = await _contentManager.GetAsync(contentItemId, VersionOptions.DraftRequired);
         await _contentManager.SaveDraftAsync(contentItem);
-        return await _contentManager.GetAsync(contentItemId, VersionOptions.DraftRequired);
+        return contentItem;
     }
 
     public async Task<ContentItem> PublishAsync(ClaimsPrincipal user, string contentItemId)
@@ -559,7 +574,7 @@ internal sealed class ContentApiService
     private static VersionOptions GetVersionOptions(string version, bool defaultToPublished)
         => version?.ToLowerInvariant() switch
         {
-            "draft" => VersionOptions.DraftRequired,
+            "draft" => VersionOptions.Draft,
             "latest" => VersionOptions.Latest,
             _ => defaultToPublished ? VersionOptions.Published : VersionOptions.Latest,
         };

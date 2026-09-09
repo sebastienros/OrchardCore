@@ -95,6 +95,11 @@ internal static class StaticFileManagementEndpoints
             return TypedResults.Problem(detail: "The static-file path must be relative and cannot contain '.' or '..' segments.", statusCode: StatusCodes.Status400BadRequest);
         }
 
+        if (!string.IsNullOrEmpty(path) && !TryResolvePhysicalPath(fileProvider.Root, path, out _))
+        {
+            return TypedResults.Problem(detail: "The static-file path traverses a symbolic link.", statusCode: StatusCodes.Status400BadRequest);
+        }
+
         var contents = fileProvider.GetDirectoryContents(path);
         if (!contents.Exists)
         {
@@ -102,6 +107,7 @@ internal static class StaticFileManagementEndpoints
         }
 
         var items = contents
+            .Where(entry => TryResolvePhysicalPath(fileProvider.Root, CombinePath(path, entry.Name), out _))
             .OrderBy(entry => entry.IsDirectory ? 0 : 1)
             .ThenBy(entry => entry.Name, StringComparer.OrdinalIgnoreCase)
             .Select(entry => ToResponse(httpContext, CombinePath(path, entry.Name), entry))
@@ -121,6 +127,11 @@ internal static class StaticFileManagementEndpoints
         if (!TryNormalizePath(path, allowEmpty: false, out var normalizedPath))
         {
             return TypedResults.Problem(detail: "The static-file path must be relative and cannot contain '.' or '..' segments.", statusCode: StatusCodes.Status400BadRequest);
+        }
+
+        if (!TryResolvePhysicalPath(fileProvider.Root, normalizedPath, out _))
+        {
+            return TypedResults.Problem(detail: "The static-file path traverses a symbolic link.", statusCode: StatusCodes.Status400BadRequest);
         }
 
         var file = fileProvider.GetFileInfo(normalizedPath);
@@ -249,7 +260,7 @@ internal static class StaticFileManagementEndpoints
             return allowEmpty;
         }
 
-        if (Path.IsPathRooted(path) || normalizedPath.Split('/').Any(segment => segment is "." or ".." || segment.Length == 0))
+        if (path.Any(char.IsControl) || path.Contains(':') || Path.IsPathRooted(path) || normalizedPath.Split('/').Any(segment => segment is "." or ".." || segment.Length == 0))
         {
             normalizedPath = string.Empty;
             return false;
@@ -269,7 +280,7 @@ internal static class StaticFileManagementEndpoints
         }
 
         var current = rootPath;
-        foreach (var segment in path.Split('/').SkipLast(1))
+        foreach (var segment in path.Split('/'))
         {
             current = Path.Combine(current, segment);
             if (Directory.Exists(current) && new DirectoryInfo(current).LinkTarget is not null)

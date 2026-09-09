@@ -45,6 +45,8 @@ public class TenantManagementEndpointsTests
     [InlineData("styles/site.css", false, true, "styles/site.css")]
     [InlineData("/styles/site.css", false, false, "")]
     [InlineData("../site.css", false, false, "")]
+    [InlineData("styles/site.css:stream", false, false, "")]
+    [InlineData("styles/\0.css", false, false, "")]
     [InlineData("styles/./site.css", false, false, "")]
     public void TryNormalizePath_Input_EnforcesRelativeSafePaths(string path, bool allowEmpty, bool expected, string expectedPath)
     {
@@ -73,6 +75,31 @@ public class TenantManagementEndpointsTests
         finally
         {
             Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void TryResolvePhysicalPath_DirectorySymlink_RejectsDirectoryAndDescendants()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return; // Creating symlinks requires an elevated token or developer mode on Windows.
+        }
+
+        var scratch = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        var root = Path.Combine(scratch, "tenant");
+        var other = Path.Combine(scratch, "other");
+        Directory.CreateDirectory(root);
+        Directory.CreateDirectory(other);
+        try
+        {
+            Directory.CreateSymbolicLink(Path.Combine(root, "linked"), other);
+            Assert.False(StaticFileManagementEndpoints.TryResolvePhysicalPath(root, "linked", out _));
+            Assert.False(StaticFileManagementEndpoints.TryResolvePhysicalPath(root, "linked/site.css", out _));
+        }
+        finally
+        {
+            Directory.Delete(scratch, recursive: true);
         }
     }
 

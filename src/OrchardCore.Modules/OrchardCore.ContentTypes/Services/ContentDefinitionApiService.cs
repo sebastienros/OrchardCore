@@ -673,7 +673,10 @@ internal static class ContentDefinitionSchemaBuilder
                         .OfType<DescriptionAttribute>()
                         .FirstOrDefault() is { } description)
                     {
-                        node["description"] = description.Description;
+                        // Boolean schemas cannot carry annotations. Preserve their validation semantics.
+                        var annotated = node as JsonObject ?? new JsonObject { ["allOf"] = new JsonArray(node.DeepClone()) };
+                        annotated["description"] = description.Description;
+                        return annotated;
                     }
 
                     return node;
