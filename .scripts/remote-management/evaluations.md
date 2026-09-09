@@ -68,3 +68,42 @@ media provider, or all supported shells and operating systems.
 The static-file workflow evaluated above has been retired. Custom assets now use
 Media, its folder authorization, and its restricted-extension permission. Those
 historical runs do not validate the replacement workflow.
+
+## Round 3: custom assets through Media
+
+Task: use the packaged skills and CLI to upload harmless CSS beneath an assigned
+prefix, choose the subfolder convention, inspect metadata/listing, verify public
+bytes, demonstrate the file-type permission boundary, and remove created assets
+and folders. Explain whether a single fixture proves multi-node availability.
+Each model used an isolated CLI context and two injected client identities, one
+with `UploadRestrictedMedia` and one without it. Both otherwise had the same
+Media permissions. No source code, state files, credentials, prior reports, or
+conversation history were supplied.
+
+The first fresh pair was blocked because the fixture omitted `ViewOpenApiContent`
+from its limited roles. Both could read the manifest but received 403 when
+fetching OpenAPI. Luna made no remote changes. Sol made 25 wrapper calls, read
+the constraints for both identities, and created two empty folders through raw
+API calls; guessed cleanup routes returned 404, leaving the folders for the
+fixture owner to remove. The owner verified and removed those empty folders.
+Neither uploaded a file or completed the task. These runs remain recorded as
+blocked, not successful asset evaluations.
+
+The fixture now grants the existing OpenAPI viewing permission and verifies
+document access for both limited identities. The setup docs and skills explain
+that a readable manifest followed by a refresh 403 can mean missing document
+permission; repeated login does not grant permission. A second fresh pair used
+new contexts and the rebuilt plugin after that correction.
+
+| Model | Corrected-fixture result | Observed limitations |
+| --- | --- | --- |
+| gpt-5.6-sol | 28 CLI calls and two public HTTP requests; uploaded 54-byte CSS, metadata/list matched, raw bytes and SHA-256 matched, other identity's upload rejected with HTTP 400, file and all three folders deleted | Eight help calls, three schema calls, one refresh; attempted a delete schema even though that operation has no input schema |
+| gpt-5.6-luna | 41 CLI calls; uploaded two CSS versions, metadata/list and public response inspected, both files and all three folders deleted | Compared constraints rather than attempting a denied upload. Its byte comparison used `jq -r` on a JSON-wrapped response, adding an LF locally; the agent corrected its initial unsupported attribution to the server. This run did not establish exact raw byte equality. |
+
+Both agents correctly limited the storage conclusion to one tenant origin, not
+multiple nodes. The fixture owner independently checked that both prefixes were
+absent after cleanup. The Media skill now demonstrates a raw download to a
+temporary file followed by `cmp`, avoiding text-output transformations. These
+are bounded usability observations and command counts, not a statistical or
+token-efficiency benchmark. Neither model accessed fixture credentials or
+changed permissions; the fixture owner made the discovery-permission correction.

@@ -197,6 +197,10 @@ Content-definition schemas include the built-in settings contracts while allowin
 }
 ```
 
+Dynamic discovery also requires `ViewOpenApiContent` when the tenant protects
+its OpenAPI document. `AccessRemoteManagement` alone does not grant access to
+that document or the resource-specific operations it describes.
+
 ### Media and custom assets
 
 Use Media for images and custom CSS, JavaScript, or SVG assets. Uploads use the

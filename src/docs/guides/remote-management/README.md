@@ -128,6 +128,13 @@ Your identity needs **Access remote management API** and the permissions for
 the resources you will use. A production automation account should receive
 only the permissions its job requires.
 
+For a non-administrator identity, grant `AccessRemoteManagement` and the
+permissions for the resources it will manage. If OpenAPI document access is
+protected, also grant `ViewOpenApiContent` so the CLI can discover commands.
+A readable management manifest followed by a 403 during `oc api refresh` can
+indicate that this document permission is missing; signing in again does not
+grant it.
+
 ## 3. Save the exact tenant URL
 
 ```bash

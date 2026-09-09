@@ -11,9 +11,11 @@ static files are deployment files and have no management API.
 
 ## Prepare the tenant
 
-Discover first with `oc media --help`. If Media is absent and feature changes
-are authorized, enable `OrchardCore.Media` and run `oc api refresh --force`.
-The identity needs `AccessRemoteManagement`, `ManageMediaContent`, and permission
+Refresh discovery with `oc api refresh`, then inspect `oc media --help`. If
+Media is absent after a successful refresh and feature changes are authorized,
+enable `OrchardCore.Media` and run `oc api refresh --force`.
+The identity needs `ViewOpenApiContent` for protected OpenAPI discovery,
+`AccessRemoteManagement`, `ManageMediaContent`, and permission
 to manage the destination folder (`ManageMediaFolder`, or a Secure Media folder
 permission). Inspect `oc media constraints show --output json` before upload:
 `allowedFileExtensions` includes restricted extensions only when the caller has
@@ -112,9 +114,20 @@ local storage; do not claim a multi-node check from a single-node fixture.
 
 ## Verify styling assets
 
-Fetch the returned public URL and compare bytes/content type with the uploaded
-asset. When a template references it, verify the rendered page and computed
-styles. Use returned `filePath` values for media fields, not public URLs.
+Fetch the returned public URL into a file and compare the raw bytes; do not
+round-trip the response through JSON or text commands that can append a newline.
+With `asset_url` set to the absolute returned URL and `site.css` the original:
+
+```bash
+readback_file=$(mktemp)
+curl --fail --silent --show-error "$asset_url" --output "$readback_file"
+cmp ./site.css "$readback_file"
+rm "$readback_file"
+```
+
+Also verify the response content type. When a template references the asset,
+verify the rendered page and computed styles. Use returned `filePath` values for
+media fields, not public URLs.
 
 Canonical references:
 `src/docs/reference/api/media/README.md` and

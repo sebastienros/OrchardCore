@@ -54,6 +54,13 @@ for bearer, permitted in [(regular, False), (restricted, True)]:
 request('api/media/constraints', no_folder)
 manifest = request('api/management/manifest', admin)
 assert 'static-files' not in {item['id'] for item in manifest['capabilities']}
+# Limited clients need to read the document before oc can discover Media commands.
+openapi_path = urllib.parse.urlparse(manifest['openApiUrl']).path.lstrip('/')
+for bearer in (regular, restricted):
+    schema = request(openapi_path, bearer)
+    assert '/api/media/files/content' in schema['paths']
+    assert not any('/static-files' in path for path in schema['paths'])
+
 for method, path in [('GET', 'api/static-files'), ('GET', 'api/static-files/file?path=probe.css'),
                      ('PUT', 'api/static-files/content?path=probe.css'), ('DELETE', 'api/static-files/file?path=probe.css')]:
     request(path, admin, method, b'/* not written */' if method == 'PUT' else None, expected=404)

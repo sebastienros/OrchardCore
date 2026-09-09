@@ -160,7 +160,7 @@ With the disposable fixture running, verify the Media upload policy:
 python3 .scripts/remote-management/verify-media-assets.py /tmp/oc-cli-fixture-.../fixture.json
 ```
 
-This checks separate identities with Media access, restricted-extension access,
+This checks OpenAPI discovery and separate identities with Media access, restricted-extension access,
 and own-media permission without a user-folder identifier. It covers CSS/JavaScript/SVG denial and upload,
 ordinary image upload, unknown extensions, no overwrite, copy/move extension
 checks, protected user-folder denial, public asset reads, and cleanup. It also verifies that all retired

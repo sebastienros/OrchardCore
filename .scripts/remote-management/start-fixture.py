@@ -45,7 +45,7 @@ for suffix, permissions in [
 ]:
     role = "Cli-" + suffix
     recipe["steps"] += [
-        {"name": "Roles", "Roles": [{"Name": role, "Permissions": ["AccessRemoteManagement", *permissions]}]},
+        {"name": "Roles", "Roles": [{"Name": role, "Permissions": ["AccessRemoteManagement", "ViewOpenApiContent", *permissions]}]},
         {"name": "OpenIdApplication", "ClientId": "cli-" + suffix, "ClientSecret": secret,
          "DisplayName": "Disposable " + suffix + " client", "Type": "confidential", "ConsentType": "implicit",
          "AllowClientCredentialsFlow": True, "RoleEntries": [{"Name": role}],

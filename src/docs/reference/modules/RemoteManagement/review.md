@@ -262,8 +262,18 @@ Verification on September 9, 2026:
 | Focused server tests | 51 passed, including eight missing-user-folder regressions |
 | CLI tests | 110 passed |
 | Live authorization | 116 projected operations, 352 probes, no unexpected statuses |
-| Media policy | 38 API requests passed: extension discovery, restricted/ordinary uploads, unknown extensions, overwrite refusal, copy/move restrictions, protected user-folder denial, retired routes, and cleanup; four public asset reads also succeeded |
+| Media policy | 40 API requests passed: limited-client OpenAPI access, extension discovery, restricted/ordinary uploads, unknown extensions, overwrite refusal, copy/move restrictions, protected user-folder denial, retired routes, and cleanup; four public asset reads also succeeded |
 | CLI lifecycle | 32 commands passed, including custom CSS upload, metadata, listing, public byte comparison, confirmation refusal, deletion, and folder cleanup |
+
+The Media skills were also tested with fresh `gpt-5.6-sol` and `gpt-5.6-luna`
+agents. Initial runs exposed a fixture omission of `ViewOpenApiContent`; the
+fixture and setup guidance now include protected-document discovery. On the
+corrected fixture, Sol completed the upload, exact byte comparison, denied
+upload, and cleanup in 28 CLI calls. Luna used 41 calls and completed upload and
+cleanup, but compared constraints without attempting a denied upload and introduced
+a newline in its comparison script. Its initial claim of server transformation
+was corrected. The skill now demonstrates raw binary comparison. These limits
+and the blocked initial runs are retained in the evaluation record.
 
 Media uses extensible `IMediaFileStore`; a shared provider such as Azure Blob or
 Amazon S3 can make uploads available to all nodes configured for that tenant.
