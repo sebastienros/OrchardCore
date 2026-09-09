@@ -18,6 +18,7 @@ using OrchardCore.BackgroundTasks;
 using OrchardCore.Data.Migration;
 using OrchardCore.Deployment;
 using OrchardCore.DisplayManagement.Handlers;
+using OrchardCore.DisplayManagement.Theming;
 using OrchardCore.Environment.Shell;
 using OrchardCore.Environment.Shell.Builders;
 using OrchardCore.Modules;
@@ -92,6 +93,7 @@ public sealed class ServerStartup : StartupBase
     public override void ConfigureServices(IServiceCollection services)
     {
         services.AddNavigationProvider<ServerAdminMenu>();
+        services.AddScoped<IThemeSelector, OpenIdThemeSelector>();
 
         services.AddOpenIddict()
             .AddServer(options =>

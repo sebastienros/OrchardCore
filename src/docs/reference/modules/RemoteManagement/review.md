@@ -173,6 +173,31 @@ usability observations, not a measured token-efficiency benchmark.
 The reproducible prompts, scope, failures, and outcomes are in
 [the evaluation record](https://github.com/sebastienros/OrchardCore/blob/sebros/remote-tenant-cli-plan/.scripts/remote-management/evaluations.md).
 
+## Consent page follow-up
+
+The OpenID authorization server now follows `LoginSettings.UseSiteTheme` for
+its access pages, matching the sign-in page's admin-theme default and fallback.
+Browser and device consent use readable localized scope labels, retain the raw
+scope identifiers, and offer explicit **Allow access** and **Cancel** actions.
+The login layout can grow beyond the viewport so long permission lists remain
+reachable. The OpenID reference documents theme layout and MVC-view overrides.
+
+Verification on September 9 after this change:
+
+- Web/Razor build: zero warnings or errors; all 30 OpenID tests passed,
+  including seven new theme-selection cases.
+- All 91 CLI tests passed. The cancellation callback regression also asserts
+  that a clear browser response is sent without exchanging an authorization code.
+- The rebuilt macOS Arm64 native CLI passed live browser approval and denial,
+  device code entry and approval, and separate-process reuse, silent refresh
+  rotation, owner-only credential permissions, and logout revocation for both
+  successful grants.
+- Actual browser and device screenshots replaced/extended the getting-started
+  guide. The rendered default admin theme was visually checked in dark mode.
+- Native help/completion/packaging smoke checks passed after rebuilding the
+  local CLI. The earlier six-platform CI run predates the cancellation-response
+  change; it is not a verification of this later change on all platforms.
+
 ## Boundaries and follow-up work
 
 - Existing upstream security PRs listed above remain integration dependencies;

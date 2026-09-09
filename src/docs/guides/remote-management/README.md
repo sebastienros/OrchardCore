@@ -71,10 +71,12 @@ that login completed.
 ![Tenant login form used for browser and device authorization](images/login.png)
 
 On the authorization page, verify that the application is **Orchard Core CLI**
-and select **Yes**. The requested scopes include management access and
+and select **Allow access**. The requested scopes include management access and
 `offline_access`, which allows later commands to refresh your login silently.
-The page's appearance depends on the tenant's theme; this example uses the
-minimal test tenant.
+Choose **Cancel** if you did not start this request. The page follows the
+tenant's login theme; this example uses the default admin theme.
+See [customizing authorization pages](../../reference/modules/OpenId/README.md#customizing-authorization-pages)
+to apply your site's branding.
 
 ![Browser authorization page asking for consent to Orchard Core CLI](images/consent.png)
 
@@ -89,6 +91,8 @@ oc login --grant device
 
 Open the displayed verification URL in your browser, check the tenant and
 application, and approve the displayed code. The waiting CLI completes login.
+
+![Device authorization page showing the matching user code and requested permissions](images/device-consent.png)
 Use `oc login --no-browser` to copy a browser-flow URL manually **on the same
 computer**; its callback listens only on that computer's loopback interface.
 

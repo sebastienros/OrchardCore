@@ -64,6 +64,14 @@ public class OAuthClientTests
         {
             await Assert.ThrowsAsync<CliException>(() => login);
             Assert.Null(tokenBody);
+            if (scenario == "denied")
+            {
+                using var deniedReader = new StreamReader(stream);
+                var response = await deniedReader.ReadToEndAsync(timeout.Token);
+                Assert.Contains("HTTP/1.1 200 OK", response);
+                Assert.Contains("Authorization not completed", response);
+                Assert.Contains("Cache-Control: no-store", response);
+            }
             return;
         }
         var token = await login;

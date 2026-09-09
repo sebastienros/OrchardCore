@@ -40,6 +40,42 @@ Supported flows include:
 - [Client Credentials Grant](https://tools.ietf.org/html/rfc6749)
 - [Resource Owner Password Grant](https://tools.ietf.org/html/rfc6749)
 
+### Customizing authorization pages
+
+The authorization server's consent, device verification, sign-out, and error
+pages use the same theme selection as the login page. By default, they use the
+tenant's admin theme and its `Layout__Login` layout. The default consent view
+shows readable permission labels alongside the exact scope identifiers, with
+localized **Allow access** and **Cancel** actions.
+
+To use your site's branding, activate a site theme and enable **Use site theme
+for login page** in the user login settings. This sets
+`LoginSettings.UseSiteTheme` to `true`. The admin theme remains the fallback
+when no site theme is selected.
+
+A theme can provide `Views/Layout-Login.cshtml` to customize the surrounding
+layout. To replace individual MVC views, add the corresponding file to the
+active theme:
+
+| Theme file | Purpose |
+| --- | --- |
+| `Views/OrchardCore.OpenId/Access/Authorize.cshtml` | Browser consent |
+| `Views/OrchardCore.OpenId/Access/Verify.cshtml` | Device code entry and consent |
+| `Views/OrchardCore.OpenId/Access/_ConsentScopes.cshtml` | Shared permission labels and scope list; model is the space-separated scope string |
+| `Views/OrchardCore.OpenId/Access/Logout.cshtml` | Sign-out confirmation |
+| `Views/OrchardCore.OpenId/Access/Error.cshtml` | Authorization error |
+
+Start from the module's view when overriding a form. Preserve its model,
+protocol parameters, form action and method, antiforgery token, and submit
+button names (`submit.Accept` and `submit.Deny`) with nonempty values. Keep
+the application name, requested permissions, and device-code comparison
+visible so users can make an informed choice. Continue using Razor's encoded
+output for application names, scope identifiers, and protocol values.
+
+The default views use Bootstrap 5 classes. Themes using another CSS framework
+can replace the views as well as the layout. No OAuth endpoint or CLI change
+is needed to customize their appearance.
+
 ## OpenID Connect Token Validation
 
 This feature is responsible for validating tokens issued either by Orchard Core's own OpenID Connect authorization server or by other trusted servers. It supports JSON Web Tokens (JWT) and OpenID Connect discovery, ensuring secure and reliable token validation across distributed applications.
