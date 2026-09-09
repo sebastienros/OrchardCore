@@ -24,10 +24,10 @@ class PrepareFeedzTests(unittest.TestCase):
         for key in feedz.REQUIRED:
             self.package('OrchardCore.' + key.removeprefix('orchardcore.'))
 
-    def package(self, package_id, version=VERSION, template_version=VERSION, dependency=None, folder=''):
+    def package(self, package_id, version=VERSION, template_version=VERSION, dependency=None, folder='', dependency_version='0.0.1'):
         path = self.source / folder / f'{package_id}.{version}.nupkg'
         path.parent.mkdir(parents=True, exist_ok=True)
-        dependencies = '' if dependency is None else f'<dependencies><dependency id="{dependency}" version="0.0.1" /></dependencies>'
+        dependencies = '' if dependency is None else f'<dependencies><dependency id="{dependency}" version="{dependency_version}" /></dependencies>'
         with zipfile.ZipFile(path, 'w') as archive:
             archive.writestr(package_id + '.nuspec', f'<package><metadata><id>{package_id}</id><version>{version}</version>{dependencies}</metadata></package>')
             if package_id.lower() == 'orchardcore.projecttemplates':
@@ -64,6 +64,15 @@ class PrepareFeedzTests(unittest.TestCase):
     def test_stale_template_version_is_rejected(self):
         self.package('OrchardCore.projecttemplates', template_version='4.0.0-preview')
         with self.assertRaisesRegex(ValueError, 'template uses a different Orchard version'):
+            feedz.prepare(self.source, self.output, VERSION)
+
+    def test_separately_published_translation_dependency_is_allowed_at_pinned_version(self):
+        self.package('OrchardCore.Extra', dependency='OrchardCore.Translations.All', dependency_version='3.0.0')
+        feedz.prepare(self.source, self.output, VERSION)
+
+    def test_unexpected_translation_version_is_rejected(self):
+        self.package('OrchardCore.Extra', dependency='OrchardCore.Translations.All')
+        with self.assertRaisesRegex(ValueError, 'inconsistent version'):
             feedz.prepare(self.source, self.output, VERSION)
 
     def test_inconsistent_build_dependency_is_rejected(self):

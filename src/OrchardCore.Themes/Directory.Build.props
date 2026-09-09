@@ -7,6 +7,8 @@
 
   <PropertyGroup>
     <TargetFrameworks>$(CommonTargetFrameworks)</TargetFrameworks>
+    <!-- Keep fork feed package IDs under OrchardCore without changing theme identities. -->
+    <PackageId Condition="'$(FeedzPackageBuild)' == 'true'">OrchardCore.Themes.$(MSBuildProjectName)</PackageId>
   </PropertyGroup>
 
 </Project>

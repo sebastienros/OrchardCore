@@ -107,6 +107,11 @@ dotnet run
 
 The template defaults to the matching Orchard package version. The local
 `NuGet.Config` keeps the feed configuration with the generated project.
+Built-in theme packages on this feed use `OrchardCore.Themes.<theme>` IDs,
+including `OrchardCore.Themes.TheAdmin`. Their feature and assembly IDs are
+unchanged. Translation packs remain separate dependencies at the version pinned
+by the repository.
+
 The template pack also includes MVC websites, CMS/MVC modules, and themes. Add
 `OrchardCore.RemoteManagement` and configure the tenant as described below when
 testing CLI management against a generated site.

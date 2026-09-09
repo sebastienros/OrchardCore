@@ -46,21 +46,24 @@ jobs:
       - uses: ./.github/actions/setup-dotnet
       - name: Build libraries, modules, themes, and project templates
         run: >-
-          dotnet build OrchardCore.slnx -c Release -p:NuGetAudit=false
+          dotnet build OrchardCore.slnx -c Release -p:NuGetAudit=false -p:FeedzPackageBuild=true
           -p:Version="$PACKAGE_VERSION" -p:RepositoryUrl=https://github.com/sebastienros/OrchardCore
           -p:RepositoryCommit="$GITHUB_SHA"
       - name: Server tests
         run: dotnet test --project test/OrchardCore.Tests -c Release --no-build
       - name: Pack the solution, including project templates
         run: >-
-          dotnet pack OrchardCore.slnx -c Release --no-build -o artifacts/packages
+          dotnet pack OrchardCore.slnx -c Release --no-build -p:FeedzPackageBuild=true
           -p:Version="$PACKAGE_VERSION" -p:RepositoryUrl=https://github.com/sebastienros/OrchardCore
           -p:RepositoryCommit="$GITHUB_SHA"
       - name: Upload library and template packages
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: orchardcore-packages
-          path: artifacts/packages/*
+          # Match release_ci.yml: test/sample projects outside src are not products.
+          path: |
+            src/**/*.nupkg
+            src/**/*.snupkg
           if-no-files-found: error
           retention-days: 30
           compression-level: 0
@@ -200,6 +203,7 @@ jobs:
           dotnet new install "OrchardCore.ProjectTemplates::$PACKAGE_VERSION" --add-source "$FEEDZ_SOURCE"
           dotnet new occms --no-restore -o "$RUNNER_TEMP/feedz-cms"
           dotnet restore "$RUNNER_TEMP/feedz-cms" --source "$FEEDZ_SOURCE" --source https://api.nuget.org/v3/index.json
+          dotnet build "$RUNNER_TEMP/feedz-cms" --no-restore
       - name: Add Feedz installation commands to the summary
         run: |
           cat >> "$GITHUB_STEP_SUMMARY" <<EOF

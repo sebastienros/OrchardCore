@@ -175,11 +175,19 @@ PR builds only produce native artifacts. New push builds do not cancel older
 push builds. Publishing runs only in `sebastienros/OrchardCore`, after the server
 build/tests and all six native builds/tests/install checks pass.
 
+Only outputs under `src` are collected, excluding test/sample packages.
 The solution pack includes libraries, modules, themes, targets, and
 `OrchardCore.ProjectTemplates`. The CLI adds `OrchardCore.Cli` and six
 `OrchardCore.Cli.<rid>` NativeAOT implementation packages. All IDs retain the
-OrchardCore prefix; `prepare-feedz.py` rejects other IDs, missing implementations,
+OrchardCore prefix. The workflow sets `FeedzPackageBuild=true` during build and
+pack so bundled themes use `OrchardCore.Themes.<theme>` package IDs (for example
+`OrchardCore.Themes.TheAdmin`), while their assembly/feature IDs stay unchanged.
+Project-reference dependencies pick up those package IDs automatically. Normal
+non-Feedz builds retain their existing package IDs.
+`prepare-feedz.py` rejects other IDs, missing implementations,
 inconsistent dependencies, or templates stamped with a different version.
+Separately published translation packs retain the version pinned in
+`Directory.Packages.props`; they are restored, not republished.
 
 Versions use the repository's `VersionPrefix` plus
 `-cli.<workflow-run-number>` (for example `4.0.0-cli.25`). A new push or manual
@@ -193,5 +201,5 @@ the feed's service index also advertises its symbol endpoint. Symbol packages
 are staged beside their main packages for NuGet's symbol publication. The
 installer is published after all native implementations. The final verification
 installs the Linux tool and project templates from Feedz and restores a generated
-CMS project with an isolated package cache. Use the **Published to Feedz** job
+CMS project with an isolated package cache, then builds it. Use the **Published to Feedz** job
 summary for the exact version and install commands.

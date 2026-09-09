@@ -13,10 +13,18 @@ REQUIRED = {
     'orchardcore.module.targets', 'orchardcore.theme.targets',
     'orchardcore.projecttemplates', 'orchardcore.remotemanagement', 'orchardcore.cli',
     *('orchardcore.cli.' + rid for rid in RIDS),
+    *('orchardcore.themes.' + name for name in (
+        'safemode', 'theadmin', 'theagencytheme', 'theblogtheme',
+        'thecomingsoontheme', 'thesaastheme', 'thetheme')),
 }
 
 
 def prepare(source, destination, version):
+    # Translation packs are separately published dependencies, not projects in this build.
+    central = Path(__file__).resolve().parents[2] / 'Directory.Packages.props'
+    external = {item.attrib['Include'].lower(): item.attrib['Version']
+                for item in ET.parse(central).findall('.//{*}PackageVersion')
+                if item.attrib.get('Include', '').lower().startswith('orchardcore.')}
     packages = {}
     dependencies = []
     for path in sorted(source.rglob('*.nupkg')):
@@ -53,9 +61,10 @@ def prepare(source, destination, version):
     if missing:
         raise ValueError(f'Missing required packages: {", ".join(sorted(missing))}')
     for owner, dependency, constraint in dependencies:
-        if dependency not in packages:
+        expected = version if dependency in packages else external.get(dependency)
+        if expected is None:
             raise ValueError(f'{owner}: missing build dependency {dependency}')
-        if constraint not in (version, f'[{version}]', f'[{version}, )'):
+        if constraint not in (expected, f'[{expected}]', f'[{expected}, )'):
             raise ValueError(f'{owner}: {dependency} has inconsistent version {constraint}')
     destination.mkdir(parents=True, exist_ok=False)
     # Publish the tool pointer last so it cannot reference unpublished native packages.
