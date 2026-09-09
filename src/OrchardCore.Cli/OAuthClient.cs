@@ -22,12 +22,21 @@ internal sealed class OAuthClient
     {
         ArgumentNullException.ThrowIfNull(authority);
 
+        CliUriPolicy.RequireSecureEndpoint(authority.AbsoluteUri);
         var discoveryUri = new Uri($"{authority.AbsoluteUri.TrimEnd('/')}/.well-known/openid-configuration");
         using var response = await _httpClient.GetAsync(discoveryUri, cancellationToken);
         response.EnsureSuccessStatusCode();
         var content = await response.Content.ReadAsStringAsync(cancellationToken);
         var discovery = CliUtilities.ParseDiscoveryDocument(content);
         CliUtilities.EnsureIssuerMatches(authority.AbsoluteUri, discovery.Issuer);
+        CliUriPolicy.RequireSameOrigin(authority, discovery.TokenEndpoint);
+        foreach (var endpoint in new[] { discovery.AuthorizationEndpoint, discovery.DeviceAuthorizationEndpoint, discovery.RevocationEndpoint })
+        {
+            if (endpoint is not null)
+            {
+                CliUriPolicy.RequireSameOrigin(authority, endpoint);
+            }
+        }
         return discovery;
     }
 
@@ -183,6 +192,7 @@ internal sealed class OAuthClient
         ArgumentException.ThrowIfNullOrWhiteSpace(tokenEndpoint);
         ArgumentException.ThrowIfNullOrWhiteSpace(clientId);
         ArgumentException.ThrowIfNullOrWhiteSpace(clientSecret);
+        CliUriPolicy.RequireSameOrigin(CliUriPolicy.RequireSecureEndpoint(issuer), tokenEndpoint);
 
         using var request = new HttpRequestMessage(HttpMethod.Post, tokenEndpoint)
         {
@@ -256,7 +266,7 @@ internal sealed class OAuthClient
 
         if (OperatingSystem.IsMacOS())
         {
-            startInfo = new ProcessStartInfo("/usr/bin/open", url)
+            startInfo = new ProcessStartInfo("/usr/bin/open")
             {
                 UseShellExecute = false,
             };
@@ -270,10 +280,15 @@ internal sealed class OAuthClient
         }
         else
         {
-            startInfo = new ProcessStartInfo("xdg-open", url)
+            startInfo = new ProcessStartInfo("xdg-open")
             {
                 UseShellExecute = false,
             };
+        }
+
+        if (!OperatingSystem.IsWindows())
+        {
+            startInfo.ArgumentList.Add(url);
         }
 
         _ = Process.Start(startInfo) ?? throw new CliException("Failed to launch the system browser.");

@@ -50,7 +50,7 @@ internal sealed class CliApplication
         _contextOption = contextOption;
     }
 
-    public static async Task<CliApplication> CreateAsync(string[] args, CliPaths paths, HttpClient httpClient, CancellationToken cancellationToken)
+    public static async Task<CliApplication> CreateAsync(string[] args, CliPaths paths, HttpClient httpClient, CancellationToken cancellationToken, ICredentialStore? credentialStore = null)
     {
         ArgumentNullException.ThrowIfNull(args);
         ArgumentNullException.ThrowIfNull(paths);
@@ -58,7 +58,7 @@ internal sealed class CliApplication
 
         var contextStore = new ContextStore(paths);
         var cacheService = new CacheService(paths);
-        var credentialStore = CredentialStoreFactory.CreateDefault(paths);
+        credentialStore ??= CredentialStoreFactory.CreateDefault(paths);
         var configuration = await contextStore.LoadAsync(cancellationToken);
         var oauthClient = new OAuthClient(httpClient, Console.Error);
 
@@ -285,7 +285,7 @@ internal sealed class CliApplication
                 _ => throw new CliException($"Unsupported grant type '{grantType}'.")
             };
 
-            await _credentialStore.SaveAsync(context.Name, tokenSet, cancellationToken);
+            await _credentialStore.SaveAsync(GetCredentialKey(context), tokenSet, cancellationToken);
             _ = await RefreshManifestAsync(context, force: true, allowStale: false, cancellationToken);
             _ = await RefreshOpenApiAsync(context, force: true, allowStale: false, cancellationToken);
 
@@ -311,7 +311,7 @@ internal sealed class CliApplication
         command.SetAction(async (parseResult, cancellationToken) =>
         {
             var context = RequireContext(parseResult.GetValue(contextArgument) ?? parseResult.GetValue(_contextOption));
-            var token = await _credentialStore.GetAsync(context.Name, cancellationToken);
+            var token = await _credentialStore.GetAsync(GetCredentialKey(context), cancellationToken);
             var revoked = false;
             if (token is not null)
             {
@@ -328,7 +328,7 @@ internal sealed class CliApplication
                 }
             }
 
-            var removed = await _credentialStore.DeleteAsync(context.Name, cancellationToken);
+            var removed = await _credentialStore.DeleteAsync(GetCredentialKey(context), cancellationToken);
             return await WriteOutputAsync(parseResult, CliUtilities.ToJsonElement(new LogoutOutput
             {
                 Context = context.Name,
@@ -372,7 +372,7 @@ internal sealed class CliApplication
                     TenantId = context.TenantId,
                     ProductVersion = context.ProductVersion,
                     IsCurrent = string.Equals(context.Name, _configuration.CurrentContext, StringComparison.OrdinalIgnoreCase),
-                    HasStoredCredentials = await _credentialStore.GetAsync(context.Name, cancellationToken) is not null,
+                    HasStoredCredentials = await _credentialStore.GetAsync(GetCredentialKey(context), cancellationToken) is not null,
                 });
             }
 
@@ -442,12 +442,13 @@ internal sealed class CliApplication
             }
 
             var name = parseResult.GetValue(nameArgument) ?? throw new CliException("A context name is required.");
+            var context = RequireContext(name);
             if (!ContextStore.Delete(_configuration, name))
             {
                 throw new CliException($"Context '{name}' was not found.");
             }
 
-            await _credentialStore.DeleteAsync(name, cancellationToken);
+            await _credentialStore.DeleteAsync(GetCredentialKey(context), cancellationToken);
             await _contextStore.SaveAsync(_configuration, cancellationToken);
             return await WriteOutputAsync(parseResult, CliUtilities.ToJsonElement(new ContextOutput
             {
@@ -483,7 +484,7 @@ internal sealed class CliApplication
             var deletedCredentials = 0;
             foreach (var context in contexts)
             {
-                if (await _credentialStore.DeleteAsync(context.Name, cancellationToken))
+                if (await _credentialStore.DeleteAsync(GetCredentialKey(context), cancellationToken))
                 {
                     deletedCredentials++;
                 }
@@ -519,6 +520,12 @@ internal sealed class CliApplication
             var name = parseResult.GetValue(nameArgument) ?? throw new CliException("A context name is required.");
             var url = CliPaths.NormalizeTenantUrl(parseResult.GetValue(urlArgument) ?? throw new CliException("A tenant URL is required."));
             var manifest = await FetchBootstrapAsync(url, cancellationToken);
+            var previous = ContextStore.FindContext(_configuration, name);
+            if (previous is not null && !string.Equals(previous.TenantUrl, url, StringComparison.Ordinal))
+            {
+                throw new CliException("This context already targets another tenant. Use a new context name or delete the existing context first.");
+            }
+
             var context = ContextStore.AddOrUpdate(_configuration, name, manifest, parseResult.GetValue(currentOption));
             await _contextStore.SaveAsync(_configuration, cancellationToken);
             return await WriteOutputAsync(parseResult, CliUtilities.ToJsonElement(await CreateContextOutputAsync(context, cancellationToken), CliJsonContext.Default.ContextOutput), cancellationToken);
@@ -1030,7 +1037,7 @@ internal sealed class CliApplication
 
     private async Task<CachedContentResult> RefreshManifestAsync(TenantContextRecord context, bool force, bool allowStale, CancellationToken cancellationToken)
     {
-        var manifestUri = GetManagementManifestUri(context);
+        var manifestUri = CliUriPolicy.RequireTenantEndpoint(new Uri(context.TenantUrl), GetManagementManifestUri(context).AbsoluteUri);
         var accessToken = await ResolveAccessTokenAsync(context, null, null, false, cancellationToken);
         var result = await _cacheService.GetOrRefreshAsync(
             context.TenantUrl,
@@ -1053,6 +1060,7 @@ internal sealed class CliApplication
         }
 
         var manifest = CliUtilities.ParseManifest(result.CacheRecord.Content);
+        ValidateManifestEndpoints(context.TenantUrl, manifest);
         _ = ContextStore.AddOrUpdate(_configuration, context.Name, manifest, string.Equals(_configuration.CurrentContext, context.Name, StringComparison.OrdinalIgnoreCase));
         await _contextStore.SaveAsync(_configuration, cancellationToken);
         return result;
@@ -1065,6 +1073,7 @@ internal sealed class CliApplication
         EnsureCompatible(manifest);
         var openApiUri = manifest.OpenApiUrl ?? (!string.IsNullOrWhiteSpace(context.OpenApiUrl) ? new Uri(context.OpenApiUrl, UriKind.Absolute) : null)
             ?? throw new CliException("The selected context does not expose an OpenAPI endpoint.");
+        openApiUri = CliUriPolicy.RequireTenantEndpoint(new Uri(context.TenantUrl), openApiUri.AbsoluteUri);
         var accessToken = await ResolveAccessTokenAsync(context, null, null, false, cancellationToken);
 
         var result = await _cacheService.GetOrRefreshAsync(
@@ -1219,7 +1228,7 @@ internal sealed class CliApplication
             return token.AccessToken;
         }
 
-        var stored = await _credentialStore.GetAsync(context.Name, cancellationToken);
+        var stored = await _credentialStore.GetAsync(GetCredentialKey(context), cancellationToken);
         if (stored is null)
         {
             return null;
@@ -1230,7 +1239,7 @@ internal sealed class CliApplication
         if (stored.ExpiresAt <= DateTimeOffset.UtcNow.AddMinutes(1))
         {
             stored = await _oauthClient.RefreshAsync(context, discoveryDocument, stored, cancellationToken);
-            await _credentialStore.SaveAsync(context.Name, stored, cancellationToken);
+            await _credentialStore.SaveAsync(GetCredentialKey(context), stored, cancellationToken);
         }
 
         return stored.AccessToken;
@@ -1545,7 +1554,7 @@ internal sealed class CliApplication
         TenantId = context.TenantId,
         ProductVersion = context.ProductVersion,
         IsCurrent = string.Equals(context.Name, _configuration.CurrentContext, StringComparison.OrdinalIgnoreCase),
-        HasStoredCredentials = await _credentialStore.GetAsync(context.Name, cancellationToken) is not null,
+        HasStoredCredentials = await _credentialStore.GetAsync(GetCredentialKey(context), cancellationToken) is not null,
     };
 
     private static string BuildClientCredentialsScope(TenantContextRecord context)
@@ -1623,9 +1632,9 @@ internal sealed class CliApplication
             string.Equals(response, "yes", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static Uri BuildRequestUri(Uri baseUri, string path, IReadOnlyDictionary<string, string> query)
+    internal static Uri BuildRequestUri(Uri baseUri, string path, IReadOnlyDictionary<string, string> query)
     {
-        var builder = new UriBuilder(new Uri(baseUri, path.TrimStart('/')));
+        var builder = new UriBuilder(CliUriPolicy.RequireTenantEndpoint(baseUri, new Uri(baseUri, path.TrimStart('/')).AbsoluteUri));
         if (query.Count > 0)
         {
             builder.Query = string.Join('&', query.Select(pair => $"{Uri.EscapeDataString(pair.Key)}={Uri.EscapeDataString(pair.Value)}"));
@@ -1731,7 +1740,36 @@ internal sealed class CliApplication
     {
         using var response = await _httpClient.GetAsync(new Uri(new Uri(tenantUrl, UriKind.Absolute), RemoteManagementConstants.BootstrapPath), cancellationToken);
         response.EnsureSuccessStatusCode();
-        return CliUtilities.ParseManifest(await response.Content.ReadAsStringAsync(cancellationToken));
+        var manifest = CliUtilities.ParseManifest(await response.Content.ReadAsStringAsync(cancellationToken));
+        ValidateManifestEndpoints(tenantUrl, manifest);
+        EnsureCompatible(manifest);
+        return manifest;
+    }
+
+    internal static string GetCredentialKey(TenantContextRecord context)
+    {
+        var identity = string.Join('\n', context.Name.ToUpperInvariant(), context.TenantUrl, context.Authority, context.ClientId);
+        return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(identity)));
+    }
+
+    private static void ValidateManifestEndpoints(string tenantUrl, RemoteManagementManifest manifest)
+    {
+        var tenant = new Uri(tenantUrl);
+        var expectedManifest = new Uri(tenant, "api/management/manifest");
+        if (manifest.ManagementManifestUrl != expectedManifest)
+        {
+            throw new CliException("The management manifest does not identify the selected tenant URL. Check reverse-proxy host and path-base configuration.");
+        }
+
+        if (manifest.Authentication.Authority is not null)
+        {
+            CliUriPolicy.RequireSameOrigin(tenant, manifest.Authentication.Authority.AbsoluteUri);
+        }
+
+        if (manifest.OpenApiUrl is not null)
+        {
+            CliUriPolicy.RequireTenantEndpoint(tenant, manifest.OpenApiUrl.AbsoluteUri);
+        }
     }
 
     private async Task<int> WriteOutputAsync(ParseResult parseResult, JsonElement element, CancellationToken cancellationToken, IReadOnlyList<CliTableColumnMetadata>? tableColumns = null)

@@ -39,7 +39,7 @@ internal sealed class CliPaths
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantUrl);
 
-        var builder = new UriBuilder(tenantUrl)
+        var builder = new UriBuilder(CliUriPolicy.RequireSecureEndpoint(tenantUrl))
         {
             Query = string.Empty,
             Fragment = string.Empty,

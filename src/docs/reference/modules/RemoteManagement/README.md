@@ -254,3 +254,22 @@ endpoints.MapGet("/api/example/widgets", ListWidgetsAsync)
 The Remote Management OpenAPI transformer emits this metadata as `x-oc-cli`. Use `Arguments` for positional ordering, `InputMode` for complex bodies, `DefaultJsonBody` when a command should send a default body if none is supplied, `RequiresConfirmation` for destructive operations, aliases for compatibility, and `TableColumns` for optional table output.
 
 Register an `IRemoteManagementCapabilityProvider` when the feature also needs to report a versioned capability in the authenticated manifest. CLI metadata describes discoverability only; endpoint authorization remains mandatory.
+
+## Endpoint and credential boundaries
+
+Use the exact externally reachable tenant URL when adding a context, including
+its path prefix. HTTPS is required; HTTP is accepted only for local loopback
+development. Embedded URL credentials and fragments are rejected. The
+bootstrap manifest must identify that same tenant, and authenticated API and
+OpenAPI requests must remain inside its origin and path prefix. OpenID
+endpoints must remain on the advertised authority's origin. Automatic HTTP
+redirects are disabled, including redirects from token endpoints; fix the
+configured public URL when a proxy returns a redirect.
+
+Credentials are keyed by context name, exact tenant URL, authority, and client
+ID. Reusing a context name for another tenant is rejected: choose a different
+name or explicitly delete the old context. This also separates credentials
+when two local configuration directories use the same context name. Older
+name-only credential entries are not reused; sign in once after upgrading.
+Unix credentials remain shared owner-only files under `~/.orchardcore/credentials`,
+so ordinary CLI commands do not prompt for operating-system keychain access.

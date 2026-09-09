@@ -11,7 +11,7 @@ public class CliApplicationTests
         using var httpClient = new HttpClient();
         using var errorWriter = new StringWriter();
         var args = new[] { "login" };
-        var app = await CliApplication.CreateAsync(args, paths, httpClient, CancellationToken.None);
+        var app = await CliApplication.CreateAsync(args, paths, httpClient, CancellationToken.None, new UnsupportedCredentialStore());
 
         var exitCode = await app.InvokeAsync(args, errorWriter);
 
@@ -39,7 +39,7 @@ public class CliApplicationTests
         }, CancellationToken.None);
         using var httpClient = new HttpClient();
         var args = new[] { "context", "clear", "--force" };
-        var app = await CliApplication.CreateAsync(args, paths, httpClient, CancellationToken.None);
+        var app = await CliApplication.CreateAsync(args, paths, httpClient, CancellationToken.None, new UnsupportedCredentialStore());
 
         var exitCode = await app.InvokeAsync(args);
         var configuration = await store.LoadAsync(CancellationToken.None);
@@ -66,7 +66,7 @@ public class CliApplicationTests
         using var httpClient = new HttpClient(handler);
         var args = new[] { "oc", "context", "clear", "--force" };
 
-        _ = await CliApplication.CreateAsync(args, paths, httpClient, CancellationToken.None);
+        _ = await CliApplication.CreateAsync(args, paths, httpClient, CancellationToken.None, new UnsupportedCredentialStore());
 
         Assert.Equal(0, handler.RequestCount);
     }
@@ -129,7 +129,7 @@ public class CliApplicationTests
         }, CancellationToken.None);
 
         using var httpClient = new HttpClient();
-        var app = await CliApplication.CreateAsync(["tenants", "setup", "--help"], paths, httpClient, CancellationToken.None);
+        var app = await CliApplication.CreateAsync(["tenants", "setup", "--help"], paths, httpClient, CancellationToken.None, new UnsupportedCredentialStore());
         var tenants = Assert.Single(app.RootCommand.Subcommands, command => command.Name == "tenants");
         var setup = Assert.Single(tenants.Subcommands, command => command.Name == "setup");
         var optionNames = setup.Options.Select(option => option.Name).ToArray();

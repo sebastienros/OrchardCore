@@ -9,6 +9,7 @@ internal static class CliHttp
         var handler = new SocketsHttpHandler
         {
             AutomaticDecompression = DecompressionMethods.All,
+            AllowAutoRedirect = false,
         };
 
         return new HttpClient(handler)
