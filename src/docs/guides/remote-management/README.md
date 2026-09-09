@@ -83,18 +83,62 @@ to apply your site's branding.
 The callback page says authorization was received. The terminal then reports
 `grantType: browser` and the tenant issuer when the token exchange succeeds.
 
-If the terminal is on a remote computer or has no browser, use:
+### Choose a login flow
+
+| Where you run the CLI | Command | Where you sign in |
+| --- | --- | --- |
+| Your desktop or laptop with a browser | `oc login` | The browser opens on that computer; authorization code with PKCE is the default. |
+| The same computer, but you want to open the browser yourself | `oc login --no-browser` | Copy the printed URL into a browser on that same computer. |
+| An SSH session on a server without a desktop | `oc login --grant device` | Open the printed verification URL on your laptop or phone. |
+| An interactive shell in a container or remote development environment | `oc login --grant device` | Use a browser outside that environment that can reach the tenant. |
+
+Device authorization is still an interactive user login. For unattended CI
+or scheduled jobs, configure a dedicated application identity and use
+[client credentials](../../reference/api/authentication/README.md#client-credentials).
+The CLI defaults to browser login; select device flow explicitly when needed.
+
+### Sign in from another device
+
+On the computer running the CLI, use:
 
 ```bash
 oc login --grant device
 ```
 
-Open the displayed verification URL in your browser, check the tenant and
-application, and approve the displayed code. The waiting CLI completes login.
+The CLI prints a verification URL and a user code without opening a browser.
+For example, against a tenant reachable at `https://cms.example.com/team/`:
+
+```text
+Open https://cms.example.com/team/connect/verify?user_code=6738-0585-5256 and enter code 6738-0585-5256.
+```
+
+1. Keep the CLI command running.
+2. Open the printed URL on your phone or another computer. Both the CLI and
+   that browser must be able to reach the tenant; a private tenant may require
+   VPN access. A `localhost` or `127.0.0.1` tenant URL points to the device
+   opening it and cannot be used from your phone to reach the CLI computer.
+3. Sign in as the intended tenant user. If the URL already includes the code,
+   it is filled in for you; otherwise enter the code printed by the CLI.
+4. Verify the tenant, **Orchard Core CLI** application name, requested access,
+   and matching code, then select **Allow access**. Only approve a request
+   you started.
+5. Return to the terminal. The CLI polls the tenant and completes login after
+   approval, reporting `grantType: device`. If the code expires, run the login
+   command again to obtain a new one.
+
+The phone communicates with the tenant, not with a callback listener on the
+CLI computer. Tokens are delivered to and stored on the computer running the
+CLI; there is no token to copy from your phone. This is the
+[OAuth device authorization grant](https://www.rfc-editor.org/rfc/rfc8628.html).
 
 ![Device authorization page showing the matching user code and requested permissions](images/device-consent.png)
-Use `oc login --no-browser` to copy a browser-flow URL manually **on the same
-computer**; its callback listens only on that computer's loopback interface.
+
+By comparison, `oc login` and `oc login --no-browser` use authorization code
+with PKCE and a callback on the CLI computer's loopback interface. Opening
+that flow's URL on your phone would direct the callback to the phone's own
+loopback interface. Use device flow for this cross-device scenario.
+
+### Reuse your login
 
 Later commands reuse the login and refresh expiring tokens automatically.
 On macOS and Linux, tokens remain in shared, owner-only files under
