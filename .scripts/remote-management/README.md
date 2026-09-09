@@ -167,3 +167,31 @@ checks, protected user-folder denial, public asset reads, and cleanup. It also v
 static-file management routes return 404 while tenant static serving is enabled.
 The smoke fixture exercises the custom asset lifecycle through `oc` itself.
 This is a local-store check; it does not claim Azure/S3 or multi-node coverage.
+
+## Feedz publishing
+
+The fork's `remote_cli.yml` publishes on every branch push and on manual runs.
+PR builds only produce native artifacts. New push builds do not cancel older
+push builds. Publishing runs only in `sebastienros/OrchardCore`, after the server
+build/tests and all six native builds/tests/install checks pass.
+
+The solution pack includes libraries, modules, themes, targets, and
+`OrchardCore.ProjectTemplates`. The CLI adds `OrchardCore.Cli` and six
+`OrchardCore.Cli.<rid>` NativeAOT implementation packages. All IDs retain the
+OrchardCore prefix; `prepare-feedz.py` rejects other IDs, missing implementations,
+inconsistent dependencies, or templates stamped with a different version.
+
+Versions use the repository's `VersionPrefix` plus
+`-cli.<workflow-run-number>` (for example `4.0.0-cli.25`). A new push or manual
+run gets the next number. Rerunning the same workflow run keeps its version;
+`--skip-duplicate` allows a partial publication to resume without replacing
+immutable packages.
+
+The publishing step alone receives `FEEDZ_IO_API_KEY` from GitHub secrets. Its
+only destination is `https://f.feedz.io/sebastienros/orchardcore/nuget/index.json`;
+the feed's service index also advertises its symbol endpoint. Symbol packages
+are staged beside their main packages for NuGet's symbol publication. The
+installer is published after all native implementations. The final verification
+installs the Linux tool and project templates from Feedz and restores a generated
+CMS project with an isolated package cache. Use the **Published to Feedz** job
+summary for the exact version and install commands.

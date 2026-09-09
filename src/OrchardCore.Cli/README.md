@@ -6,16 +6,19 @@ templates, and tenant settings from your terminal.
 
 ## Install a development build
 
-Download your platform's `oc-tool-<rid>` artifact from the fork's
-[Remote management CLI workflow](https://github.com/sebastienros/OrchardCore/actions/workflows/remote_cli.yml).
-Extract it into a directory such as `oc-packages`. Keep both `.nupkg` files
-together and use the version shown in the job summary:
+Each successful push build in the fork publishes to
+[the Orchard Core Feedz feed](https://f.feedz.io/sebastienros/orchardcore/nuget/index.json).
+Use the exact version from the workflow's **Published to Feedz** summary:
 
 ```sh
-dotnet tool install --global OrchardCore.Cli --add-source ./oc-packages --version <version>
+dotnet tool install --global OrchardCore.Cli --add-source https://f.feedz.io/sebastienros/orchardcore/nuget/index.json --version <version>
 oc --version
 oc
 ```
+
+The [workflow](https://github.com/sebastienros/OrchardCore/actions/workflows/remote_cli.yml)
+also provides `oc-tool-<rid>` artifacts. To install a downloaded artifact, keep
+both `.nupkg` files together and replace the source above with `./oc-packages`.
 
 Installation requires the .NET 10 SDK or later. The installer selects the
 native executable for your platform. Running that executable does not require
@@ -26,8 +29,8 @@ Use `dotnet tool update` with the same package, source, and a newer version to
 upgrade, or `dotnet tool uninstall --global OrchardCore.Cli` to remove it.
 
 Standalone downloads are also available for computers without the SDK.
-These development packages are distributed as workflow artifacts, not through
-NuGet.org.
+These development packages are available on Feedz and as workflow artifacts;
+they are not published to NuGet.org.
 
 ## Get started
 

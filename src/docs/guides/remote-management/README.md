@@ -41,6 +41,21 @@ If you have the .NET 10 SDK or later, you can install and update `oc` through
 `dotnet tool`. It installs a native executable for your platform; running
 `oc` does not require a separately installed .NET runtime.
 
+For a published push build, copy its version from the workflow's **Published to
+Feedz** summary, then install directly:
+
+```bash
+dotnet tool install --global OrchardCore.Cli --add-source https://f.feedz.io/sebastienros/orchardcore/nuget/index.json --version <version>
+oc --version
+```
+
+Use `dotnet tool update --global` with the same package/source and a newer exact
+version to upgrade. All packages from a build share a version such as
+`4.0.0-cli.25`: Orchard's version prefix and the workflow run number.
+The native implementation is selected automatically for your computer.
+
+To use a downloadable artifact instead (also available for PR builds):
+
 1. From the same workflow run, download `oc-tool-<rid>` for your computer,
    such as **oc-tool-osx-arm64** for an Apple Silicon Mac.
 2. Extract the artifact into a directory such as `oc-packages`. Keep the two
@@ -69,12 +84,32 @@ does not already have a tool manifest, then use `--local` instead of `--global`.
 Run it with `dotnet tool run oc -- <arguments>`. You can remove a global
 installation with `dotnet tool uninstall --global OrchardCore.Cli`.
 
-The development packages are available as workflow artifacts, not on
-NuGet.org. `--add-source` adds your extracted packages to the configured
+The development packages are available on Feedz and as workflow artifacts,
+not on NuGet.org. `--add-source` adds your extracted packages to the configured
 NuGet sources. Installation may also download an SDK launcher from NuGet.org.
 The SDK selects the matching native package automatically. Both packages must
 come from the same build. Each CI run has a distinct prerelease version so
 an update selects the new executable.
+
+### Test matching project templates and libraries
+
+Install templates from the same successful push build:
+
+```bash
+dotnet new install OrchardCore.ProjectTemplates::<version> --add-source https://f.feedz.io/sebastienros/orchardcore/nuget/index.json
+dotnet new occms --no-restore -o MyOrchardSite
+cd MyOrchardSite
+dotnet new nugetconfig
+dotnet nuget add source https://f.feedz.io/sebastienros/orchardcore/nuget/index.json --name OrchardCoreFeedz
+dotnet restore
+dotnet run
+```
+
+The template defaults to the matching Orchard package version. The local
+`NuGet.Config` keeps the feed configuration with the generated project.
+The template pack also includes MVC websites, CMS/MVC modules, and themes. Add
+`OrchardCore.RemoteManagement` and configure the tenant as described below when
+testing CLI management against a generated site.
 
 ### Build from source
 
