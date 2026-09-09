@@ -96,7 +96,7 @@ reference points; it does not claim protocol conformance from a unit-test pass.
 | Live native CLI | 30 commands covering definitions, draft validation/readback, confirmation refusal, users/roles, static upload/inspect/delete, and cleanup |
 | Interactive terminal | Native upload produced a table; declining deletion preserved the file; accepting deletion removed it |
 | Human login | Real device authorization approved in the browser; a new CLI process reused shared-file credentials, refreshed/rotated silently, and logout revoked the refresh token |
-| Browser PKCE | Loopback callback/S256/state/issuer/denial/route/size unit tests passed; a fresh live browser-flow walkthrough was unavailable after the Mac locked |
+| Browser PKCE | Fresh native `login --no-browser` succeeded through the real login/consent UI and loopback callback on September 9; its stored login also passed separate-process reuse, silent refresh rotation, owner-only file checks, and logout revocation. Callback/S256/state/issuer/denial/route/size unit tests passed |
 | Documentation | Full MkDocs build passed with `--strict`; login/readiness screenshots captured from the real local tenant; native `docs update`, search, and show succeeded against the published index |
 | Skills/plugin | Nine skills validated, portable plugin manifest validated; four fresh blind agent runs across two models recorded below |
 
@@ -188,5 +188,5 @@ The reproducible prompts, scope, failures, and outcomes are in
   External identity providers on a different origin are intentionally rejected.
 - The illustrated guide and blind tasks cover common paths; they do not certify
   every provider, feature combination, shell integration, or full site build.
-  Fresh browser PKCE UI testing and broader adversarial/multi-tenant deployment
-  exercises remain useful before a production release.
+  Broader adversarial/multi-tenant deployment exercises remain useful before a
+  production release.

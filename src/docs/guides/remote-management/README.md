@@ -70,6 +70,17 @@ that login completed.
 
 ![Tenant login form used for browser and device authorization](images/login.png)
 
+On the authorization page, verify that the application is **Orchard Core CLI**
+and select **Yes**. The requested scopes include management access and
+`offline_access`, which allows later commands to refresh your login silently.
+The page's appearance depends on the tenant's theme; this example uses the
+minimal test tenant.
+
+![Browser authorization page asking for consent to Orchard Core CLI](images/consent.png)
+
+The callback page says authorization was received. The terminal then reports
+`grantType: browser` and the tenant issuer when the token exchange succeeds.
+
 If the terminal is on a remote computer or has no browser, use:
 
 ```bash
