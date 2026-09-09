@@ -96,8 +96,8 @@ an update selects the new executable.
 Install templates from the same successful push build:
 
 ```bash
-dotnet new install OrchardCore.ProjectTemplates::<version> --add-source https://f.feedz.io/sebastienros/orchardcore/nuget/index.json
-dotnet new occms --no-restore -o MyOrchardSite
+dotnet new install OrchardCore.ProjectTemplates@<version> --add-source https://f.feedz.io/sebastienros/orchardcore/nuget/index.json
+dotnet new occms -o MyOrchardSite
 cd MyOrchardSite
 dotnet new nugetconfig
 dotnet nuget add source https://f.feedz.io/sebastienros/orchardcore/nuget/index.json --name OrchardCoreFeedz

@@ -200,8 +200,8 @@ jobs:
           dotnet tool install OrchardCore.Cli --tool-path "$RUNNER_TEMP/feedz-tool" \
             --add-source "$FEEDZ_SOURCE" --version "$PACKAGE_VERSION"
           test "$("$RUNNER_TEMP/feedz-tool/oc" --version)" = "$PACKAGE_VERSION"
-          dotnet new install "OrchardCore.ProjectTemplates::$PACKAGE_VERSION" --add-source "$FEEDZ_SOURCE"
-          dotnet new occms --no-restore -o "$RUNNER_TEMP/feedz-cms"
+          dotnet new install "OrchardCore.ProjectTemplates@$PACKAGE_VERSION" --add-source "$FEEDZ_SOURCE"
+          dotnet new occms -o "$RUNNER_TEMP/feedz-cms"
           dotnet restore "$RUNNER_TEMP/feedz-cms" --source "$FEEDZ_SOURCE" --source https://api.nuget.org/v3/index.json
           dotnet build "$RUNNER_TEMP/feedz-cms" --no-restore
       - name: Add Feedz installation commands to the summary
@@ -219,6 +219,6 @@ jobs:
 
           \`\`\`sh
           dotnet tool install --global OrchardCore.Cli --add-source $FEEDZ_SOURCE --version $PACKAGE_VERSION
-          dotnet new install OrchardCore.ProjectTemplates::$PACKAGE_VERSION --add-source $FEEDZ_SOURCE
+          dotnet new install OrchardCore.ProjectTemplates@$PACKAGE_VERSION --add-source $FEEDZ_SOURCE
           \`\`\`
           EOF
