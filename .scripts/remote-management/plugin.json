@@ -1,0 +1,27 @@
+{
+  "name": "orchardcore-cli",
+  "version": "0.1.0",
+  "description": "Manage Orchard Core tenants through the OpenAPI-driven oc CLI.",
+  "author": {
+    "name": "Orchard Core contributors"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Orchard Core CLI",
+    "shortDescription": "Discover, model, and manage Orchard Core tenants.",
+    "longDescription": "Schema-first skills for authentication, content, media, templates, themes, settings, menus, and administration. Requires the oc executable and an authorized tenant context.",
+    "developerName": "Orchard Core contributors",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Inspect the capabilities of my Orchard Core tenant.",
+      "Create and validate an unpublished article draft.",
+      "Help me diagnose a denied management command."
+    ]
+  },
+  "repository": "https://github.com/sebastienros/OrchardCore",
+  "license": "BSD-3-Clause"
+}

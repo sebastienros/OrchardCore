@@ -1,0 +1,52 @@
+name: Remote management CLI
+on:
+  workflow_dispatch:
+  push:
+    branches: [sebros/remote-tenant-cli-plan, 'codex/**']
+    paths:
+      - 'src/OrchardCore.Cli/**'
+      - 'test/OrchardCore.Cli.Tests/**'
+      - 'src/OrchardCore/OrchardCore.RemoteManagement.Abstractions/**'
+      - '.scripts/remote-management/**'
+      - '.github/workflows/remote_cli.yml'
+      - 'global.json'
+      - 'Directory.Packages.props'
+permissions:
+  contents: read
+concurrency:
+  group: remote-cli-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { runner: ubuntu-24.04, rid: linux-x64 }
+          - { runner: ubuntu-24.04-arm, rid: linux-arm64 }
+          - { runner: windows-2025, rid: win-x64 }
+          - { runner: windows-11-arm, rid: win-arm64 }
+          - { runner: macos-15, rid: osx-arm64 }
+          - { runner: macos-15-intel, rid: osx-x64 }
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-dotnet
+      - name: CLI tests
+        run: dotnet test --project test/OrchardCore.Cli.Tests
+      - name: Publish NativeAOT
+        run: dotnet publish src/OrchardCore.Cli -c Release -r ${{ matrix.rid }} -o artifacts/native -p:TreatWarningsAsErrors=true
+      - name: Verify native binary and package
+        shell: pwsh
+        run: |
+          $python = if ($IsWindows) { 'python' } else { 'python3' }
+          & $python .scripts/remote-management/native-smoke.py artifacts/native ${{ matrix.rid }}
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: oc-${{ matrix.rid }}
+          path: |
+            artifacts/oc-*
+            artifacts/native/verification.json
+          if-no-files-found: error
