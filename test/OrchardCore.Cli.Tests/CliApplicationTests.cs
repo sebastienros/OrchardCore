@@ -4,6 +4,40 @@ namespace OrchardCore.Cli.Tests;
 
 public class CliApplicationTests
 {
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task InvokeAsync_NoArguments_ShowsHelpWithoutContactingTenant(bool hasContext, bool hasExpiredCache)
+    {
+        const string tenant = "https://offline.example/";
+        var paths = new CliPaths(TestPaths.CreateScratchDirectory(nameof(InvokeAsync_NoArguments_ShowsHelpWithoutContactingTenant)));
+        if (hasContext)
+        {
+            await new ContextStore(paths).SaveAsync(new CliConfiguration
+            {
+                CurrentContext = "offline",
+                Contexts = [new TenantContextRecord { Name = "offline", TenantUrl = tenant }],
+            }, CancellationToken.None);
+        }
+
+        if (hasExpiredCache)
+        {
+            await new CacheService(paths).WriteAsync(tenant, CacheKind.OpenApi, new CachedContentRecord
+            {
+                Content = """{"paths":{}}""",
+                ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(-1),
+            }, CancellationToken.None);
+        }
+
+        var handler = new RequestCountingHandler();
+        using var client = new HttpClient(handler);
+        var app = await CliApplication.CreateAsync([], paths, client, CancellationToken.None, new UnsupportedCredentialStore());
+
+        Assert.Equal(0, await app.InvokeAsync([]));
+        Assert.Equal(0, handler.RequestCount);
+    }
+
     [Fact]
     public async Task InvokeAsync_ContextRequiredWithoutSelection_WritesFriendlyErrorAndReturnsFailure()
     {

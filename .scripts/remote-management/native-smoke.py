@@ -35,6 +35,17 @@ with tempfile.TemporaryDirectory(prefix='oc-native-smoke-') as config:
     assert statistics.median(samples) < 2000, 'Median local startup exceeds 2 s budget'
     for command in [['--help'], ['context','list'], ['doctor']]:
         subprocess.run([str(exe), *command], env=env, stdout=subprocess.DEVNULL, check=True)
+    # Bare startup must stay friendly even with an unreachable selected tenant.
+    for configured in (False, True):
+        if configured:
+            (Path(config) / 'contexts.json').write_text(json.dumps({
+                'currentContext': 'offline',
+                'contexts': [{'name': 'offline', 'tenantUrl': 'https://127.0.0.1:1/'}],
+            }))
+        result = subprocess.run([str(exe)], env=env, capture_output=True, text=True, check=True, timeout=5)
+        assert 'Orchard Core remote management CLI' in result.stdout, result.stdout
+        assert 'login' in result.stdout and 'context' in result.stdout, result.stdout
+        assert not result.stderr, result.stderr
     suggestions = subprocess.run([str(exe), '[suggest:5]', 'oc co'], env=env, capture_output=True, text=True, check=True).stdout
     assert 'context' in suggestions.splitlines(), suggestions
     for shell in ('bash', 'zsh', 'fish', 'pwsh'):

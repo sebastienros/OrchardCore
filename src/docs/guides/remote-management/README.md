@@ -223,6 +223,10 @@ Other formats include `csv`, `tsv`, `yaml`, `toml`, and `none`.
 
 ## 6. Discover before writing
 
+Run `oc` without arguments to see the built-in commands. It shows help without
+contacting a tenant or requiring authentication, and exits successfully.
+Use `oc --help` to also include tenant commands from the local OpenAPI cache.
+
 ```bash
 oc --help
 oc content items --help

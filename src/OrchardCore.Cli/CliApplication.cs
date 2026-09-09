@@ -89,7 +89,7 @@ internal sealed class CliApplication
     {
         try
         {
-            var parsed = _rootCommand.Parse(args);
+            var parsed = _rootCommand.Parse(args.Length == 0 ? ["--help"] : args);
             _ = CliUtilities.ParseOutputFormat(parsed.GetValue(_outputOption));
             return await parsed.InvokeAsync(new InvocationConfiguration
             {
@@ -132,7 +132,9 @@ internal sealed class CliApplication
 
     private async Task AddDynamicCommandsAsync(string[] args, CancellationToken cancellationToken)
     {
-        if (IsStaticCommandRequest(args))
+        // Opening the CLI without a command is a local help request, even when
+        // a tenant is selected and its cached metadata is missing or expired.
+        if (args.Length == 0 || IsStaticCommandRequest(args))
         {
             return;
         }
