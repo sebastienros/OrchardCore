@@ -5,7 +5,37 @@ select a tenant, and discover the commands that its enabled features provide.
 This walkthrough starts with a read-only content listing, then creates and
 validates an unpublished article.
 
-## 1. Build the CLI
+## 1. Download or build the CLI
+
+The fork's [Remote management CLI workflow](https://github.com/sebastienros/OrchardCore/actions/workflows/remote_cli.yml)
+builds downloadable native binaries on every push to `sebros/remote-tenant-cli-plan`
+and `codex/**` branches, and on PR updates targeting the fork.
+
+1. Open the workflow run for the commit you want to try. For a PR targeting
+   the fork, open **Checks**, then the **Remote management CLI** run.
+2. Once the platform job succeeds, use its summary's **Download** link or
+   select an artifact in the run's **Artifacts** section:
+
+   | Your computer | Artifact |
+   | --- | --- |
+   | macOS, Apple Silicon | `oc-osx-arm64` |
+   | macOS, Intel | `oc-osx-x64` |
+   | Windows, x64 | `oc-win-x64` |
+   | Windows, Arm64 | `oc-win-arm64` |
+   | Linux, x64 | `oc-linux-x64` |
+   | Linux, Arm64 | `oc-linux-arm64` |
+
+3. Extract the downloaded artifact, then extract the `.tar.gz` or `.zip`
+   native archive inside it. The artifact also includes its SHA-256 checksum
+   and a verification record; the job summary identifies the built commit.
+4. Put the extracted directory on your `PATH` and run `oc version`.
+
+You must be signed into GitHub to download workflow artifacts. These builds
+are retained for 30 days and are unsigned development artifacts. For PR runs,
+the built commit is GitHub's test merge commit; push runs build the pushed
+commit. A newer update cancels any unfinished build for the same source branch.
+
+### Build from source
 
 From a checkout containing `src/OrchardCore.Cli`, with the .NET SDK selected by
 `global.json`, publish a native executable:
@@ -22,8 +52,6 @@ Add the output directory to your `PATH`; the examples below use `oc`.
 
 For development without native compilation, use
 `dotnet run --project src/OrchardCore.Cli -- <command>`.
-These instructions build from source; they do not assume a published tool or
-binary release is available.
 
 ## 2. Prepare the tenant
 

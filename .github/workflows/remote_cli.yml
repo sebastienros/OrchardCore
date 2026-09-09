@@ -3,21 +3,17 @@ on:
   workflow_dispatch:
   push:
     branches: [sebros/remote-tenant-cli-plan, 'codex/**']
-    paths:
-      - 'src/OrchardCore.Cli/**'
-      - 'test/OrchardCore.Cli.Tests/**'
-      - 'src/OrchardCore/OrchardCore.RemoteManagement.Abstractions/**'
-      - '.scripts/remote-management/**'
-      - '.github/workflows/remote_cli.yml'
-      - 'global.json'
-      - 'Directory.Packages.props'
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
 permissions:
   contents: read
 concurrency:
-  group: remote-cli-${{ github.ref }}
+  group: remote-cli-${{ github.event.pull_request.head.repo.full_name || github.repository }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 jobs:
   native:
+    # Keep builds and downloadable artifacts in the authorized fork.
+    if: github.repository == 'sebastienros/OrchardCore'
     strategy:
       fail-fast: false
       matrix:
@@ -43,10 +39,31 @@ jobs:
           $python = if ($IsWindows) { 'python' } else { 'python3' }
           & $python .scripts/remote-management/native-smoke.py artifacts/native ${{ matrix.rid }}
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - name: Upload native archive
+        id: upload
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: oc-${{ matrix.rid }}
           path: |
             artifacts/oc-*
             artifacts/native/verification.json
           if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+      - name: Add download link to job summary
+        shell: pwsh
+        env:
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+          TARGET_RID: ${{ matrix.rid }}
+        run: |
+          @"
+          ### Native CLI: $env:TARGET_RID
+
+          [Download oc-$env:TARGET_RID]($env:ARTIFACT_URL)
+
+          Built commit: $env:GITHUB_SHA
+
+          Contains the native archive, SHA-256 checksum, and verification record.
+          Extract the downloaded artifact, then the native archive inside it.
+          GitHub sign-in is required. Artifacts are retained for 30 days.
+          "@ | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8

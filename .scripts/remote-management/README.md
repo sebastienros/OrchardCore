@@ -85,7 +85,14 @@ the latter is a regression guard, not a cold-machine performance guarantee.
 
 The `Remote management CLI` workflow performs this on native Linux, Windows,
 and macOS runners for x64 and Arm64. It creates workflow artifacts and does
-not publish releases. Runner labels follow the
+not publish releases. Every push to the review or `codex/**` branches triggers
+a build, including documentation-only commits. PR creation and updates in the
+fork also trigger builds; a newer event cancels an unfinished run for the same
+source branch. Each successful platform job uploads an artifact retained for
+30 days and adds a direct download link and built commit SHA to its summary.
+Download instructions and platform names are in the
+[getting-started guide](../../src/docs/guides/remote-management/README.md#1-download-or-build-the-cli).
+Runner labels follow the
 [GitHub hosted-runner reference](https://docs.github.com/en/actions/reference/runners/github-hosted-runners).
 
 ## Agent plugin
