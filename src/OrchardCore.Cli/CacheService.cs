@@ -21,7 +21,7 @@ internal sealed class CacheService
             return null;
         }
 
-        await using var stream = File.OpenRead(path);
+        await using var stream = AtomicFile.OpenRead(path);
         return await JsonSerializer.DeserializeAsync(stream, CliJsonContext.Default.CachedContentRecord, cancellationToken);
     }
 
@@ -39,7 +39,7 @@ internal sealed class CacheService
             }
 
             CliPaths.SetOwnerOnlyFile(temporaryPath);
-            File.Move(temporaryPath, path, overwrite: true);
+            await AtomicFile.ReplaceAsync(temporaryPath, path, cancellationToken);
         }
         finally
         {

@@ -80,7 +80,7 @@ internal sealed class FileCredentialStore : ICredentialStore
                 CryptographicOperations.ZeroMemory(payload);
             }
 
-            File.Move(temporaryPath, path, overwrite: true);
+            await AtomicFile.ReplaceAsync(temporaryPath, path, cancellationToken);
         }
         finally
         {

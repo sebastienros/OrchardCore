@@ -21,7 +21,7 @@ internal sealed class ContextStore
             return new CliConfiguration();
         }
 
-        await using var stream = File.OpenRead(_paths.ConfigFilePath);
+        await using var stream = AtomicFile.OpenRead(_paths.ConfigFilePath);
         return await JsonSerializer.DeserializeAsync(stream, CliJsonContext.Default.CliConfiguration, cancellationToken)
             ?? new CliConfiguration();
     }
@@ -46,7 +46,7 @@ internal sealed class ContextStore
             }
 
             CliPaths.SetOwnerOnlyFile(temporaryPath);
-            File.Move(temporaryPath, _paths.ConfigFilePath, overwrite: true);
+            await AtomicFile.ReplaceAsync(temporaryPath, _paths.ConfigFilePath, cancellationToken);
         }
         finally
         {

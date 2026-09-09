@@ -51,11 +51,14 @@ missing_resource_status = {
     'custom-settings list': 200,  # Filters out settings the identity cannot access.
 }
 ids = set()
+capabilities = {capability['id'] for capability in manifest['capabilities']}
 for path, item in schema['paths'].items():
     for method, operation in item.items():
         if not isinstance(operation, dict) or 'x-oc-cli' not in operation:
             continue
         meta = operation['x-oc-cli']
+        if meta.get('capability') and meta['capability'] not in capabilities:
+            failures.append({'operation':operation.get('operationId'),'error':'capability absent from manifest'})
         command = ' '.join(meta['commandGroup'] + [meta['verb']])
         if command in commands or not operation.get('operationId') or operation.get('operationId') in ids:
             failures.append({'command':command, 'error':'duplicate command or missing/duplicate operation ID'})

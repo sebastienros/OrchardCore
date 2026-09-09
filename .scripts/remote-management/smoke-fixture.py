@@ -44,7 +44,7 @@ item_id = item['ContentItemId']
 assert not oc('content','items','show',item_id,'--version','draft')['Published']
 assert oc('content','items','validate-update',item_id,body=payload)['isValid']
 assert oc('content','items','list','--content-type',prefix,'--status','published')['totalCount'] == 0
-# Destructive input and invalid output formats must fail before sending a mutation.
+# Destructive input must fail before sending a mutation.
 oc('content','items','delete',item_id,expected=1)
 assert oc('content','items','show',item_id,'--version','draft')['ContentItemId'] == item_id
 oc('content','items','delete',item_id,'--yes')
@@ -63,6 +63,17 @@ assert oc('users','show',user_id)['roleNames'] == [prefix]
 oc('users','disable',user_id,'--yes')
 oc('users','delete',user_id,'--yes')
 oc('roles','delete',role_id,'--yes')
+# Static assets have a complete upload/inspect/delete lifecycle.
+css = Path(state['root']) / (prefix + '.css')
+css.write_text('/* CLI smoke */\nbody { color: #123; }\n')
+remote = prefix + '/style.css'
+oc('static','files','upload',remote,'--file',str(css))
+assert oc('static','files','show',remote)['length'] == css.stat().st_size
+oc('static','files','delete',remote,expected=1)
+oc('static','files','delete',remote,'--yes')
+oc('static','files','delete',remote,'--yes')
+oc('static','files','show',remote,expected=4)
+assert oc('static','files','list','--path',prefix)['totalCount'] == 0
 report = {'passed':True,'steps':steps,'prefix':prefix}
 (Path(state['root']) / 'smoke.json').write_text(json.dumps(report,indent=2))
 print(json.dumps({'passed':True,'commands':len(steps)}))
