@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
@@ -15,7 +14,6 @@ using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using OrchardCore.FileStorage;
-using OrchardCore.Media.Services;
 using OrchardCore.Media.ViewModels;
 using OrchardCore.RemoteManagement;
 
@@ -86,12 +84,15 @@ public static class UploadMediaEndpoint
         }
 
         var mediaOptions = options.Value;
+        var canUploadRestrictedMedia = await authorizationService.AuthorizeAsync(
+            httpContext.User,
+            MediaPermissions.UploadRestrictedMedia);
 
         // Replicate the [MediaSizeLimit] filter: cap the multipart body / request size using the
         // configured MaxFileSize before the form is read by the chunk upload service.
         ApplyMediaSizeLimit(httpContext, mediaOptions.MaxFileSize);
 
-        var allowedExtensions = MediaEndpointHelpers.GetRequestedExtensions(mediaOptions, extensions, true);
+        var requestedExtensions = MediaEndpointHelpers.GetRequestedExtensions(extensions);
 
         var actionResult = await chunkFileUploadService.ProcessRequestAsync(
             httpContext.Request,
@@ -117,9 +118,24 @@ public static class UploadMediaEndpoint
                         continue;
                     }
 
-                    var extension = Path.GetExtension(file.FileName);
+                    var normalizedFileName = mediaNameNormalizerService.NormalizeFileName(file.FileName);
+                    if (!MediaEndpointHelpers.IsBaseName(normalizedFileName))
+                    {
+                        result.Add(new UploadFileResultDto
+                        {
+                            Name = normalizedFileName,
+                            Size = file.Length,
+                            Folder = path,
+                            Error = localizer["The normalized file name must not contain a directory path."].ToString(),
+                        });
+                        continue;
+                    }
 
-                    if (!allowedExtensions.Contains(extension))
+                    var fileName = MediaEndpointHelpers.GetFileName(mediaFileStore, normalizedFileName);
+                    var extension = Path.GetExtension(fileName);
+
+                    if (!mediaOptions.IsFileExtensionAllowed(extension, canUploadRestrictedMedia)
+                        || (requestedExtensions.Count > 0 && !requestedExtensions.Contains(extension)))
                     {
                         result.Add(new UploadFileResultDto
                         {
@@ -134,19 +150,6 @@ public static class UploadMediaEndpoint
                             logger.LogInformation("File extension not allowed: '{File}'", file.FileName);
                         }
 
-                        continue;
-                    }
-
-                    var fileName = mediaNameNormalizerService.NormalizeFileName(file.FileName);
-                    if (!MediaEndpointHelpers.IsBaseName(fileName))
-                    {
-                        result.Add(new UploadFileResultDto
-                        {
-                            Name = fileName,
-                            Size = file.Length,
-                            Folder = path,
-                            Error = localizer["The normalized file name must not contain a directory path."].ToString(),
-                        });
                         continue;
                     }
 
@@ -190,7 +193,12 @@ public static class UploadMediaEndpoint
 
                         var mediaFile = await mediaFileStore.GetFileInfoAsync(mediaFilePath);
 
-                        await MediaEndpointHelpers.PreCacheRemoteMediaAsync(mediaFile, serviceProvider, mediaFileStore, httpContext);
+                        await MediaEndpointHelpers.PreCacheRemoteMediaAsync(
+                            mediaFile,
+                            mediaFileStore,
+                            serviceProvider.GetService(typeof(IMediaFileStoreCache)) as IMediaFileStoreCache,
+                            httpContext,
+                            logger);
 
                         result.Add(new UploadFileResultDto(MediaEndpointHelpers.CreateFileResult(mediaFile, httpContext, contentTypeProvider, fileVersionProvider, mediaFileStore)));
                     }
@@ -273,19 +281,23 @@ public static class UploadMediaEndpoint
                 statusCode: StatusCodes.Status413PayloadTooLarge);
         }
 
+        var canUploadRestrictedMedia = await authorizationService.AuthorizeAsync(
+            httpContext.User,
+            MediaPermissions.UploadRestrictedMedia);
         var extension = Path.GetExtension(request.FileName);
 
-        if (!mediaOptions.AllowedFileExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase))
+        if (!mediaOptions.IsFileExtensionAllowed(extension, canUploadRestrictedMedia))
         {
             return httpContext.ApiValidationProblem(detail: localizer["This file extension is not allowed: {0}", extension]);
         }
 
-        var fileName = mediaNameNormalizerService.NormalizeFileName(request.FileName);
-        if (!MediaEndpointHelpers.IsBaseName(fileName))
+        var normalizedFileName = mediaNameNormalizerService.NormalizeFileName(request.FileName);
+        if (!MediaEndpointHelpers.IsBaseName(normalizedFileName))
         {
             return httpContext.ApiValidationProblem(detail: localizer["The normalized file name must not contain a directory path."]);
         }
 
+        var fileName = MediaEndpointHelpers.GetFileName(mediaFileStore, normalizedFileName);
         var mediaFilePath = mediaFileStore.Combine(path, fileName);
         if (!await authorizationService.AuthorizeAsync(httpContext.User, MediaPermissions.ManageMediaFolder, (object)mediaFilePath))
         {
@@ -325,7 +337,12 @@ public static class UploadMediaEndpoint
 
                 var mediaFile = await mediaFileStore.GetFileInfoAsync(createdPath);
 
-                await MediaEndpointHelpers.PreCacheRemoteMediaAsync(mediaFile, serviceProvider, mediaFileStore, httpContext);
+                await MediaEndpointHelpers.PreCacheRemoteMediaAsync(
+                    mediaFile,
+                    mediaFileStore,
+                    serviceProvider.GetService(typeof(IMediaFileStoreCache)) as IMediaFileStoreCache,
+                    httpContext,
+                    logger);
 
                 return TypedResults.Ok(MediaEndpointHelpers.CreateFileResult(mediaFile, httpContext, contentTypeProvider, fileVersionProvider, mediaFileStore));
             }

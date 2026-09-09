@@ -138,6 +138,8 @@ public class MediaAndQueriesOpenApiDiscoveryTests
         public int PageSize { get; set; }
         public int MaxPageSize { get; set; }
         public int MaxPagedCount { get; set; }
+        public bool AllowPageSizeSelection { get; set; }
+        public int[] PageSizeOptions { get; set; } = [];
         public string BaseUrl { get; set; } = string.Empty;
         public RouteValueDictionary HomeRoute { get; set; } = [];
         public bool AppendVersion { get; set; }

@@ -9,8 +9,10 @@ using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using OrchardCore.FileStorage;
+using OrchardCore.Media.Services;
 using OrchardCore.Media.ViewModels;
 using OrchardCore.RemoteManagement;
 
@@ -56,10 +58,11 @@ public static class MoveMediaEndpoint
         [FromServices] IFileVersionProvider fileVersionProvider,
         [FromServices] IOptions<MediaOptions> options,
         [FromServices] IServiceProvider serviceProvider,
+        [FromServices] ILogger<MediaApiEndpoints> logger,
         [FromServices] IStringLocalizer<MediaApiEndpoints> localizer,
         string oldPath,
         string newPath)
-        => HandleLegacyResultAsync(httpContext, authorizationService, mediaFileStore, contentTypeProvider, fileVersionProvider, options, serviceProvider, localizer, oldPath, newPath);
+        => HandleLegacyResultAsync(httpContext, authorizationService, mediaFileStore, contentTypeProvider, fileVersionProvider, options, serviceProvider, logger, localizer, oldPath, newPath);
 
     private static Task<IResult> HandleAsync(
         HttpContext httpContext,
@@ -69,9 +72,10 @@ public static class MoveMediaEndpoint
         [FromServices] IFileVersionProvider fileVersionProvider,
         [FromServices] IOptions<MediaOptions> options,
         [FromServices] IServiceProvider serviceProvider,
+        [FromServices] ILogger<MediaApiEndpoints> logger,
         [FromServices] IStringLocalizer<MediaApiEndpoints> localizer,
         [FromBody] MoveMediaRequest request)
-        => HandleManagementAsync(httpContext, authorizationService, mediaFileStore, contentTypeProvider, fileVersionProvider, options, serviceProvider, localizer, request.OldPath, request.NewPath);
+        => HandleManagementAsync(httpContext, authorizationService, mediaFileStore, contentTypeProvider, fileVersionProvider, options, serviceProvider, logger, localizer, request.OldPath, request.NewPath);
 
     private static async Task<IResult> HandleLegacyResultAsync(
         HttpContext httpContext,
@@ -81,11 +85,12 @@ public static class MoveMediaEndpoint
         IFileVersionProvider fileVersionProvider,
         IOptions<MediaOptions> options,
         IServiceProvider serviceProvider,
+        ILogger<MediaApiEndpoints> logger,
         IStringLocalizer<MediaApiEndpoints> localizer,
         string oldPath,
         string newPath)
     {
-        var (result, movedFile) = await MoveAsync(httpContext, authorizationService, mediaFileStore, options, serviceProvider, localizer, oldPath, newPath);
+        var (result, movedFile) = await MoveAsync(httpContext, authorizationService, mediaFileStore, options, serviceProvider, logger, localizer, oldPath, newPath);
 
         return result ?? TypedResults.Ok(MediaEndpointHelpers.CreateFileResult(movedFile, httpContext, contentTypeProvider, fileVersionProvider, mediaFileStore));
     }
@@ -98,11 +103,12 @@ public static class MoveMediaEndpoint
         IFileVersionProvider fileVersionProvider,
         IOptions<MediaOptions> options,
         IServiceProvider serviceProvider,
+        ILogger<MediaApiEndpoints> logger,
         IStringLocalizer<MediaApiEndpoints> localizer,
         string oldPath,
         string newPath)
     {
-        var (result, movedFile) = await MoveAsync(httpContext, authorizationService, mediaFileStore, options, serviceProvider, localizer, oldPath, newPath);
+        var (result, movedFile) = await MoveAsync(httpContext, authorizationService, mediaFileStore, options, serviceProvider, logger, localizer, oldPath, newPath);
 
         return result ?? TypedResults.Ok(new MoveMediaResultDto
         {
@@ -118,6 +124,7 @@ public static class MoveMediaEndpoint
         IMediaFileStore mediaFileStore,
         IOptions<MediaOptions> options,
         IServiceProvider serviceProvider,
+        ILogger<MediaApiEndpoints> logger,
         IStringLocalizer<MediaApiEndpoints> localizer,
         string oldPath,
         string newPath)
@@ -140,8 +147,11 @@ public static class MoveMediaEndpoint
         }
 
         var newExtension = Path.GetExtension(newPath);
+        var canUploadRestrictedMedia = await authorizationService.AuthorizeAsync(
+            httpContext.User,
+            MediaPermissions.UploadRestrictedMedia);
 
-        if (!options.Value.AllowedFileExtensions.Contains(newExtension, StringComparer.OrdinalIgnoreCase))
+        if (!options.Value.IsFileExtensionAllowed(newExtension, canUploadRestrictedMedia))
         {
             return (httpContext.ApiValidationProblem(detail: localizer["This file extension is not allowed: {0}", newExtension]), null);
         }
@@ -154,7 +164,12 @@ public static class MoveMediaEndpoint
         await mediaFileStore.MoveFileAsync(oldPath, newPath);
 
         var movedFile = await mediaFileStore.GetFileInfoAsync(newPath);
-        await MediaEndpointHelpers.PreCacheRemoteMediaAsync(movedFile, serviceProvider, mediaFileStore, httpContext);
+        await MediaEndpointHelpers.PreCacheRemoteMediaAsync(
+            movedFile,
+            mediaFileStore,
+            serviceProvider.GetService(typeof(IMediaFileStoreCache)) as IMediaFileStoreCache,
+            httpContext,
+            logger);
 
         return (null, movedFile);
     }
