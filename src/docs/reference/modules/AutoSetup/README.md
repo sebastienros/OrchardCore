@@ -2,6 +2,11 @@
 
 The auto-setup module allows to automatically install the application/tenants on the first request.
 
+To create and initialize a local CMS without writing Auto Setup configuration
+yourself, use [`oc install`](../../../guides/remote-management/README.md#create-and-set-up-a-local-site).
+It creates the application from its embedded CMS template and passes setup
+credentials to a temporary local server through environment variables.
+
 ## JSON Configuration Parameters
 
 Auto-Setup parameters are defined in `appsettings.json`. Example excerpt:

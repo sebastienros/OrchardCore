@@ -8,8 +8,8 @@ validates an unpublished article.
 ## 1. Download or build the CLI
 
 The fork's [Remote management CLI workflow](https://github.com/sebastienros/OrchardCore/actions/workflows/remote_cli.yml)
-builds downloadable native binaries on every push to `sebros/remote-tenant-cli-plan`
-and `codex/**` branches, and on PR updates targeting the fork.
+builds downloadable native binaries on every branch push and on PR updates
+targeting the fork.
 
 1. Open the workflow run for the commit you want to try. For a PR targeting
    the fork, open **Checks**, then the **Remote management CLI** run.
@@ -33,7 +33,8 @@ and `codex/**` branches, and on PR updates targeting the fork.
 You must be signed into GitHub to download workflow artifacts. These builds
 are retained for 30 days and are unsigned development artifacts. For PR runs,
 the built commit is GitHub's test merge commit; push runs build the pushed
-commit. A newer update cancels any unfinished build for the same source branch.
+commit. A newer PR update cancels its superseded PR build; push builds continue
+so each pushed commit can publish its own packages.
 
 ### Install as a .NET tool
 
@@ -149,6 +150,90 @@ on the matching operating system. Use the same `-p:Version=<version>` on both
 pack commands when assigning a different package version. See the
 [.NET NativeAOT tool packaging documentation](https://learn.microsoft.com/en-us/dotnet/core/tools/rid-specific-tools)
 for details.
+
+## Create and set up a local site
+
+`oc install` creates a new CMS application and initializes its **Default**
+tenant. It uses the `occms` template embedded in the CLI executable from the
+same source build, with matching Orchard package versions. No template package
+download, selected tenant context, or remote authentication is needed.
+Other project templates remain available through `dotnet new`.
+
+1. Install the stable .NET SDK matching the template's target framework
+   (currently **.NET 10**), and make `dotnet` available on your `PATH`.
+   `oc doctor` reports the selected SDK or a warning when it is unavailable.
+   This SDK requirement applies to local site creation; remote management
+   commands still work without .NET installed.
+2. Choose a new or empty directory and create your site:
+
+   ```bash
+   oc install ./MyOrchardSite \
+     --site-name "My Orchard Site" \
+     --user-name admin \
+     --email admin@example.com \
+     --run
+   ```
+
+3. Enter the administrator password at the masked prompt. The CLI creates the
+   project, restores dependencies, builds it, and uses
+   [Auto Setup](../../reference/modules/AutoSetup/README.md) to initialize the
+   site. Defaults are the `SaaS` recipe, SQLite, and the UTC time zone.
+4. With `--run`, open `http://localhost:5000` when setup finishes. Sign in with
+   the administrator account you just created. Press **Ctrl+C** to stop the
+   foreground server. Use `--urls http://localhost:5080` to select another
+   listening address.
+
+Without `--run`, the CLI starts a temporary loopback-only server for setup and
+stops it after the Default tenant is initialized. In JSON output, `tenantState:
+"Running"` means the tenant is initialized; it does not mean a server was left
+running. Start the site later with:
+
+```bash
+dotnet run --project ./MyOrchardSite --no-launch-profile --urls http://localhost:5000
+```
+
+The generated `global.json` pins the selected stable SDK, allowing later patches
+in that SDK feature band. A project-local `NuGet.Config` supplies nuget.org and,
+for `-cli.<number>` builds, the fork's Feedz feed. Orchard dependencies retain
+their original package IDs. Dependency restore still needs network access or
+a populated package cache; embedding the template does not embed the runtime
+or the site's packages. `--source` overrides the Orchard dependency feed with
+an HTTPS NuGet URL or local package directory. It does not replace the embedded
+template or change the Orchard version.
+
+Use the same argument names as tenant creation and setup, including
+`--recipe-name`, `--database-provider`, `--table-prefix`, `--schema`,
+`--site-time-zone`, `--request-url-prefix`, and `--request-url-host` (one host
+name). For example, select `--recipe-name Blog` to initialize a blog.
+`--setup-timeout` controls the initialization timeout in seconds (default 300).
+
+For automation, supply the administrator password using exactly one of:
+
+```bash
+oc install ./MySite --site-name "My Site" --email admin@example.com --password-env OC_SITE_PASSWORD
+oc install ./MySite --site-name "My Site" --email admin@example.com --password-file /run/secrets/site-password
+printf '%s' "$OC_SITE_PASSWORD" | oc install ./MySite --site-name "My Site" --email admin@example.com --password-stdin
+```
+
+These are alternative commands for separate installations. Inject the secret
+environment variable through your CI or secret manager. For a database that
+requires a connection string, use `--connection-string-env`,
+`--connection-string-file`, or `--connection-string-stdin`; only one secret can
+consume stdin. There is no inline password or connection-string argument.
+
+Auto Setup credentials are passed through the temporary process environment.
+The administrator password is not written into generated settings, launch
+profiles, or CLI output. Orchard stores the resulting account normally; it
+also persists database connection settings needed to run the site. On macOS
+and Linux, `oc install` creates `App_Data` with owner-only directory permissions.
+If you deploy under another identity, grant that identity the access it needs.
+
+The command refuses to overwrite existing content. On failure or cancellation,
+it stops its child processes and preserves the project for inspection; it does
+not silently retry a partially initialized database. Use a fresh directory for
+a new attempt, or repair the preserved project manually. Creating a site does
+not configure Remote Management automatically; follow the next section to
+manage it through `oc`.
 
 ## 2. Prepare the tenant
 

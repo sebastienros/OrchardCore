@@ -1,6 +1,6 @@
 # Orchard Core CLI
 
-`oc` manages Orchard Core tenants through their management APIs. Discover
+`oc` creates local Orchard Core sites and manages tenants through their APIs. Discover
 commands, authenticate interactively, and manage content, media, themes,
 templates, and tenant settings from your terminal.
 
@@ -33,6 +33,20 @@ These development packages are available on Feedz and as workflow artifacts;
 they are not published to NuGet.org.
 
 ## Get started
+
+Create and initialize a local CMS with the template embedded in this CLI build:
+
+```sh
+oc install ./MyOrchardSite --site-name "My Orchard Site" --email admin@example.com --run
+```
+
+Enter the administrator password at the masked prompt. This uses SQLite and
+the SaaS setup recipe, then starts the site at `http://localhost:5000`.
+Omit `--run` to stop after setup. Local installation requires the matching
+.NET SDK (currently .NET 10); `oc doctor` reports whether it is available.
+The template is embedded; restoring the site's dependencies still requires
+NuGet access or a populated package cache. Run `oc install --help` for database,
+recipe, URL, and secret-input options.
 
 Follow the [remote management guide](https://github.com/sebastienros/OrchardCore/blob/sebros/remote-tenant-cli-plan/src/docs/guides/remote-management/README.md)
 to prepare a tenant and authenticate. Run `oc --help` to discover commands

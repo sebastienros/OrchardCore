@@ -7,7 +7,7 @@ using OrchardCore.RemoteManagement;
 
 namespace OrchardCore.Cli;
 
-internal sealed class CliApplication
+internal sealed partial class CliApplication
 {
     private static readonly TimeSpan ManifestTtl = TimeSpan.FromMinutes(5);
     private static readonly TimeSpan OpenApiTtl = TimeSpan.FromMinutes(30);
@@ -127,6 +127,7 @@ internal sealed class CliApplication
         _rootCommand.Subcommands.Add(CreateDocsCommand());
         _rootCommand.Subcommands.Add(CreateCompletionCommand());
         _rootCommand.Subcommands.Add(CreateDoctorCommand());
+        _rootCommand.Subcommands.Add(CreateInstallCommand());
     }
 
     private async Task AddDynamicCommandsAsync(string[] args, CancellationToken cancellationToken)
@@ -794,6 +795,7 @@ internal sealed class CliApplication
         command.SetAction(async (parseResult, cancellationToken) =>
         {
             var currentContext = ContextStore.FindContext(_configuration, parseResult.GetValue(_contextOption));
+            var sdk = await DotnetEnvironment.FindSdkAsync(cancellationToken);
             var output = new DoctorOutput
             {
                 CliVersion = CliUtilities.CliVersion,
@@ -806,6 +808,10 @@ internal sealed class CliApplication
                 HasManifestCache = currentContext is not null && await _cacheService.ReadAsync(currentContext.TenantUrl, CacheKind.Manifest, cancellationToken) is not null,
                 HasOpenApiCache = currentContext is not null && await _cacheService.ReadAsync(currentContext.TenantUrl, CacheKind.OpenApi, cancellationToken) is not null,
                 HasDocumentationCache = await _cacheService.ReadAsync(DocumentationIndexUri.AbsoluteUri, CacheKind.Documentation, cancellationToken) is not null,
+                LocalInstallSdk = sdk,
+                LocalInstallWarning = sdk is null
+                    ? $"The .NET {DotnetEnvironment.RequiredMajor} SDK is required for 'oc install'. Remote management commands do not require .NET."
+                    : null,
             };
 
             return await WriteOutputAsync(parseResult, CliUtilities.ToJsonElement(output, CliJsonContext.Default.DoctorOutput), cancellationToken);
@@ -1756,6 +1762,7 @@ internal sealed class CliApplication
             "docs",
             "completion",
             "doctor",
+            "install",
         ];
 
         var startIndex = args.Length > 0 && string.Equals(args[0], "oc", StringComparison.Ordinal)

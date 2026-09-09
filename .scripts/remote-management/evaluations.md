@@ -107,3 +107,41 @@ temporary file followed by `cmp`, avoiding text-output transformations. These
 are bounded usability observations and command counts, not a statistical or
 token-efficiency benchmark. Neither model accessed fixture credentials or
 changed permissions; the fixture owner made the discovery-permission correction.
+
+## Round 4: embedded local CMS installation
+
+Fresh `gpt-5.6-sol` and `gpt-5.6-luna` agents received the canonical CLI skill,
+the native executable, an isolated destination and CLI configuration directory,
+and an owner-readable test password file. They could create local sites and
+restore dependencies, but could not inspect implementation, earlier results,
+other evaluations, or live tenants. No expected command sequence was supplied.
+This used the new installer built locally with version `4.0.0-cli.19` against
+the already published matching server packages; the published CLI package at
+that version predates the installer.
+
+| Model / task | Outcome | Observed limitations |
+| --- | --- | --- |
+| gpt-5.6-sol: create a local blog, use a password file, leave stopped | Created and initialized a site; verified administrator/site data and no remaining host | Omitted `--recipe-name Blog`, so it created a SaaS site. This did **not** fully satisfy the blog request. Reported ambiguity between persisted tenant state and server process state. |
+| gpt-5.6-luna: create a SaaS site, supply password through stdin, leave stopped | Used the requested recipe, SQLite and UTC; verified persisted administrator/site data and no remaining host | First restore was blocked by sandbox DNS. Preserved the failed project and reran with authorized network access. |
+
+The skill and command help now explain that a blog requires the Blog recipe;
+a blog-like folder or site name does not select it. Installer output now calls
+the persisted state `tenantState`, and the skill explicitly distinguishes it
+from an active server process.
+
+A fresh `gpt-5.6-sol` agent then received the original blog task, the revised
+skill and CLI, and a new isolated directory without the earlier findings.
+It explicitly selected the Blog recipe, supplied the password by file, and
+verified Blog media, initialized SQLite state, the closed temporary listener,
+and no process holding site files. A sandbox DNS failure required inspecting
+and removing the incomplete generated project before retrying with network
+access. It completed the blog task. Neither the first incorrect recipe choice
+nor the environmental failures are counted as clean first-attempt successes.
+
+Agents did not print passwords or use inline secret arguments, and left no
+site processes running. They left pre-existing services on port 5000 untouched.
+The scripted native installer check separately covers foreground `--run`,
+cancellation, overwrite refusal, missing SDK, setup failure, and plaintext
+password absence. These are small behavioral samples, not statistical model
+or token-efficiency measurements, and do not validate remote databases or every
+operating system.

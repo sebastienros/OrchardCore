@@ -1,6 +1,6 @@
 ---
 name: orchardcore-cli
-description: Operates Orchard Core remotely with the `oc` CLI. Use for contexts, authentication, discovery, tenant creation and setup, enabling Remote Management, compatibility checks, dynamic help, JSON output, and coordinating module-specific Orchard Core management tasks.
+description: Uses the `oc` CLI to install and initialize local Orchard CMS sites or manage remote tenants. Use for local site creation, contexts, authentication, discovery, tenant setup, enabling Remote Management, compatibility checks, dynamic help, and coordinating module-specific management tasks.
 ---
 
 # Orchard Core CLI
@@ -78,6 +78,41 @@ oc --context production content items list
 ```
 
 Do not use the public `orchardcore-cli` client for client credentials.
+
+## Install a new local CMS
+
+Use `oc install <directory>` when the user wants a new local application and
+its Default tenant initialized. This static command needs no tenant context or
+login. It embeds this CLI build's `occms` template and uses matching Orchard
+dependency versions; no template download or version selection is needed.
+Run `oc doctor` to check for the required stable .NET SDK (currently .NET 10).
+Dependencies still need a NuGet feed or populated package cache.
+
+```bash
+oc install ./MySite --site-name "My Site" --email admin@example.com --password-env OC_SITE_PASSWORD
+```
+
+The password environment variable must already be provided by the user or
+secret manager. The masked interactive prompt, `--password-file`, and
+`--password-stdin` are alternatives. Connection strings use the analogous
+`--connection-string-*` options. Only one secret may consume stdin.
+
+Defaults are SQLite, the SaaS recipe, administrator `admin`, and UTC. Match the
+recipe to the requested site: use `--recipe-name Blog` for a blog or
+`--recipe-name Blank` for a minimal site. A blog-like directory or site name
+does not select the Blog recipe. Consult
+`oc install --help` for other database, recipe, and URL options. `--source`
+changes the dependency feed only. Use `dotnet new` directly for other templates.
+
+Without `--run`, installation stops its temporary setup host after completion.
+The JSON `tenantState` describes persisted tenant initialization, not a running
+server process.
+Add `--run` only when the user wants the site left running in the foreground;
+Ctrl+C stops it. Existing nonempty destinations are refused. On failure, inspect
+the preserved project and output before deciding how to proceed; do not blindly
+retry setup against a partly initialized database. Administrator passwords are
+not persisted in configuration, but Orchard persists database connection settings.
+Remote Management still needs configuring before using remote commands.
 
 ## Create and initialize a tenant
 

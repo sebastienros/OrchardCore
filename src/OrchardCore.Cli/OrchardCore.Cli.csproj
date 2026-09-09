@@ -17,7 +17,7 @@
     <Authors>Orchard Core Community and Contributors</Authors>
     <ToolCommandName>oc</ToolCommandName>
     <ToolPackageRuntimeIdentifiers>linux-x64;linux-arm64;win-x64;win-arm64;osx-arm64;osx-x64</ToolPackageRuntimeIdentifiers>
-    <Description>Native Orchard Core command-line tool for remote tenant management.</Description>
+    <Description>Native Orchard Core command-line tool for local CMS installation and remote tenant management.</Description>
     <PackageLicenseExpression>BSD-3-Clause</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PublishAot>true</PublishAot>
@@ -46,6 +46,15 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="OrchardCore.Cli.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Embed the source template, independently of ProjectTemplates' generated
+         configuration files. Stamp it with this CLI's version when extracted. -->
+    <EmbeddedResource Include="..\Templates\OrchardCore.ProjectTemplates\content\OrchardCore.Templates.Cms.Web\**\*"
+                      Exclude="..\Templates\OrchardCore.ProjectTemplates\content\OrchardCore.Templates.Cms.Web\.template.config\**;..\Templates\OrchardCore.ProjectTemplates\content\OrchardCore.Templates.Cms.Web\bin\**;..\Templates\OrchardCore.ProjectTemplates\content\OrchardCore.Templates.Cms.Web\obj\**"
+                      LogicalName="OccmsTemplate/%(RecursiveDir)%(Filename)%(Extension)"
+                      WithCulture="false" />
   </ItemGroup>
 
   <Import Project="..\OrchardCore.Build\OrchardCore.Commons.targets" />

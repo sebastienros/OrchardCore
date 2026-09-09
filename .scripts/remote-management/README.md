@@ -187,6 +187,13 @@ inconsistent dependencies, or templates stamped with a different version.
 Separately published translation packs retain the version pinned in
 `Directory.Packages.props`; they are restored, not republished.
 
+After publishing, `install-smoke.py <native-oc>` tests the embedded CMS template
+against the matching published packages: Auto Setup, a directory with spaces,
+environment/stdin password input, missing SDK diagnostics, overwrite refusal,
+failed setup, and foreground `--run` cancellation. It uses disposable local
+sites and generated test credentials. Run it only with a CLI build whose
+matching Orchard dependencies are already available from its default feed.
+
 Versions use the repository's `VersionPrefix` plus
 `-cli.<workflow-run-number>` (for example `4.0.0-cli.25`). A new push or manual
 run gets the next number. Rerunning the same workflow run keeps its version;

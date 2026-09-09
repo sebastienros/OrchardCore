@@ -24,8 +24,10 @@ for skill in skills:
 shutil.copy2(repo / 'LICENSE', plugin / 'LICENSE')
 (plugin / 'README.md').write_text('''# Orchard Core CLI plugin
 
-Install `oc`, add an exact tenant context, and authenticate before using these
-skills. Start with `orchardcore-cli`; it routes to the relevant resource skill.
+Install `oc` and start with `orchardcore-cli` to create a local CMS or connect
+to an existing tenant. Remote operations require an exact tenant context and
+authentication; local `oc install` requires the matching .NET SDK instead.
+The main skill routes to the relevant resource skill.
 The plugin contains instructions only: it installs no binary, MCP server,
 credentials, or background process. It uses the CLI's existing authentication.
 

@@ -376,6 +376,10 @@ internal sealed class DocumentationShowOutput
 
 internal sealed class DoctorOutput
 {
+    public string? LocalInstallSdk { get; set; }
+
+    public string? LocalInstallWarning { get; set; }
+
     public string CliVersion { get; set; } = string.Empty;
 
     public string RuntimeIdentifier { get; set; } = string.Empty;

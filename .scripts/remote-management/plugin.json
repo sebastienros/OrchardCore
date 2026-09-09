@@ -1,7 +1,7 @@
 {
   "name": "orchardcore-cli",
-  "version": "0.1.0",
-  "description": "Manage Orchard Core tenants through the OpenAPI-driven oc CLI.",
+  "version": "0.2.0",
+  "description": "Install local Orchard Core sites and manage tenants through the oc CLI.",
   "author": {
     "name": "Orchard Core contributors"
   },
@@ -9,7 +9,7 @@
   "interface": {
     "displayName": "Orchard Core CLI",
     "shortDescription": "Discover, model, and manage Orchard Core tenants.",
-    "longDescription": "Schema-first skills for authentication, content, media, templates, themes, settings, menus, and administration. Requires the oc executable and an authorized tenant context.",
+    "longDescription": "Skills for local CMS installation, authentication, content, media, templates, themes, settings, menus, and administration. Requires oc; local installation needs the matching .NET SDK, while remote operations need an authorized tenant context.",
     "developerName": "Orchard Core contributors",
     "category": "Productivity",
     "capabilities": [
