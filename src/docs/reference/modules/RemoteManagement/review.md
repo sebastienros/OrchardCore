@@ -198,6 +198,14 @@ Verification on September 9 after this change:
   local CLI. The earlier six-platform CI run predates the cancellation-response
   change; it is not a verification of this later change on all platforms.
 
+The consent scope list was subsequently converted to the `OpenIdConsentScopes`
+shape. A clean Web/Razor build and live browser/device checks verified the
+default binding, a dynamic Liquid override created through `oc templates
+create`, and restoration of the default after deleting that override.
+The documented Liquid example rendered all five requested scope identifiers
+on both consent pages while using the admin theme. Browser approval with the
+override and device approval with the restored default both completed login.
+
 ## Boundaries and follow-up work
 
 - Existing upstream security PRs listed above remain integration dependencies;

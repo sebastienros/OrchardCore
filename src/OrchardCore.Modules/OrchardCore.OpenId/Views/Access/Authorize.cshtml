@@ -11,7 +11,7 @@
         <h1 id="authorization-title" class="h3 mb-3">@T["Authorize {0}", Model.ApplicationName]</h1>
         <p class="text-body-secondary mb-4">@T["Review the requested access. Only continue if you started this sign-in request."]</p>
 
-        @await Html.PartialAsync("_ConsentScopes", Model.Scope)
+        @await DisplayAsync(await New.OpenIdConsentScopes(Scope: Model.Scope))
 
         <form asp-controller="Access" asp-action="Authorize" method="post" class="no-multisubmit">
             @* Preserve the validated protocol request for the Accept/Reject actions. *@

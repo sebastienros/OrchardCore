@@ -85,14 +85,43 @@ active theme:
 | --- | --- |
 | `Views/OrchardCore.OpenId/Access/Authorize.cshtml` | Browser consent |
 | `Views/OrchardCore.OpenId/Access/Verify.cshtml` | Device code entry and consent |
-| `Views/OrchardCore.OpenId/Access/_ConsentScopes.cshtml` | Shared permission labels and scope list; model is the space-separated scope string |
 | `Views/OrchardCore.OpenId/Access/Logout.cshtml` | Sign-out confirmation |
 | `Views/OrchardCore.OpenId/Access/Error.cshtml` | Authorization error |
 
-The leading `_` in `_ConsentScopes.cshtml` follows the Razor partial-view
-naming convention: this reusable fragment is included by both consent views
-using `Html.PartialAsync`. The prefix is not required by Razor and does not
-make the view private; an override must use the same name as the inclusion.
+#### Consent scope shape
+
+Both consent views render the `OpenIdConsentScopes` shape through Orchard's
+display pipeline. Its `Model.Scope` property contains the space-separated
+requested scope identifiers. The default binding is
+`Views/OpenIdConsentScopes.cshtml` in the OpenID module.
+
+A theme can override this binding with `Views/OpenIdConsentScopes.cshtml` or
+`Views/OpenIdConsentScopes.liquid`. Other modules can customize it using an
+`IShapeTableProvider` that describes `OpenIdConsentScopes`, or supply a shape
+template through the usual feature dependency and binding precedence rules.
+
+With the [Templates module](../Templates/README.md) enabled, create a dynamic
+Liquid template named `OpenIdConsentScopes`. For example:
+
+```liquid
+{% assign scopes = Model.Scope | split: ' ' | uniq %}
+{% if scopes.size > 0 %}
+  <h2>{{ 'Requested access' | t }}</h2>
+  <ul>
+    {% for scope in scopes %}
+      <li><code>{{ scope | escape }}</code></li>
+    {% endfor %}
+  </ul>
+{% endif %}
+```
+
+The [Templates management CLI/API](../../api/templates/README.md#create-a-template)
+can also create or update that dynamic template. This scope-list shape works
+on the consent pages even when they use the admin theme: selecting that theme
+does not make these pages admin routes. The surrounding forms continue to
+handle protocol parameters and the approval/cancellation actions.
+
+#### Custom form views
 
 Start from the module's view when overriding a form. Preserve its model,
 protocol parameters, form action and method, antiforgery token, and submit

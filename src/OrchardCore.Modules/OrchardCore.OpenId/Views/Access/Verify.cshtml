@@ -36,7 +36,7 @@
                 <p class="mb-0">@T["If the codes do not match or you did not start this request, select Cancel."]</p>
             </div>
 
-            @await Html.PartialAsync("_ConsentScopes", Model.Scope)
+            @await DisplayAsync(await New.OpenIdConsentScopes(Scope: Model.Scope))
 
             <form asp-controller="Access" asp-action="Verify" method="post" class="no-multisubmit">
                 @* Preserve the validated protocol request for the Accept/Reject actions. *@
