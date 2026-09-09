@@ -43,11 +43,6 @@ The security review uses [OAuth security BCP](https://www.rfc-editor.org/rfc/rfc
 and [OAuth for native apps](https://www.rfc-editor.org/rfc/rfc8252.html) as
 reference points; it does not claim protocol conformance from a unit-test pass.
 
-## Remaining verification
-
-Continue with API authorization and mutation behavior, OAuth flows and refresh,
-NativeAOT execution, human output, documentation walkthroughs, skill packaging,
-and blind evaluations on different models. Record actual outcomes here.
 
 ## API regression fixes
 
@@ -60,3 +55,138 @@ and blind evaluations on different models. Record actual outcomes here.
   writes. These changes are specific to the new APIs, separate from upstream
   application static-file resolution.
 - 32 targeted content, schema, and tenant tests passed after these fixes.
+
+## Additional completed changes
+
+- Terminal output defaults to readable tables; redirection defaults to JSON.
+  Explicit `--output json` remains the automation contract. Terminal cells
+  escape control characters, while TSV and YAML preserve structured values.
+- Help and completion use cached discovery offline. Cache writes are atomic,
+  and successful mutations expire discovery. The parser handles inherited
+  path parameters and nullable/multiple JSON Schema types. Array options accept
+  JSON arrays or comma-separated strings; object options accept JSON objects.
+- Browser callbacks require the expected route/state and optional issuer before
+  any token exchange, bound line/header sizes, and verify S256 PKCE exchange.
+  `--no-browser` supports manually opening the URL on the CLI's computer.
+- Client credentials omit human identity/refresh scopes, including `roles`.
+  User password inputs use environment/file/stdin sources. Complete bodies
+  cannot be combined with individual property/secret options.
+- The CLI consumes OAuth access/refresh tokens from validated authority endpoints.
+  It does not establish identity from ID-token claims and no longer decodes or
+  persists unused ID tokens. This is not a general-purpose OpenID relying party.
+- Media-folder creation checks management permission before name processing and
+  returns a validation problem for empty names. Static files now support
+  permission-protected, confirmed deletion of one file, with convergent retries
+  and directory/symlink rejection.
+- Features, recipes, users, and roles now advertise their existing capabilities
+  in the authenticated manifest. Live verification checks every projected
+  operation's capability against that manifest.
+- Windows CI exposed transient conflicts between concurrent atomic file
+  replacements. Bounded Windows retries and delete-sharing readers preserve
+  complete files without deleting/truncating the destination first.
+
+## Measured verification
+
+| Area | Actual evidence |
+| --- | --- |
+| CLI tests | 91 passed on local macOS Arm64 |
+| Management/content/schema suite | 1,250 passed; includes new validation, draft read, static deletion, and path regressions |
+| Server build | CMS web host built with zero warnings/errors |
+| Live authorization | 120 projected operations; 364 checks across anonymous, no-management, and discovery-only identities plus existing-user probes; no unexpected statuses |
+| Live native CLI | 30 commands covering definitions, draft validation/readback, confirmation refusal, users/roles, static upload/inspect/delete, and cleanup |
+| Interactive terminal | Native upload produced a table; declining deletion preserved the file; accepting deletion removed it |
+| Human login | Real device authorization approved in the browser; a new CLI process reused shared-file credentials, refreshed/rotated silently, and logout revoked the refresh token |
+| Browser PKCE | Loopback callback/S256/state/issuer/denial/route/size unit tests passed; a fresh live browser-flow walkthrough was unavailable after the Mac locked |
+| Documentation | Full MkDocs build passed with `--strict`; login/readiness screenshots captured from the real local tenant; native `docs update`, search, and show succeeded against the published index |
+| Skills/plugin | Nine skills validated, portable plugin manifest validated; four fresh blind agent runs across two models recorded below |
+
+Native build results and executable checksums are emitted by
+`.scripts/remote-management/native-smoke.py`. The final local macOS Arm64
+measurement was 8,551,888 bytes and 6.1 ms median over five `version`
+processes (the first process took 184 ms). This is not a cold-machine or network-operation latency claim.
+The six-RID workflow verifies both architectures on Linux, Windows, and macOS;
+its first run caught the Windows replacement issue described above.
+The final [six-platform run](https://github.com/sebastienros/OrchardCore/actions/runs/34314239210)
+passed every job at `1f3119012`: 91 CLI tests per platform, warning-free
+NativeAOT publishing, native execution, and archive/checksum generation.
+PowerShell completion was exercised through `TabExpansion2`; Unix shell scripts
+were syntax-checked where the shell was installed.
+
+After the final tenant was stopped, native cached `content items --help` still
+returned the discovered commands without contacting it. All disposable host
+processes started for this review were stopped.
+
+## Capability coverage
+
+Every enabled group's route authorization and discovery metadata was probed.
+Additional behavioral coverage comes from the targeted C# suite and selected
+live workflows; route authorization alone is not a full functional test.
+
+| Capability groups | Additional coverage |
+| --- | --- |
+| Discovery/authentication | Bootstrap, authenticated manifest, compatibility, all three OAuth grant implementations; live device and client credentials, rotation/revocation |
+| Content definitions/items | Live custom part/TextField/type creation, schemas, validation, unpublished drafts, readback/rendering, lifecycle and no-mutation regression tests |
+| Templates/media/static files | Blind template validation/create/read/delete and CSS upload/public read; media authorization and invalid folder input; static deletion/path/idempotency tests |
+| Users/roles | Live least-privilege role creation, password environment input, user create/read/disable/delete; existing-resource denial probes |
+| Features/recipes/queries/workflows | Metadata and authorization probes plus C# tests; blind agents discovered query/activity/workflow schemas; live recipe/workflow execution was not part of their tasks |
+| Site/custom settings, home route, themes, tenants | Metadata/authorization and C# suite; no claim of a complete multi-tenant site-build or every deployment/provider combination |
+
+## Discovered command inventory
+
+This fixture enabled all 16 documented management resource groups. Counts are
+OpenAPI-projected operations, excluding static CLI commands and automatically
+synthesized `schema` commands. Feature-specific commands can differ on another
+tenant; inspect its help and schemas before constructing requests.
+
+| Capability | Projected operations | HTTP contract |
+| --- | ---: | --- |
+| `content-definitions` | 19 | [Reference](../../api/content-definitions/README.md) |
+| `content-items` | 14 | [Reference](../../api/content-items/README.md) |
+| `custom-settings` | 4 | [Reference](../../api/custom-settings/README.md) |
+| `features` | 4 | [Reference](../../api/features/README.md) |
+| `home-route` | 1 | [Reference](../../api/home-route/README.md) |
+| `media` | 18 | [Reference](../../api/media/README.md) |
+| `queries` | 8 | [Reference](../../api/queries/README.md) |
+| `recipes` | 3 | [Reference](../../api/recipes/README.md) |
+| `roles` | 5 | [Reference](../../api/roles/README.md) |
+| `settings` | 3 | [Reference](../../api/settings/README.md) |
+| `static-files` | 4 | [Reference](../../api/static-files/README.md) |
+| `templates` | 5 | [Reference](../../api/templates/README.md) |
+| `tenants` | 9 | [Reference](../../api/tenants/README.md) |
+| `themes` | 3 | [Reference](../../api/themes/README.md) |
+| `users` | 6 | [Reference](../../api/users/README.md) |
+| `workflows` | 14 | [Reference](../../api/workflows/README.md) |
+
+## Blind evaluations
+
+Two fresh agents (`gpt-5.6-sol` and `gpt-5.6-luna`) independently created a
+schema-driven Article model and one valid unpublished draft. Both verified
+zero published items. Feedback clarified workflow casing and draft semantics.
+
+A second fresh pair used only the packaged skills to validate/create/read/delete
+a template and upload/inspect CSS. Both found that static deletion was absent;
+the operation was subsequently added and verified by the live smoke test.
+The original cleanup limitation is retained in the evaluation record instead
+of retroactively marking those runs fully successful. These are four bounded
+usability observations, not a measured token-efficiency benchmark.
+
+The reproducible prompts, scope, failures, and outcomes are in
+[the evaluation record](https://github.com/sebastienros/OrchardCore/blob/sebros/remote-tenant-cli-plan/.scripts/remote-management/evaluations.md).
+
+## Boundaries and follow-up work
+
+- Existing upstream security PRs listed above remain integration dependencies;
+  this review does not assert that the entire platform is vulnerability-free.
+- Unix token files intentionally remain plaintext and shared by the local user.
+  OS account compromise and concurrent processes acting as that same account
+  are outside that storage boundary. Context/cache writes are complete-file,
+  last-writer-wins replacements, not multi-process merge transactions.
+- CLI request prevalidation covers projected top-level constraints. The server
+  and its validation handlers remain authoritative; this is not a complete
+  implementation of every JSON Schema keyword.
+- Native archives are test artifacts, not signed/notarized production releases.
+  External identity providers on a different origin are intentionally rejected.
+- The illustrated guide and blind tasks cover common paths; they do not certify
+  every provider, feature combination, shell integration, or full site build.
+  Fresh browser PKCE UI testing and broader adversarial/multi-tenant deployment
+  exercises remain useful before a production release.

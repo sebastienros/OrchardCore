@@ -66,7 +66,10 @@ would for other development credentials.
 The CLI does not read or migrate tokens previously written to macOS Keychain or
 Linux Secret Service, avoiding an operating-system credential prompt. Sign in
 once per context after upgrading; legacy entries can be removed with the
-platform's credential-management tools.
+platform's credential-management tools. Tokens from older name-only file
+credentials also require one new login because the current key binds the tenant
+URL, authority, and client ID. Those obsolete files are not migrated or removed
+by a logout of the new login.
 
 For a terminal without a browser, use device authorization:
 
@@ -95,7 +98,7 @@ export OC_CLIENT_SECRET='<secret>'
 oc content items list
 ```
 
-For `oc login` and `oc api invoke`, the secret can instead be named with `--client-secret-env` or read from standard input with `--client-secret-stdin`. Client-credential tokens and secrets are not persisted. Implicit and password grants are not supported.
+For `oc login` and `oc api invoke`, the secret can instead be named with `--client-secret-env` or read from standard input with `--client-secret-stdin`. Client-credential tokens and secrets are not persisted. Implicit and password grants are not supported. The CLI uses OAuth access/refresh tokens and does not use or persist ID-token claims as an identity assertion.
 
 Manage multiple tenants with named contexts:
 
