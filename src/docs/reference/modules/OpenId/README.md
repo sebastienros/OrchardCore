@@ -53,6 +53,30 @@ for login page** in the user login settings. This sets
 `LoginSettings.UseSiteTheme` to `true`. The admin theme remains the fallback
 when no site theme is selected.
 
+You can also select an installed site theme through the
+[theme management CLI/API](../../api/themes/README.md#set-the-current-theme):
+
+```bash
+oc themes list --admin false
+oc themes set-current TheAgencyTheme
+```
+
+Replace `TheAgencyTheme` with the theme ID returned by the list command. The
+selection operation also enables the theme and its base themes.
+
+The login-theme flag itself is not exposed by `oc settings update` or
+`PUT /api/settings`, which only accept
+[safe core site settings](../../api/settings/README.md#site-settings-representation).
+For automation, include the
+[login settings recipe configuration](../Users/README.md#login-settings)
+in an installed non-setup recipe, then run it through the
+[recipe management API](../../api/recipes/README.md#execute-a-recipe)
+or its `oc recipes execute <recipeId> --json '{}' --yes` CLI command, using an ID
+returned by `oc recipes list`.
+That API executes installed recipes; it does not accept a new recipe body.
+The `Settings` recipe step replaces the supplied `LoginSettings` section, so
+include the other login settings you intend to retain.
+
 A theme can provide `Views/Layout-Login.cshtml` to customize the surrounding
 layout. To replace individual MVC views, add the corresponding file to the
 active theme:
@@ -64,6 +88,11 @@ active theme:
 | `Views/OrchardCore.OpenId/Access/_ConsentScopes.cshtml` | Shared permission labels and scope list; model is the space-separated scope string |
 | `Views/OrchardCore.OpenId/Access/Logout.cshtml` | Sign-out confirmation |
 | `Views/OrchardCore.OpenId/Access/Error.cshtml` | Authorization error |
+
+The leading `_` in `_ConsentScopes.cshtml` follows the Razor partial-view
+naming convention: this reusable fragment is included by both consent views
+using `Html.PartialAsync`. The prefix is not required by Razor and does not
+make the view private; an override must use the same name as the inclusion.
 
 Start from the module's view when overriding a form. Preserve its model,
 protocol parameters, form action and method, antiforgery token, and submit
