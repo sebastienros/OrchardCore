@@ -56,7 +56,7 @@ report = {'rid':args.rid,'binaryBytes':exe.stat().st_size,'startupMilliseconds':
           'medianStartupMilliseconds':statistics.median(samples),'sha256':hashlib.sha256(exe.read_bytes()).hexdigest()}
 (directory / 'verification.json').write_text(json.dumps(report,indent=2)+'\n')
 package = directory.parent / ('oc-' + args.rid)
-files = [exe, directory/'verification.json', *directory.glob('completion.*')]
+files = [exe, directory/'verification.json', directory/'QRCoder.LICENSE.txt', *directory.glob('completion.*')]
 if args.rid.startswith('win-'):
     archive = package.with_suffix('.zip')
     with zipfile.ZipFile(archive,'w',zipfile.ZIP_DEFLATED) as bundle:

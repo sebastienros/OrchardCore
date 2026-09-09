@@ -92,7 +92,7 @@ internal sealed class OAuthClient
         return CliUtilities.CreateStoredToken(tokenResponse, discovery);
     }
 
-    public async Task<StoredToken> LoginWithDeviceCodeAsync(TenantContextRecord context, OidcDiscoveryDocument discovery, CancellationToken cancellationToken)
+    public async Task<StoredToken> LoginWithDeviceCodeAsync(TenantContextRecord context, OidcDiscoveryDocument discovery, CancellationToken cancellationToken, int qrCodeWidth = 0)
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(discovery);
@@ -119,7 +119,13 @@ internal sealed class OAuthClient
         deviceResponse.EnsureSuccessStatusCode();
 
         var device = CliUtilities.ParseDeviceAuthorizationResponse(deviceContent);
-        await _stderr.WriteLineAsync($"Open {device.VerificationUriComplete ?? device.VerificationUri} and enter code {device.UserCode}.");
+        var verificationUri = CliUriPolicy.RequireSameOrigin(new Uri(discovery.Issuer), device.VerificationUriComplete ?? device.VerificationUri);
+        await _stderr.WriteLineAsync($"Open {verificationUri.AbsoluteUri} and enter code {device.UserCode}.");
+        if (TerminalQrCode.Render(verificationUri.AbsoluteUri, qrCodeWidth) is { } qrCode)
+        {
+            await _stderr.WriteLineAsync("Scan to sign in on another device, then verify the code:");
+            await _stderr.WriteAsync(qrCode);
+        }
 
         var expiresAt = DateTimeOffset.UtcNow.AddSeconds(device.ExpiresIn);
         var interval = TimeSpan.FromSeconds(Math.Max(1, device.Interval));

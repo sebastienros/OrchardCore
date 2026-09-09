@@ -206,6 +206,27 @@ The documented Liquid example rendered all five requested scope identifiers
 on both consent pages while using the admin theme. Browser approval with the
 override and device approval with the restored default both completed login.
 
+## Device login QR follow-up
+
+Device login now supports `--qr auto|always|never`. QRCoder generates the
+verification URL locally; terminal rendering preserves the quiet zone and
+uses two module rows per text row. The URL and user code remain available
+when QR rendering is disabled or cannot fit. Redirected/dumb/non-UTF-8
+terminals and `NO_COLOR` disable automatic rendering. The selected verification
+URL must satisfy the CLI's trusted-origin and transport policy before either
+text or QR instructions are displayed.
+
+All 105 CLI tests passed locally, including independent ZXing decoding of the
+actual rendered terminal cells, complete/base verification URL selection,
+disabled QR output, oversized/narrow-terminal fallback, and untrusted URL
+rejection. Native macOS Arm64 publishing and packaging passed with the encoder
+license included. The executable grew from 8,551,888 to 8,668,064 bytes.
+Live checks covered automatic QR in a compatible terminal, suppression in a
+dumb/NO_COLOR terminal, forced QR with redirected output, and explicit disablement.
+QR-enabled device login completed and passed token reuse, refresh rotation,
+file permission, and logout checks. Phone-camera scanning was not tested;
+the automated decoder checks validate the encoded destination and module layout.
+
 ## Boundaries and follow-up work
 
 - Existing upstream security PRs listed above remain integration dependencies;

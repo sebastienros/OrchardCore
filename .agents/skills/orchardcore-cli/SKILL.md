@@ -35,7 +35,12 @@ oc api refresh
 oc --help
 ```
 
-Use `oc login --grant device` on a headless terminal. `oc login --no-browser`
+Use `oc login --grant device` on a headless terminal. It prints a URL/code and
+automatically renders a QR code in compatible terminals. Use `--qr never` for
+text-only instructions or `--qr always` to force ANSI/Unicode QR output.
+The human can scan the QR code on a phone that can reach the tenant; keep the
+CLI waiting while they verify the matching code and approve the request.
+`oc login --no-browser`
 prints the browser-flow URL for opening on the same computer. Browser login uses
 authorization code with PKCE. On Windows, human tokens are encrypted by Windows
 Credential Manager. On macOS, Linux, and other Unix-like systems, they are

@@ -238,6 +238,7 @@ internal sealed class CliApplication
         var contextArgument = new Argument<string?>("context") { Description = "Context name (defaults to the current context)" };
         contextArgument.DefaultValueFactory = _ => null;
         var noBrowserOption = new Option<bool>("--no-browser") { Description = "Print the browser login URL instead of opening it (browser must run on this computer)" };
+        var qrOption = new Option<QrCodeMode>("--qr") { Description = "Device login QR code: auto, always, never", DefaultValueFactory = _ => QrCodeMode.Auto };
         var grantOption = new Option<string?>("--grant") { Description = "Grant flow: browser, device, client-credentials", DefaultValueFactory = _ => "browser" };
         var clientIdOption = new Option<string?>("--client-id") { Description = "Client identifier for client credentials" };
         var clientSecretEnvOption = new Option<string?>("--client-secret-env") { Description = "Environment variable containing a client secret" };
@@ -246,6 +247,7 @@ internal sealed class CliApplication
         command.Arguments.Add(contextArgument);
         command.Options.Add(grantOption);
         command.Options.Add(noBrowserOption);
+        command.Options.Add(qrOption);
         command.Options.Add(clientIdOption);
         command.Options.Add(clientSecretEnvOption);
         command.Options.Add(clientSecretStdinOption);
@@ -286,7 +288,7 @@ internal sealed class CliApplication
             var tokenSet = grantType switch
             {
                 "browser" => await _oauthClient.LoginWithAuthorizationCodeAsync(context, discovery, cancellationToken, openBrowser: !parseResult.GetValue(noBrowserOption)),
-                "device" => await _oauthClient.LoginWithDeviceCodeAsync(context, discovery, cancellationToken),
+                "device" => await _oauthClient.LoginWithDeviceCodeAsync(context, discovery, cancellationToken, TerminalQrCode.GetMaxWidth(parseResult.GetValue(qrOption))),
                 _ => throw new CliException($"Unsupported grant type '{grantType}'.")
             };
 

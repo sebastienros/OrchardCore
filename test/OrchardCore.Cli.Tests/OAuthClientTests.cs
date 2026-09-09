@@ -9,6 +9,73 @@ namespace OrchardCore.Cli.Tests;
 public class OAuthClientTests
 {
     [Theory]
+    [InlineData(false, 0)]
+    [InlineData(false, 79)]
+    [InlineData(true, 0)]
+    [InlineData(true, 79)]
+    public async Task DeviceLogin_QrUsesVerificationUrl_AndKeepsText(bool completeUrl, int qrWidth)
+    {
+        const string baseUrl = "https://example.test/tenant/connect/verify";
+        var expectedUrl = completeUrl ? baseUrl + "?user_code=1234-5678" : baseUrl;
+        var requests = 0;
+        using var http = new HttpClient(new TestHandler(_ =>
+        {
+            requests++;
+            var content = requests == 1
+                ? "{\"device_code\":\"private-device-code\",\"user_code\":\"1234-5678\",\"verification_uri\":\"" + baseUrl +
+                  "\",\"interval\":1,\"expires_in\":60" + (completeUrl ? ",\"verification_uri_complete\":\"" + expectedUrl + "\"" : "") + "}"
+                : "{\"access_token\":\"test-access\",\"expires_in\":3600}";
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(content) });
+        }));
+        using var output = new StringWriter();
+        var oauth = new OAuthClient(http, output);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+
+        var token = await oauth.LoginWithDeviceCodeAsync(new TenantContextRecord { ClientId = "orchardcore-cli" },
+            new OidcDiscoveryDocument
+            {
+                Issuer = "https://example.test/tenant/",
+                DeviceAuthorizationEndpoint = "https://example.test/tenant/connect/device",
+                TokenEndpoint = "https://example.test/tenant/connect/token",
+            }, timeout.Token, qrWidth);
+
+        Assert.Equal("test-access", token.AccessToken);
+        var text = output.ToString();
+        Assert.Contains($"Open {expectedUrl} and enter code 1234-5678.", text);
+        Assert.DoesNotContain("private-device-code", text);
+        if (qrWidth == 0)
+        {
+            Assert.DoesNotContain('\u001b', text);
+        }
+        else
+        {
+            Assert.Equal(expectedUrl, TerminalQrCodeTests.Decode(text[text.IndexOf('\u001b')..]));
+        }
+    }
+
+    [Theory]
+    [InlineData("https://foreign.test/connect/verify")]
+    [InlineData("http://example.test/connect/verify")]
+    public async Task DeviceLogin_UntrustedVerificationUrl_IsNotDisplayed(string verificationUrl)
+    {
+        using var http = new HttpClient(new TestHandler(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("{\"device_code\":\"secret\",\"user_code\":\"1234\",\"verification_uri\":\"" + verificationUrl + "\"}"),
+        })));
+        using var output = new StringWriter();
+        var oauth = new OAuthClient(http, output);
+
+        await Assert.ThrowsAsync<CliException>(() => oauth.LoginWithDeviceCodeAsync(
+            new TenantContextRecord { ClientId = "orchardcore-cli" },
+            new OidcDiscoveryDocument
+            {
+                Issuer = "https://example.test/",
+                DeviceAuthorizationEndpoint = "https://example.test/connect/device",
+            }, CancellationToken.None, 79));
+        Assert.Empty(output.ToString());
+    }
+
+    [Theory]
     [InlineData("success")]
     [InlineData("state")]
     [InlineData("issuer")]

@@ -20,7 +20,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="QRCoder" GeneratePathProperty="true" />
     <PackageReference Include="System.CommandLine" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="$(PkgQRCoder)/LICENSE.txt" Link="QRCoder.LICENSE.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

@@ -106,6 +106,27 @@ oc login --grant device
 ```
 
 The CLI prints a verification URL and a user code without opening a browser.
+In a compatible terminal it also displays a QR code: scan it with your phone's
+camera to open the same verification URL. The QR code is generated locally.
+When the server supplies a URL containing the user code, that complete URL is
+encoded; otherwise you enter the displayed code after scanning.
+
+Control the terminal QR output with:
+
+```bash
+oc login --grant device --qr auto    # Default: show in a compatible terminal
+oc login --grant device --qr always  # Force ANSI/Unicode QR output
+oc login --grant device --qr never   # Keep just the URL and user code
+```
+
+Automatic mode skips QR output when standard error is redirected, the output
+encoding is not UTF-8, `TERM=dumb`, or `NO_COLOR` is set to a nonempty value.
+QR codes that do not fit the terminal width, or whose URL is too long, are
+omitted in every mode. The URL and code remain available, and QR output goes
+to standard error so it does not mix with JSON results on standard output.
+QR output applies only to device login, since the browser login flow requires
+its callback on the same computer.
+
 For example, against a tenant reachable at `https://cms.example.com/team/`:
 
 ```text
@@ -113,7 +134,7 @@ Open https://cms.example.com/team/connect/verify?user_code=6738-0585-5256 and en
 ```
 
 1. Keep the CLI command running.
-2. Open the printed URL on your phone or another computer. Both the CLI and
+2. Scan the QR code or open the printed URL on your phone or another computer. Both the CLI and
    that browser must be able to reach the tenant; a private tenant may require
    VPN access. A `localhost` or `127.0.0.1` tenant URL points to the device
    opening it and cannot be used from your phone to reach the CLI computer.
