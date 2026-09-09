@@ -227,6 +227,11 @@ QR-enabled device login completed and passed token reuse, refresh rotation,
 file permission, and logout checks. Phone-camera scanning was not tested;
 the automated decoder checks validate the encoded destination and module layout.
 
+The [six-platform CI run](https://github.com/sebastienros/OrchardCore/actions/runs/34373533845)
+at `8aebecaf5` passed 105 tests on every platform, native publishing with warnings
+treated as errors, and archive/license/completion smoke checks for Windows,
+Linux, and macOS on x64 and Arm64.
+
 ## Boundaries and follow-up work
 
 - Existing upstream security PRs listed above remain integration dependencies;
