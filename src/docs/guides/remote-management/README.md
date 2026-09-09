@@ -35,6 +35,47 @@ are retained for 30 days and are unsigned development artifacts. For PR runs,
 the built commit is GitHub's test merge commit; push runs build the pushed
 commit. A newer update cancels any unfinished build for the same source branch.
 
+### Install as a .NET tool
+
+If you have the .NET 10 SDK or later, you can install and update `oc` through
+`dotnet tool`. It installs a native executable for your platform; running
+`oc` does not require a separately installed .NET runtime.
+
+1. From the same workflow run, download `oc-tool-<rid>` for your computer,
+   such as **oc-tool-osx-arm64** for an Apple Silicon Mac.
+2. Extract the artifact into a directory such as `oc-packages`. Keep the two
+   `.nupkg` files together: the installer package and your platform's native
+   implementation. Open `INSTALL.md` for a command with the exact build version.
+3. Install from that directory, replacing `<version>` with the version in
+   `INSTALL.md` or the job summary:
+
+   ```bash
+   dotnet tool install --global OrchardCore.Cli --add-source ./oc-packages --version <version>
+   oc --version
+   oc
+   ```
+
+   If `oc` is not found, add the tool directory printed by the installer to
+   your `PATH` and open a new terminal.
+
+To update, download the newer artifact and run:
+
+```bash
+dotnet tool update --global OrchardCore.Cli --add-source ./oc-packages --version <new-version>
+```
+
+For a project-local installation, run `dotnet new tool-manifest` if the project
+does not already have a tool manifest, then use `--local` instead of `--global`.
+Run it with `dotnet tool run oc -- <arguments>`. You can remove a global
+installation with `dotnet tool uninstall --global OrchardCore.Cli`.
+
+The development packages are available as workflow artifacts, not on
+NuGet.org. `--add-source` adds your extracted packages to the configured
+NuGet sources. Installation may also download an SDK launcher from NuGet.org.
+The SDK selects the matching native package automatically. Both packages must
+come from the same build. Each CI run has a distinct prerelease version so
+an update selects the new executable.
+
 ### Build from source
 
 From a checkout containing `src/OrchardCore.Cli`, with the .NET SDK selected by
@@ -52,6 +93,22 @@ Add the output directory to your `PATH`; the examples below use `oc`.
 
 For development without native compilation, use
 `dotnet run --project src/OrchardCore.Cli -- <command>`.
+
+To create installable NativeAOT tool packages on your own computer:
+
+```bash
+dotnet pack src/OrchardCore.Cli -c Release -p:PackAsTool=true -o artifacts/tool
+dotnet pack src/OrchardCore.Cli -c Release -p:PackAsTool=true -r osx-arm64 -o artifacts/tool
+dotnet tool install --tool-path ./artifacts/bin OrchardCore.Cli --add-source ./artifacts/tool --version 1.0.0
+./artifacts/bin/oc --version
+```
+
+Replace the runtime identifier for your platform. The first pack command
+creates the installer package; the second builds the native implementation
+on the matching operating system. Use the same `-p:Version=<version>` on both
+pack commands when assigning a different package version. See the
+[.NET NativeAOT tool packaging documentation](https://learn.microsoft.com/en-us/dotnet/core/tools/rid-specific-tools)
+for details.
 
 ## 2. Prepare the tenant
 

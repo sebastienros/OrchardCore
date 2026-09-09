@@ -9,7 +9,17 @@
     <Nullable>enable</Nullable>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
-    <IsPackable>false</IsPackable>
+    <!-- Tool packages are built per platform by remote_cli.yml. Keep ordinary
+         solution packing from publishing an incomplete pointer package. -->
+    <IsPackable Condition="'$(PackAsTool)' != 'true'">false</IsPackable>
+    <IsPackable Condition="'$(PackAsTool)' == 'true'">true</IsPackable>
+    <PackageId>OrchardCore.Cli</PackageId>
+    <Authors>Orchard Core Community and Contributors</Authors>
+    <ToolCommandName>oc</ToolCommandName>
+    <ToolPackageRuntimeIdentifiers>linux-x64;linux-arm64;win-x64;win-arm64;osx-arm64;osx-x64</ToolPackageRuntimeIdentifiers>
+    <Description>Native Orchard Core command-line tool for remote tenant management.</Description>
+    <PackageLicenseExpression>BSD-3-Clause</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <PublishAot>true</PublishAot>
     <PublishTrimmed>true</PublishTrimmed>
     <TrimMode>full</TrimMode>
@@ -25,6 +35,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="README.md" Pack="true" PackagePath="/" />
+    <None Include="..\..\LICENSE" Link="LICENSE.txt" Pack="true" PackagePath="/" CopyToPublishDirectory="PreserveNewest" />
     <None Include="$(PkgQRCoder)/LICENSE.txt" Link="QRCoder.LICENSE.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 

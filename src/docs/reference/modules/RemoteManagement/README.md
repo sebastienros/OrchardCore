@@ -220,6 +220,11 @@ Every static and discovered command supports `--help`. OpenAPI metadata is cache
 
 `oc --version` prints the CLI version number. Use `oc doctor` to inspect the CLI version, platform, local storage, and caches, or `oc doctor --output json` for structured diagnostics. Both commands work offline; `doctor` does not test server connectivity.
 
+The CLI is distributed as standalone native archives and NativeAOT .NET tool
+packages for Linux, Windows, and macOS on x64 and Arm64. See
+[installation instructions](../../../guides/remote-management/README.md#install-as-a-net-tool)
+for installing from the fork's workflow artifacts with the .NET 10 SDK or later.
+
 Set `OC_CONFIG_HOME` to an absolute directory to isolate contexts, caches, and Unix file credentials for testing. The default installation keeps the shared token-file location described above. `oc login --no-browser` prints the PKCE login URL instead of launching a browser; open it on the same computer as the CLI.
 
 Generate shell completion with `oc completion --shell bash|zsh|fish|pwsh`. The generated script uses the CLI's cached command tree; no separate suggestion service is required.

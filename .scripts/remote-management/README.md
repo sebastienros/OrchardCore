@@ -90,10 +90,41 @@ a build, including documentation-only commits. PR creation and updates in the
 fork also trigger builds; a newer event cancels an unfinished run for the same
 source branch. Each successful platform job uploads an artifact retained for
 30 days and adds a direct download link and built commit SHA to its summary.
+It also uploads `oc-tool-<rid>` with the installer and native implementation
+NuGet packages, an exact installation command, and a verification record.
+Both standalone and tool binaries use the run's `1.0.0-ci.<run>.<attempt>`
+version. The workflow does not push packages to a NuGet feed.
 Download instructions and platform names are in the
 [getting-started guide](../../src/docs/guides/remote-management/README.md#1-download-or-build-the-cli).
 Runner labels follow the
 [GitHub hosted-runner reference](https://docs.github.com/en/actions/reference/runners/github-hosted-runners).
+
+### NativeAOT .NET tool packages
+
+Tool packing is opt-in with `-p:PackAsTool=true`. Ordinary solution packing
+excludes the CLI because its installer package must not be published before
+all six native implementation packages exist. The .NET 10 SDK uses
+`ToolPackageRuntimeIdentifiers` to create the installer package; packing for
+one RID creates only that platform's NativeAOT implementation.
+
+```bash
+dotnet pack src/OrchardCore.Cli -c Release -p:PackAsTool=true -p:Version=1.0.0-ci.1.1 -o artifacts/tool
+dotnet pack src/OrchardCore.Cli -c Release -p:PackAsTool=true -p:Version=1.0.0-ci.1.1 -r osx-arm64 -o artifacts/tool
+python3 .scripts/remote-management/tool-smoke.py artifacts/tool osx-arm64 1.0.0-ci.1.1
+```
+
+Run the RID-specific command on the matching OS. Keep the package version
+identical across all builds. If publishing to a feed later, publish all six
+implementation packages first and the installer package last.
+
+`tool-smoke.py` validates the package types, platform mappings, native entry
+point, licenses, and absence of managed runtime files. It installs from a
+local package source into a disposable tool directory (with NuGet.org available
+for SDK launcher packages), runs help,
+version, and diagnostics with `dotnet` absent from `PATH`, then uninstalls.
+The check uses isolated CLI and NuGet configuration and does not alter the
+developer's global tool installation. Every platform job runs this check
+before uploading the packages.
 
 ## Agent plugin
 
