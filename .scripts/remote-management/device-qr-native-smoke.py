@@ -15,6 +15,9 @@ import zlib
 
 binary = str(Path(sys.argv[1]).resolve())
 challenge_read = threading.Event()
+token_requested = threading.Event()
+requests = []
+approved = False
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -28,11 +31,24 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(json.dumps(value).encode())
 
     def do_GET(self):
-        assert self.path == '/blog/.well-known/openid-configuration'
-        self.respond(200, {'issuer': tenant, 'token_endpoint': tenant + 'connect/token',
-                           'device_authorization_endpoint': tenant + 'connect/device'})
+        requests.append(self.path)
+        if self.path == '/blog/.well-known/openid-configuration':
+            self.respond(200, {'issuer': tenant, 'token_endpoint': tenant + 'connect/token',
+                               'device_authorization_endpoint': tenant + 'connect/device'})
+        elif self.path == '/blog/api/management/manifest':
+            assert self.headers.get('Authorization') == 'Bearer private-token'
+            self.respond(200, {'protocolMajorVersion': 1, 'protocolMinorVersion': 0,
+                               'managementManifestUrl': tenant + 'api/management/manifest',
+                               'openApiUrl': tenant + 'openapi.json',
+                               'authentication': {'authority': tenant, 'clientId': 'orchardcore-cli',
+                                                  'grantTypes': ['urn:ietf:params:oauth:grant-type:device_code'], 'scopes': []}})
+        else:
+            assert self.path == '/blog/openapi.json'
+            assert self.headers.get('Authorization') == 'Bearer private-token'
+            self.respond(200, {'openapi': '3.0.0', 'paths': {}})
 
     def do_POST(self):
+        requests.append(self.path)
         self.rfile.read(int(self.headers.get('Content-Length', 0)))
         if self.path == '/blog/connect/device':
             self.respond(200, {'device_code': 'private-device-code', 'user_code': '1234-5678',
@@ -41,8 +57,12 @@ class Handler(BaseHTTPRequestHandler):
                                'expires_in': 60, 'interval': 1})
         else:
             assert self.path == '/blog/connect/token'
+            token_requested.set()
             challenge_read.wait(10)
-            self.respond(400, {'error': 'access_denied'})
+            if approved:
+                self.respond(200, {'access_token': 'private-token', 'expires_in': 3600})
+            else:
+                self.respond(400, {'error': 'access_denied'})
 
 
 server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
@@ -100,7 +120,78 @@ try:
                 if process.poll() is None:
                     process.kill()
                     process.wait()
-        print('Native device QR smoke passed: opt-in defaults, flushed PNG JSON, and pending authorization is not success.')
+        def invoke(*args, expected=0):
+            result = subprocess.run([binary, 'login', 'device', *args, '--output', 'json'], env=env,
+                                    capture_output=True, text=True, timeout=15)
+            assert result.returncode == expected, (args, result.returncode, result.stderr)
+            assert 'private-device-code' not in result.stdout + result.stderr
+            assert 'private-token' not in result.stdout + result.stderr
+            return result
+
+        before = len(requests)
+        session = json.loads(invoke('start').stdout)
+        assert requests[before:] == ['/blog/.well-known/openid-configuration', '/blog/connect/device']
+        assert 'qrCode' not in session
+        session_id = session['sessionId']
+        state_file = root / 'device-logins' / (session_id + '.json')
+        assert state_file.exists()
+        if os.name != 'nt':
+            assert state_file.stat().st_mode & 0o777 == 0o600
+            assert state_file.parent.stat().st_mode & 0o777 == 0o700
+        before = len(requests)
+        shown = json.loads(invoke('show', session_id, '--qr', 'always').stdout)
+        assert shown['verificationUri'] == session['verificationUri']
+        assert shown['qrCode']['mediaType'] == 'image/png'
+        assert len(requests) == before  # Redisplay needs no network.
+        approved = True
+        challenge_read.clear()
+        token_requested.clear()
+        waiter = subprocess.Popen([binary, 'login', 'device', 'wait', session_id, '--output', 'json'],
+                                  env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        try:
+            assert token_requested.wait(8)
+            before = len(requests)
+            assert 'already waiting' in invoke('wait', session_id, expected=1).stderr
+            assert json.loads(invoke('show', session_id).stdout)['sessionId'] == session_id
+            assert len(requests) == before
+            # Changing the current context while waiting must not retarget login or
+            # have the concurrent configuration update overwritten on completion.
+            config = json.loads((root / 'contexts.json').read_text())
+            config['contexts'].append({'name': 'other', 'tenantUrl': 'https://other.example/'})
+            config['currentContext'] = 'other'
+            (root / 'contexts.json').write_text(json.dumps(config))
+            challenge_read.set()
+            stdout, stderr = waiter.communicate(timeout=15)
+            assert waiter.returncode == 0, stderr
+            assert json.loads(stdout)['context'] == 'test'
+            assert json.loads((root / 'contexts.json').read_text())['currentContext'] == 'other'
+            assert not state_file.exists()
+        finally:
+            challenge_read.set()
+            if waiter.poll() is None:
+                waiter.kill()
+                waiter.wait()
+        before = len(requests)
+        assert 'not found' in invoke('wait', session_id, expected=1).stderr
+        assert len(requests) == before
+        approved = False
+        denied = json.loads(invoke('start', '--context', 'test', '--qr', 'always').stdout)
+        assert denied['qrCode']['mediaType'] == 'image/png'
+        assert 'denied' in invoke('wait', denied['sessionId'], expected=1).stderr
+        assert not (root / 'device-logins' / (denied['sessionId'] + '.json')).exists()
+        expired = json.loads(invoke('start', '--context', 'test').stdout)
+        expired_path = root / 'device-logins' / (expired['sessionId'] + '.json')
+        state = json.loads(expired_path.read_text())
+        state['expiresAt'] = '2000-01-01T00:00:00Z'
+        expired_path.write_text(json.dumps(state))
+        before = len(requests)
+        assert 'expired' in invoke('wait', expired['sessionId'], expected=1).stderr
+        assert not expired_path.exists() and len(requests) == before
+        # Windows stores the successful login outside this temporary directory.
+        logout = subprocess.run([binary, 'logout', 'test', '--output', 'none'], env=env,
+                                capture_output=True, text=True, timeout=15)
+        assert logout.returncode == 0, logout.stderr
+        print('Native device login smoke passed: opt-in PNG, start/show/wait, offline redisplay, concurrent wait exclusion, context binding, success, denial, and expiry.')
 finally:
     challenge_read.set()
     server.shutdown()

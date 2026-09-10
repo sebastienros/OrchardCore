@@ -3,7 +3,6 @@ using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json.Nodes;
 using System.Web;
 
 namespace OrchardCore.Cli;
@@ -95,9 +94,26 @@ internal sealed class OAuthClient
 
     public async Task<StoredToken> LoginWithDeviceCodeAsync(TenantContextRecord context, OidcDiscoveryDocument discovery, CancellationToken cancellationToken, int qrCodeWidth = 0, TextWriter? qrCodeJsonWriter = null)
     {
+        var session = await StartDeviceAuthorizationAsync(context, discovery, cancellationToken);
+        await _stderr.WriteLineAsync($"Open {session.VerificationUri} and enter code {session.UserCode}.");
+        if (qrCodeJsonWriter is not null)
+        {
+            await qrCodeJsonWriter.WriteLineAsync(session.ToPublicJson(includeQr: true, includeSessionId: false).ToJsonString());
+            await qrCodeJsonWriter.FlushAsync(cancellationToken);
+        }
+        else if (TerminalQrCode.Render(session.VerificationUri, qrCodeWidth) is { } qrCode)
+        {
+            await _stderr.WriteLineAsync("Scan to sign in on another device, then verify the code:");
+            await _stderr.WriteAsync(qrCode);
+        }
+
+        return await WaitForDeviceAuthorizationAsync(session, cancellationToken);
+    }
+
+    public async Task<DeviceLoginSession> StartDeviceAuthorizationAsync(TenantContextRecord context, OidcDiscoveryDocument discovery, CancellationToken cancellationToken)
+    {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(discovery);
-
         if (string.IsNullOrWhiteSpace(discovery.DeviceAuthorizationEndpoint))
         {
             throw new CliException("The identity provider does not expose a device authorization endpoint.");
@@ -105,7 +121,6 @@ internal sealed class OAuthClient
 
         var clientId = context.ClientId ?? throw new CliException("The selected context does not declare a CLI client identifier.");
         var scope = string.Join(' ', context.Scopes.Count > 0 ? context.Scopes : ["openid", "profile", "offline_access"]);
-
         using var deviceRequest = new HttpRequestMessage(HttpMethod.Post, discovery.DeviceAuthorizationEndpoint)
         {
             Content = new FormUrlEncodedContent(new Dictionary<string, string>
@@ -114,84 +129,101 @@ internal sealed class OAuthClient
                 ["scope"] = scope,
             }),
         };
-
         using var deviceResponse = await _httpClient.SendAsync(deviceRequest, cancellationToken);
         var deviceContent = await deviceResponse.Content.ReadAsStringAsync(cancellationToken);
         deviceResponse.EnsureSuccessStatusCode();
 
         var device = CliUtilities.ParseDeviceAuthorizationResponse(deviceContent);
         var verificationUri = CliUriPolicy.RequireSameOrigin(new Uri(discovery.Issuer), device.VerificationUriComplete ?? device.VerificationUri);
-        var expiresAt = DateTimeOffset.UtcNow.AddSeconds(device.ExpiresIn);
-        await _stderr.WriteLineAsync($"Open {verificationUri.AbsoluteUri} and enter code {device.UserCode}.");
-        if (qrCodeJsonWriter is not null)
+        var now = DateTimeOffset.UtcNow;
+        var interval = Math.Max(1, device.Interval);
+        return new DeviceLoginSession
         {
-            var png = TerminalQrCode.RenderPngBase64(verificationUri.AbsoluteUri);
-            var pending = new JsonObject
+            ContextName = context.Name,
+            TenantUrl = context.TenantUrl,
+            Issuer = discovery.Issuer,
+            ClientId = clientId,
+            Scopes = [.. context.Scopes],
+            TokenEndpoint = discovery.TokenEndpoint,
+            DeviceCode = device.DeviceCode,
+            UserCode = device.UserCode,
+            VerificationUri = verificationUri.AbsoluteUri,
+            ExpiresAt = now.AddSeconds(device.ExpiresIn),
+            IntervalSeconds = interval,
+            NextPollAt = now.AddSeconds(interval),
+        };
+    }
+
+    public async Task<StoredToken> WaitForDeviceAuthorizationAsync(DeviceLoginSession session, CancellationToken cancellationToken,
+        Func<CancellationToken, Task>? savePollingState = null)
+    {
+        CliUriPolicy.RequireSameOrigin(new Uri(session.Issuer), session.TokenEndpoint);
+        while (DateTimeOffset.UtcNow < session.ExpiresAt)
+        {
+            var next = session.NextPollAt < session.ExpiresAt ? session.NextPollAt : session.ExpiresAt;
+            var delay = next - DateTimeOffset.UtcNow;
+            if (delay > TimeSpan.Zero)
             {
-                ["status"] = "authorization_pending",
-                ["context"] = context.Name,
-                ["verificationUri"] = verificationUri.AbsoluteUri,
-                ["userCode"] = device.UserCode,
-                ["expiresAt"] = expiresAt,
-                ["qrCode"] = png is null ? null : new JsonObject
-                {
-                    ["mediaType"] = "image/png",
-                    ["base64"] = png,
-                },
-            };
-            // Consumers need the image before authentication, not in its final result.
-            // Never include the private device code or tokens in this public challenge.
-            await qrCodeJsonWriter.WriteLineAsync(pending.ToJsonString());
-            await qrCodeJsonWriter.FlushAsync(cancellationToken);
-        }
-        else if (TerminalQrCode.Render(verificationUri.AbsoluteUri, qrCodeWidth) is { } qrCode)
-        {
-            await _stderr.WriteLineAsync("Scan to sign in on another device, then verify the code:");
-            await _stderr.WriteAsync(qrCode);
-        }
+                await Task.Delay(delay, cancellationToken);
+            }
+            cancellationToken.ThrowIfCancellationRequested();
+            if (DateTimeOffset.UtcNow >= session.ExpiresAt)
+            {
+                break;
+            }
 
-        var interval = TimeSpan.FromSeconds(Math.Max(1, device.Interval));
-
-        while (DateTimeOffset.UtcNow < expiresAt)
-        {
-            await Task.Delay(interval, cancellationToken);
-
-            using var tokenRequest = new HttpRequestMessage(HttpMethod.Post, discovery.TokenEndpoint)
+            // Persist before the request, so a restart cannot poll faster than allowed.
+            session.NextPollAt = DateTimeOffset.UtcNow.AddSeconds(session.IntervalSeconds);
+            if (savePollingState is not null)
+            {
+                await savePollingState(cancellationToken);
+            }
+            using var tokenRequest = new HttpRequestMessage(HttpMethod.Post, session.TokenEndpoint)
             {
                 Content = new FormUrlEncodedContent(new Dictionary<string, string>
                 {
                     ["grant_type"] = "urn:ietf:params:oauth:grant-type:device_code",
-                    ["client_id"] = clientId,
-                    ["device_code"] = device.DeviceCode,
+                    ["client_id"] = session.ClientId,
+                    ["device_code"] = session.DeviceCode,
                 }),
             };
-
             using var tokenResponse = await _httpClient.SendAsync(tokenRequest, cancellationToken);
             var tokenContent = await tokenResponse.Content.ReadAsStringAsync(cancellationToken);
+            if ((int)tokenResponse.StatusCode >= 500 || tokenResponse.StatusCode == HttpStatusCode.TooManyRequests)
+            {
+                tokenResponse.EnsureSuccessStatusCode();
+            }
             var parsed = CliUtilities.ParseTokenResponse(tokenContent);
-
             if (tokenResponse.IsSuccessStatusCode)
             {
-                return CliUtilities.CreateStoredToken(parsed, discovery);
+                return CliUtilities.CreateStoredToken(parsed, new OidcDiscoveryDocument { Issuer = session.Issuer });
             }
 
-            switch (parsed.Error)
+            if (parsed.Error == "authorization_pending")
             {
-                case "authorization_pending":
-                    continue;
-                case "slow_down":
-                    interval += TimeSpan.FromSeconds(5);
-                    continue;
-                case "access_denied":
-                    throw new CliException("The device authorization request was denied.");
-                case "expired_token":
-                    throw new CliException("The device authorization code expired before sign-in completed.");
-                default:
-                    throw new CliException(parsed.ErrorDescription ?? parsed.Error ?? "The device authorization flow failed.");
+                continue;
             }
+            if (parsed.Error == "slow_down")
+            {
+                session.IntervalSeconds = (int)Math.Min((long)session.IntervalSeconds + 5, int.MaxValue);
+                session.NextPollAt = DateTimeOffset.UtcNow.AddSeconds(session.IntervalSeconds);
+                if (savePollingState is not null)
+                {
+                    // Keep the increased interval even if cancellation arrived
+                    // with the response; resuming must still honor slow_down.
+                    await savePollingState(CancellationToken.None);
+                }
+                continue;
+            }
+            throw new DeviceAuthorizationException(parsed.Error switch
+            {
+                "access_denied" => "The device authorization request was denied.",
+                "expired_token" => "The device authorization code expired before sign-in completed.",
+                _ => parsed.ErrorDescription ?? parsed.Error ?? "The device authorization flow failed.",
+            });
         }
 
-        throw new CliException("The device authorization code expired before sign-in completed.");
+        throw new DeviceAuthorizationException("The device authorization code expired before sign-in completed. Run 'oc login device start' again.");
     }
 
     public async Task<StoredToken> RefreshAsync(TenantContextRecord context, OidcDiscoveryDocument discovery, StoredToken storedToken, CancellationToken cancellationToken)

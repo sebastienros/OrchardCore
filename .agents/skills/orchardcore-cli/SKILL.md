@@ -43,7 +43,27 @@ oc api refresh
 oc --help
 ```
 
-Use `oc login --grant device` on a headless terminal. It prints a URL/code;
+For agent-driven device login, prefer separate commands so each process returns
+one JSON result and the user can approve between tool calls:
+
+```bash
+oc --context production login device start --qr always --output json
+oc login device show <session-id> --qr always --output json
+oc login device wait <session-id> --output json
+```
+
+`start` returns immediately with `sessionId`, `verificationUri`, `userCode`,
+`expiresAt`, and optional `qrCode: { mediaType: "image/png", base64: "..." }`.
+Present the URL/code or decoded image to the human. The `authorization_pending`
+status and exit code 0 mean a request was created, not a successful login.
+`show` redisplays it offline. `wait` polls until approval/denial/expiry and saves
+credentials on success. Use the local session ID, never the displayed user code
+or a private device code. Do not read pending session files or expose their contents.
+Resume an interrupted wait using the same ID before expiry; only one waiter is
+allowed. The original context remains bound even if the current context changes.
+Keep the same local CLI configuration; context identity changes require a fresh start.
+
+Use `oc login --grant device` for a combined interactive flow. It prints a URL/code;
 QR output is disabled by default. Add `--qr auto` to render a QR code in compatible
 terminals or `--qr always` to force ANSI/Unicode QR output.
 With JSON output and either opt-in QR mode, stdout first emits an

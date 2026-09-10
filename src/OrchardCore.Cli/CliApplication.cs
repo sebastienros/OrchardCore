@@ -301,6 +301,8 @@ internal sealed partial class CliApplication
         command.Options.Add(clientSecretEnvOption);
         command.Options.Add(clientSecretStdinOption);
 
+        command.Subcommands.Add(CreateDeviceLoginCommand(contextArgument));
+
         command.SetAction(async (parseResult, cancellationToken) =>
         {
             var context = RequireContext(parseResult.GetValue(contextArgument) ?? parseResult.GetValue(_contextOption));
@@ -345,16 +347,7 @@ internal sealed partial class CliApplication
             };
 
             await _credentialStore.SaveAsync(GetCredentialKey(context), tokenSet, cancellationToken);
-            _ = await RefreshManifestAsync(context, force: true, allowStale: false, cancellationToken);
-            _ = await RefreshOpenApiAsync(context, force: true, allowStale: false, cancellationToken);
-
-            return await WriteOutputAsync(parseResult, CliUtilities.ToJsonElement(new LoginOutput
-            {
-                Context = context.Name,
-                GrantType = grantType,
-                ExpiresAt = tokenSet.ExpiresAt,
-                Issuer = tokenSet.Issuer,
-            }, CliJsonContext.Default.LoginOutput), cancellationToken);
+            return await RefreshAndReportLoginAsync(parseResult, context, tokenSet, grantType, cancellationToken);
         });
 
         return command;

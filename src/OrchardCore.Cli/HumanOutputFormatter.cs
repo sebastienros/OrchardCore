@@ -63,6 +63,8 @@ internal static class HumanOutputFormatter
         var known = path switch
         {
             "login" => "Authenticated successfully.",
+            "login device start" or "login device show" => "Device authorization is awaiting approval.",
+            "login device wait" => "Authenticated successfully.",
             "logout" => Property(output.Json, "removed").ValueKind == JsonValueKind.False
                 ? "No stored login was found for this context." : "Logged out successfully.",
             "context add" => "Context saved successfully.",

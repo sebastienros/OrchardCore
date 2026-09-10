@@ -13,6 +13,7 @@ namespace OrchardCore.Cli;
 [JsonSerializable(typeof(ContextOutput))]
 [JsonSerializable(typeof(ContextClearOutput))]
 [JsonSerializable(typeof(LoginOutput))]
+[JsonSerializable(typeof(DeviceLoginSession))]
 [JsonSerializable(typeof(LogoutOutput))]
 [JsonSerializable(typeof(RefreshOutput))]
 [JsonSerializable(typeof(CompatibilityOutput))]

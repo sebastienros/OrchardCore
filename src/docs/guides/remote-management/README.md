@@ -482,6 +482,75 @@ with PKCE and a callback on the CLI computer's loopback interface. Opening
 that flow's URL on your phone would direct the callback to the phone's own
 loopback interface. Use device flow for this cross-device scenario.
 
+### Start and complete device login separately
+
+For an agent, application, or script that needs to present authorization
+instructions before waiting, use the separate device commands. Each invocation
+returns a single JSON result with `--output json`.
+
+1. Request authorization for the intended context:
+
+    ```bash
+    oc --context production login device start --output json
+    ```
+
+    This contacts the authorization server, saves a pending session locally, and
+    exits immediately. The result contains `sessionId`, `status:
+    "authorization_pending"`, `verificationUri`, `userCode`, and `expiresAt`.
+    Exit code `0` here means the request was created, not that login succeeded.
+    Add `--qr always` to include `qrCode.mediaType` and `qrCode.base64` as a PNG.
+    QR output is off by default.
+
+2. Present the URL and code to the user. To display the same request again,
+   optionally with a QR image, use the returned session ID:
+
+    ```bash
+    oc login device show <session-id> --qr always --output json
+    ```
+
+    `show` works offline and does not request a new code or extend its expiry.
+    In human output, opt-in QR codes render in the terminal. In JSON output,
+    decode `qrCode.base64` into PNG bytes or display it using an
+    `image/png` data URI. The image encodes the server-provided verification
+    URL, which may already contain the user code.
+
+3. Wait for the user's decision and save the resulting login:
+
+    ```bash
+    oc login device wait <session-id> --output json
+    ```
+
+    You can run `wait` before or after approval, as long as the session has not
+    expired. It polls at the server's required interval, handles `slow_down`,
+    saves credentials, and refreshes tenant API metadata. Success returns the
+    normal login result with `grantType: device`. Denial or expiry returns a
+    nonzero exit code. The phone must still complete the consent page; possessing
+    a session ID alone does not approve authorization.
+
+Use the local **session ID**, not the displayed user code. OAuth uses a separate
+private device code for polling. That code is stored in the CLI configuration
+directory's `device-logins` folder and is never included in public output.
+On Unix-like systems the directory uses mode `0700` and files use `0600`;
+Windows restricts the directory and its contents to the current user's account.
+No additional secret-store prompt is required for pending sessions.
+
+Sessions belong to the same local CLI configuration (`OC_CONFIG_HOME` when set).
+`wait` selects the session's original context even if another context is now
+current. An explicit conflicting `--context`, or changes to the original tenant,
+authority, client ID, or scopes, cause rejection. A context named `device` can
+still use the combined login command via `oc --context device login`.
+
+Only one process may wait on a given session at a time; `show` remains available
+while it waits. After interrupting a wait or a transient connection failure,
+run `wait` again with the same ID before expiry. Saved polling timing survives
+restarts. Private session state is removed after token saving, denial, or expiry;
+starting a new session also removes expired sessions that are not being used.
+Empty lock files may remain and contain no authorization data.
+
+`oc login --grant device` remains the combined flow for interactive use. Its
+opt-in QR JSON output is a stream as described above; use `start`, `show`, and
+`wait` when each process should produce one JSON result.
+
 ### Reuse your login
 
 Later commands reuse the login and refresh expiring tokens automatically.

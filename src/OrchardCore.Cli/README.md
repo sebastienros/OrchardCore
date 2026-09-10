@@ -68,6 +68,12 @@ useful details with full setup URLs, and lists remain tables. Use `--output json
 explicitly in scripts, or `--output human` to keep readable messages when
 redirecting. Other formats are `table`, `csv`, `tsv`, `yaml`, `toml`, and `none`.
 
+For device authorization across separate processes, use `oc login device start`,
+`oc login device show <session-id>`, and `oc login device wait <session-id>`.
+Each returns one JSON result with `--output json`; `start` and `show` support
+opt-in `--qr always` PNG output. See the
+[device login guide](https://github.com/sebastienros/OrchardCore/blob/sebros/remote-tenant-cli-plan/src/docs/guides/remote-management/README.md#start-and-complete-device-login-separately).
+
 ## GraphQL
 
 With GraphQL enabled on the selected tenant:
@@ -78,7 +84,7 @@ oc graphql execute --file query.graphql --variables-file variables.json
 oc graphql schema --output json > graphql-schema.json
 ```
 
-These built-in commands call GraphQL directly, reuse the current context/login,
+These built-in GraphQL commands call GraphQL directly, reuse the current context/login,
 and need no OpenAPI refresh. GraphQL errors return exit code 4 while preserving
 partial data and errors in the JSON response. Human output shows readable errors
 on stderr and any partial data on stdout. See the

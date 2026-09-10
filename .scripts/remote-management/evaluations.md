@@ -168,3 +168,26 @@ smoke separately verifies preservation of partial data with errors on HTTP
 200/400/401, failing exit codes, and no automatic retries or redirects. Real
 Orchard smoke tests verify full/type introspection, variables/stdin, server
 validation errors, and the GraphQL permission boundary.
+
+## Round 6: separate device authorization commands
+
+Fresh `gpt-5.6-sol` and `gpt-5.6-luna` agents received only the updated main CLI
+skill, a native CLI wrapper with an isolated `production` context, and a task
+to request authorization without waiting, redisplay its URL/code/base64 PNG,
+and complete the same session. Implementation sources, private session files,
+credentials, and other agents' reports were excluded. The synthetic loopback
+authorization server automatically approved token polling; this evaluates CLI
+and skill use, not human consent or a real identity provider's authorization.
+
+| Model | Outcome | Observed limitations |
+| --- | --- | --- |
+| gpt-5.6-sol | Six CLI attempts: two help calls, start (retried once), show, and wait. Used the returned local session ID, withheld the base64 payload from its report, and completed login for the original context. | Initial start was blocked by sandbox loopback access; the same request succeeded with escalation. |
+| gpt-5.6-luna | Seven CLI attempts: three help calls, start (retried once), show, and wait. Retrieved the same pending request and completed login with the device grant. | Same sandbox retry. |
+
+Both distinguished `authorization_pending`/start exit 0 from successful login
+and described resuming an interrupted wait with the same local session ID before
+expiry. Neither needed implementation details or exposed private device codes
+or tokens. These bounded observations are not statistical model/token efficiency
+measurements. Deterministic tests separately cover private state permissions,
+context changes, single-waiter locking, offline redisplay, persisted `slow_down`
+timing, PNG integrity, credential saving, denial, expiry, and cleanup.

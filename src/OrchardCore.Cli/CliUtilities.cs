@@ -7,7 +7,7 @@ using OrchardCore.RemoteManagement;
 
 namespace OrchardCore.Cli;
 
-internal sealed class CliException : Exception
+internal class CliException : Exception
 {
     public CliException(string message)
         : base(message)
