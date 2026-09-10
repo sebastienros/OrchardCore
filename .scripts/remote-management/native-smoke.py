@@ -56,6 +56,23 @@ with tempfile.TemporaryDirectory(prefix='oc-native-smoke-') as config:
         assert diagnostics['runtimeIdentifier'] == args.rid, diagnostics
         assert diagnostics['currentContext'] == ('offline' if configured else None), diagnostics
         assert not result.stderr, result.stderr
+    # Bare startup and explicit help must discover exactly the same cached commands.
+    tenant = 'https://127.0.0.1:1/'
+    cache = Path(config) / 'cache' / hashlib.sha256(tenant.encode()).hexdigest()[:16]
+    cache.mkdir(parents=True, exist_ok=True)
+    for expires in ('2000-01-01T00:00:00Z', '9999-01-01T00:00:00Z'):
+        (cache / 'openapi.json').write_text(json.dumps({
+            'content': json.dumps({'paths': {'/api/tenants': {'get': {
+                'operationId': 'ListTenants',
+                'x-oc-cli': {'commandGroup': ['tenants'], 'verb': 'list'},
+            }}}}),
+            'expiresAt': expires,
+        }))
+        bare = subprocess.run([str(exe)], env=env, capture_output=True, text=True, check=True, timeout=5)
+        help_result = subprocess.run([str(exe), '--help'], env=env, capture_output=True, text=True, check=True, timeout=5)
+        assert bare.stdout == help_result.stdout and 'tenants' in bare.stdout, (bare, help_result)
+        assert bare.stderr == help_result.stderr, (bare, help_result)
+        assert 'could not be refreshed' not in bare.stderr, bare.stderr
     suggestions = subprocess.run([str(exe), '[suggest:5]', 'oc co'], env=env, capture_output=True, text=True, check=True).stdout
     assert 'context' in suggestions.splitlines(), suggestions
     for shell in ('bash', 'zsh', 'fish', 'pwsh'):

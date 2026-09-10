@@ -93,6 +93,35 @@ public class CliApplicationTests
         Assert.Equal(0, handler.RequestCount);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CreateAsync_NoArguments_IncludesSameCachedTenantCommandsAsHelp(bool expired)
+    {
+        const string tenant = "https://offline.example/";
+        var paths = new CliPaths(TestPaths.CreateScratchDirectory(nameof(CreateAsync_NoArguments_IncludesSameCachedTenantCommandsAsHelp)));
+        await new ContextStore(paths).SaveAsync(new CliConfiguration
+        {
+            CurrentContext = "default",
+            Contexts = [new TenantContextRecord { Name = "default", TenantUrl = tenant }],
+        }, TestContext.Current.CancellationToken);
+        await new CacheService(paths).WriteAsync(tenant, CacheKind.OpenApi, new CachedContentRecord
+        {
+            Content = """{"paths":{"/api/tenants":{"get":{"operationId":"ListTenants","x-oc-cli":{"commandGroup":["tenants"],"verb":"list"}}}}}""",
+            ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(expired ? -5 : 5),
+        }, TestContext.Current.CancellationToken);
+        var handler = new RequestCountingHandler();
+        using var client = new HttpClient(handler);
+        var bare = await CliApplication.CreateAsync([], paths, client, TestContext.Current.CancellationToken, new UnsupportedCredentialStore());
+        var help = await CliApplication.CreateAsync(["--help"], paths, client, TestContext.Current.CancellationToken, new UnsupportedCredentialStore());
+
+        var tenants = Assert.Single(bare.RootCommand.Subcommands, command => command.Name == "tenants");
+        Assert.Contains(tenants.Subcommands, command => command.Name == "list");
+        Assert.Equal(help.RootCommand.Subcommands.Select(command => command.Name), bare.RootCommand.Subcommands.Select(command => command.Name));
+        Assert.Equal(0, await bare.InvokeAsync([]));
+        Assert.Equal(0, handler.RequestCount);
+    }
+
     [Fact]
     public async Task InvokeAsync_ContextRequiredWithoutSelection_WritesFriendlyErrorAndReturnsFailure()
     {

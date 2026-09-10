@@ -416,9 +416,11 @@ Other formats include `csv`, `tsv`, `yaml`, `toml`, and `none`.
 
 ## 6. Discover before writing
 
-Run `oc` without arguments to see the built-in commands. It shows help without
-contacting a tenant or requiring authentication, and exits successfully.
-Use `oc --help` to also include tenant commands from the local OpenAPI cache.
+Run `oc` or `oc --help` to see the same help: built-in commands and the selected
+context's tenant commands from the local OpenAPI cache. Neither form contacts
+the tenant or requires authentication. Expired cached commands remain visible
+with a stale-cache warning. If no cached metadata is available, only built-in
+commands appear; authenticate and run `oc api refresh` to populate the cache.
 
 ```bash
 oc --help

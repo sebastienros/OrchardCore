@@ -83,7 +83,8 @@ internal sealed partial class CliApplication
 
         var app = new CliApplication(root, paths, httpClient, contextStore, cacheService, credentialStore, oauthClient, configuration, outputOption, contextOption);
         app.AddStaticCommands();
-        await app.AddDynamicCommandsAsync(args, cancellationToken);
+        // Bare invocation and explicit help must use the same cached command tree.
+        await app.AddDynamicCommandsAsync(args.Length == 0 ? ["--help"] : args, cancellationToken);
         return app;
     }
 
@@ -167,9 +168,7 @@ internal sealed partial class CliApplication
 
     private async Task AddDynamicCommandsAsync(string[] args, CancellationToken cancellationToken)
     {
-        // Opening the CLI without a command is a local help request, even when
-        // a tenant is selected and its cached metadata is missing or expired.
-        if (args.Length == 0 || IsStaticCommandRequest(args))
+        if (IsStaticCommandRequest(args))
         {
             return;
         }
