@@ -271,6 +271,10 @@ Replace the URL with your tenant's public base URL, including its path prefix.
 Do not use the admin or login URL. A context named `tutorial` now selects that
 one tenant. Commands use it until you select another context.
 
+Both the context name and tenant URL are required. If either is omitted, the
+CLI identifies the missing argument and displays the command's usage. Use
+`oc context add --help` to view that help without creating a context.
+
 Remote connections require HTTPS. HTTP is accepted for loopback development,
 for example `http://127.0.0.1:5000/news`. To switch to another tenant URL, create
 a new context name; existing credentials cannot follow a changed tenant URL.

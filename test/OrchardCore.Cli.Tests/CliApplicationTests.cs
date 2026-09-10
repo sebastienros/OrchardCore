@@ -5,6 +5,39 @@ namespace OrchardCore.Cli.Tests;
 public class CliApplicationTests
 {
     [Theory]
+    [InlineData(new[] { "context", "add" }, "Missing required arguments: <name>, <url>.")]
+    [InlineData(new[] { "context", "add", "--current" }, "Missing required arguments: <name>, <url>.")]
+    [InlineData(new[] { "context", "add", "production" }, "Missing required argument: <url>.")]
+    public async Task InvokeAsync_MissingContextArguments_ReportsNamesOnceWithoutNetwork(string[] args, string expected)
+    {
+        var paths = new CliPaths(TestPaths.CreateScratchDirectory(nameof(InvokeAsync_MissingContextArguments_ReportsNamesOnceWithoutNetwork)));
+        var handler = new RequestCountingHandler();
+        using var client = new HttpClient(handler);
+        using var errors = new StringWriter();
+        var app = await CliApplication.CreateAsync(args, paths, client, TestContext.Current.CancellationToken, new UnsupportedCredentialStore());
+
+        Assert.Equal(1, await app.InvokeAsync(args, errors));
+        Assert.Equal(expected, errors.ToString().Trim());
+        Assert.Equal(0, handler.RequestCount);
+        Assert.Empty((await new ContextStore(paths).LoadAsync(TestContext.Current.CancellationToken)).Contexts);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_ContextAddHelp_DoesNotRequireArguments()
+    {
+        var paths = new CliPaths(TestPaths.CreateScratchDirectory(nameof(InvokeAsync_ContextAddHelp_DoesNotRequireArguments)));
+        var handler = new RequestCountingHandler();
+        using var client = new HttpClient(handler);
+        using var errors = new StringWriter();
+        var args = new[] { "context", "add", "--help" };
+        var app = await CliApplication.CreateAsync(args, paths, client, TestContext.Current.CancellationToken, new UnsupportedCredentialStore());
+
+        Assert.Equal(0, await app.InvokeAsync(args, errors));
+        Assert.Empty(errors.ToString());
+        Assert.Equal(0, handler.RequestCount);
+    }
+
+    [Theory]
     [InlineData("--version")]
     [InlineData("doctor")]
     public async Task CreateAsync_LocalDiagnostics_DoesNotContactTenant(string command)

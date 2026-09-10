@@ -1,4 +1,6 @@
 using System.CommandLine;
+using System.CommandLine.Invocation;
+using System.CommandLine.Parsing;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
@@ -90,11 +92,44 @@ internal sealed partial class CliApplication
         try
         {
             var parsed = _rootCommand.Parse(args.Length == 0 ? ["--help"] : args);
-            _ = CliUtilities.ParseOutputFormat(parsed.GetValue(_outputOption));
-            return await parsed.InvokeAsync(new InvocationConfiguration
+            var invocation = new InvocationConfiguration
             {
                 EnableDefaultExceptionHandler = false,
-            });
+                Error = errorWriter ?? Console.Error,
+            };
+            // System.CommandLine reports the same command name for each missing
+            // positional argument. Name the arguments once, retaining normal help.
+            if (parsed.Action is ParseErrorAction errorAction && parsed.Errors.Count > 0
+                && parsed.Errors.All(error => error.SymbolResult is ArgumentResult
+                {
+                    Parent: CommandResult,
+                    Tokens.Count: 0,
+                    Argument.HasDefaultValue: false,
+                    Argument.Arity.MinimumNumberOfValues: > 0,
+                }))
+            {
+                var names = parsed.Errors.Select(error => $"<{((ArgumentResult)error.SymbolResult!).Argument.Name}>");
+                var label = parsed.Errors.Count == 1 ? "argument" : "arguments";
+                await invocation.Error.WriteLineAsync($"Missing required {label}: {string.Join(", ", names)}.");
+                await invocation.Error.WriteLineAsync();
+                if (errorAction.ShowHelp)
+                {
+                    var commandPath = new Stack<string>();
+                    var current = parsed.CommandResult;
+                    while (current.Parent is CommandResult parent)
+                    {
+                        commandPath.Push(current.Command.Name);
+                        current = parent;
+                    }
+
+                    await _rootCommand.Parse([.. commandPath, "--help"]).InvokeAsync(invocation);
+                }
+
+                return 1;
+            }
+
+            _ = CliUtilities.ParseOutputFormat(parsed.GetValue(_outputOption));
+            return await parsed.InvokeAsync(invocation);
         }
         catch (ApiException exception)
         {
