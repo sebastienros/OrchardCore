@@ -686,3 +686,21 @@ Continue with the [complete management API reference](../../reference/api/README
 [verification record](../../reference/modules/RemoteManagement/review.md).
 Agent skills and plugin packaging are documented in
 [the repository test toolkit](https://github.com/sebastienros/OrchardCore/tree/sebros/remote-tenant-cli-plan/.scripts/remote-management).
+
+## Query GraphQL directly
+
+The built-in `oc graphql` commands reuse your context and login while sending
+requests directly to the tenant's GraphQL endpoint. Enable
+`OrchardCore.Apis.GraphQL`; no OpenAPI refresh is needed for these commands.
+
+```bash
+oc graphql execute --query '{ __typename }'
+oc graphql schema --output json > graphql-schema.json
+oc graphql execute --file query.graphql --variables-file variables.json
+```
+
+GraphQL execution requires its own `ExecuteGraphQL` permission, and mutations
+also require `ExecuteGraphQLMutations`. Results retain the GraphQL envelope.
+A response containing errors returns exit code 4, including with HTTP 200. See
+the [GraphQL CLI reference](../../reference/modules/Apis.GraphQL/README.md#use-graphql-from-the-cli)
+for variables, operation names, introspection, and partial-result handling.

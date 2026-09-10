@@ -1,6 +1,6 @@
 ---
 name: orchardcore-cli
-description: Uses the `oc` CLI to install and initialize local Orchard CMS sites or manage remote tenants. Use for local site creation, contexts, authentication, discovery, tenant setup, enabling Remote Management, compatibility checks, dynamic help, and coordinating module-specific management tasks.
+description: Uses the `oc` CLI to install and initialize local Orchard CMS sites or manage remote tenants. Use for local site creation, contexts, authentication, discovery, tenant setup, enabling Remote Management, compatibility checks, direct GraphQL, dynamic help, and coordinating module-specific management tasks.
 ---
 
 # Orchard Core CLI
@@ -225,6 +225,7 @@ Load the narrowest relevant skill:
 - **Custom Liquid templates and rendering**: `orchardcore-cli-templates`
 - **Installed site/admin theme selection**: `orchardcore-cli-themes`
 - **Menu content and official menu-shape rendering**: `orchardcore-cli-menus`
+- **GraphQL documents, variables, and introspection**: `orchardcore-cli-graphql`
 - **Site Settings, Custom Settings, cultures, and dynamic translations**: `orchardcore-cli-settings`
 - **Features, recipes, queries, workflows, users, and roles**:
   `orchardcore-cli-automation`

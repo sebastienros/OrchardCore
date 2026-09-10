@@ -88,3 +88,7 @@ Some operations are intentionally not idempotent. In particular, a create operat
 The tenant OpenAPI document is available at the URL returned as `openApiUrl` by the authenticated manifest. Standard OpenAPI operation metadata defines the HTTP contract. The `x-oc-cli` extension projects selected operations into `oc <resource> <verb>` commands; it does not change endpoint authorization or HTTP behavior.
 
 API clients should use OpenAPI operation IDs and routes rather than deriving HTTP behavior from CLI command names.
+
+GraphQL uses the built-in [`oc graphql` commands](../modules/Apis.GraphQL/README.md#use-graphql-from-the-cli),
+which send documents and introspection queries directly to the GraphQL endpoint.
+They do not project GraphQL operations through OpenAPI.

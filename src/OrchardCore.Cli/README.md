@@ -64,3 +64,19 @@ when redirected to a pipe or file. In a terminal, changes report completion and
 useful details with full setup URLs, and lists remain tables. Use `--output json`
 explicitly in scripts, or `--output human` to keep readable messages when
 redirecting. Other formats are `table`, `csv`, `tsv`, `yaml`, `toml`, and `none`.
+
+## GraphQL
+
+With GraphQL enabled on the selected tenant:
+
+```sh
+oc graphql execute --query '{ __typename }'
+oc graphql execute --file query.graphql --variables-file variables.json
+oc graphql schema --output json > graphql-schema.json
+```
+
+These built-in commands call GraphQL directly, reuse the current context/login,
+and need no OpenAPI refresh. GraphQL errors return exit code 4 while preserving
+partial data and errors in the response. See the
+[GraphQL CLI reference](https://github.com/sebastienros/OrchardCore/blob/sebros/remote-tenant-cli-plan/src/docs/reference/modules/Apis.GraphQL/README.md#use-graphql-from-the-cli)
+for permissions, stdin, operation names, custom endpoint paths, and mutations.

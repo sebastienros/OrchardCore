@@ -145,3 +145,26 @@ cancellation, overwrite refusal, missing SDK, setup failure, and plaintext
 password absence. These are small behavioral samples, not statistical model
 or token-efficiency measurements, and do not validate remote databases or every
 operating system.
+
+## Round 5: direct GraphQL
+
+Fresh `gpt-5.6-sol` and `gpt-5.6-luna` agents received only the GraphQL skill,
+a native CLI wrapper with a preselected disposable context, and the task to
+inspect `SiteCulture`, retrieve configured cultures, and explain partial errors
+and OpenAPI refresh requirements. They could use read-only GraphQL operations
+and help, but not implementation sources, fixture state, credentials, or other
+agent reports. The injected identity had only `ExecuteGraphQL`, without
+`AccessRemoteManagement` or `ViewOpenApiContent`. No OpenAPI cache was supplied.
+
+| Model | Outcome | Observed limitations |
+| --- | --- | --- |
+| gpt-5.6-sol | Five CLI attempts: help, single-type inspection (retried once), query-root introspection, and the culture query. Correctly returned `en-US` as default and explained exit 4 with preserved partial data/errors and no required OpenAPI refresh. | Initial schema request was blocked by sandbox loopback access; identical request succeeded with escalation. Used explicit query-root introspection to discover `siteCultures`. |
+| gpt-5.6-luna | Six CLI attempts: help, single-type inspection (retried once), `Query` type inspection, culture query, and an additional missing-content-item query. Correctly returned the same culture and explained error/refresh behavior. | Same sandbox retry. Assumed the conventional `Query` type name, which existed in this fixture. Its additional missing-item probe returned `null` without errors, so it did not demonstrate runtime partial-error handling. |
+
+Both completed the bounded task without changing server data or permissions.
+These observations do not establish statistical model/token efficiency or
+coverage of arbitrary GraphQL schemas and mutations. The deterministic native
+smoke separately verifies preservation of partial data with errors on HTTP
+200/400/401, failing exit codes, and no automatic retries or redirects. Real
+Orchard smoke tests verify full/type introspection, variables/stdin, server
+validation errors, and the GraphQL permission boundary.

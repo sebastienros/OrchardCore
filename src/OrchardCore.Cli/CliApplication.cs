@@ -160,6 +160,7 @@ internal sealed partial class CliApplication
         _rootCommand.Subcommands.Add(CreateLogoutCommand());
         _rootCommand.Subcommands.Add(CreateContextCommand());
         _rootCommand.Subcommands.Add(CreateApiCommand());
+        _rootCommand.Subcommands.Add(CreateGraphQLCommand());
         _rootCommand.Subcommands.Add(CreateDocsCommand());
         _rootCommand.Subcommands.Add(CreateCompletionCommand());
         _rootCommand.Subcommands.Add(CreateDoctorCommand());
@@ -1793,6 +1794,7 @@ internal sealed partial class CliApplication
             "logout",
             "context",
             "api",
+            "graphql",
             "docs",
             "completion",
             "doctor",

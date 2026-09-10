@@ -101,6 +101,12 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python .scripts/remote-management/human-output-smoke.py (Join-Path artifacts/native $(if ($IsWindows) { 'oc.exe' } else { 'oc' }))
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify native GraphQL commands
+        shell: pwsh
+        run: |
+          $python = if ($IsWindows) { 'python' } else { 'python3' }
+          & $python .scripts/remote-management/graphql-native-smoke.py (Join-Path artifacts/native $(if ($IsWindows) { 'oc.exe' } else { 'oc' }))
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Pack tool installer
         run: dotnet pack src/OrchardCore.Cli -c Release -p:PackAsTool=true -p:Version=${{ env.CLI_PACKAGE_VERSION }} -p:RepositoryUrl=https://github.com/sebastienros/OrchardCore -p:RepositoryCommit=${{ github.sha }} -p:TreatWarningsAsErrors=true -o artifacts/tool
       - name: Pack NativeAOT tool implementation

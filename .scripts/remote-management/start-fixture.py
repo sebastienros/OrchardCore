@@ -20,7 +20,7 @@ blank = (repo / "src/OrchardCore.Themes/TheAdmin/Recipes/blank.recipe.json").rea
 recipe = json.loads("\n".join(line for line in blank.splitlines() if not line.lstrip().startswith("//")))
 recipe["name"] = "CliFixture"
 # Keep tenant static serving enabled to prove it exposes no management API.
-recipe["steps"][0]["enable"] += ["OrchardCore.RemoteManagement", "OrchardCore.Tenants", "OrchardCore.Tenants.FileProvider", "OrchardCore.Workflows", "OrchardCore.Queries.Sql", "OrchardCore.Localization", "OrchardCore.DataLocalization"]
+recipe["steps"][0]["enable"] += ["OrchardCore.RemoteManagement", "OrchardCore.Tenants", "OrchardCore.Tenants.FileProvider", "OrchardCore.Workflows", "OrchardCore.Queries.Sql", "OrchardCore.Localization", "OrchardCore.DataLocalization", "OrchardCore.Apis.GraphQL"]
 secret = secrets.token_urlsafe(32)
 recipe["steps"] += [
     {"name": "RemoteManagementConfiguration"},
@@ -37,8 +37,9 @@ recipe["steps"] += [
      "DisplayName": "Disposable denied client", "Type": "confidential", "ConsentType": "implicit",
      "AllowClientCredentialsFlow": True, "ScopeEntries": [{"Name": "orchardcore.management"}]},
 ]
-# Separate identities verify existing Media permissions without the admin wildcard.
+# Separate identities verify resource permissions without the admin wildcard.
 for suffix, permissions in [
+    ("graphql-reader", ["ExecuteGraphQL"]),
     ("translator-fr", ["ViewDynamicTranslations", "ManageTranslations_fr"]),
     ("translation-reader", ["ViewDynamicTranslations"]),
     ("media", ["ManageMediaContent", "ManageMediaFolder"]),
@@ -46,8 +47,9 @@ for suffix, permissions in [
     ("media-no-folder", ["ManageOwnMediaContent"]),
 ]:
     role = "Cli-" + suffix
+    discovery_permissions = [] if suffix == "graphql-reader" else ["AccessRemoteManagement", "ViewOpenApiContent"]
     recipe["steps"] += [
-        {"name": "Roles", "Roles": [{"Name": role, "Permissions": ["AccessRemoteManagement", "ViewOpenApiContent", *permissions]}]},
+        {"name": "Roles", "Roles": [{"Name": role, "Permissions": [*discovery_permissions, *permissions]}]},
         {"name": "OpenIdApplication", "ClientId": "cli-" + suffix, "ClientSecret": secret,
          "DisplayName": "Disposable " + suffix + " client", "Type": "confidential", "ConsentType": "implicit",
          "AllowClientCredentialsFlow": True, "RoleEntries": [{"Name": role}],

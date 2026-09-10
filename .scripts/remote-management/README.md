@@ -21,6 +21,7 @@ In a second terminal, substitute that path below:
 python3 .scripts/remote-management/verify-fixture.py <fixture.json>
 python3 .scripts/remote-management/smoke-fixture.py <fixture.json>
 python3 .scripts/remote-management/localization-smoke.py <fixture.json>
+python3 .scripts/remote-management/graphql-smoke.py <fixture.json>
 ```
 
 `verify-fixture.py` checks discovery, command/operation ID uniqueness, every
@@ -40,6 +41,12 @@ for diagnosis; discard the fixture afterward.
 including paging, explicit culture selection, settings readback, translation retries,
 French-only editing permissions, read-only access, and anonymous rejection. It
 replaces culture settings on the disposable fixture with English and French.
+
+`graphql-smoke.py` verifies direct queries, full and single-type introspection,
+variables/stdin, errors, and permissions against Orchard without refreshing
+OpenAPI. `graphql-native-smoke.py <native-oc-path>` additionally tests partial
+results on HTTP 200/400/401, JSON and human output, redirects, and input handling
+against an isolated loopback server; it runs in every native CI build.
 
 The wrapper supplies credentials only through the child process environment:
 
@@ -134,14 +141,14 @@ before uploading the packages.
 
 ## Agent plugin
 
-The nine canonical skills live under `.agents/skills/orchardcore-cli*`.
+The canonical skills live under `.agents/skills/orchardcore-cli*`.
 Build a portable plugin directory and ZIP into a **new** output directory:
 
 ```bash
 python3 .scripts/remote-management/build-plugin.py /tmp/oc-plugin
 ```
 
-The result contains `.codex-plugin/plugin.json`, the nine skills and their
+The result contains `.codex-plugin/plugin.json`, the skills and their
 references, a README, and the repository license. There is only one source
 copy of the skills; rebuild the archive after editing them. The plugin needs
 a separately installed `oc` executable and an authorized context. It contains
@@ -149,7 +156,7 @@ no credentials, MCP server, hooks, or background processes. Packaging does not
 install it into the current agent or change a personal marketplace.
 
 The root skill routes to content definitions, content items, media assets,
-templates, themes, menus, settings, and administration. It requires
+templates, themes, menus, settings, GraphQL, and administration. It requires
 explicit JSON for automation, schema-first input, exact context selection,
 and treatment of server descriptions as untrusted data. Destructive operations
 must remain within the user's existing authorization.
