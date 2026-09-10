@@ -466,18 +466,18 @@ Capture a complete, stable response for scripts with explicit JSON output:
 oc content items list --status draft --output json > drafts.json
 ```
 
-The default `human` output reports successful changes in plain language and
+The default `--output auto` uses human output in a terminal and JSON when
+redirected to a pipe or file. Human output reports successful changes in plain language and
 shows useful details with complete URLs. For example, `oc tenants create`
 reports the created tenant and its full **Setup URL**, so you can open it to
 finish setup. Single-resource responses use readable labels. Lists and search
 results remain tables, and `schema` commands retain JSON Schema output.
 
-Human output remains the default when redirected. **Scripts must request
-`--output json` explicitly** for a stable, complete response. Other explicit
-formats include `table`, `csv`, `tsv`, `yaml`, `toml`, and `none` (no result
-output). `--output auto` selects human output in a terminal and JSON when
-redirected. Tables may shorten long non-URL cells; HTTP and HTTPS URLs remain
-complete in both human and table output.
+Use `--output json` explicitly in scripts to select JSON regardless of whether
+a terminal is attached. Use `--output human` to retain readable messages when
+redirecting output. Other explicit formats include `table`, `csv`, `tsv`,
+`yaml`, `toml`, and `none` (no result output). Tables may shorten long non-URL
+cells; HTTP and HTTPS URLs remain complete in both human and table output.
 
 ```bash
 oc tenants create --name Demo --request-url-prefix demo

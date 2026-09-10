@@ -61,7 +61,7 @@ Media. See the Media asset follow-up for current verification.
 
 ## Additional completed changes
 
-- Terminal output defaults to readable tables; redirection defaults to JSON.
+- Terminal output defaults to human-readable messages (tables for lists); redirection defaults to JSON.
   Explicit `--output json` remains the automation contract. Terminal cells
   escape control characters, while TSV and YAML preserve structured values.
 - Help and completion use cached discovery offline. Cache writes are atomic,

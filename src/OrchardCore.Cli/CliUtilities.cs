@@ -23,7 +23,7 @@ internal static class CliUtilities
     {
         if (string.IsNullOrWhiteSpace(value))
         {
-            return OutputFormat.Human;
+            value = "auto";
         }
 
         return value.Trim().ToLowerInvariant() switch

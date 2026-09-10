@@ -67,7 +67,7 @@ internal sealed partial class CliApplication
         var outputOption = new Option<string?>("--output")
         {
             Description = "Output format: human, json, table, csv, tsv, yaml, toml, none, auto (human in a terminal, JSON when redirected)",
-            DefaultValueFactory = _ => "human",
+            DefaultValueFactory = _ => "auto",
             Recursive = true,
         };
 

@@ -3,6 +3,17 @@ namespace OrchardCore.Cli.Tests;
 public class CliUtilitiesTests
 {
     [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData("auto")]
+    public void ParseOutputFormat_AutomaticFormat_FollowsOutputRedirection(string? value)
+    {
+        Assert.Equal(Console.IsOutputRedirected ? OutputFormat.Json : OutputFormat.Human,
+            CliUtilities.ParseOutputFormat(value));
+    }
+
+    [Theory]
     [InlineData("array", "[1,2]", "[1,2]")]
     [InlineData("array", "Editor,Author", "[\"Editor\",\"Author\"]")]
     [InlineData("object", "{\"limit\":3}", "{\"limit\":3}")]
@@ -27,7 +38,6 @@ public class CliUtilitiesTests
 
     [Theory]
     [InlineData("json", "Json")]
-    [InlineData(null, "Human")]
     [InlineData("human", "Human")]
     [InlineData("table", "Table")]
     [InlineData("csv", "Csv")]

@@ -59,8 +59,8 @@ Follow the [remote management guide](https://github.com/sebastienros/OrchardCore
 to prepare a tenant and authenticate. Run `oc --help` to discover commands
 available in the local cache, or `oc doctor` to inspect local configuration.
 
-Results use human-readable messages by default, including when redirected.
-Changes report completion and useful details, with full setup URLs. Lists remain
-tables. Use `--output json` explicitly in scripts, or choose `--output table`,
-`csv`, `tsv`, `yaml`, `toml`, or `none`. Explicit `--output auto` selects human
-output in terminals and JSON when redirected.
+The default `--output auto` uses human-readable messages in a terminal and JSON
+when redirected to a pipe or file. In a terminal, changes report completion and
+useful details with full setup URLs, and lists remain tables. Use `--output json`
+explicitly in scripts, or `--output human` to keep readable messages when
+redirecting. Other formats are `table`, `csv`, `tsv`, `yaml`, `toml`, and `none`.

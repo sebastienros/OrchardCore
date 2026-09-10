@@ -5,6 +5,7 @@ import hashlib
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import os
+import select
 from pathlib import Path
 import subprocess
 import tempfile
@@ -53,7 +54,7 @@ try:
         cache = config / 'cache' / hashlib.sha256(tenant.encode()).hexdigest()[:16]
         cache.mkdir(parents=True)
 
-        def invoke(*options, verb='create'):
+        def invoke(*options, verb='create', terminal=False):
             # Mutations invalidate metadata; reseed this isolated fixture for each call.
             (cache / 'openapi.json').write_text(json.dumps({
                 'expiresAt': '9999-01-01T00:00:00Z',
@@ -65,10 +66,32 @@ try:
                     'x-oc-cli': {'commandGroup': ['tenants'], 'verb': 'delete'},
                 }}}}),
             }))
-            return subprocess.run([oc, 'tenants', verb, *options], env=env,
+            command = [oc, 'tenants', verb, *options]
+            if terminal:
+                master, slave = os.openpty()
+                try:
+                    subprocess.run(command, env=env, stdout=slave, stderr=subprocess.PIPE,
+                                   check=True, timeout=15)
+                    # Drain before closing the slave: macOS can discard unread bytes on close.
+                    chunks = []
+                    while select.select([master], [], [], 0)[0]:
+                        chunk = os.read(master, 4096)
+                        if not chunk:
+                            break
+                        chunks.append(chunk)
+                    return b''.join(chunks).decode().replace('\r\n', '\n')
+                finally:
+                    os.close(slave)
+                    os.close(master)
+            return subprocess.run(command, env=env,
                                   capture_output=True, text=True, check=True, timeout=15).stdout
 
-        human = invoke()
+        assert json.loads(invoke()) == result  # Default auto follows stdout redirection.
+        human = invoke('--output', 'human')
+        if os.name != 'nt':
+            terminal_human = invoke(terminal=True)
+            assert terminal_human == human, repr(terminal_human)  # Default terminal output.
+            assert json.loads(invoke('--output', 'json', terminal=True)) == result
         assert human.startswith("Tenant 'Demo' created successfully."), human
         assert 'Setup URL: ' + setup_url in human, human
         assert ' | ' not in human and 'Can delete' not in human, human
@@ -80,24 +103,24 @@ try:
         assert setup_url in invoke('--output', 'table')
         assert not invoke('--output', 'none')
         assert invoke('--output', 'human') == human
-        assert invoke(verb='delete').strip() == 'Tenant removed successfully.'
+        assert invoke('--output', 'human', verb='delete').strip() == 'Tenant removed successfully.'
         response_status = 202
         result = {'operationId': 'job-42', 'status': 'pending'}
-        pending = invoke()
+        pending = invoke('--output', 'human')
         assert pending.startswith('Request accepted.') and 'job-42' in pending, pending
         response_status = 200
         result = {'name': 'Demo', 'state': 'Running', 'primaryUrl': tenant + 'Demo/'}
-        running = invoke()
+        running = invoke('--output', 'human')
         assert 'oc --context=test tenants enable-remote-management Demo' in running, running
-        setup = invoke(verb='setup')
+        setup = invoke('--output', 'human', verb='setup')
         assert "Tenant 'Demo' set up successfully." in setup, setup
         assert 'oc --context=test tenants enable-remote-management Demo' in setup, setup
         result = {'name': 'Demo', 'state': 'Running', 'url': tenant + 'Demo/'}
-        enabled = invoke(verb='enable-remote-management')
+        enabled = invoke('--output', 'human', verb='enable-remote-management')
         assert "Tenant 'Demo' configured for remote management successfully." in enabled, enabled
         assert f'oc context add Demo {tenant}Demo/ --current' in enabled, enabled
         result = {'success': False, 'message': 'The request could not be completed'}
-        failed = invoke()
+        failed = invoke('--output', 'human')
         assert 'unsuccessful result' in failed and result['message'] in failed, failed
         response_status = 400
         try:
@@ -109,7 +132,7 @@ try:
         help_result = subprocess.run([oc, '--help'], env=env, capture_output=True, text=True, check=True)
         assert '--output' in help_result.stdout and '--format' not in help_result.stdout
         print(human.strip())
-        print('Verified native human output, complete URLs, and explicit JSON/table/none/auto modes.')
+        print('Verified default auto output, human messages, complete URLs, and explicit JSON/table/none/auto modes.')
 finally:
     server.shutdown()
     server.server_close()
