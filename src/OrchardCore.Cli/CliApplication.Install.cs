@@ -18,13 +18,14 @@ internal sealed partial class CliApplication
         var timeZone = new Option<string>("--site-time-zone") { Description = "IANA/TZDB time zone ID, for example America/Los_Angeles, Europe/Paris, or UTC", DefaultValueFactory = _ => "UTC" };
         var urlPrefix = new Option<string?>("--request-url-prefix") { Description = "Optional site URL path prefix" };
         var host = new Option<string?>("--request-url-host") { Description = "Optional single site host name" };
-        var source = new Option<string?>("--source") { Description = "NuGet source for matching Orchard dependencies (defaults to nuget.org)" };
+        var source = new Option<string?>("--source") { Description = "Additional NuGet source for Orchard dependencies; inherited sources remain available" };
+        var clearSources = new Option<bool>("--clear-sources") { Description = "Clear inherited NuGet package sources; use only nuget.org and an explicit --source" };
         var run = new Option<bool>("--run") { Description = "Start the completed site in the foreground; Ctrl+C stops it" };
         var verbose = new Option<bool>("--verbose") { Description = "Show template, build, and temporary setup logs as they happen" };
         var urls = new Option<string>("--urls") { Description = "Listen URLs for --run; quote multiple addresses separated by semicolons, e.g. \"https://localhost:5001;http://localhost:5000\". HTTPS requires a certificate", DefaultValueFactory = _ => LocalSiteInstaller.DefaultUrls };
         var timeout = new Option<int>("--setup-timeout") { Description = "Setup timeout in seconds", DefaultValueFactory = _ => 300 };
         command.Arguments.Add(directory);
-        foreach (var option in new Option[] { siteName, userName, email, recipe, provider, tablePrefix, schema, timeZone, urlPrefix, host, source, run, verbose, urls, timeout })
+        foreach (var option in new Option[] { siteName, userName, email, recipe, provider, tablePrefix, schema, timeZone, urlPrefix, host, source, clearSources, run, verbose, urls, timeout })
         {
             command.Options.Add(option);
         }
@@ -52,6 +53,7 @@ internal sealed partial class CliApplication
                 RequestUrlPrefix = parsed.GetValue(urlPrefix),
                 RequestUrlHost = parsed.GetValue(host),
                 Source = parsed.GetValue(source),
+                ClearSources = parsed.GetValue(clearSources),
                 Urls = parsed.GetValue(urls)!,
                 SetupTimeoutSeconds = parsed.GetValue(timeout),
                 Verbose = parsed.GetValue(verbose),

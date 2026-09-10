@@ -22,6 +22,7 @@ internal sealed class LocalSiteInstallOptions
     public string? RequestUrlPrefix { get; init; }
     public string? RequestUrlHost { get; init; }
     public string? Source { get; init; }
+    public bool ClearSources { get; init; }
     public string Urls { get; init; } = LocalSiteInstaller.DefaultUrls;
     public int SetupTimeoutSeconds { get; init; } = 300;
     public bool Verbose { get; init; }
@@ -193,12 +194,18 @@ internal static partial class LocalSiteInstaller
             Validate(options);
             await DotnetEnvironment.RunAsync(["new", "occms", "--output", options.Directory], scratch, environment, diagnostics, cancellationToken, options.SecretEnvironmentVariables);
             await WriteSdkSelectionAsync(options.Directory, sdk, cancellationToken);
-            var config = new XDocument(new XElement("configuration", new XElement("packageSources",
-                new XElement("clear"), new XElement("add", new XAttribute("key", "nuget.org"), new XAttribute("value", NugetSource)))));
+            var sources = new XElement("packageSources");
+            if (options.ClearSources)
+            {
+                sources.Add(new XElement("clear"));
+            }
+
+            sources.Add(new XElement("add", new XAttribute("key", "nuget.org"), new XAttribute("value", NugetSource)));
+            var config = new XDocument(new XElement("configuration", sources));
             var source = ResolveSource(options);
             if (source != NugetSource)
             {
-                config.Root!.Element("packageSources")!.Add(new XElement("add", new XAttribute("key", "OrchardCore"), new XAttribute("value", source)));
+                sources.Add(new XElement("add", new XAttribute("key", "OrchardCore"), new XAttribute("value", source)));
             }
 
             var nugetConfig = Path.Combine(options.Directory, "NuGet.Config");
@@ -215,7 +222,10 @@ internal static partial class LocalSiteInstaller
                 orchardBuilder + global::System.Environment.NewLine + "    .AddSetupFeatures(\"OrchardCore.AutoSetup\")", StringComparison.Ordinal), cancellationToken);
             var project = Directory.GetFiles(options.Directory, "*.csproj").Single();
             await log.WriteLineAsync("Restoring and building the new site.");
-            await DotnetEnvironment.RunAsync(["restore", project, "--configfile", nugetConfig, "--disable-build-servers"], options.Directory, environment, diagnostics, cancellationToken, options.SecretEnvironmentVariables);
+            // Template installation uses an isolated CLI home. Restore/build must use
+            // the caller's normal NuGet hierarchy, credentials, and CLI home instead.
+            environment.Remove("DOTNET_CLI_HOME");
+            await DotnetEnvironment.RunAsync(["restore", project, "--disable-build-servers"], options.Directory, environment, diagnostics, cancellationToken, options.SecretEnvironmentVariables);
             await DotnetEnvironment.RunAsync(["build", project, "--no-restore", "--disable-build-servers", "-m:1"], options.Directory, environment, diagnostics, cancellationToken, options.SecretEnvironmentVariables);
             await log.WriteLineAsync("Initializing the Default tenant.");
             await SetupAsync(options, project, diagnostics, cancellationToken);

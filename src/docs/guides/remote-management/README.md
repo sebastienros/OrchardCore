@@ -225,8 +225,11 @@ dotnet run --project ./MyOrchardSite --no-launch-profile --urls https://localhos
 ```
 
 The generated `global.json` pins the selected stable SDK, allowing later patches
-in that SDK feature band. A project-local `NuGet.Config` supplies **nuget.org
-only by default**, including for preview builds. Orchard dependencies retain
+in that SDK feature band. A project-local `NuGet.Config` adds **nuget.org** by
+default while retaining sources from parent and user-level NuGet configuration.
+Both installation and subsequent `dotnet restore`/`dotnet run` use that normal
+configuration hierarchy. `--clear-sources` opts out of inherited package sources:
+it writes `<clear />`, leaving only nuget.org and any explicit `--source`. Orchard dependencies retain
 their original package IDs. Dependency restore still needs network access or
 a populated package cache; embedding the template does not embed the runtime
 or the site's packages. `--source` adds an explicit Orchard dependency feed
@@ -234,12 +237,18 @@ alongside nuget.org, using an HTTPS NuGet URL or local package directory. It
 does not replace the embedded template or change the Orchard version.
 
 For this fork's temporary CLI previews, whose matching packages are published
-on Feedz, pass the feed explicitly:
+on Feedz, configure the feed in a parent/user NuGet configuration or pass it
+explicitly:
 
 ```bash
 oc install ./MyPreviewSite --site-name "My Preview Site" --email admin@example.com \
   --source https://f.feedz.io/sebastienros/orchardcore/nuget/index.json
 ```
+
+For an isolated source list, add `--clear-sources` to that command. This clears
+inherited **package sources**, not other NuGet settings such as source mappings
+or credentials. Existing sites generated with `<clear />` keep it until you
+remove that element from their `NuGet.Config`.
 
 `--site-time-zone` uses a case-sensitive [IANA/TZDB time zone ID](https://nodatime.org/TimeZones), as resolved
 by Orchard's Noda Time database on every operating system. Examples are `UTC`

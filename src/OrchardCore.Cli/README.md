@@ -48,9 +48,12 @@ Multiple listen addresses use a quoted list, for example
 Omit `--run` to stop after setup. Local installation requires the matching
 .NET SDK (currently .NET 10); `oc doctor` reports whether it is available.
 The template is embedded; restoring the site's dependencies still requires
-NuGet access or a populated package cache. The default source is nuget.org;
-for this fork's temporary previews, explicitly add
+NuGet access or a populated package cache. Nuget.org is added by default, and
+parent/user NuGet sources remain available. For this fork's temporary previews,
+configure Feedz in an inherited NuGet configuration or add
 `--source https://f.feedz.io/sebastienros/orchardcore/nuget/index.json`.
+Use `--clear-sources` to ignore inherited package sources and retain only
+nuget.org plus any explicit `--source`.
 `--site-time-zone` takes an IANA/TZDB ID such as `Europe/Paris` or
 `America/Los_Angeles` (default `UTC`). Run `oc install --help` for database,
 recipe, URL, and secret-input options.

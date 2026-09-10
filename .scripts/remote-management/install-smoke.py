@@ -12,12 +12,15 @@ import tempfile
 import time
 import urllib.error
 import urllib.request
+import xml.etree.ElementTree as ET
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('oc', type=Path, help='Native CLI from the published build to test')
 parser.add_argument('--source', help='Explicit NuGet feed for preview dependencies')
 args = parser.parse_args()
 oc = str(args.oc.resolve())
+if args.source and Path(args.source).is_dir():
+    args.source = str(Path(args.source).resolve())
 source_args = ['--source', args.source] if args.source else []
 
 
@@ -37,6 +40,17 @@ def responds(url):
 
 with tempfile.TemporaryDirectory(prefix='oc-install-smoke-') as scratch:
     root = Path(scratch)
+    # Preview packages may be supplied by an inherited config without --source.
+    inherited = root / 'inherited-packages'
+    inherited.mkdir()
+    config = ET.Element('configuration')
+    sources = ET.SubElement(config, 'packageSources')
+    ET.SubElement(sources, 'clear')
+    ET.SubElement(sources, 'add', key='nuget.org', value='https://api.nuget.org/v3/index.json')
+    ET.SubElement(sources, 'add', key='InheritedOnly', value=str(inherited))
+    if args.source:
+        ET.SubElement(sources, 'add', key='Preview', value=args.source)
+    ET.ElementTree(config).write(root / 'NuGet.Config', encoding='utf-8', xml_declaration=True)
     env = os.environ.copy()
     env['OC_CONFIG_HOME'] = str(root / 'config')
     password = 'Aa1!' + secrets.token_hex(20)
@@ -53,7 +67,7 @@ with tempfile.TemporaryDirectory(prefix='oc-install-smoke-') as scratch:
     assert not (root / 'missing-sdk').exists()
 
     site = root / 'CMS with spaces'
-    base = [oc, 'install', str(site), '--site-name', 'Embedded CMS', '--email', 'admin@example.com', '--recipe-name', 'SaaS', '--output', 'json', *source_args]
+    base = [oc, 'install', str(site), '--site-name', 'Embedded CMS', '--email', 'admin@example.com', '--recipe-name', 'SaaS', '--output', 'json']
     completed = subprocess.run([*base, '--password-env', 'OC_INSTALL_PASSWORD'], env=env, capture_output=True, text=True, timeout=600)
     assert completed.returncode == 0, completed.stderr
     assert 'Now listening on:' not in completed.stderr, completed.stderr
@@ -61,6 +75,16 @@ with tempfile.TemporaryDirectory(prefix='oc-install-smoke-') as scratch:
     assert 'Failed to determine the https port' not in completed.stderr, completed.stderr
     assert 'Build succeeded.' not in completed.stderr, completed.stderr
     result = json.loads(completed.stdout)
+    assert ET.parse(site / 'NuGet.Config').find('./packageSources/clear') is None
+    restored_sources = json.loads((site / 'obj/project.assets.json').read_text())['project']['restore']['sources']
+    assert str(inherited) in restored_sources, restored_sources
+    if args.source:
+        assert args.source in restored_sources, restored_sources
+    # A subsequent ordinary restore must see the same sources as installation.
+    restore = subprocess.run(['dotnet', 'restore', '--force-evaluate', '--disable-build-servers'], cwd=site,
+                             env=env, capture_output=True, text=True, timeout=120)
+    assert restore.returncode == 0, restore.stderr + restore.stdout
+    assert restored_sources == json.loads((site / 'obj/project.assets.json').read_text())['project']['restore']['sources']
     assert result['tenantState'] == 'Running' and result['tenant'] == 'Default', result
     assert json.loads((site / 'App_Data/tenants.json').read_text())['Default']['State'] == 'Running'
     if os.name != 'nt':
@@ -74,12 +98,18 @@ with tempfile.TemporaryDirectory(prefix='oc-install-smoke-') as scratch:
     assert refused.returncode != 0 and 'overwrite' in refused.stderr, refused
 
     # A setup failure must be reported without claiming a ready site.
-    failure = subprocess.run([oc, 'install', str(root / 'bad-recipe'), '--site-name', 'Invalid recipe', '--email', 'admin@example.com', '--recipe-name', 'RecipeThatDoesNotExist', '--password-env', 'OC_INSTALL_PASSWORD', '--output', 'json', *source_args], env=env, capture_output=True, text=True, timeout=600)
+    failure = subprocess.run([oc, 'install', str(root / 'bad-recipe'), '--site-name', 'Invalid recipe', '--email', 'admin@example.com', '--recipe-name', 'RecipeThatDoesNotExist', '--clear-sources', '--password-env', 'OC_INSTALL_PASSWORD', '--output', 'json', *source_args], env=env, capture_output=True, text=True, timeout=600)
     assert failure.returncode != 0 and not failure.stdout.strip(), failure
     assert password not in failure.stderr
     assert 'Installation diagnostics:' in failure.stderr, failure.stderr
     assert 'The AutoSetup failed installing the site' in failure.stderr, failure.stderr
     assert (root / 'bad-recipe/Program.cs').exists()
+    assert ET.parse(root / 'bad-recipe/NuGet.Config').find('./packageSources/clear') is not None
+    cleared_sources = json.loads((root / 'bad-recipe/obj/project.assets.json').read_text())['project']['restore']['sources']
+    assert str(inherited) not in cleared_sources, cleared_sources
+    assert 'https://api.nuget.org/v3/index.json' in cleared_sources
+    if args.source:
+        assert args.source in cleared_sources, cleared_sources
 
     # Check --run in the foreground, stdin input, path prefix, and cancellation.
     port = free_port()

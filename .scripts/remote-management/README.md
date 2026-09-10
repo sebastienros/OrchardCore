@@ -205,7 +205,13 @@ against the matching published packages: Auto Setup, a directory with spaces,
 environment/stdin password input, missing SDK diagnostics, overwrite refusal,
 failed setup, and foreground `--run` cancellation. It uses disposable local
 sites and generated test credentials. Run it only with a CLI build whose
-matching Orchard dependencies are already available from its default feed.
+matching Orchard dependencies are already available. Pass its preview feed with
+`--source` when needed.
+
+The installer smoke also places its preview feed in a parent `NuGet.Config`,
+installs without `--source`, and verifies both installation and a subsequent
+ordinary restore inherit that feed. Its explicit `--clear-sources` case checks
+that an inherited-only source is excluded while nuget.org and `--source` remain.
 
 Versions use the repository's `VersionPrefix` plus
 `-cli.<workflow-run-number>` (for example `4.0.0-cli.25`). A new push or manual

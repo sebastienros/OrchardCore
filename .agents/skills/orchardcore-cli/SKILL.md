@@ -88,10 +88,12 @@ its Default tenant initialized. This static command needs no tenant context or
 login. It embeds this CLI build's `occms` template and uses matching Orchard
 dependency versions; no template download or version selection is needed.
 Run `oc doctor` to check for the required stable .NET SDK (currently .NET 10).
-Dependencies still need a NuGet feed or populated package cache. The default
-source is nuget.org, including for previews. For this fork's temporary CLI
-previews, explicitly pass
-`--source https://f.feedz.io/sebastienros/orchardcore/nuget/index.json`.
+Dependencies still need a NuGet feed or populated package cache. Nuget.org is
+added by default; parent and user-level NuGet sources remain available. For
+this fork's temporary CLI previews, use an inherited Feedz configuration or
+pass `--source https://f.feedz.io/sebastienros/orchardcore/nuget/index.json`.
+Use `--clear-sources` only when the user wants to exclude inherited package
+sources; it leaves nuget.org and an explicit `--source`.
 
 ```bash
 oc install ./MySite --site-name "My Site" --email admin@example.com --password-env OC_SITE_PASSWORD
