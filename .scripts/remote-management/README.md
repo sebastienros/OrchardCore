@@ -240,3 +240,12 @@ installer is published after all native implementations. The final verification
 installs the Linux tool and project templates from Feedz and restores a generated
 CMS project with an isolated package cache, then builds it. Use the **Published to Feedz** job
 summary for the exact version and install commands.
+
+
+## Confirmation flags
+
+Run `python3 .scripts/remote-management/force-confirmation-smoke.py <oc-path>`
+to check that `--force` confirms destructive commands without prompting, that
+API `force` values use `--api-force` independently, and that context deletion
+uses the same flag. The test uses a synthetic loopback API and isolated context
+storage; it runs in every native CI build.

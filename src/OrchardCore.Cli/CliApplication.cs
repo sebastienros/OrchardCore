@@ -482,15 +482,15 @@ internal sealed partial class CliApplication
     {
         var command = new Command("delete", "Delete a saved context");
         var nameArgument = new Argument<string>("name");
-        var yesOption = new Option<bool>("--yes") { Description = "Confirm deletion without a prompt" };
+        var forceOption = new Option<bool>("--force") { Description = "Confirm deletion without a prompt" };
         command.Arguments.Add(nameArgument);
-        command.Options.Add(yesOption);
+        command.Options.Add(forceOption);
 
         command.SetAction(async (parseResult, cancellationToken) =>
         {
-            if (!parseResult.GetValue(yesOption))
+            if (!parseResult.GetValue(forceOption))
             {
-                throw new CliException("Context deletion is destructive. Re-run with --yes to confirm.");
+                throw new CliException("Context deletion is destructive. Re-run with --force to confirm.");
             }
 
             var name = parseResult.GetValue(nameArgument) ?? throw new CliException("A context name is required.");
@@ -862,6 +862,19 @@ internal sealed partial class CliApplication
         return command;
     }
 
+    // --force belongs to the CLI confirmation gate. An API parameter with the
+    // same name must remain separate: confirming must never broaden a mutation.
+    private static string GetApiOptionName(Command command, string name)
+    {
+        var optionName = CliUtilities.ToCliName(name);
+        while (optionName == "force" || command.Options.Any(option => option.Name == "--" + optionName))
+        {
+            optionName = "api-" + optionName;
+        }
+
+        return "--" + optionName;
+    }
+
     private void AddDynamicCommand(OpenApiOperationDefinition operation)
     {
         var command = EnsureCommandPath(operation.CliMetadata.CommandGroup, operation.CliMetadata.Verb, operation.Summary ?? operation.Description ?? operation.OperationId ?? $"{operation.Method} {operation.Path}");
@@ -892,13 +905,13 @@ internal sealed partial class CliApplication
             }
             else
             {
-                var option = new Option<string?>($"--{CliUtilities.ToCliName(parameter.Name)}") { Description = parameter.Description, Required = parameter.Required };
+                var option = new Option<string?>(GetApiOptionName(command, parameter.Name)) { Description = parameter.Description, Required = parameter.Required };
                 command.Options.Add(option);
                 options.Add((parameter, option));
             }
         }
 
-        var yesOption = new Option<bool>("--yes") { Description = "Confirm destructive operations without a prompt" };
+        var forceOption = new Option<bool>("--force") { Description = "Confirm destructive operations without a prompt" };
         var bodyOption = operation.CliMetadata.SecretProperties.Count == 0
             ? new Option<string?>("--body") { Description = "Inline JSON request body" }
             : null;
@@ -908,7 +921,7 @@ internal sealed partial class CliApplication
 
         if (operation.CliMetadata.RequiresConfirmation)
         {
-            command.Options.Add(yesOption);
+            command.Options.Add(forceOption);
         }
 
         if (operation.HasJsonRequestBody)
@@ -961,7 +974,7 @@ internal sealed partial class CliApplication
                     continue;
                 }
 
-                var option = new Option<string?>($"--{CliUtilities.ToCliName(property.Name)}") { Description = property.Description };
+                var option = new Option<string?>(GetApiOptionName(command, property.Name)) { Description = property.Description };
                 command.Options.Add(option);
                 bodyPropertyOptions.Add((property, option));
             }
@@ -970,11 +983,11 @@ internal sealed partial class CliApplication
         command.SetAction(async (parseResult, cancellationToken) =>
         {
             var context = RequireContext(parseResult.GetValue(_contextOption));
-            if (operation.CliMetadata.RequiresConfirmation && !parseResult.GetValue(yesOption))
+            if (operation.CliMetadata.RequiresConfirmation && !parseResult.GetValue(forceOption))
             {
                 if (Console.IsInputRedirected || Console.IsOutputRedirected)
                 {
-                    throw new CliException("This operation is marked destructive. Re-run with --yes to confirm.");
+                    throw new CliException("This operation is marked destructive. Re-run with --force to confirm.");
                 }
 
                 await Console.Error.WriteAsync($"Run {string.Join(' ', operation.CliMetadata.CommandGroup)} {operation.CliMetadata.Verb} on '{context.Name}' ({context.TenantUrl})? [y/N] ");
@@ -1389,7 +1402,7 @@ internal sealed partial class CliApplication
             {
                 if (property.Required)
                 {
-                    throw new CliException($"--{CliUtilities.ToCliName(property.Name)} is required.");
+                    throw new CliException($"{option.Name} is required.");
                 }
 
                 continue;

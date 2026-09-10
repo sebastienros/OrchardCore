@@ -14,11 +14,15 @@ feature changes because commands and schemas are dynamic.
 oc features list --search Media --skip 0 --take 200
 oc features show OrchardCore.Media
 oc features enable OrchardCore.Media
-oc features disable OrchardCore.Media --yes
+oc features disable OrchardCore.Media --force
 oc api refresh --force
 ```
 
-Use `--force` only when intentionally overriding dependency/dependent checks.
+`--force` skips the CLI confirmation only. The feature API's separate
+`--api-force true` option includes missing dependencies (enable) or enabled
+dependents (disable); use it only when those additional changes are authorized.
+For example, `oc features disable OrchardCore.Media --force` keeps dependency
+checks enabled. Never add `--api-force true` merely to avoid a prompt.
 Re-read the feature state after mutation.
 
 ## Recipes
@@ -27,7 +31,7 @@ Re-read the feature state after mutation.
 oc recipes list --search setup --take 200
 oc recipes show <recipe-id>
 oc recipes schema --operation execute
-oc recipes execute <recipe-id> --body-file parameters.json --yes
+oc recipes execute <recipe-id> --body-file parameters.json --force
 ```
 
 Use the opaque case-sensitive ID returned by list/show. Recipe execution starts
@@ -44,7 +48,7 @@ oc queries create --body-file query.json
 oc queries show RecentNews
 oc queries update RecentNews --body-file query.json
 oc queries execute RecentNews --body-file parameters.json
-oc queries delete RecentNews --yes
+oc queries delete RecentNews --force
 ```
 
 Read the selected source's schema before creating a query. Keep paging,
@@ -67,7 +71,7 @@ oc workflow types enable <workflow-type-id>
 oc workflow types execute <workflow-type-id> --body-file input.json
 oc workflow instances list --workflow-type-id <workflow-type-id>
 oc workflow instances show <workflow-id>
-oc workflow instances cancel <workflow-id> --yes
+oc workflow instances cancel <workflow-id> --force
 ```
 
 Use singular `workflow` in command groups. Discover activity schemas from the
@@ -85,15 +89,15 @@ oc users create --body-file user.json
 oc users list --search editor --role Editor --take 200
 oc users show <user-id>
 oc users update <user-id> --body-file user.json
-oc users disable <user-id> --yes
-oc users delete <user-id> --yes
+oc users disable <user-id> --force
+oc users delete <user-id> --force
 
 oc roles schema --operation create
 oc roles create --body-file role.json
 oc roles list --search Content --take 200
 oc roles show <role-id>
 oc roles update <role-id> --body-file role.json
-oc roles delete <role-id> --yes
+oc roles delete <role-id> --force
 ```
 
 Apply least privilege. Every API still requires `AccessRemoteManagement`; grant

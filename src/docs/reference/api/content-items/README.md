@@ -829,7 +829,7 @@ use `--replace-draft true` to archive it and create the restored draft.
 ```bash
 oc content items show <content-item-id> --version draft
 oc content versions restore <version-id> --replace-draft true
-oc content versions delete <archived-version-id> --yes
+oc content versions delete <archived-version-id> --force
 ```
 
 Deletion is permanent and only accepts archived versions (`Latest=false` and

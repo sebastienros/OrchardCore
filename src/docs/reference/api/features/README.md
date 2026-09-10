@@ -376,3 +376,13 @@ Feature registration, permissions, behavior, and metadata were cross-checked aga
 - `src/OrchardCore/OrchardCore.Features.Core/FeaturesPermissions.cs`
 - `test/OrchardCore.Tests/Modules/OrchardCore.Features/FeatureManagementEndpointsTests.cs`
 - `test/OrchardCore.Tests/Apis/RemoteManagement/OwnedModuleEndpointMetadataTests.cs`
+
+
+## CLI confirmation and dependency handling
+
+`oc features disable <feature-id> --force` skips the CLI confirmation prompt.
+It does not change the API's dependency behavior. The HTTP `force` query
+parameter is exposed as `--api-force true` in the CLI, for both enable and
+disable. To deliberately disable dependents without an interactive prompt, use
+`oc features disable <feature-id> --force --api-force true`. Neither option
+bypasses authorization or the active feature profile.

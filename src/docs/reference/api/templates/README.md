@@ -244,7 +244,7 @@ Deletion is convergent. The first request for an existing template removes it in
 The CLI marks this operation destructive and requires confirmation:
 
 ```bash
-oc templates delete Content__Article --yes
+oc templates delete Content__Article --force
 ```
 
 ### Parameters

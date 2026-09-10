@@ -48,8 +48,8 @@ oc media items list
 oc media files copy --body-file copy.json
 oc media files move --body-file move.json
 oc media files move-batch --body-file move-batch.json
-oc media files delete-batch --body-file delete.json --yes
-oc media files delete images/obsolete.png --yes
+oc media files delete-batch --body-file delete.json --force
+oc media files delete images/obsolete.png --force
 ```
 
 Run the corresponding `schema --operation <verb>` command before sending JSON.
@@ -88,8 +88,8 @@ updates; uploads reject existing destinations. Only delete/replace an existing
 asset when authorized, after checking references. For authorized cleanup:
 
 ```bash
-oc media files delete assets/styles/site-v1.css --yes
-oc media folders delete assets/styles --yes
+oc media files delete assets/styles/site-v1.css --force
+oc media folders delete assets/styles --force
 ```
 
 Delete a folder only when its entire contents are authorized for removal.

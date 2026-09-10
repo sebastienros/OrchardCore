@@ -80,10 +80,10 @@ Copy an exact `context` and `key` from the list into `translation.json`. For exa
 ```bash
 oc localization translations set --body-file translation.json
 oc localization translations list --culture fr --output json
-oc localization translations delete 'Content Types' Page --culture fr --yes
+oc localization translations delete 'Content Types' Page --culture fr --force
 ```
 
-The delete command takes the translation context and key as positional arguments. The global `oc --context <name>` continues to select the tenant. `--yes` confirms removal. JSON bodies can also be supplied with `--stdin`; use `--output json` for scripts. Default output is human-readable in a terminal and JSON when redirected.
+The delete command takes the translation context and key as positional arguments. The global `oc --context <name>` continues to select the tenant. `--force` confirms removal. JSON bodies can also be supplied with `--stdin`; use `--output json` for scripts. Default output is human-readable in a terminal and JSON when redirected.
 
 ## List cultures
 

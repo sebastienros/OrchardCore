@@ -71,7 +71,7 @@ For automation, include the
 [login settings recipe configuration](../Users/README.md#login-settings)
 in an installed non-setup recipe, then run it through the
 [recipe management API](../../api/recipes/README.md#execute-a-recipe)
-or its `oc recipes execute <recipeId> --json '{}' --yes` CLI command, using an ID
+or its `oc recipes execute <recipeId> --json '{}' --force` CLI command, using an ID
 returned by `oc recipes list`.
 That API executes installed recipes; it does not accept a new recipe body.
 The `Settings` recipe step replaces the supplied `LoginSettings` section, so

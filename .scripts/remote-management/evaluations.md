@@ -213,3 +213,24 @@ completion. Separately, the native functional smoke ran all five operations agai
 a real disposable Orchard tenant using a previously built NativeAOT binary. HTTP
 integration tests cover permission filtering, mutation denial with read access,
 current-owner preservation, and the version lifecycle.
+
+
+## Round 8: consistent confirmation flag
+
+Fresh `gpt-5.6-sol` and `gpt-5.6-luna` agents received only the main CLI and
+administration skills and a read-only scenario: disable Media noninteractively
+without disabling dependents, delete a context, and bypass metadata cache TTL.
+They did not inspect implementation or execute commands.
+
+Both used `--force` for confirmation, retained server dependency checks, and
+reserved `--api-force true` for explicitly authorized dependent-feature changes.
+Both used `--output json` for scripting. Sol explicitly selected the production
+context for refresh; Luna relied on the currently selected context for that
+read-only refresh. Sol noted that command examples omit explicit JSON although
+the general automation rule requires it; it correctly applied the general rule.
+
+This evaluates bounded instruction comprehension, not execution or statistical
+efficiency. The separate native smoke verifies actual request counts, that API
+force alone cannot confirm, that confirmation alone sends no API force value,
+that query/body force values remain independent, and that context deletion uses
+`--force`. The smoke is included in all six native CI builds.

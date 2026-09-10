@@ -48,9 +48,9 @@ assert oc('content','items','list','--content-type',prefix,'--status','published
 # Destructive input must fail before sending a mutation.
 oc('content','items','delete',item_id,expected=1)
 assert oc('content','items','show',item_id,'--version','draft')['ContentItemId'] == item_id
-oc('content','items','delete',item_id,'--yes')
-oc('content','types','delete',prefix,'--yes')
-oc('content','parts','delete',prefix+'Details','--yes')
+oc('content','items','delete',item_id,'--force')
+oc('content','types','delete',prefix,'--force')
+oc('content','parts','delete',prefix+'Details','--force')
 role = oc('roles','create',body={'roleName':prefix,'permissionNames':[]})
 role_id = role['roleId']
 assert oc('roles','show',role_id)['roleName'] == prefix
@@ -61,9 +61,9 @@ user = oc('users','create','--user-name',prefix,'--email',prefix+'@example.test'
 assert 'password' not in json.dumps(user).lower()
 user_id = user['userId']
 assert oc('users','show',user_id)['roleNames'] == [prefix]
-oc('users','disable',user_id,'--yes')
-oc('users','delete',user_id,'--yes')
-oc('roles','delete',role_id,'--yes')
+oc('users','disable',user_id,'--force')
+oc('users','delete',user_id,'--force')
+oc('roles','delete',role_id,'--force')
 # Custom CSS uses the same Media store and permissions as the admin library.
 css = Path(state['root']) / (prefix + '.css')
 css.write_text('/* CLI smoke */\nbody { color: #123; }\n')
@@ -76,10 +76,10 @@ assert oc('media','files','show',remote)['size'] == css.stat().st_size
 with urllib.request.urlopen(urllib.parse.urljoin(state['url'], asset['url'])) as response:
     assert response.read() == css.read_bytes()
 oc('media','files','delete',remote,expected=1)
-oc('media','files','delete',remote,'--yes')
+oc('media','files','delete',remote,'--force')
 oc('media','files','show',remote,expected=4)
 assert oc('media','files','list','--path',prefix)['totalCount'] == 0
-oc('media','folders','delete',prefix,'--yes')
+oc('media','folders','delete',prefix,'--force')
 report = {'passed':True,'steps':steps,'prefix':prefix}
 (Path(state['root']) / 'smoke.json').write_text(json.dumps(report,indent=2))
 print(json.dumps({'passed':True,'commands':len(steps)}))

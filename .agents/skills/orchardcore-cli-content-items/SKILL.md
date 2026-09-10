@@ -86,7 +86,7 @@ oc content items unpublish <id>
 oc content items validate --body-file item.json
 oc content items validate-update <id> --body-file item.json
 oc content items render <id> --version draft --display-type Detail
-oc content items delete <id> --yes
+oc content items delete <id> --force
 ```
 
 Run `oc content items --help` for installation-specific filters and options.
@@ -102,7 +102,7 @@ oc content versions list <content-item-id> --take 50 --output json
 oc content versions show <version-id> --output json
 oc content versions render <version-id> --display-type Detail
 oc content versions restore <version-id>
-oc content versions delete <archived-version-id> --yes
+oc content versions delete <archived-version-id> --force
 ```
 
 Restoration creates a new unpublished draft with a new version ID, preserving

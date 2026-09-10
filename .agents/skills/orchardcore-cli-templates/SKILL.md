@@ -96,7 +96,7 @@ Create it as template name `Layout` before relying on tenant CSS or scripts.
 oc templates create --body-file article-template.json
 oc templates show Content__Article
 oc templates update Content__Article --body-file article-template.json
-oc templates delete Content__Article --yes
+oc templates delete Content__Article --force
 ```
 
 Create uses a stable case-insensitive name. An identical retry converges;

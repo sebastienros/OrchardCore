@@ -60,13 +60,13 @@ oc('content', 'versions', 'restore', first_id, status=409)
 replaced = oc('content', 'versions', 'restore', first_id, '--replace-draft', 'true')
 assert replaced['ContentItemVersionId'] != restored['ContentItemVersionId']
 assert oc('content', 'versions', 'show', first_id) == archived
-oc('content', 'versions', 'delete', second_id, '--yes', status=409)
-oc('content', 'versions', 'delete', replaced['ContentItemVersionId'], '--yes', status=409)
+oc('content', 'versions', 'delete', second_id, '--force', status=409)
+oc('content', 'versions', 'delete', replaced['ContentItemVersionId'], '--force', status=409)
 oc('content', 'versions', 'delete', first_id, failure=True)  # Confirmation required before sending.
 assert oc('content', 'versions', 'show', first_id) == archived
-oc('content', 'versions', 'delete', first_id, '--yes')
+oc('content', 'versions', 'delete', first_id, '--force')
 oc('content', 'versions', 'show', first_id, status=404)
-oc('content', 'versions', 'delete', first_id, '--yes')
+oc('content', 'versions', 'delete', first_id, '--force')
 assert oc('content', 'items', 'show', item_id)['ContentItemVersionId'] == second_id
 for route in (f'api/content/{item_id}/versions', f'api/content/versions/{second_id}', f'api/content/versions/{second_id}/render'):
     try:
@@ -74,6 +74,6 @@ for route in (f'api/content/{item_id}/versions', f'api/content/versions/{second_
         raise AssertionError('Anonymous access unexpectedly succeeded: ' + route)
     except urllib.error.HTTPError as error:
         assert error.code == 401, (route, error.code)
-oc('content', 'items', 'delete', item_id, '--yes')
-oc('content', 'types', 'delete', name, '--yes')
+oc('content', 'items', 'delete', item_id, '--force')
+oc('content', 'types', 'delete', name, '--force')
 print('Content versions CLI smoke passed: five dynamic operations, paging, restore, protected versions, confirmation, retries, and anonymous denial.')

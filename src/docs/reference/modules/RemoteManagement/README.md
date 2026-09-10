@@ -101,7 +101,7 @@ oc --context production content items list
 oc logout production
 ```
 
-Delete one context with `oc context delete <name> --yes`. To delete every saved context and its stored credentials, use `oc context clear`; confirm the interactive prompt, or pass `--force` for non-interactive use:
+Delete one context with `oc context delete <name> --force`. To delete every saved context and its stored credentials, use `oc context clear`; confirm the interactive prompt, or pass `--force` for non-interactive use:
 
 ```bash
 oc context clear --force

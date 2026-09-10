@@ -80,7 +80,7 @@ oc localization strings show media-gallery --culture fr --take 200
 oc localization translations list --culture fr --output json
 oc localization translations schema --operation set
 oc localization translations set --body-file translation.json
-oc localization translations delete 'Content Types' Page --culture fr --yes
+oc localization translations delete 'Content Types' Page --culture fr --force
 ```
 
 Culture settings **replace** the supported-culture list. Preserve existing

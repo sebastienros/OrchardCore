@@ -735,7 +735,18 @@ updates, lifecycle operations, and deletes.
 
 Use `oc --context production <command>` to make the destination explicit.
 Destructive commands marked for confirmation ask in an interactive terminal;
-noninteractive callers must supply `--yes`. `oc context clear --force` removes
+noninteractive callers must supply `--force`. This flag skips confirmation;
+it does not override server permissions or dependency checks. If a discovered
+API itself has a `force` parameter, it is exposed separately as `--api-force`
+(with an explicit value such as `true`). For example:
+
+```bash
+oc features disable OrchardCore.Media --force
+# Also disable dependent features, when that broader change is intended:
+oc features disable OrchardCore.Media --force --api-force true
+```
+
+`oc context clear --force` removes
 all saved contexts and their credentials, so use it only for an intentional reset.
 
 For a complete setup walkthrough, see [Client credentials for automation](../../reference/modules/RemoteManagement/README.md#client-credentials-for-automation).

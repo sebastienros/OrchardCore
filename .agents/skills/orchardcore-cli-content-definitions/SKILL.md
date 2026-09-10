@@ -103,19 +103,19 @@ oc content types list --skip 0 --take 200
 oc content types show Article
 oc content types create --body-file article-type.json
 oc content types update Article --body-file article-type.json
-oc content types delete Article --yes
+oc content types delete Article --force
 
 oc content parts list --skip 0 --take 200
 oc content parts show ArticleDetails
 oc content parts create --body-file article-details.json
 oc content parts update ArticleDetails --body-file article-details.json
-oc content parts delete ArticleDetails --yes
+oc content parts delete ArticleDetails --force
 
 oc content fields list ArticleDetails
 oc content fields show ArticleDetails Summary
 oc content fields create ArticleDetails --body-file summary-field.json
 oc content fields update ArticleDetails Summary --body-file summary-field.json
-oc content fields delete ArticleDetails Summary --yes
+oc content fields delete ArticleDetails Summary --force
 ```
 
 Create/update bodies are full definitions, not patches. Keep technical names

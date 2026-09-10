@@ -52,6 +52,6 @@ oc('content', 'items', 'create-draft', body={**bad, 'ContentType': name}, error_
 assert oc('content', 'items', 'validate-update', item_id, body={'TitlePart': {'Title': 'Valid revision'}})['isValid']
 assert oc('content', 'versions', 'list', item_id)['totalCount'] == 1
 assert oc('content', 'items', 'show', item_id) == item
-oc('content', 'items', 'delete', item_id, '--yes')
-oc('content', 'types', 'delete', name, '--yes')
+oc('content', 'items', 'delete', item_id, '--force')
+oc('content', 'types', 'delete', name, '--force')
 print('Content validation CLI smoke passed: field-specific HTTP 400, human/JSON errors, nonzero exit, missing type, unchanged published item and history, valid partial update.')

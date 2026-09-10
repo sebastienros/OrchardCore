@@ -64,7 +64,7 @@ oc('localization', 'translations', 'set', '--stdin', body={**translation, 'cultu
 oc('localization', 'settings', 'show', client='cli-translator-fr', status=403)
 oc('localization', 'translations', 'list', '--culture', 'fr', client='cli-discovery', status=403)
 oc('localization', 'translations', 'set', '--stdin', body={**translation, 'key': 'Unregistered CLI key'}, status=404)
-args = ('localization', 'translations', 'delete', key['context'], key['key'], '--culture', 'fr', '--yes')
+args = ('localization', 'translations', 'delete', key['context'], key['key'], '--culture', 'fr', '--force')
 assert oc(*args)['changed']
 assert not oc(*args)['changed']
 # Anonymous callers cannot reach any of the new read APIs.
