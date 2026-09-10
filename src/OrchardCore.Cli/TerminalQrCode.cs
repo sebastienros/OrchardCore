@@ -12,6 +12,18 @@ internal enum QrCodeMode
 
 internal static class TerminalQrCode
 {
+    public static string? RenderPngBase64(string url)
+    {
+        if (Encoding.UTF8.GetByteCount(url) > 2048)
+        {
+            return null;
+        }
+
+        using var data = QRCodeGenerator.GenerateQrCode(url, QRCodeGenerator.ECCLevel.M);
+        using var image = new PngByteQRCode(data);
+        return Convert.ToBase64String(image.GetGraphic(4));
+    }
+
     public static int GetMaxWidth(QrCodeMode mode)
     {
         if (mode == QrCodeMode.Never || (mode == QrCodeMode.Auto &&

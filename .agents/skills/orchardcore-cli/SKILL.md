@@ -43,10 +43,15 @@ oc api refresh
 oc --help
 ```
 
-Use `oc login --grant device` on a headless terminal. It prints a URL/code and
-automatically renders a QR code in compatible terminals. Use `--qr never` for
-text-only instructions or `--qr always` to force ANSI/Unicode QR output.
-The human can scan the QR code on a phone that can reach the tenant; keep the
+Use `oc login --grant device` on a headless terminal. It prints a URL/code;
+QR output is disabled by default. Add `--qr auto` to render a QR code in compatible
+terminals or `--qr always` to force ANSI/Unicode QR output.
+With JSON output and either opt-in QR mode, stdout first emits an
+`authorization_pending` record with `verificationUri`, `userCode`, `expiresAt`,
+and `qrCode: { mediaType: "image/png", base64: "..." }`. Present this image or URL
+while the process runs. Consume a stream of JSON values: the normal login result
+follows after approval. The pending record is not a successful login.
+The human can open the URL or scan an enabled QR code on a phone that can reach the tenant; keep the
 CLI waiting while they verify the matching code and approve the request.
 `oc login --no-browser`
 prints the browser-flow URL for opening on the same computer. Browser login uses

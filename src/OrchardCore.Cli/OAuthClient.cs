@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json.Nodes;
 using System.Web;
 
 namespace OrchardCore.Cli;
@@ -92,7 +93,7 @@ internal sealed class OAuthClient
         return CliUtilities.CreateStoredToken(tokenResponse, discovery);
     }
 
-    public async Task<StoredToken> LoginWithDeviceCodeAsync(TenantContextRecord context, OidcDiscoveryDocument discovery, CancellationToken cancellationToken, int qrCodeWidth = 0)
+    public async Task<StoredToken> LoginWithDeviceCodeAsync(TenantContextRecord context, OidcDiscoveryDocument discovery, CancellationToken cancellationToken, int qrCodeWidth = 0, TextWriter? qrCodeJsonWriter = null)
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(discovery);
@@ -120,14 +121,35 @@ internal sealed class OAuthClient
 
         var device = CliUtilities.ParseDeviceAuthorizationResponse(deviceContent);
         var verificationUri = CliUriPolicy.RequireSameOrigin(new Uri(discovery.Issuer), device.VerificationUriComplete ?? device.VerificationUri);
+        var expiresAt = DateTimeOffset.UtcNow.AddSeconds(device.ExpiresIn);
         await _stderr.WriteLineAsync($"Open {verificationUri.AbsoluteUri} and enter code {device.UserCode}.");
-        if (TerminalQrCode.Render(verificationUri.AbsoluteUri, qrCodeWidth) is { } qrCode)
+        if (qrCodeJsonWriter is not null)
+        {
+            var png = TerminalQrCode.RenderPngBase64(verificationUri.AbsoluteUri);
+            var pending = new JsonObject
+            {
+                ["status"] = "authorization_pending",
+                ["context"] = context.Name,
+                ["verificationUri"] = verificationUri.AbsoluteUri,
+                ["userCode"] = device.UserCode,
+                ["expiresAt"] = expiresAt,
+                ["qrCode"] = png is null ? null : new JsonObject
+                {
+                    ["mediaType"] = "image/png",
+                    ["base64"] = png,
+                },
+            };
+            // Consumers need the image before authentication, not in its final result.
+            // Never include the private device code or tokens in this public challenge.
+            await qrCodeJsonWriter.WriteLineAsync(pending.ToJsonString());
+            await qrCodeJsonWriter.FlushAsync(cancellationToken);
+        }
+        else if (TerminalQrCode.Render(verificationUri.AbsoluteUri, qrCodeWidth) is { } qrCode)
         {
             await _stderr.WriteLineAsync("Scan to sign in on another device, then verify the code:");
             await _stderr.WriteAsync(qrCode);
         }
 
-        var expiresAt = DateTimeOffset.UtcNow.AddSeconds(device.ExpiresIn);
         var interval = TimeSpan.FromSeconds(Math.Max(1, device.Interval));
 
         while (DateTimeOffset.UtcNow < expiresAt)

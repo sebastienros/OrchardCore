@@ -287,7 +287,7 @@ internal sealed partial class CliApplication
         var contextArgument = new Argument<string?>("context") { Description = "Context name (defaults to the current context)" };
         contextArgument.DefaultValueFactory = _ => null;
         var noBrowserOption = new Option<bool>("--no-browser") { Description = "Print the browser login URL instead of opening it (browser must run on this computer)" };
-        var qrOption = new Option<QrCodeMode>("--qr") { Description = "Device login QR code: auto, always, never", DefaultValueFactory = _ => QrCodeMode.Auto };
+        var qrOption = new Option<QrCodeMode>("--qr") { Description = "Device login QR code (opt-in): auto, always, never; JSON output emits a pending login record with a base64 PNG", DefaultValueFactory = _ => QrCodeMode.Never };
         var grantOption = new Option<string?>("--grant") { Description = "Grant flow: browser, device, client-credentials", DefaultValueFactory = _ => "browser" };
         var clientIdOption = new Option<string?>("--client-id") { Description = "Client identifier for client credentials" };
         var clientSecretEnvOption = new Option<string?>("--client-secret-env") { Description = "Environment variable containing a client secret" };
@@ -334,10 +334,13 @@ internal sealed partial class CliApplication
                 throw new CliException("Persistent human credentials require an OS-protected credential store. This platform is not supported; use per-command client credentials instead.");
             }
 
+            var jsonQr = parseResult.GetValue(qrOption) != QrCodeMode.Never
+                && CliUtilities.ParseOutputFormat(parseResult.GetValue(_outputOption)) == OutputFormat.Json;
             var tokenSet = grantType switch
             {
                 "browser" => await _oauthClient.LoginWithAuthorizationCodeAsync(context, discovery, cancellationToken, openBrowser: !parseResult.GetValue(noBrowserOption)),
-                "device" => await _oauthClient.LoginWithDeviceCodeAsync(context, discovery, cancellationToken, TerminalQrCode.GetMaxWidth(parseResult.GetValue(qrOption))),
+                "device" => await _oauthClient.LoginWithDeviceCodeAsync(context, discovery, cancellationToken,
+                    jsonQr ? 0 : TerminalQrCode.GetMaxWidth(parseResult.GetValue(qrOption)), jsonQr ? Console.Out : null),
                 _ => throw new CliException($"Unsupported grant type '{grantType}'.")
             };
 

@@ -392,26 +392,63 @@ oc login --grant device
 ```
 
 The CLI prints a verification URL and a user code without opening a browser.
-In a compatible terminal it also displays a QR code: scan it with your phone's
-camera to open the same verification URL. The QR code is generated locally.
+QR output is disabled by default. Add `--qr auto` to display a QR code in a
+compatible terminal: scan it with your phone's camera to open the same
+verification URL. The QR code is generated locally.
 When the server supplies a URL containing the user code, that complete URL is
 encoded; otherwise you enter the displayed code after scanning.
 
 Control the terminal QR output with:
 
 ```bash
-oc login --grant device --qr auto    # Default: show in a compatible terminal
+oc login --grant device --qr auto    # Opt in: show in a compatible terminal
 oc login --grant device --qr always  # Force ANSI/Unicode QR output
-oc login --grant device --qr never   # Keep just the URL and user code
+oc login --grant device --qr never   # Default: keep just the URL and user code
 ```
 
-Automatic mode skips QR output when standard error is redirected, the output
+For terminal rendering, automatic mode skips QR output when standard error is redirected, the output
 encoding is not UTF-8, `TERM=dumb`, or `NO_COLOR` is set to a nonempty value.
-QR codes that do not fit the terminal width, or whose URL is too long, are
-omitted in every mode. The URL and code remain available, and QR output goes
+QR codes that do not fit the terminal width are omitted. The URL and code remain available, and terminal QR output goes
 to standard error so it does not mix with JSON results on standard output.
 QR output applies only to device login, since the browser login flow requires
 its callback on the same computer.
+
+To receive an image for a script or application, combine an opt-in QR mode with
+JSON output:
+
+```bash
+oc login --grant device --qr always --output json
+```
+
+Before waiting for approval, the CLI writes and flushes a JSON record to stdout:
+
+```json
+{
+  "status": "authorization_pending",
+  "context": "production",
+  "verificationUri": "https://cms.example.com/team/connect/verify?user_code=6738-0585-5256",
+  "userCode": "6738-0585-5256",
+  "expiresAt": "2026-09-10T18:00:00+00:00",
+  "qrCode": {
+    "mediaType": "image/png",
+    "base64": "iVBORw0KGgo..."
+  }
+}
+```
+
+The example image data is abbreviated. Decode `qrCode.base64` to PNG bytes, or
+display it as `data:image/png;base64,` followed by that value. Keep the CLI running
+while the user authenticates. The normal login result follows on stdout after
+success, so consume a **stream of JSON values**, not a single JSON document.
+The pending record does not mean login succeeded; check the final exit code.
+Failure diagnostics remain on stderr.
+
+This also works with `--qr auto --output json` or redirected `--output auto`
+when QR output is explicitly enabled. PNG rendering ignores terminal width and
+color settings. URLs over 2,048 UTF-8 bytes omit the image (`qrCode: null`), while
+retaining the URL and code. Without `--qr` (or with `--qr never`), there is no
+pending JSON record or image. Private device codes and tokens are never included
+in the pending record.
 
 For example, against a tenant reachable at `https://cms.example.com/team/`:
 
@@ -420,7 +457,7 @@ Open https://cms.example.com/team/connect/verify?user_code=6738-0585-5256 and en
 ```
 
 1. Keep the CLI command running.
-2. Scan the QR code or open the printed URL on your phone or another computer. Both the CLI and
+2. Open the printed URL on your phone or another computer (or scan the QR code if enabled). Both the CLI and
    that browser must be able to reach the tenant; a private tenant may require
    VPN access. A `localhost` or `127.0.0.1` tenant URL points to the device
    opening it and cannot be used from your phone to reach the CLI computer.

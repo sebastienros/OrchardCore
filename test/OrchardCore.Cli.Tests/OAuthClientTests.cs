@@ -2,12 +2,73 @@ using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json.Nodes;
 using System.Web;
 
 namespace OrchardCore.Cli.Tests;
 
 public class OAuthClientTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DeviceLogin_JsonQr_EmitsPngBeforePollingWithoutPrivateCodes(bool completeUrl)
+    {
+        const string baseUrl = "https://example.test/tenant/connect/verify";
+        var expectedUrl = completeUrl ? baseUrl + "?user_code=1234-5678" : baseUrl;
+        using var instructions = new StringWriter();
+        using var json = new StringWriter();
+        var requests = 0;
+        using var http = new HttpClient(new TestHandler(_ =>
+        {
+            if (++requests == 1)
+            {
+                var device = new JsonObject
+                {
+                    ["device_code"] = "private-device-code",
+                    ["user_code"] = "1234-5678",
+                    ["verification_uri"] = baseUrl,
+                    ["interval"] = 1,
+                    ["expires_in"] = 60,
+                };
+                if (completeUrl)
+                {
+                    device["verification_uri_complete"] = expectedUrl;
+                }
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(device.ToJsonString()) });
+            }
+
+            // The public challenge must be available while authentication is pending.
+            var pending = JsonNode.Parse(json.ToString())!;
+            Assert.Equal("authorization_pending", (string?)pending["status"]);
+            Assert.Equal(expectedUrl, (string?)pending["verificationUri"]);
+            Assert.Equal("1234-5678", (string?)pending["userCode"]);
+            Assert.Equal("blog", (string?)pending["context"]);
+            Assert.True(DateTimeOffset.Parse((string)pending["expiresAt"]!) > DateTimeOffset.UtcNow);
+            Assert.Equal("image/png", (string?)pending["qrCode"]?["mediaType"]);
+            var png = Convert.FromBase64String((string)pending["qrCode"]!["base64"]!);
+            Assert.Equal(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 }, png[..8]);
+            Assert.DoesNotContain("private-device-code", json.ToString());
+            Assert.DoesNotContain("access_token", json.ToString());
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{\"access_token\":\"private-token\",\"expires_in\":3600}") });
+        }));
+        var oauth = new OAuthClient(http, instructions);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var token = await oauth.LoginWithDeviceCodeAsync(new TenantContextRecord { Name = "blog", ClientId = "orchardcore-cli" },
+            new OidcDiscoveryDocument
+            {
+                Issuer = "https://example.test/tenant/",
+                DeviceAuthorizationEndpoint = "https://example.test/tenant/connect/device",
+                TokenEndpoint = "https://example.test/tenant/connect/token",
+            }, timeout.Token, qrCodeWidth: 79, qrCodeJsonWriter: json);
+
+        Assert.Equal("private-token", token.AccessToken);
+        Assert.DoesNotContain("private-token", json.ToString());
+        Assert.Contains(expectedUrl, instructions.ToString());
+        Assert.DoesNotContain('\u001b', instructions.ToString());
+        Assert.Equal(2, requests);
+    }
+
     [Theory]
     [InlineData(false, 0)]
     [InlineData(false, 79)]
@@ -63,6 +124,7 @@ public class OAuthClientTests
             Content = new StringContent("{\"device_code\":\"secret\",\"user_code\":\"1234\",\"verification_uri\":\"" + verificationUrl + "\"}"),
         })));
         using var output = new StringWriter();
+        using var json = new StringWriter();
         var oauth = new OAuthClient(http, output);
 
         await Assert.ThrowsAsync<CliException>(() => oauth.LoginWithDeviceCodeAsync(
@@ -71,8 +133,9 @@ public class OAuthClientTests
             {
                 Issuer = "https://example.test/",
                 DeviceAuthorizationEndpoint = "https://example.test/connect/device",
-            }, CancellationToken.None, 79));
+            }, CancellationToken.None, 79, json));
         Assert.Empty(output.ToString());
+        Assert.Empty(json.ToString());
     }
 
     [Theory]
