@@ -5,7 +5,7 @@ namespace OrchardCore.Cli;
 
 internal static class HumanOutputFormatter
 {
-    public static string Format(CommandOutput output)
+    public static string Format(CommandOutput output, bool useColor = false)
     {
         var verb = output.CommandPath.Count > 0 ? output.CommandPath[^1] : string.Empty;
         if (verb == "schema")
@@ -37,14 +37,30 @@ internal static class HumanOutputFormatter
         AppendValue(builder, output.Json, 0, skipTransportFields: output.HttpMethod is not null, fields);
         if (path == "install" && Property(output.Json, "listenUrl") is { ValueKind: JsonValueKind.String } listenUrl)
         {
-            builder.AppendLine().AppendLine("To start the site later, run from that directory:")
-                .Append("  dotnet run --no-launch-profile --urls \"").Append(Safe(listenUrl.GetString()!)).AppendLine("\"");
+            AppendHint(builder, $"To start the site later, run from that directory:\n  dotnet run --no-launch-profile --urls \"{Safe(listenUrl.GetString()!)}\"", useColor);
         }
         if (!ReportsFailure(output.Json) && output.StatusCode != 202 && NextStepFormatter.Format(output) is { } nextStep)
         {
-            builder.AppendLine().AppendLine(nextStep);
+            AppendHint(builder, nextStep, useColor);
         }
         return builder.Length == 0 ? "No results." : builder.ToString().TrimEnd();
+    }
+
+    private static void AppendHint(StringBuilder builder, string hint, bool useColor)
+    {
+        builder.AppendLine();
+        if (useColor)
+        {
+            builder.Append("\u001b[36m"); // Cyan distinguishes guidance from success and warning messages.
+        }
+
+        builder.Append(hint);
+        if (useColor)
+        {
+            builder.Append("\u001b[0m");
+        }
+
+        builder.AppendLine();
     }
 
     private static string? GetSummary(CommandOutput output, bool mutation)

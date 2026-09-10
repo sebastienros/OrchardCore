@@ -608,7 +608,9 @@ provided. HTTP connection and JSON parsing failures also use readable messages.
 With `--output json` (or redirected `auto`), API errors retain their structured
 JSON envelope and exit codes. `--output none` suppresses results, not errors.
 
-Human output also suggests the next step in tenant onboarding:
+Human output also suggests the next step in tenant onboarding. Hints appear in
+cyan when standard output is a terminal. Redirected output stays plain, and
+`NO_COLOR=1` or `TERM=dumb` disables hint coloring.
 
 1. `oc tenants create` suggests `oc tenants setup` for an uninitialized tenant,
    with its actual name and placeholders for details such as the administrator

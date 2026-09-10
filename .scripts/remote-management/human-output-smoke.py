@@ -79,7 +79,8 @@ try:
                         if not chunk:
                             break
                         chunks.append(chunk)
-                    return b''.join(chunks).decode().replace('\r\n', '\n')
+                    # .NET may initialize xterm keypad mode when opening the console.
+                    return b''.join(chunks).decode().replace('\r\n', '\n').removeprefix('\x1b[?1h\x1b=')
                 finally:
                     os.close(slave)
                     os.close(master)
@@ -89,8 +90,18 @@ try:
         assert json.loads(invoke()) == result  # Default auto follows stdout redirection.
         human = invoke('--output', 'human')
         if os.name != 'nt':
+            env['TERM'] = 'xterm-256color'
+            env.pop('NO_COLOR', None)
             terminal_human = invoke(terminal=True)
-            assert terminal_human == human, repr(terminal_human)  # Default terminal output.
+            assert '\x1b[36mNext:' in terminal_human and '\x1b[0m' in terminal_human, repr(terminal_human)
+            assert terminal_human.replace('\x1b[36m', '').replace('\x1b[0m', '') == human, (repr(terminal_human), repr(human))
+            assert '\x1b' not in human  # Redirected human output remains plain.
+            env['NO_COLOR'] = '1'
+            assert invoke(terminal=True) == human
+            env.pop('NO_COLOR')
+            env['TERM'] = 'dumb'
+            assert invoke(terminal=True) == human
+            env['TERM'] = 'xterm-256color'
             assert json.loads(invoke('--output', 'json', terminal=True)) == result
         assert human.startswith("Tenant 'Demo' created successfully."), human
         assert 'Setup URL: ' + setup_url in human, human

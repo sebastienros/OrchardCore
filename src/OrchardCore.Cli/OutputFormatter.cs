@@ -17,7 +17,10 @@ internal static class OutputFormatter
 
         var text = format switch
         {
-            OutputFormat.Human => HumanOutputFormatter.Format(output),
+            OutputFormat.Human => HumanOutputFormatter.Format(output,
+                useColor: ReferenceEquals(writer, Console.Out) && !Console.IsOutputRedirected
+                    && string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("NO_COLOR"))
+                    && !string.Equals(System.Environment.GetEnvironmentVariable("TERM"), "dumb", StringComparison.OrdinalIgnoreCase)),
             OutputFormat.Json => FormatJson(output.Json),
             OutputFormat.Table => FormatTable(output.Json, output.TableColumns),
             OutputFormat.Csv => FormatCsv(output.Json, output.TableColumns),
