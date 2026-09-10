@@ -185,6 +185,50 @@ Malformed JSON or a missing required JSON body also returns `400`. The explicit 
 response for save operations has title `Bad request` and detail
 `A content item payload is required.`. Version restoration and deletion return `409 Conflict` for protected states described below.
 
+### Payload type validation
+
+Create, save, update, and validation endpoints check the submitted JSON against
+registered content part and field types before running content handlers or
+creating/updating a draft. This includes dynamically attached fields and embedded
+content items in Bags and Flows. Third-party modules participate through their
+registered CLR types and serializer contracts; no CLI rebuild is needed.
+
+For example, `TitlePart.Title` accepts a string, not an object. Invalid property
+types or formats return `400 Bad Request` Validation Problem Details:
+
+```json
+{
+  "title": "One or more validation errors occurred.",
+  "status": 400,
+  "errors": {
+    "TitlePart.Title": [
+      "The value has an invalid JSON type or format for this property."
+    ]
+  }
+}
+```
+
+Array elements include their index in the error path, for example
+`BagPart.ContentItems[0].TitlePart.Title`. Unknown extension properties remain
+allowed; this check is not a complete JSON Schema validator. Nulls, numeric
+strings, enums, and custom converters follow Orchard's registered serialization
+contracts. Required fields and other content rules are still checked by handlers.
+A rejected payload does not persist a draft or change the published version.
+Restoring a stored version also checks its part/field data before restoration.
+
+For a new item, `ContentType` is required and must name an existing type; missing
+or unknown types return a `ContentType` validation error, not `404`. For an update,
+identify the existing item with `validate-update <content-item-id>` or provide
+`ContentItemId` in the `validate` body. A nonexistent item still returns `404`.
+
+```bash
+oc content items validate --body '{"ContentType":"BlogPost","TitlePart":{"Title":"Hello"}}'
+oc content items validate-update <content-item-id> --body '{"TitlePart":{"Title":"Revised title"}}'
+```
+
+These commands validate without saving. Invalid data returns a nonzero CLI exit
+code and the field errors; `--output json` preserves the structured error response.
+
 ## Operations
 
 ### List content items
@@ -622,9 +666,9 @@ Also returns `204`, `401`, or `403`.
 `POST /api/content/validate`
 
 The content item body is required. If it includes `ContentItemId`, the API validates an update
-to that required draft; otherwise `ContentType` must identify an existing type and the API
-validates a new item. Requires `EditContent`. Validation invokes content handlers but cancels
-the YesSql session, so it does not persist the merged item.
+to a detached copy of the latest item; otherwise `ContentType` must identify an existing type
+and the API validates a new item. Requires `EditContent`. Validation invokes content handlers
+but does not create a draft or persist the merged item.
 
 ```bash
 curl -X POST -H "Authorization: Bearer $TOKEN" \
@@ -638,18 +682,10 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
   https://localhost:5001/api/content/validate
 ```
 
-`200 OK` reports validation in the response rather than using status `400`:
-
-```json
-{
-  "isValid": false,
-  "errors": {
-    "TitlePart.Title": [
-      "The Title field is required."
-    ]
-  }
-}
-```
+`200 OK` returns `{"isValid":true,"errors":{}}` for valid content. Invalid
+content returns `400 Bad Request` Validation Problem Details, including a field
+path and its validation messages under `errors`. Both structural type failures
+and content-handler validation failures use this error status.
 
 Error keys/messages are content-type dependent. Also returns `401`, `403`, or `404`.
 
@@ -657,8 +693,10 @@ Error keys/messages are content-type dependent. Also returns `401`, `403`, or `4
 
 `POST /api/content/{contentItemId}/validate`
 
-`contentItemId` and the content item body are required. The API merges the body into the
-required draft, validates it without saving, and requires `EditContent`.
+`contentItemId` and the content item body are required. The API merges the body into a
+detached copy of the latest item, validates it without saving or creating a draft, and
+requires `EditContent`. A supplied body `ContentItemId` must match the route ID.
+Invalid payloads return `400` Validation Problem Details.
 
 ```bash
 curl -X POST -H "Authorization: Bearer $TOKEN" \
@@ -887,6 +925,7 @@ Contracts and behavior were also derived from:
 
 * `src/OrchardCore.Modules/OrchardCore.Contents/Models/Api/ContentApiModels.cs`
 * `src/OrchardCore.Modules/OrchardCore.Contents/Services/ContentApiService.cs`
+* `src/OrchardCore.Modules/OrchardCore.Contents/Services/ContentPayloadValidator.cs`
 * `src/OrchardCore/OrchardCore.ContentManagement.Abstractions/ContentItem.cs`
 * `src/OrchardCore/OrchardCore.ContentManagement.Abstractions/ContentItemConverter.cs`
 * `test/OrchardCore.Tests/Modules/OrchardCore.Contents/ContentItemSchemaBuilderTests.cs`

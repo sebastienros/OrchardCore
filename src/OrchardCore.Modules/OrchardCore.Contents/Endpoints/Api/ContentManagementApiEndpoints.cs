@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -145,6 +146,7 @@ internal static partial class ContentManagementApiEndpoints
             .WithDescription("Validates a new content item or an existing draft payload without saving it.")
             .WithCliCommand(Cli(["content", "items"], "validate", inputMode: CliInputMode.Json))
             .Produces<ContentItemValidationResponse>(StatusCodes.Status200OK)
+            .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status404NotFound);
@@ -156,6 +158,7 @@ internal static partial class ContentManagementApiEndpoints
             .WithDescription("Validates an update for an existing content item without saving it.")
             .WithCliCommand(Cli(["content", "items"], "validate-update", arguments: [new CliArgumentMetadata("contentItemId", 0)], inputMode: CliInputMode.Json))
             .Produces<ContentItemValidationResponse>(StatusCodes.Status200OK)
+            .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status404NotFound);
@@ -210,16 +213,16 @@ internal static partial class ContentManagementApiEndpoints
             : Results.Json(contentItem, service.SerializerOptions);
     }
 
-    private static Task<IResult> SaveAsync(ContentItem model, ContentApiService service, HttpContext httpContext, bool draft = false)
+    private static Task<IResult> SaveAsync(JsonObject model, ContentApiService service, HttpContext httpContext, bool draft = false)
         => SaveCoreAsync(model, service, httpContext, publish: !draft, allowCreate: true, allowUpdate: true);
 
-    private static Task<IResult> CreateDraftAsync(ContentItem model, ContentApiService service, HttpContext httpContext)
+    private static Task<IResult> CreateDraftAsync(JsonObject model, ContentApiService service, HttpContext httpContext)
         => SaveCoreAsync(model, service, httpContext, publish: false, allowCreate: true, allowUpdate: false, createdOnSuccess: true);
 
-    private static Task<IResult> UpdateAsync(string contentItemId, ContentItem model, ContentApiService service, HttpContext httpContext)
+    private static Task<IResult> UpdateAsync(string contentItemId, JsonObject model, ContentApiService service, HttpContext httpContext)
         => SaveCoreAsync(model, service, httpContext, publish: true, allowCreate: false, allowUpdate: true, contentItemId: contentItemId);
 
-    private static Task<IResult> UpdateDraftAsync(string contentItemId, ContentItem model, ContentApiService service, HttpContext httpContext)
+    private static Task<IResult> UpdateDraftAsync(string contentItemId, JsonObject model, ContentApiService service, HttpContext httpContext)
         => SaveCoreAsync(model, service, httpContext, publish: false, allowCreate: false, allowUpdate: true, contentItemId: contentItemId);
 
     private static async Task<IResult> CreateDraftVersionAsync(string contentItemId, ContentApiService service, HttpContext httpContext)
@@ -286,10 +289,10 @@ internal static partial class ContentManagementApiEndpoints
         return contentItem is null ? TypedResults.NoContent() : Results.Json(contentItem, service.SerializerOptions);
     }
 
-    private static Task<IResult> ValidateCreateAsync(ContentItem model, ContentApiService service, HttpContext httpContext)
+    private static Task<IResult> ValidateCreateAsync(JsonObject model, ContentApiService service, HttpContext httpContext)
         => ValidateCoreAsync(model, null, service, httpContext);
 
-    private static Task<IResult> ValidateUpdateAsync(string contentItemId, ContentItem model, ContentApiService service, HttpContext httpContext)
+    private static Task<IResult> ValidateUpdateAsync(string contentItemId, JsonObject model, ContentApiService service, HttpContext httpContext)
         => ValidateCoreAsync(model, contentItemId, service, httpContext);
 
     private static async Task<IResult> RenderAsync(string contentItemId, ContentApiService service, HttpContext httpContext, string version = "published", string displayType = "Detail")
@@ -329,7 +332,7 @@ internal static partial class ContentManagementApiEndpoints
         return schema is null ? httpContext.ApiNotFoundProblem() : TypedResults.Ok(schema);
     }
 
-    private static async Task<IResult> SaveCoreAsync(ContentItem model, ContentApiService service, HttpContext httpContext, bool publish, bool allowCreate, bool allowUpdate, bool createdOnSuccess = false, string contentItemId = null)
+    private static async Task<IResult> SaveCoreAsync(JsonObject model, ContentApiService service, HttpContext httpContext, bool publish, bool allowCreate, bool allowUpdate, bool createdOnSuccess = false, string contentItemId = null)
     {
         if (!await HasAccessAsync(httpContext))
         {
@@ -346,7 +349,13 @@ internal static partial class ContentManagementApiEndpoints
         var accessor = httpContext.RequestServices.GetRequiredService<IUpdateModelAccessor>();
         var updater = accessor.ModelUpdater;
         accessor.ModelUpdater = updater;
-        var contentItem = await service.SaveAsync(httpContext.User, model, publish, allowCreate, allowUpdate, contentItemId);
+        var payload = ContentPayloadValidator.ReadPayload(model, updater.ModelState);
+        if (!updater.ModelState.IsValid)
+        {
+            return ValidationProblem(updater.ModelState);
+        }
+
+        var contentItem = await service.SaveAsync(httpContext.User, payload, publish, allowCreate, allowUpdate, contentItemId, model);
         if (ContentApiService.IsForbidden(contentItem))
         {
             return httpContext.ApiForbidProblem();
@@ -371,20 +380,32 @@ internal static partial class ContentManagementApiEndpoints
         return Results.Json(contentItem, service.SerializerOptions);
     }
 
-    private static async Task<IResult> ValidateCoreAsync(ContentItem model, string contentItemId, ContentApiService service, HttpContext httpContext)
+    private static async Task<IResult> ValidateCoreAsync(JsonObject model, string contentItemId, ContentApiService service, HttpContext httpContext)
     {
         if (!await HasAccessAsync(httpContext))
         {
             return httpContext.ApiForbidProblem();
         }
 
-        var response = await service.ValidateAsync(httpContext.User, model, contentItemId);
+        var errors = new Microsoft.AspNetCore.Mvc.ModelBinding.ModelStateDictionary();
+        var payload = ContentPayloadValidator.ReadPayload(model, errors);
+        if (!errors.IsValid)
+        {
+            return ValidationProblem(errors);
+        }
+
+        var response = await service.ValidateAsync(httpContext.User, payload, contentItemId, model);
         if (ContentApiService.IsForbidden(response))
         {
             return httpContext.ApiForbidProblem();
         }
 
-        return response is null ? httpContext.ApiNotFoundProblem() : TypedResults.Ok(response);
+        if (response is null)
+        {
+            return httpContext.ApiNotFoundProblem();
+        }
+
+        return response.IsValid ? TypedResults.Ok(response) : TypedResults.ValidationProblem(response.Errors);
     }
 
     private static async Task<bool> HasAccessAsync(HttpContext httpContext)

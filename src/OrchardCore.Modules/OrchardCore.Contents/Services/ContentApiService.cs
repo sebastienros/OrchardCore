@@ -168,7 +168,7 @@ internal sealed class ContentApiService
         return await _contentManager.GetAsync(contentItemId, options);
     }
 
-    public async Task<ContentItem> SaveAsync(ClaimsPrincipal user, ContentItem model, bool publish, bool allowCreate, bool allowUpdate, string contentItemId = null)
+    public async Task<ContentItem> SaveAsync(ClaimsPrincipal user, ContentItem model, bool publish, bool allowCreate, bool allowUpdate, string contentItemId = null, JsonObject payload = null)
     {
         if (model is null)
         {
@@ -193,9 +193,15 @@ internal sealed class ContentApiService
 
         if (contentItem is null)
         {
-            if (!allowCreate || string.IsNullOrWhiteSpace(model.ContentType) || await _contentDefinitionManager.GetTypeDefinitionAsync(model.ContentType) is null)
+            if (!allowCreate)
             {
                 return null;
+            }
+
+            if (string.IsNullOrWhiteSpace(model.ContentType) || await _contentDefinitionManager.GetTypeDefinitionAsync(model.ContentType) is null)
+            {
+                modelState.AddModelError(nameof(ContentItem.ContentType), "ContentType is required and must name an existing content type.");
+                return model;
             }
 
             contentItem = await _contentManager.NewAsync(model.ContentType);
@@ -208,6 +214,12 @@ internal sealed class ContentApiService
                 || (publish && !await _authorizationService.AuthorizeAsync(user, CommonPermissions.PublishContent, contentItem)))
             {
                 return modelState.IsValid ? new ContentItem { ContentItemId = string.Empty } : null;
+            }
+
+            await ValidatePayloadAsync(payload, model, contentItem.ContentType, modelState);
+            if (!modelState.IsValid)
+            {
+                return contentItem;
             }
 
             if (!await PrepareOwnershipAsync(_authorizationService, user, model, contentItem))
@@ -246,9 +258,25 @@ internal sealed class ContentApiService
                 return contentItem;
             }
 
+            await ValidatePayloadAsync(payload, model, contentItem.ContentType, modelState);
+            if (!modelState.IsValid)
+            {
+                return contentItem;
+            }
+
             if (!await PrepareOwnershipAsync(_authorizationService, user, model, contentItem))
             {
                 return new ContentItem { ContentItemId = string.Empty };
+            }
+
+            // Check the merged document on a detached copy so malformed data
+            // retained from an earlier write cannot bypass validation.
+            var candidate = contentItem.Clone();
+            candidate.Merge(model, s_updateJsonMergeSettings);
+            await ValidatePayloadAsync(null, candidate, candidate.ContentType, modelState);
+            if (!modelState.IsValid)
+            {
+                return contentItem;
             }
 
             if (!allowUpdate)
@@ -291,7 +319,14 @@ internal sealed class ContentApiService
         return contentItem;
     }
 
-    public async Task<ContentItemValidationResponse> ValidateAsync(ClaimsPrincipal user, ContentItem model, string contentItemId = null)
+    internal Task ValidatePayloadAsync(JsonObject payload, ContentItem model, string contentType, ModelStateDictionary errors)
+        => new ContentPayloadValidator(_contentDefinitionManager, _contentOptions).ValidateAsync(
+            payload ?? JsonSerializer.SerializeToNode(model, SerializerOptions).AsObject(), contentType, errors);
+
+    private static Dictionary<string, string[]> ToErrors(ModelStateDictionary modelState)
+        => modelState.ToDictionary(entry => entry.Key, entry => entry.Value.Errors.Select(error => error.ErrorMessage).ToArray());
+
+    public async Task<ContentItemValidationResponse> ValidateAsync(ClaimsPrincipal user, ContentItem model, string contentItemId = null, JsonObject payload = null)
     {
         if (model is null)
         {
@@ -299,6 +334,13 @@ internal sealed class ContentApiService
         }
 
         var modelState = new ModelStateDictionary();
+        if (!string.IsNullOrWhiteSpace(contentItemId) && !string.IsNullOrWhiteSpace(model.ContentItemId)
+            && !string.Equals(contentItemId, model.ContentItemId, StringComparison.Ordinal))
+        {
+            modelState.AddModelError(nameof(ContentItem.ContentItemId), "The content item id in the request body must match the route value.");
+            return new ContentItemValidationResponse { Errors = ToErrors(modelState) };
+        }
+
         ContentItem contentItem;
 
         if (!string.IsNullOrWhiteSpace(contentItemId) || !string.IsNullOrWhiteSpace(model.ContentItemId))
@@ -313,6 +355,12 @@ internal sealed class ContentApiService
             if (!await _authorizationService.AuthorizeAsync(user, CommonPermissions.EditContent, contentItem))
             {
                 return new ContentItemValidationResponse();
+            }
+
+            await ValidatePayloadAsync(payload, model, contentItem.ContentType, modelState);
+            if (!modelState.IsValid)
+            {
+                return new ContentItemValidationResponse { Errors = ToErrors(modelState) };
             }
 
             if (!await PrepareOwnershipAsync(_authorizationService, user, model, contentItem))
@@ -336,7 +384,8 @@ internal sealed class ContentApiService
         {
             if (string.IsNullOrWhiteSpace(model.ContentType) || await _contentDefinitionManager.GetTypeDefinitionAsync(model.ContentType) is null)
             {
-                return null;
+                modelState.AddModelError(nameof(ContentItem.ContentType), "ContentType is required and must name an existing content type.");
+                return new ContentItemValidationResponse { Errors = ToErrors(modelState) };
             }
 
             contentItem = await _contentManager.NewAsync(model.ContentType);
@@ -345,12 +394,24 @@ internal sealed class ContentApiService
                 return new ContentItemValidationResponse();
             }
 
+            await ValidatePayloadAsync(payload, model, contentItem.ContentType, modelState);
+            if (!modelState.IsValid)
+            {
+                return new ContentItemValidationResponse { Errors = ToErrors(modelState) };
+            }
+
             if (!await PrepareOwnershipAsync(_authorizationService, user, model, contentItem))
             {
                 return new ContentItemValidationResponse();
             }
 
             contentItem.Merge(model);
+        }
+
+        await ValidatePayloadAsync(null, contentItem, contentItem.ContentType, modelState);
+        if (!modelState.IsValid)
+        {
+            return new ContentItemValidationResponse { Errors = ToErrors(modelState) };
         }
 
         var validationResult = await _contentManager.ValidateAsync(contentItem);
@@ -767,7 +828,7 @@ public static class ContentItemSchemaBuilder
             .First(property => property.AttributeProvider is MemberInfo member && member.Name == name)
             .Name;
 
-    private sealed class ContentItemSchema
+    internal sealed class ContentItemSchema
     {
         [Description("The stable identifier shared by every version of the content item.")]
         public string ContentItemId { get; set; }

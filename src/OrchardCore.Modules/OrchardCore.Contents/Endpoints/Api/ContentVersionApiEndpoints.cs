@@ -141,6 +141,13 @@ internal static partial class ContentManagementApiEndpoints
         {
             return TypedResults.Problem(statusCode: 409, detail: "A current draft already exists. Inspect it first, then use replaceDraft=true to replace it with a restored draft.");
         }
+        var errors = new Microsoft.AspNetCore.Mvc.ModelBinding.ModelStateDictionary();
+        await service.ValidatePayloadAsync(null, version, version.ContentType, errors);
+        if (!errors.IsValid)
+        {
+            return ValidationProblem(errors);
+        }
+
         // RestoreAsync changes IDs and flags: never pass the tracked historical
         // document. Preserve current ownership instead of restoring an old owner.
         var restored = version.Clone();

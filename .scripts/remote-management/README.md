@@ -22,6 +22,7 @@ python3 .scripts/remote-management/verify-fixture.py <fixture.json>
 python3 .scripts/remote-management/smoke-fixture.py <fixture.json>
 python3 .scripts/remote-management/localization-smoke.py <fixture.json>
 python3 .scripts/remote-management/content-versions-smoke.py <fixture.json>
+python3 .scripts/remote-management/content-validation-smoke.py <fixture.json>
 python3 .scripts/remote-management/graphql-smoke.py <fixture.json>
 ```
 
@@ -43,6 +44,11 @@ newest-first paging, source preservation, restoration into new drafts, explicit
 draft replacement, publication protection, purge confirmation, missing-version
 retries, and anonymous denial. Set `OC_FIXTURE_BINARY` to an older native CLI
 to verify server commands are available without rebuilding that CLI.
+
+`content-validation-smoke.py` sends invalid part properties through validation
+and save commands, checking HTTP 400, field paths, human/JSON error output,
+failing exit codes, missing content types, and unchanged published content/history.
+It also verifies valid partial-update validation still succeeds.
 
 `localization-smoke.py` exercises all seven localization operations through the CLI,
 including paging, explicit culture selection, settings readback, translation retries,
