@@ -378,14 +378,14 @@ internal sealed class OAuthClient
 
             if (query["error"] is not null)
             {
-                await writer.WriteAsync("HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n<!doctype html><html lang=\"en\"><head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>Authorization not completed</title></head><body><h1>Authorization not completed</h1><p>Access was denied or the request could not be completed. You can close this tab and return to the terminal.</p></body></html>");
+                await OAuthCallbackPage.WriteAsync(writer, authorizationReceived: false);
                 throw new CliException("The authorization request was denied or could not be completed. Run 'oc login' to retry.");
             }
 
             var code = query["code"] ?? throw new CliException("The browser callback did not include an authorization code.");
             var state = query["state"] ?? throw new CliException("The browser callback did not include state.");
 
-            await writer.WriteAsync("HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nConnection: close\r\n\r\n<html><body><p>Authorization received. Return to the terminal to check whether login completed.</p></body></html>");
+            await OAuthCallbackPage.WriteAsync(writer, authorizationReceived: true);
             return (code, state);
         }
 

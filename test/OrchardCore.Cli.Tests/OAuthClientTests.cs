@@ -138,6 +138,9 @@ public class OAuthClientTests
                 Assert.Contains("HTTP/1.1 200 OK", response);
                 Assert.Contains("Authorization not completed", response);
                 Assert.Contains("Cache-Control: no-store", response);
+                Assert.Contains("Return to your terminal", response);
+                Assert.Contains("Content-Security-Policy: default-src 'none'", response);
+                Assert.DoesNotContain(parameters["state"]!, response);
             }
             return;
         }
@@ -149,7 +152,14 @@ public class OAuthClientTests
         Assert.Equal(parameters["code_challenge"], CliUtilities.Base64UrlEncode(
             SHA256.HashData(Encoding.UTF8.GetBytes(exchange["code_verifier"]!))));
         using var reader = new StreamReader(stream);
-        Assert.Contains("HTTP/1.1 200 OK", await reader.ReadToEndAsync(timeout.Token));
+        var successResponse = await reader.ReadToEndAsync(timeout.Token);
+        Assert.Contains("HTTP/1.1 200 OK", successResponse);
+        Assert.Contains("Authorization received", successResponse);
+        Assert.Contains("Check your terminal to confirm that login completed.", successResponse);
+        Assert.Contains("Cache-Control: no-store", successResponse);
+        Assert.Contains("Referrer-Policy: no-referrer", successResponse);
+        Assert.DoesNotContain("test-code", successResponse);
+        Assert.DoesNotContain(parameters["state"]!, successResponse);
     }
 
     [Fact]

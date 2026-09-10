@@ -353,8 +353,12 @@ to apply your site's branding.
 
 ![Browser authorization page asking for consent to Orchard Core CLI](images/consent.png)
 
-The callback page says authorization was received. The terminal then reports
-`grantType: browser` and the tenant issuer when the token exchange succeeds.
+The callback page confirms **Authorization received** and directs you back to
+the terminal. You can close that browser tab. The terminal reports
+`grantType: browser` and the tenant issuer when the token exchange succeeds;
+receiving the authorization alone does not mean login has finished. The CLI
+serves this page locally, with light and dark appearances and no external
+assets. It is separate from the tenant's themeable consent page.
 
 ### Choose a login flow
 
