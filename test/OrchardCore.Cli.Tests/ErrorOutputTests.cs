@@ -96,7 +96,10 @@ public class ErrorOutputTests
         Assert.Contains("Request failed.", output);
         Assert.DoesNotContain("internal implementation", output);
         Assert.DoesNotContain('\u001b', output);
-        Assert.DoesNotContain('\r', output);
+        // Formatter-owned line endings are CRLF on Windows. Assert the exact
+        // sanitized lines so injected controls are still rejected on every OS.
+        Assert.Equal(string.Join(global::System.Environment.NewLine,
+            "An error occurred.", "Request failed.", "Request ID: requestid"), output);
     }
 
     private static async Task<CliPaths> CreatePathsAsync()
