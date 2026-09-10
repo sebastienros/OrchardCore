@@ -5,6 +5,27 @@ namespace OrchardCore.Cli.Tests;
 
 public class OutputFormatterTests
 {
+    [Theory]
+    [InlineData("human", "items")]
+    [InlineData("table", "items")]
+    [InlineData("human", "files")]
+    [InlineData("table", "files")]
+    public async Task MediaFiles_PathAndLongDirectUrl_RemainUsable(string format, string collection)
+    {
+        var url = "https://cdn.example.com/" + new string('a', 180) + "/logo.png?v=abc%2F123";
+        using var document = JsonDocument.Parse($$"""{"{{collection}}":[{"filePath":"images/logo.png","url":"{{url}}"}]}""");
+        using var writer = new StringWriter();
+        await OutputFormatter.WriteAsync(new CommandOutput
+        {
+            Json = document.RootElement,
+            CommandPath = collection == "items" ? ["media", "items", "list"] : ["media", "files", "move-batch"],
+            HttpMethod = collection == "items" ? "GET" : "POST",
+            TableColumns = [new(collection + "[].filePath", "Path"), new(collection + "[].url", "URL")],
+        }, CliUtilities.ParseOutputFormat(format), writer, TestContext.Current.CancellationToken);
+        Assert.Contains("images/logo.png", writer.ToString());
+        Assert.Contains(url, writer.ToString());
+    }
+
     [Fact]
     public async Task Human_TenantCreated_ReportsSuccessAndCompleteSetupUrl()
     {

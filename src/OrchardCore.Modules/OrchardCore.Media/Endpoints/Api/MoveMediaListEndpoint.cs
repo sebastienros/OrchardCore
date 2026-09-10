@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Localization;
 using OrchardCore.FileStorage;
@@ -28,6 +29,11 @@ public static class MoveMediaListEndpoint
             {
                 Capability = MediaApiEndpointConventions.CapabilityName,
                 InputMode = CliInputMode.Json,
+                TableColumns =
+                {
+                    new CliTableColumnMetadata("files[].filePath", "Path"),
+                    new CliTableColumnMetadata("files[].url", "URL"),
+                },
             })
             .Accepts<MoveMediaBatchRequest>("application/json")
             .Produces<MoveMediaBatchResultDto>(StatusCodes.Status200OK)
@@ -52,8 +58,9 @@ public static class MoveMediaListEndpoint
         [FromServices] IAuthorizationService authorizationService,
         [FromServices] IMediaFileStore mediaFileStore,
         [FromServices] IStringLocalizer<MediaApiEndpoints> localizer,
+        [FromServices] IFileVersionProvider fileVersionProvider,
         [FromBody] MoveMediaBatchRequest request)
-        => HandleManagementAsync(httpContext, authorizationService, mediaFileStore, localizer, request.MediaNames, request.SourceFolder, request.TargetFolder);
+        => HandleManagementAsync(httpContext, authorizationService, mediaFileStore, fileVersionProvider, localizer, request.MediaNames, request.SourceFolder, request.TargetFolder);
 
     private static async Task<IResult> HandleLegacyResultAsync(
         HttpContext httpContext,
@@ -73,6 +80,7 @@ public static class MoveMediaListEndpoint
         HttpContext httpContext,
         IAuthorizationService authorizationService,
         IMediaFileStore mediaFileStore,
+        IFileVersionProvider fileVersionProvider,
         IStringLocalizer<MediaApiEndpoints> localizer,
         string[] mediaNames,
         string sourceFolder,
@@ -85,6 +93,15 @@ public static class MoveMediaListEndpoint
             MediaNames = mediaNames,
             SourceFolder = normalizedSourceFolder,
             TargetFolder = normalizedTargetFolder,
+            Files = mediaNames.Select(name =>
+            {
+                var path = mediaFileStore.Combine(normalizedTargetFolder, name);
+                return new MediaFileLinkDto
+                {
+                    FilePath = path,
+                    Url = MediaEndpointHelpers.GetFileUrl(path, httpContext, fileVersionProvider, mediaFileStore),
+                };
+            }).ToArray(),
         });
     }
 

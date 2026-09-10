@@ -67,6 +67,14 @@ public class MediaAndQueriesOpenApiDiscoveryTests
         AssertOperation(endpoints, "api/media/files/metadata", "GET", "ApiGetMediaFieldItems", ["media", "metadata"], "show");
         AssertOperation(endpoints, "api/media/localizations", "GET", "ApiGetMediaLocalizations", ["media", "localizations"], "show");
 
+        foreach (var name in new[] { "ApiGetAllMediaItems", "ApiGetMediaItems", "ApiGetMediaItem", "ApiUploadMedia", "ApiCopyMedia", "ApiMoveMedia", "ApiMoveMediaList", "ApiGetTusFileInfo" })
+        {
+            var cli = endpoints.Single(endpoint => endpoint.Metadata.GetMetadata<IEndpointNameMetadata>()?.EndpointName == name)
+                .Metadata.GetMetadata<CliOperationMetadata>();
+            Assert.Contains(cli.TableColumns, column => column.Heading == "Path");
+            Assert.Contains(cli.TableColumns, column => column.Heading == "URL");
+        }
+
         AssertOperation(endpoints, "api/queries", "GET", "ApiListQueries", ["queries"], "list");
         AssertOperation(endpoints, "api/queries", "POST", "ApiCreateQuery", ["queries"], "create", expectedInputMode: CliInputMode.Json, expectedRequestContentType: "application/json");
         AssertOperation(endpoints, "api/queries/sources", "GET", "ApiListQuerySources", ["queries", "sources"], "list");

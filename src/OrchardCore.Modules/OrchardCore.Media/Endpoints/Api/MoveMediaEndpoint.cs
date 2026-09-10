@@ -37,6 +37,7 @@ public static class MoveMediaEndpoint
                 {
                     new CliTableColumnMetadata("file.name", "Name"),
                     new CliTableColumnMetadata("file.filePath", "Path"),
+                    new CliTableColumnMetadata("file.url", "URL"),
                     new CliTableColumnMetadata("oldPath", "Source"),
                 },
             })

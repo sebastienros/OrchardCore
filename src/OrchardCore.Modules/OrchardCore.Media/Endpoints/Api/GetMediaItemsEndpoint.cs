@@ -33,6 +33,7 @@ public static class GetMediaItemsEndpoint
                 {
                     new CliTableColumnMetadata("items[].name", "Name"),
                     new CliTableColumnMetadata("items[].filePath", "Path"),
+                    new CliTableColumnMetadata("items[].url", "URL"),
                     new CliTableColumnMetadata("items[].size", "Size"),
                     new CliTableColumnMetadata("items[].mime", "Content type"),
                 },

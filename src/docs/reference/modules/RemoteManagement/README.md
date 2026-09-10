@@ -399,6 +399,11 @@ oc media files show assets/styles/site-v1.css --output json
 oc media files list --path assets/styles --output table
 ```
 
+Media file commands preserve resource paths and also return direct, absolute
+URLs, including configured CDN URLs. File list tables show both **Path** and
+**URL**; upload, copy, and move results include the destination URL. See the
+[media representations](../../api/media/README.md#file-or-folder).
+
 Choose your own folder convention in the client. Paths are media-store-relative;
 the positional upload argument is a base filename. CSS, JavaScript, and SVG
 require `UploadRestrictedMedia` by default, in addition to `ManageMediaContent`

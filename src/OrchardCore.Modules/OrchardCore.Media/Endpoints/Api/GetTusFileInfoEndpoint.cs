@@ -33,6 +33,7 @@ public static class GetTusFileInfoEndpoint
                 {
                     new CliTableColumnMetadata("name", "Name"),
                     new CliTableColumnMetadata("filePath", "Path"),
+                    new CliTableColumnMetadata("url", "URL"),
                     new CliTableColumnMetadata("size", "Size"),
                 },
             })

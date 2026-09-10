@@ -4,6 +4,7 @@ using System.Linq;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,6 +12,7 @@ using Microsoft.Extensions.Logging;
 using OrchardCore.FileStorage;
 using OrchardCore.Media.Services;
 using OrchardCore.Media.ViewModels;
+using OrchardCore.RemoteManagement;
 
 namespace OrchardCore.Media.Endpoints.Api;
 
@@ -72,9 +74,25 @@ internal static class MediaEndpointHelpers
             FilePath = mediaFile.Path,
             LastModifiedUtc = mediaFile.LastModifiedUtc,
             IsDirectory = false,
-            Url = fileVersionProvider.AddFileVersionToPath(httpContext.Request.PathBase, mediaFileStore.MapPathToPublicUrl(mediaFile.Path)),
+            Url = GetFileUrl(mediaFile.Path, httpContext, fileVersionProvider, mediaFileStore),
             Mime = contentType ?? "application/octet-stream",
         };
+    }
+
+    public static string GetFileUrl(string path, HttpContext httpContext, IFileVersionProvider fileVersionProvider, IMediaFileStore mediaFileStore)
+    {
+        var url = fileVersionProvider.AddFileVersionToPath(httpContext.Request.PathBase, mediaFileStore.MapPathToPublicUrl(path));
+        if (httpContext.GetEndpoint()?.Metadata.GetMetadata<CliOperationMetadata>() is null
+            || Uri.TryCreate(url, UriKind.Absolute, out var absoluteUrl) && absoluteUrl.Scheme is "http" or "https")
+        {
+            return url;
+        }
+
+        // The media store already supplies the tenant/media prefix and escapes file names.
+        // Resolve relative mappings without replacing a configured CDN origin or version query.
+        var request = httpContext.Request;
+        var tenantUrl = UriHelper.BuildAbsolute(request.Scheme, request.Host, request.PathBase.Add("/"));
+        return new Uri(new Uri(tenantUrl), url).AbsoluteUri;
     }
 
     public static FileStoreEntryDto CreateFolderResult(IFileStoreEntry folder)

@@ -263,4 +263,25 @@ public sealed class MoveMediaBatchResultDto
     public string SourceFolder { get; set; }
 
     public string TargetFolder { get; set; }
+
+    /// <summary>
+    /// Gets or sets the destination paths and direct URLs of the moved files.
+    /// </summary>
+    public IReadOnlyList<MediaFileLinkDto> Files { get; set; } = [];
+}
+
+/// <summary>
+/// Identifies a media file by its store path and direct URL.
+/// </summary>
+public sealed class MediaFileLinkDto
+{
+    /// <summary>
+    /// Gets or sets the media-store-relative file path used by management commands.
+    /// </summary>
+    public string FilePath { get; set; }
+
+    /// <summary>
+    /// Gets or sets the absolute URL produced by the configured media store.
+    /// </summary>
+    public string Url { get; set; }
 }

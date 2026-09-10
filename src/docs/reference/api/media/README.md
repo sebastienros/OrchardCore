@@ -89,9 +89,26 @@ JSON property names are camel-cased.
 | `filePath` | string or null | Full media path for a file; null for folders. |
 | `lastModifiedUtc` | string (`date-time`) | UTC last-modified value. |
 | `isDirectory` | boolean | `true` for a folder. |
-| `url` | string or null | Public, versioned URL for a file; null for folders. |
+| `url` | string or null | Absolute URL for a file, including the version query when available; null for folders. |
 | `mime` | string or null | Detected file content type, or `application/octet-stream`; null for folders. |
 | `hasChildren` | boolean or null | Whether an accessible child folder exists; null when not computed. |
+
+`filePath` and `directoryPath` remain media-store paths for commands such as
+copy, move, and delete. `url` is a direct link to the file. Local media URLs use
+the request's scheme and host (including any port), with the tenant/media path
+provided by the media store. Configured CDN URLs retain their origin, escaped
+file names, and query parameters. The mapping uses the same `IMediaFileStore`
+provider as GraphQL; management responses also resolve relative mappings to
+absolute URLs. Configure forwarded headers correctly when serving Orchard
+behind a reverse proxy so the request reflects the public scheme and host.
+
+URLs do not grant additional access: secured media still requires the access
+configured for its serving endpoint. Folders have no direct file URL, and delete
+responses retain paths without links to deleted resources.
+
+The CLI includes both **Path** and **URL** in media file list tables and file
+metadata output. The URL is not shortened. Upload, copy, move, and completed
+TUS upload results expose the resulting file URL as well.
 
 Example file:
 
@@ -103,7 +120,7 @@ Example file:
   "filePath": "images/logo.png",
   "lastModifiedUtc": "2026-08-28T20:15:30Z",
   "isDirectory": false,
-  "url": "/media/images/logo.png?v=abc123",
+  "url": "https://cms.example.com/tenant-a/media/images/logo.png?v=abc123",
   "mime": "image/png",
   "hasChildren": null
 }
@@ -142,7 +159,7 @@ Folder, file, and recursive item lists use:
       "filePath": "images/logo.png",
       "lastModifiedUtc": "2026-08-28T20:15:30Z",
       "isDirectory": false,
-      "url": "/media/images/logo.png?v=abc123",
+      "url": "https://cms.example.com/tenant-a/media/images/logo.png?v=abc123",
       "mime": "image/png",
       "hasChildren": null
     }
@@ -441,7 +458,7 @@ curl -G -H 'Authorization: Bearer ACCESS_TOKEN' \
       "filePath": "images/logo.png",
       "lastModifiedUtc": "2026-08-28T20:15:30Z",
       "isDirectory": false,
-      "url": "/media/images/logo.png?v=abc123",
+      "url": "https://cms.example.com/tenant-a/media/images/logo.png?v=abc123",
       "mime": "image/png",
       "hasChildren": null
     }
@@ -534,7 +551,7 @@ curl -G -H 'Authorization: Bearer ACCESS_TOKEN' \
   "filePath": "images/logo.png",
   "lastModifiedUtc": "2026-08-28T20:15:30Z",
   "isDirectory": false,
-  "url": "/media/images/logo.png?v=abc123",
+  "url": "https://cms.example.com/tenant-a/media/images/logo.png?v=abc123",
   "mime": "image/png",
   "hasChildren": null
 }
@@ -570,7 +587,7 @@ curl -G -H 'Authorization: Bearer ACCESS_TOKEN' \
     "filePath": "images/logo.png",
     "lastModifiedUtc": "2026-08-28T20:15:30Z",
     "isDirectory": false,
-    "url": "/media/images/logo.png?v=abc123",
+    "url": "https://cms.example.com/tenant-a/media/images/logo.png?v=abc123",
     "mime": "image/png",
     "hasChildren": null
   }
@@ -650,7 +667,7 @@ curl -X POST -H 'Authorization: Bearer ACCESS_TOKEN' \
     "filePath": "archive/logo.png",
     "lastModifiedUtc": "2026-08-28T20:25:00Z",
     "isDirectory": false,
-    "url": "/media/archive/logo.png?v=def456",
+    "url": "https://cms.example.com/tenant-a/media/archive/logo.png?v=def456",
     "mime": "image/png",
     "hasChildren": null
   }
@@ -688,7 +705,7 @@ curl -X POST -H 'Authorization: Bearer ACCESS_TOKEN' \
     "filePath": "archive/logo.png",
     "lastModifiedUtc": "2026-08-28T20:25:00Z",
     "isDirectory": false,
-    "url": "/media/archive/logo.png?v=def456",
+    "url": "https://cms.example.com/tenant-a/media/archive/logo.png?v=def456",
     "mime": "image/png",
     "hasChildren": null
   }
@@ -786,9 +803,22 @@ curl -X POST -H 'Authorization: Bearer ACCESS_TOKEN' \
     "banner.jpg"
   ],
   "sourceFolder": "images",
-  "targetFolder": "archive"
+  "targetFolder": "archive",
+  "files": [
+    {
+      "filePath": "archive/logo.png",
+      "url": "https://cms.example.com/tenant-a/media/archive/logo.png?v=abc123"
+    },
+    {
+      "filePath": "archive/banner.jpg",
+      "url": "https://cms.example.com/tenant-a/media/archive/banner.jpg?v=def456"
+    }
+  ]
 }
 ```
+
+`files` contains each successful destination path and direct URL; the existing
+`mediaNames`, `sourceFolder`, and `targetFolder` fields are retained.
 
 Other responses: `400` Validation Problem Details when one or more store moves fail; `401`; `403`; `404` for a missing/empty file list or folder. Successful moves before a failure are not rolled back.
 

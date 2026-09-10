@@ -635,6 +635,12 @@ oc media files upload site-v1.css --path assets/styles --file ./site.css
 oc media files show assets/styles/site-v1.css --output json
 ```
 
+Media file results include both the store path (for later CLI commands) and a
+direct, absolute URL (for opening or embedding the file). `oc media items list`
+and `oc media files list` show both columns in a terminal. Upload, copy, and move
+results also include the destination URL. Configured CDN mappings are preserved;
+the URL does not bypass any media access restrictions.
+
 Create the folders only if they do not already exist. The upload needs Media
 management and destination-folder permission. By default CSS, JavaScript, and
 SVG additionally require **Upload media file extensions requiring additional

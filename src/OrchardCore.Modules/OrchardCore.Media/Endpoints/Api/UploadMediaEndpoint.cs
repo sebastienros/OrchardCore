@@ -42,6 +42,7 @@ public static class UploadMediaEndpoint
                 {
                     new CliTableColumnMetadata("name", "Name"),
                     new CliTableColumnMetadata("filePath", "Path"),
+                    new CliTableColumnMetadata("url", "URL"),
                     new CliTableColumnMetadata("size", "Size"),
                 },
             })

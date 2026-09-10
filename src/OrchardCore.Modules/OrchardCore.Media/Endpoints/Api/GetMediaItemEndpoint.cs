@@ -32,6 +32,7 @@ public static class GetMediaItemEndpoint
                 {
                     new CliTableColumnMetadata("name", "Name"),
                     new CliTableColumnMetadata("filePath", "Path"),
+                    new CliTableColumnMetadata("url", "URL"),
                     new CliTableColumnMetadata("size", "Size"),
                     new CliTableColumnMetadata("mime", "Content type"),
                 },
