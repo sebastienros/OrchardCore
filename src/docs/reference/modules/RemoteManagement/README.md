@@ -90,15 +90,7 @@ tenants. Browser credentials should be entered only in the tenant's HTTPS login
 page or by a trusted password manager; never put passwords in command
 arguments, logs, screenshots, chat, or browser automation scripts.
 
-For automation, register a confidential OpenID application with the minimum required roles and scopes. Set `OC_CLIENT_ID` and `OC_CLIENT_SECRET` for dynamic commands and initial API discovery:
-
-```bash
-export OC_CLIENT_ID=orchard-automation
-export OC_CLIENT_SECRET='<secret>'
-oc content items list
-```
-
-For `oc login` and `oc api invoke`, the secret can instead be named with `--client-secret-env` or read from standard input with `--client-secret-stdin`. Client-credential tokens and secrets are not persisted. Implicit and password grants are not supported. The CLI uses OAuth access/refresh tokens and does not use or persist ID-token claims as an identity assertion.
+For unattended jobs, follow [Client credentials for automation](#client-credentials-for-automation). Implicit and password grants are not supported. The CLI uses OAuth access/refresh tokens and does not use or persist ID-token claims as an identity assertion.
 
 Manage multiple tenants with named contexts:
 
@@ -130,6 +122,197 @@ oc content items list
 ```
 
 Direct authentication ensures tenant-local roles and permissions are enforced and newly created content is associated with the authenticated tenant user. Each context stores separate credentials. Discovery caches are keyed by tenant URL, so aliases for the same URL share metadata; `--help` reflects that tenant's enabled features.
+
+## Client credentials for automation
+
+Use client credentials when a CI job, scheduled script, or service needs to run
+`oc` without a person opening a browser. The application authenticates as itself;
+its tenant-local roles determine what it can do. There is no user consent page
+or administrator password in this flow.
+
+This walkthrough creates an application named `orchard-automation` for the tenant
+at `https://cms.example.com/tenant-a/`. Replace that URL with your exact tenant
+URL, including its path prefix.
+
+### 1. Prepare the tenant and application role
+
+In the target tenant's admin UI, enable and [configure Remote Management](#enable-and-configure).
+This enables the token endpoint and client-credentials grant, creates the
+`orchardcore.management` scope, and configures local token validation. It does
+**not** create a confidential automation application. Keep the public
+`orchardcore-cli` application for browser and device login.
+
+Open **Access Control → Roles**, create a role named `Automation`, and grant
+**Access remote management API** (`AccessRemoteManagement`). Add the permissions
+required by your intended commands. For the `oc features list` example below,
+also grant **Manage Features** (`ManageFeatures`). That permission also permits
+feature changes; it is not a read-only permission. Save the role.
+
+The scope permits management API access, while role permissions authorize the
+individual operations. Assigning the scope alone is not sufficient. The
+**Roles** feature must be enabled to create and assign application roles.
+
+In the legacy admin navigation, **Roles** is under **Security**.
+
+### 2. Register a confidential application
+
+Open **Access Control → OpenID Connect → Applications** and create an application.
+With legacy navigation, use **Security → OpenID Connect → Management → Applications**.
+
+| Field | Value |
+| --- | --- |
+| Display Name | `Orchard automation` |
+| Application type | **Web application**; this is the application registration type even when the caller is `oc` |
+| Client type | **Confidential client** |
+| Client Id | `orchard-automation` |
+| Client Secret | Generate a secret using the button beside the field and store it in your secret manager |
+| Flows | Select **Allow Client Credentials Flow**; leave other flows unchecked for this application |
+| Allowed Scopes | Select `orchardcore.management` |
+| Client Credentials Roles | Select `Automation` |
+
+Save the application. This flow does not require redirect URIs, a browser
+callback, or refresh tokens. If the client-credentials checkbox or management
+scope is missing, complete step 1 in this same tenant first.
+
+### 3. Supply credentials and register the context
+
+Configure these environment variables for the process running `oc`:
+
+| Variable | Value |
+| --- | --- |
+| `OC_CLIENT_ID` | `orchard-automation` |
+| `OC_CLIENT_SECRET` | The secret saved in step 2 |
+
+In CI, inject the secret from the CI system's secret store. For a local test in
+Bash or Zsh, this prompt reads it without displaying it or putting its literal
+value in shell history:
+
+```bash
+export OC_CLIENT_ID=orchard-automation
+printf 'Client secret: '
+IFS= read -r -s OC_CLIENT_SECRET
+printf '\n'
+export OC_CLIENT_SECRET
+```
+
+Add a context for the exact tenant URL:
+
+```bash
+oc context add production-automation https://cms.example.com/tenant-a/ --current
+```
+
+A context stores the tenant address and discovery metadata, not your automation
+secret. Setting these variables before discovery also lets the CLI fetch the
+authenticated manifest and tenant-specific commands without browser login.
+The same variables apply to every `oc` command in that environment, so use
+`--context` explicitly and supply credentials registered in that target tenant.
+
+### 4. Verify authentication and run a command
+
+An optional login check verifies that the server accepts the application:
+
+```bash
+oc --context production-automation login --grant client-credentials \
+  --client-id orchard-automation \
+  --client-secret-env OC_CLIENT_SECRET
+```
+
+Success reports the context, grant type, issuer, and token expiry without
+printing the access token. This checks authentication; it does not prove that
+the application has permission to perform every management operation.
+
+**Client-credentials login does not establish a saved session.** Neither the
+secret nor the token is persisted. Keep `OC_CLIENT_ID` and `OC_CLIENT_SECRET`
+available for subsequent commands, which obtain tokens automatically. A
+preceding `oc login` is optional:
+
+```bash
+oc --context production-automation features list --output json
+```
+
+The environment credentials take precedence over saved browser/device
+credentials. Use `--output json` for scripts that parse results; the default
+output is intended for people.
+
+For the login check, `--client-secret-env` may name a different variable, or
+`--client-secret-stdin` may read the secret from standard input. For example,
+with a protected file provided by your secret manager:
+
+```bash
+oc --context production-automation login --grant client-credentials \
+  --client-id orchard-automation \
+  --client-secret-stdin < /path/to/client-secret.txt
+```
+
+These explicit secret options are also available on `oc api invoke`. They apply
+to that invocation only; dynamic resource commands use `OC_CLIENT_ID` and
+`OC_CLIENT_SECRET`.
+
+When finished with the local test, clear the variables:
+
+```bash
+unset OC_CLIENT_ID OC_CLIENT_SECRET
+```
+
+`oc logout` removes saved human credentials; it does not disable an automation
+application or clear environment variables. Change the application's secret in
+the admin UI and update your secret store when rotating credentials. Already
+issued access tokens may remain valid until expiry.
+
+### Provisioning during tenant setup
+
+`oc tenants setup` does not currently accept a client ID or client secret.
+`oc tenants enable-remote-management` configures the server and public CLI
+application but does not provision a confidential client.
+
+For repeatable provisioning, a custom setup recipe can enable the required
+features, run `RemoteManagementConfiguration`, create the application role, and
+include this [OpenID application recipe step](../OpenId/README.md#openid-connect-client-integration-configuration):
+
+```json
+{
+  "name": "OpenIdApplication",
+  "ClientId": "orchard-automation",
+  "DisplayName": "Orchard automation",
+  "Type": "Confidential",
+  "ApplicationType": "web",
+  "ClientSecret": "[js: configuration('Automation:ClientSecret')]",
+  "AllowClientCredentialsFlow": true,
+  "ScopeEntries": [{ "Name": "orchardcore.management" }],
+  "RoleEntries": [{ "Name": "Automation" }]
+}
+```
+
+Create the `Automation` role with the required permissions before this step.
+Provide `Automation:ClientSecret` through the target tenant's
+[configuration](../Configuration/README.md) using your deployment's secret
+configuration provider. The recipe's
+[`configuration` function](../Scripting/README.md#recipes-orchardcorerecipes)
+reads that value without embedding a literal secret in the recipe. JavaScript
+recipe expressions require **JavaScript Scripting** (`OrchardCore.Scripting.JavaScript`).
+Configuration is resolved by the **Orchard server process**, not the computer
+running `oc`; exporting `OC_CLIENT_SECRET` in your CLI shell does not send it to
+a remote server's setup recipe.
+
+Select the recipe with `oc tenants setup Site1 --recipe-name <recipe-name>`
+alongside the other required setup arguments. The recipe must already be
+available on the server, and a recipe configured when the tenant was created
+takes precedence.
+
+### Troubleshooting client credentials
+
+| Symptom | What to check |
+| --- | --- |
+| `invalid_client` | The application exists in the selected tenant, its type is confidential, and its client ID and secret match. |
+| `unauthorized_client` or an unsupported-grant error | Client credentials must be enabled on both the server and the application. |
+| `invalid_scope` | The application allows `orchardcore.management`, and that scope exists in the target tenant. Do not request `offline_access` for this flow. |
+| `403` when fetching metadata | The application's selected role needs **Access remote management API**. |
+| Login succeeds but a command returns `403` | The application role also needs that operation's permissions. |
+| A command asks for login after a successful check | The check did not save a session. Supply `OC_CLIENT_ID` and `OC_CLIENT_SECRET` to the command's process. |
+| Authentication targets an unexpected tenant or client | Check `oc context show`, the explicit `--context`, and any inherited `OC_CLIENT_ID` / `OC_CLIENT_SECRET` variables. |
+
+See the [client-credentials HTTP contract](../../api/authentication/README.md#client-credentials)
+for token endpoint parameters and OAuth error responses.
 
 ## Dynamic commands
 

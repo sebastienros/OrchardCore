@@ -333,7 +333,9 @@ curl -X POST -H 'Content-Type: application/x-www-form-urlencoded' \
 
 #### Client credentials
 
-Use a separately configured confidential client.
+Use a separately configured confidential client. For application registration,
+role and scope selection, and `oc` examples, follow
+[Client credentials for automation](../../modules/RemoteManagement/README.md#client-credentials-for-automation).
 
 | Form parameter | Type | Required | Constraint |
 | --- | --- | --- | --- |

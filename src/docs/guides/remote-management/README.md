@@ -603,6 +603,8 @@ Destructive commands marked for confirmation ask in an interactive terminal;
 noninteractive callers must supply `--yes`. `oc context clear --force` removes
 all saved contexts and their credentials, so use it only for an intentional reset.
 
+For a complete setup walkthrough, see [Client credentials for automation](../../reference/modules/RemoteManagement/README.md#client-credentials-for-automation).
+
 For unattended jobs, register a separate **confidential** OpenID application
 with client-credentials flow, the `orchardcore.management` scope, and minimal
 roles. Inject `OC_CLIENT_ID` and `OC_CLIENT_SECRET` through your CI secret
