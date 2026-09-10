@@ -191,3 +191,25 @@ or tokens. These bounded observations are not statistical model/token efficiency
 measurements. Deterministic tests separately cover private state permissions,
 context changes, single-waiter locking, offline redisplay, persisted `slow_down`
 timing, PNG integrity, credential saving, denial, expiry, and cleanup.
+
+
+## Round 7: content version lifecycle skill
+
+Fresh `gpt-5.6-sol` and `gpt-5.6-luna` agents received only a copy of the content
+items skill and a fixed scenario: inspect/render an archived version, restore it
+while an unauthorized-to-replace draft exists, delete another archived version,
+and handle an uncertain restore response. Repository implementation and other
+agents' results were excluded. This was a read-only command-planning evaluation;
+the agents did not execute the commands.
+
+| Model | Outcome | Observed limitations |
+| --- | --- | --- |
+| gpt-5.6-sol | Used the logical ID only for listing and version IDs for exact operations. Withheld draft replacement pending authorization, separated the independently authorized purge, and inspected state before any timeout retry. Rejected purging a published version or bypassing protection. | No live CLI execution in this round. |
+| gpt-5.6-luna | Used the correct IDs/commands, required authorization for `--replace-draft true`, and described state inspection after timeout. Rejected purging the published version and did not propose publication. | Included an ordinary restore probe that would predictably return 409 for the known draft before explaining the approval boundary. No live CLI execution. |
+
+Both understood that restoration creates an unpublished draft. These observations
+measure bounded skill comprehension, not statistical efficiency or actual task
+completion. Separately, the native functional smoke ran all five operations against
+a real disposable Orchard tenant using a previously built NativeAOT binary. HTTP
+integration tests cover permission filtering, mutation denial with read access,
+current-owner preservation, and the version lifecycle.

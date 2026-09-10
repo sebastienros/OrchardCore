@@ -711,6 +711,19 @@ creates a draft; it returns `404` when no draft exists. To publish intentionally
 oc content items publish <content-item-id>
 ```
 
+To inspect or recover an older version, use its version ID:
+
+```bash
+oc content versions list <content-item-id>
+oc content versions show <content-item-version-id>
+oc content versions restore <content-item-version-id>
+```
+
+Restoration creates a new unpublished draft and preserves the published version.
+The [version management reference](../../reference/api/content-items/README.md#manage-specific-versions)
+explains rendering, replacing an existing draft, and permanently deleting archived versions.
+
+
 Do not retry creation blindly after a connection failure: a request may have
 succeeded before its response was lost. Read back the state first. Consult the
 [content API retry contract](../../reference/api/content-items/README.md) for

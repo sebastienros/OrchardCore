@@ -1,6 +1,6 @@
 ---
 name: orchardcore-cli-content-items
-description: Authors and manages Orchard Core content items through `oc`. Use for schema-driven JSON creation, drafts, updates, validation, publishing, unpublishing, rendering, deletion, ownership, and organizing tenant content by type, route, alias, taxonomy, and containment.
+description: Authors and manages Orchard Core content items through `oc`. Use for schema-driven JSON creation, drafts, updates, validation, publishing, unpublishing, rendering, deletion, version history, version restoration, ownership, and organizing tenant content by type, route, alias, taxonomy, and containment.
 ---
 
 # Orchard Core CLI Content Items
@@ -90,6 +90,33 @@ oc content items delete <id> --yes
 ```
 
 Run `oc content items --help` for installation-specific filters and options.
+
+## Specific versions
+
+Refresh metadata after a server upgrade and check `oc content versions --help`.
+`list` takes a logical `ContentItemId`; the other commands take a returned
+`ContentItemVersionId`. Never substitute one kind of ID for the other.
+
+```bash
+oc content versions list <content-item-id> --take 50 --output json
+oc content versions show <version-id> --output json
+oc content versions render <version-id> --display-type Detail
+oc content versions restore <version-id>
+oc content versions delete <archived-version-id> --yes
+```
+
+Restoration creates a new unpublished draft with a new version ID, preserving
+both the source and existing published version. Inspect the current draft on
+409; use `--replace-draft true` only if replacing that draft is authorized.
+The replaced draft becomes archived. Do not automatically retry a restore after
+an uncertain response; inspect the latest version first. Publish separately only
+when the user requests it. Rendering uses current templates, not old templates.
+
+Deletion permanently purges only an archived version (`Latest=false`,
+`Published=false`). It cannot delete a published version or the current draft.
+Do not delete or unpublish the logical item just to bypass this protection.
+Missing versions return 404 for reads/restoration and 204 for deletion.
+Archived content requires preview permission even if it was once public.
 
 ## State and identity rules
 

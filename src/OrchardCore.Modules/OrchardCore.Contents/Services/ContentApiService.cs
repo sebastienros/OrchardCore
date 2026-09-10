@@ -542,6 +542,7 @@ internal sealed class ContentApiService
         return new ContentItemRenderResponse
         {
             ContentItemId = contentItem.ContentItemId,
+            ContentItemVersionId = contentItem.ContentItemVersionId,
             DisplayType = displayType ?? "Detail",
             Html = writer.ToString(),
         };

@@ -30,6 +30,12 @@ public sealed class ContentItemValidationResponse
 
 public sealed class ContentItemRenderResponse
 {
+    /// <summary>
+    /// Gets or sets the identifier of the content item version that was rendered.
+    /// </summary>
+    [JsonPropertyName("contentItemVersionId")]
+    public string ContentItemVersionId { get; set; }
+
     [JsonPropertyName("contentItemId")]
     public string ContentItemId { get; set; }
 

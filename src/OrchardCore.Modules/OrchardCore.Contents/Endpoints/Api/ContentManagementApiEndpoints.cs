@@ -15,7 +15,7 @@ using OrchardCore.Security;
 
 namespace OrchardCore.Contents.Endpoints.Api;
 
-internal static class ContentManagementApiEndpoints
+internal static partial class ContentManagementApiEndpoints
 {
     internal const string Capability = "content-items";
 
@@ -182,6 +182,7 @@ internal static class ContentManagementApiEndpoints
             .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status404NotFound);
 
+        AddVersionEndpoints(group);
         return builder;
     }
 

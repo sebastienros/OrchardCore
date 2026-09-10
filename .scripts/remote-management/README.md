@@ -21,6 +21,7 @@ In a second terminal, substitute that path below:
 python3 .scripts/remote-management/verify-fixture.py <fixture.json>
 python3 .scripts/remote-management/smoke-fixture.py <fixture.json>
 python3 .scripts/remote-management/localization-smoke.py <fixture.json>
+python3 .scripts/remote-management/content-versions-smoke.py <fixture.json>
 python3 .scripts/remote-management/graphql-smoke.py <fixture.json>
 ```
 
@@ -36,6 +37,12 @@ unpublished content creation, validation, readback, confirmation refusal,
 least-privilege role creation, password environment input, account lifecycle,
 and cleanup. Unique names allow reruns. Failure leaves only fixture resources
 for diagnosis; discard the fixture afterward.
+
+`content-versions-smoke.py` verifies all five dynamically discovered version commands,
+newest-first paging, source preservation, restoration into new drafts, explicit
+draft replacement, publication protection, purge confirmation, missing-version
+retries, and anonymous denial. Set `OC_FIXTURE_BINARY` to an older native CLI
+to verify server commands are available without rebuilding that CLI.
 
 `localization-smoke.py` exercises all seven localization operations through the CLI,
 including paging, explicit culture selection, settings readback, translation retries,

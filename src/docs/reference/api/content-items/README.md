@@ -1,7 +1,8 @@
 # Content item management API (`OrchardCore.Contents`)
 
 The content item management API lists, reads, creates, updates, validates, renders, publishes,
-unpublishes, and deletes content items. Enable the **Contents** feature
+unpublishes, and deletes content items. It also lists, reads, renders, restores, and permanently
+deletes individual stored versions. Enable the **Contents** feature
 (`OrchardCore.Contents`). The feature advertises the Remote Management capability
 `content-items`.
 
@@ -22,6 +23,10 @@ Resource permissions are evaluated in addition to those two permissions:
 | Create or update a draft; validate; create a draft version | `EditContent` on the item |
 | Create/update and publish; publish or unpublish | `EditContent` and/or `PublishContent` as described by the operation |
 | Delete | `DeleteContent` on the item |
+| List versions | `ListContent` on the current item, plus read permission on each version and the current item |
+| Show or render an exact version | `ViewContent` if that version is published, otherwise `PreviewContent`, on both that version and the current item |
+| Restore a version | Read permission above, plus `EditContent` and `PublishContent` on both versions |
+| Delete an archived version | `PreviewContent` and `DeleteContent` on both versions |
 | Get schema | At least one of `ListContent`, `EditContent`, or `ViewContent` for the type |
 
 Orchard Core's normal ownership and content-type permission rules apply when these permissions
@@ -73,6 +78,11 @@ All request and response bodies use `application/json`.
 | `POST` | `/api/content/{contentItemId}/validate` | Validate an update |
 | `GET` | `/api/content/{contentItemId}/render` | Render a version |
 | `GET` | `/api/content/schema/{contentType}` | Get the type's JSON Schema |
+| `GET` | `/api/content/{contentItemId}/versions` | List readable versions, newest first |
+| `GET` | `/api/content/versions/{contentItemVersionId}` | Get an exact stored version |
+| `GET` | `/api/content/versions/{contentItemVersionId}/render` | Render an exact stored version |
+| `POST` | `/api/content/versions/{contentItemVersionId}/restore` | Restore into a new unpublished draft |
+| `DELETE` | `/api/content/versions/{contentItemVersionId}` | Permanently delete an archived version |
 
 ## Shared contracts
 
@@ -173,7 +183,7 @@ schema dependent:
 
 Malformed JSON or a missing required JSON body also returns `400`. The explicit missing-body
 response for save operations has title `Bad request` and detail
-`A content item payload is required.`. The API does not use `409 Conflict`.
+`A content item payload is required.`. Version restoration and deletion return `409 Conflict` for protected states described below.
 
 ## Operations
 
@@ -697,6 +707,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 ```json
 {
   "contentItemId": "4xyz6d8qk2s9r1n7m5p3t0vabc",
+  "contentItemVersionId": "4xyz6d8qk2s9r1n7m5p3t0vabd",
   "displayType": "Detail",
   "html": "<article><h1>API reference</h1></article>"
 }
@@ -758,11 +769,119 @@ fields can describe their own JSON contract:
 The complete `properties`, descriptions, defaults, and references are schema dependent.
 Also returns `401`, `403`, or `404`.
 
+## Manage specific versions
+
+A `ContentItemId` identifies the logical item across its history. A
+`ContentItemVersionId` identifies one stored version. Use the latter for all
+`content versions` commands except `list`. These commands are discovered from
+the tenant's OpenAPI document; run `oc api refresh --force` after updating the server.
+
+```bash
+oc content versions list <content-item-id> --take 20
+oc content versions show <version-id> --output json > version.json
+oc content versions render <version-id> --display-type Detail
+oc content versions restore <version-id>
+```
+
+Restoration creates a new draft with a new version ID. Inspect it before publishing
+with `oc content items publish <content-item-id>`. It does not change the existing
+published version. If a draft already exists, inspect that draft first; explicitly
+use `--replace-draft true` to archive it and create the restored draft.
+
+```bash
+oc content items show <content-item-id> --version draft
+oc content versions restore <version-id> --replace-draft true
+oc content versions delete <archived-version-id> --yes
+```
+
+Deletion is permanent and only accepts archived versions (`Latest=false` and
+`Published=false`). It does not delete the logical item, media, related content,
+or audit events. Use `oc content items delete` for the item's normal removal
+lifecycle. Published versions and current drafts cannot be purged by version ID.
+
+### Version list
+
+`GET /api/content/{contentItemId}/versions` takes a required logical item ID and
+optional integer `skip` (default `0`, minimum `0`) and `take` (default `20`, clamped
+to `1`–`100`). It returns `200` with the same `{skip, take, totalCount, items}`
+envelope as the content list. Each item is a complete content document including
+`ContentItemVersionId`, `Latest`, `Published`, `ModifiedUtc`, and `Author`.
+
+Results include published, draft, and archived versions ordered by document
+creation order, newest first. Read permissions are checked before paging and
+counting; unauthorized versions are omitted. `ListContent` is required on the
+current item, otherwise the request returns `403`. An unknown item returns `404`.
+Like other offset lists, concurrent edits or pruning can change pages between requests.
+
+### Version read and render
+
+`GET /api/content/versions/{contentItemVersionId}` returns `200` and the exact
+content document. It never creates a draft. A version ID does not mean an immutable
+snapshot: an editable draft can be updated while retaining its version ID.
+
+`GET /api/content/versions/{contentItemVersionId}/render` accepts optional string
+`displayType` (default `Detail`). It returns `200` with `contentItemId`,
+`contentItemVersionId`, `displayType`, and `html`, using the render response shown
+above. Rendering uses the tenant's **current** theme, templates, and related
+content; it does not reconstruct historical site appearance.
+
+Both operations return `404` if the version no longer exists. Published versions
+require `ViewContent`; drafts and archived versions require `PreviewContent`.
+The same permission is checked on both the requested version and the current
+item, so historical ownership does not grant access after ownership changes.
+For removed items with retained history, the newest stored version is used as
+the current resource for authorization.
+
+### Version restore
+
+`POST /api/content/versions/{contentItemVersionId}/restore` takes no body and
+accepts optional boolean `replaceDraft` (default `false`). In addition to read
+permission, it requires `EditContent` and `PublishContent` on the source and
+current item. It clones the source, preserves the current owner, and runs
+Orchard's restoration handlers and content validation.
+
+`201 Created` returns the full restored content document with the same
+`ContentItemId`, a new `ContentItemVersionId`, `Latest=true`, and `Published=false`.
+The source document is preserved. The current published version remains published.
+An existing draft is preserved unless `replaceDraft=true`, which archives it.
+
+An existing draft without that option returns `409` Problem Details. Validation
+failures return `400` Validation Problem Details with messages under the empty
+`errors` key. A missing source returns `404`. Each successful request creates a
+new version: after a timeout, inspect the latest draft before retrying, especially
+when using `replaceDraft=true`. This endpoint does not publish automatically. There is no expected-version or ETag
+precondition; coordinate concurrent editorial changes before restoring or purging
+versions. The draft check is not a lock against another editor.
+
+### Version delete
+
+`DELETE /api/content/versions/{contentItemVersionId}` takes no body or query
+parameters. It requires read permission and `DeleteContent` on the version and
+current item. It uses the same document deletion approach as archived-version
+pruning, without running the logical item's removal lifecycle.
+
+`200 OK` returns the deleted content document. An already absent version returns
+`204 No Content`, making retries safe. A latest or published version returns
+`409` Problem Details and remains unchanged. For example:
+
+```json
+{
+  "type": "https://tools.ietf.org/html/rfc9110#section-15.5.10",
+  "title": "Conflict",
+  "status": 409,
+  "detail": "Only archived versions can be permanently deleted. This version is latest or published; use the content item lifecycle commands first."
+}
+```
+
+All five version operations also return `401` for missing authentication and
+`403` for missing required permissions, using the shared Problem Details contract.
+
 ## Endpoint coverage and sources
 
-This page covers all 14 routes mapped by:
+This page covers all 19 routes mapped by:
 
 * `src/OrchardCore.Modules/OrchardCore.Contents/Endpoints/Api/ContentManagementApiEndpoints.cs`
+* `src/OrchardCore.Modules/OrchardCore.Contents/Endpoints/Api/ContentVersionApiEndpoints.cs`
 
 Contracts and behavior were also derived from:
 
