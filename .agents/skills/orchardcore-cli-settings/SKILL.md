@@ -1,6 +1,6 @@
 ---
 name: orchardcore-cli-settings
-description: Reads and updates Orchard Core Site Settings and Custom Settings through `oc`. Use for tenant-wide configuration, schema-safe partial settings updates, custom-settings content types, feature-contributed settings, and validating settings without overwriting protected or unknown values.
+description: Reads and updates Orchard Core Site Settings, Custom Settings, cultures, and dynamic translations through `oc`. Use for tenant-wide configuration, schema-safe partial settings updates, custom-settings content types, feature-contributed settings, and validating settings without overwriting protected or unknown values.
 ---
 
 # Orchard Core CLI Settings
@@ -66,6 +66,41 @@ Use Custom Settings for tenant-wide editorial configuration such as branding
 media, contact information, social links, feature flags, feed limits, or footer
 content. Do not use them for collections of independently managed content.
 
+## Localization
+
+Discover `oc localization --help` after enabling `OrchardCore.Localization`
+and refreshing metadata. `OrchardCore.DataLocalization` adds translation editing.
+
+```bash
+oc localization settings show --output json
+oc localization cultures list --include-available true --take 200
+oc localization settings schema --operation update
+oc localization settings update --body-file cultures.json
+oc localization strings show media-gallery --culture fr --take 200
+oc localization translations list --culture fr --output json
+oc localization translations schema --operation set
+oc localization translations set --body-file translation.json
+oc localization translations delete 'Content Types' Page --culture fr --yes
+```
+
+Culture settings **replace** the supported-culture list. Preserve existing
+cultures unless removal is requested; the default must remain in the list.
+Use names returned by culture discovery, not time zone identifiers.
+
+Translation JSON is `{ "culture": "fr", "context": "Content Types",
+"key": "Page", "value": "Page française" }`. Copy the exact context/key from
+this tenant's list; the example only works if that descriptor exists. Set/delete
+affect one pair and preserve other entries. Delete takes translation context and
+key positionally; global `--context` still selects the tenant.
+
+`--culture` on these commands chooses the requested data language. It does not
+install PO catalogs or change other commands' request language. UI strings use
+PO translations; `translations set` edits database-backed data localization,
+not PO files or localized content items. Missing/mismatched PO entries can still
+return English. Culture settings/strings require `ManageCultures`; translation
+reads require `ViewDynamicTranslations`, writes require `ManageTranslations`
+or `ManageTranslations_<culture>`, in addition to remote-management access.
+
 ## Safety
 
 - Operate on one explicit context at a time.
@@ -76,6 +111,7 @@ content. Do not use them for collections of independently managed content.
 - Read back after updates and verify user-facing behavior separately.
 
 Canonical references:
+`src/docs/reference/api/localization/README.md`,
 `src/docs/reference/api/settings/README.md`,
 `src/docs/reference/api/custom-settings/README.md`,
 `src/docs/reference/modules/Settings/README.md`, and

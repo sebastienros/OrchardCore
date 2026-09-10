@@ -20,6 +20,7 @@ In a second terminal, substitute that path below:
 ```bash
 python3 .scripts/remote-management/verify-fixture.py <fixture.json>
 python3 .scripts/remote-management/smoke-fixture.py <fixture.json>
+python3 .scripts/remote-management/localization-smoke.py <fixture.json>
 ```
 
 `verify-fixture.py` checks discovery, command/operation ID uniqueness, every
@@ -34,6 +35,11 @@ unpublished content creation, validation, readback, confirmation refusal,
 least-privilege role creation, password environment input, account lifecycle,
 and cleanup. Unique names allow reruns. Failure leaves only fixture resources
 for diagnosis; discard the fixture afterward.
+
+`localization-smoke.py` exercises all seven localization operations through the CLI,
+including paging, explicit culture selection, settings readback, translation retries,
+French-only editing permissions, read-only access, and anonymous rejection. It
+replaces culture settings on the disposable fixture with English and French.
 
 The wrapper supplies credentials only through the child process environment:
 

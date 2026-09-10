@@ -1,0 +1,216 @@
+# Localization API
+
+Manage tenant cultures, inspect translated JavaScript UI strings, and edit database-backed translations. `OrchardCore.Localization` contributes culture settings and UI strings (capability `localization`). `OrchardCore.DataLocalization` additionally contributes dynamic translations (capability `localization-translations`). Enable [Remote Management](../../modules/RemoteManagement/README.md) to discover these operations through `oc`.
+
+These APIs serve different kinds of localization:
+
+- **Culture settings** select the tenant's default and supported cultures.
+- **UI strings** read registered `IJSLocalizer` groups using installed PO catalogs, such as `media-gallery`. Adding a culture does not install or update its translations.
+- **Dynamic translations** edit the same database document as the Data Localization admin UI, for registered descriptors such as content type display names, field labels, and permission descriptions. They do not modify PO files or translated content items.
+
+See [Localization](../../modules/Localize/README.md), [Data Localization](../../modules/DataLocalization/README.md), and [Content Localization](../../modules/ContentLocalization/README.md) for those features.
+
+## Authentication and permissions
+
+Send a bearer token as described in [Authentication](../authentication/README.md). Every endpoint requires `AccessRemoteManagement`, plus the permission below. CLI discovery also needs access to the tenant's OpenAPI document (`ViewOpenApiContent` when document access is protected).
+
+| Method | Tenant-relative route | Operation | Additional permission |
+| --- | --- | --- | --- |
+| GET | `/api/localization/cultures` | List supported or available cultures | `ManageCultures` |
+| GET | `/api/localization/settings` | Read culture settings | `ManageCultures` |
+| PUT | `/api/localization/settings` | Replace culture settings | `ManageCultures` |
+| GET | `/api/localization/strings/{groupName}` | Read a UI string group | `ManageCultures` |
+| GET | `/api/localization/translations` | List dynamic translation descriptors and stored values | `ViewDynamicTranslations` |
+| PUT | `/api/localization/translations` | Set one dynamic translation | `ManageTranslations` or `ManageTranslations_{culture}` |
+| DELETE | `/api/localization/translations` | Remove one dynamic translation | `ManageTranslations` or `ManageTranslations_{culture}` |
+
+For example, `ManageTranslations_fr` allows editing French translations, but does not allow changing tenant settings or editing English. Grant `ViewDynamicTranslations` separately when that identity should also list translations. `ManageTranslations` implies the read permission.
+
+## Get started with the CLI
+
+With an authenticated context pointing at the intended tenant:
+
+```bash
+oc features enable OrchardCore.Localization
+oc api refresh
+oc localization --help
+oc localization cultures list
+oc localization settings show
+```
+
+To support English and French, create `cultures.json`:
+
+```json
+{
+  "defaultCulture": "en",
+  "supportedCultures": ["en", "fr"],
+  "fallBackToParentCulture": true
+}
+```
+
+Apply it, then inspect the French Media UI labels:
+
+```bash
+oc localization settings update --body-file cultures.json
+oc localization strings show media-gallery --culture fr --take 200
+```
+
+This replaces the complete supported-culture list. Read current settings first and retain any other cultures you need. The explicit `--culture` on these localization commands is independent of the CLI's saved tenant `--context`; it is not a global CLI language switch.
+
+For database-backed translations:
+
+```bash
+oc features enable OrchardCore.DataLocalization
+oc api refresh
+oc localization translations list --culture fr
+oc localization translations schema --operation set
+```
+
+Copy an exact `context` and `key` from the list into `translation.json`. For example, **if** the tenant registers `Content Types` / `Page`:
+
+```json
+{
+  "culture": "fr",
+  "context": "Content Types",
+  "key": "Page",
+  "value": "Page française"
+}
+```
+
+```bash
+oc localization translations set --body-file translation.json
+oc localization translations list --culture fr --output json
+oc localization translations delete 'Content Types' Page --culture fr --yes
+```
+
+The delete command takes the translation context and key as positional arguments. The global `oc --context <name>` continues to select the tenant. `--yes` confirms removal. JSON bodies can also be supplied with `--stdin`; use `--output json` for scripts. Default output is human-readable in a terminal and JSON when redirected.
+
+## List cultures
+
+`GET /api/localization/cultures` accepts no body.
+
+| Query parameter | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `includeAvailable` | Boolean | `false` | Include all cultures and aliases recognized by the server's .NET globalization data |
+| `skip` | Integer | `0` | Nonnegative number of rows to skip |
+| `take` | Integer | `50` | Page size, 1–200 |
+
+The `200 OK` response is sorted by culture name and contains `skip`, `take`, `totalCount`, and `items`:
+
+```json
+{
+  "skip": 0,
+  "take": 50,
+  "totalCount": 2,
+  "items": [
+    { "name": "en", "displayName": "English", "isSupported": true, "isDefault": true },
+    { "name": "fr", "displayName": "French", "isSupported": true, "isDefault": false }
+  ]
+}
+```
+
+Display names depend on the server's globalization data and request language. Culture names are .NET culture identifiers such as `en`, `en-US`, `fr`, or `fr-FR`; they are not time zone identifiers. Discover exact available names with `oc localization cultures list --include-available true`, paging as necessary. Invalid paging returns `400`.
+
+## Read or replace culture settings
+
+`GET /api/localization/settings` accepts no body and returns `200 OK` with the `cultures.json` shape above.
+
+`PUT /api/localization/settings` requires an `application/json` body:
+
+| Property | Type | Required | Meaning |
+| --- | --- | --- | --- |
+| `defaultCulture` | String | Yes | Available culture also present in `supportedCultures` |
+| `supportedCultures` | String array | Yes | Complete list; 1–1000 entries, each available on the server |
+| `fallBackToParentCulture` | Boolean | No | Enable supported-parent fallback; omitted means `false` |
+
+The empty string denotes .NET's invariant culture. Names are matched case-insensitively, normalized to server casing, deduplicated, and sorted. Invalid names, an empty list, or a default outside the list return `400` validation details. A successful update returns `200` with the normalized settings.
+
+Changed settings are saved through the site settings service and request a tenant release so request localization is reconfigured. An identical retry returns `200` without saving or releasing again: equivalence compares default culture case-insensitively, the supported-culture **set** case-insensitively, and the fallback Boolean. This is full replacement, not a patch. There is no ETag or compare-and-swap contract; coordinate concurrent settings edits and read back after an ambiguous failure.
+
+## Read UI strings
+
+`GET /api/localization/strings/{groupName}` accepts no body.
+
+- `groupName`: required path string, at most 200 characters; an exact registered JavaScript localization group, such as `media-gallery`.
+- `culture`: optional query string; a supported culture name, matched case-insensitively. Defaults to the tenant's default culture.
+- `skip` and `take`: as above.
+
+Example `200 OK` response (values depend on installed catalogs):
+
+```json
+{
+  "group": "media-gallery",
+  "culture": "fr",
+  "skip": 0,
+  "take": 50,
+  "totalCount": 1,
+  "items": [{ "key": "Delete", "value": "Supprimer" }]
+}
+```
+
+Providers are merged using the existing JavaScript localization service and results are sorted by key. `400` indicates an unsupported culture or invalid paging/group length; `404` means no strings were supplied for that group. Groups cannot be enumerated through `IJSLocalizer`; consult the module contributing the UI.
+
+Source text can remain visible when a PO entry is missing or its context does not match the current localizer. Selecting French cannot repair a stale translation catalog. This response reports resolved strings, not translation coverage or provenance. It does not expose an API to upload PO files.
+
+## List dynamic translations
+
+`GET /api/localization/translations` accepts no body.
+
+| Query parameter | Type | Required/default | Meaning |
+| --- | --- | --- | --- |
+| `culture` | String | Required | Supported non-invariant culture, matched case-insensitively |
+| `search` | String | Optional | At most 1000 characters; case-insensitive substring of context, key, or provider source value |
+| `skip` | Integer | `0` | Nonnegative offset |
+| `take` | Integer | `50` | Page size, 1–200 |
+
+Returns `200 OK`, sorted by context then key:
+
+```json
+{
+  "culture": "fr",
+  "skip": 0,
+  "take": 50,
+  "totalCount": 1,
+  "items": [
+    { "context": "Content Types", "key": "Page", "sourceValue": "", "value": "Page française", "isTranslated": true }
+  ]
+}
+```
+
+Descriptors come from the enabled features' `ILocalizationDataProvider` implementations. `sourceValue` is the provider's value and may be empty; the source text may instead be the key. `value` is the exact stored translation for this culture, or `null` if none exists. `isTranslated` indicates an entry in storage. This list does not resolve parent-culture fallback. Orphaned translations whose providers no longer register a key are omitted. Invalid culture or query bounds return `400`.
+
+## Set a dynamic translation
+
+`PUT /api/localization/translations` requires `application/json` with the `translation.json` shape above. All four strings are required:
+
+- `culture`: a supported non-invariant culture, normalized to the configured spelling.
+- `context` and `key`: nonblank, each at most 1000 characters, matching a registered descriptor **exactly, case-sensitively**.
+- `value`: nonblank, at most 100000 characters. Use deletion to remove a translation.
+
+Returns `200 OK`:
+
+```json
+{ "culture": "fr", "context": "Content Types", "key": "Page", "value": "Page française", "changed": true }
+```
+
+Invalid input returns `400` validation details. An unregistered context/key returns `404`. The endpoint updates only that pair and preserves every other entry and culture. An identical retry returns `200` with `changed: false` and performs no save. Equivalence uses normalized culture and exact context, key, and value. A different value replaces the previous one; it does not return a conflict.
+
+Writes use the existing translations document manager and invalidate the same culture cache as the admin UI. They inherit the configured document storage and cache behavior. There is no file-system write and no new storage backend. There is no API-level concurrency token: coordinate concurrent editors and verify the result after a failed or ambiguous request.
+
+## Delete a dynamic translation
+
+`DELETE /api/localization/translations?culture=fr&context=Content%20Types&key=Page` accepts no body. All three query strings are required and have the same culture/context/key validation as set. Unlike set, deletion does not require the descriptor still to be registered, allowing cleanup of a known orphaned entry.
+
+Returns `200 OK`:
+
+```json
+{ "culture": "fr", "context": "Content Types", "key": "Page", "value": null, "changed": true }
+```
+
+Only the exact pair is removed; other translations remain. Repeating deletion, including deletion of an absent pair, succeeds with `changed: false` and no save. Invalid input returns `400`. Cache invalidation and concurrency behavior are the same as set.
+
+## Errors and source
+
+All seven operations return `401` for missing/invalid bearer authentication and `403` for insufficient permissions. Operation-specific errors are described above. Validation responses contain an `errors` dictionary; other errors use Problem Details. Malformed JSON returns `400`, and unsupported request content types return `415` on body operations. Routes are relative to the tenant, including its path prefix.
+
+Source: `OrchardCore.Localization/Endpoints/LocalizationManagementEndpoints.cs`, `OrchardCore.DataLocalization/Endpoints/TranslationManagementEndpoints.cs`, and the existing localization/site settings and translations document services. Each enabled module contributes its own capability and CLI metadata to the management OpenAPI document.

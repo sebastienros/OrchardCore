@@ -214,3 +214,12 @@ Localization settings can be configured using the `Settings` recipe step:
 | `DefaultCulture`          | String          | The default culture for the site (e.g., `en-US`).                           |
 | `SupportedCultures`       | Array of String | The list of supported cultures.                                             |
 | `FallBackToParentCulture` | Boolean         | Whether to fall back to the parent culture when a translation is not found. |
+
+## Remote management API
+
+The [Localization API](../../api/localization/README.md) exposes culture settings,
+registered JavaScript UI strings, and database-backed dynamic translations through
+OpenAPI and the `oc localization` command group. It uses the existing culture and
+translation permissions. See the API page for a CLI walkthrough, feature
+requirements, culture selection, and the distinction between PO catalogs and
+dynamic translations.

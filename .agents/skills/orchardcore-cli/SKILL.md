@@ -225,7 +225,7 @@ Load the narrowest relevant skill:
 - **Custom Liquid templates and rendering**: `orchardcore-cli-templates`
 - **Installed site/admin theme selection**: `orchardcore-cli-themes`
 - **Menu content and official menu-shape rendering**: `orchardcore-cli-menus`
-- **Site Settings and Custom Settings**: `orchardcore-cli-settings`
+- **Site Settings, Custom Settings, cultures, and dynamic translations**: `orchardcore-cli-settings`
 - **Features, recipes, queries, workflows, users, and roles**:
   `orchardcore-cli-automation`
 

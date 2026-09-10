@@ -20,7 +20,7 @@ blank = (repo / "src/OrchardCore.Themes/TheAdmin/Recipes/blank.recipe.json").rea
 recipe = json.loads("\n".join(line for line in blank.splitlines() if not line.lstrip().startswith("//")))
 recipe["name"] = "CliFixture"
 # Keep tenant static serving enabled to prove it exposes no management API.
-recipe["steps"][0]["enable"] += ["OrchardCore.RemoteManagement", "OrchardCore.Tenants", "OrchardCore.Tenants.FileProvider", "OrchardCore.Workflows", "OrchardCore.Queries.Sql"]
+recipe["steps"][0]["enable"] += ["OrchardCore.RemoteManagement", "OrchardCore.Tenants", "OrchardCore.Tenants.FileProvider", "OrchardCore.Workflows", "OrchardCore.Queries.Sql", "OrchardCore.Localization", "OrchardCore.DataLocalization"]
 secret = secrets.token_urlsafe(32)
 recipe["steps"] += [
     {"name": "RemoteManagementConfiguration"},
@@ -39,6 +39,8 @@ recipe["steps"] += [
 ]
 # Separate identities verify existing Media permissions without the admin wildcard.
 for suffix, permissions in [
+    ("translator-fr", ["ViewDynamicTranslations", "ManageTranslations_fr"]),
+    ("translation-reader", ["ViewDynamicTranslations"]),
     ("media", ["ManageMediaContent", "ManageMediaFolder"]),
     ("media-restricted", ["ManageMediaContent", "ManageMediaFolder", "UploadRestrictedMedia"]),
     ("media-no-folder", ["ManageOwnMediaContent"]),

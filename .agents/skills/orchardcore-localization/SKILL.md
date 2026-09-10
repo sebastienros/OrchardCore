@@ -126,6 +126,17 @@ Recipe `settings` step:
 
 The Localization module reads these at startup and calls `app.UseRequestLocalization(...)` with the configured default + supported cultures.
 
+## Remote management
+
+Use `oc localization` when managing an existing tenant through Remote Management.
+Read live help and schemas first. `cultures list` and `settings show/update`
+manage culture configuration; settings updates replace the entire culture set.
+`strings show media-gallery --culture fr` inspects registered JavaScript UI
+strings from PO catalogs. `translations list/set/delete` requires Data
+Localization and manages one exact database-backed context/key per mutation.
+It cannot edit PO catalogs or content-item translations. See
+`src/docs/reference/api/localization/README.md` for tested commands and permissions.
+
 ## Quick Reference
 
 ### Localizers

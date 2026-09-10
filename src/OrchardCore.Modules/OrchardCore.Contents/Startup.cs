@@ -306,6 +306,14 @@ public sealed class DataLocalizationStartup : StartupBase
     {
         services.AddScoped<ILocalizationDataProvider, ContentTypeDataLocalizationProvider>();
         services.AddScoped<ILocalizationDataProvider, ContentFieldDataLocalizationProvider>();
+    }
+}
+
+[RequireFeatures("OrchardCore.DataLocalization", "OrchardCore.AdminMenu")]
+public sealed class AdminMenuDataLocalizationStartup : StartupBase
+{
+    public override void ConfigureServices(IServiceCollection services)
+    {
         services.AddScoped<ILocalizationDataProvider, ContentTypesAdminNodeDataLocalizationProvider>();
     }
 }
