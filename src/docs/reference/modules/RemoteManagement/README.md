@@ -322,7 +322,18 @@ The CLI downloads the selected tenant's OpenAPI document and maps operations car
 oc <resource> <verb> [arguments] [options]
 ```
 
-Examples include:
+To create and initialize a tenant in one operation, use
+[`oc tenants install`](../../api/tenants/README.md#install-a-tenant):
+
+```bash
+oc tenants install Blog --request-url-prefix blog --database-provider Sqlite --recipe-name Blog \
+  --site-name "My Blog" --user-name admin --email admin@example.com
+```
+
+It prompts securely for the password and returns the initialized tenant's URL.
+The current context must target the Default tenant. It does not create a new
+context or sign in to the new tenant. The separate create and setup commands
+remain available when these stages need to happen independently. Other examples:
 
 ```bash
 oc tenants create --name TenantA --request-url-prefix tenant-a --recipe-name SaaS

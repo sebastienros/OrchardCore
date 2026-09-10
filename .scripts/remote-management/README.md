@@ -23,6 +23,7 @@ python3 .scripts/remote-management/smoke-fixture.py <fixture.json>
 python3 .scripts/remote-management/localization-smoke.py <fixture.json>
 python3 .scripts/remote-management/content-versions-smoke.py <fixture.json>
 python3 .scripts/remote-management/content-validation-smoke.py <fixture.json>
+python3 .scripts/remote-management/tenant-install-smoke.py <fixture.json>
 python3 .scripts/remote-management/graphql-smoke.py <fixture.json>
 ```
 
@@ -49,6 +50,11 @@ to verify server commands are available without rebuilding that CLI.
 and save commands, checking HTTP 400, field paths, human/JSON error output,
 failing exit codes, missing content types, and unchanged published content/history.
 It also verifies valid partial-update validation still succeeds.
+
+`tenant-install-smoke.py` verifies the dynamically discovered install command,
+password environment/stdin input, human and JSON results, complete tenant URLs,
+duplicate-name rejection, creation validation, setup failure/recovery, and
+unchanged local contexts. It creates tenants only inside the disposable host.
 
 `localization-smoke.py` exercises all seven localization operations through the CLI,
 including paging, explicit culture selection, settings readback, translation retries,

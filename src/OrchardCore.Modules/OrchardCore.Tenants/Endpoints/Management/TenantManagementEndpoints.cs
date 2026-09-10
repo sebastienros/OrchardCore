@@ -30,7 +30,7 @@ using OrchardCore.Tenants.Services;
 
 namespace OrchardCore.Tenants.Endpoints.Management;
 
-internal static class TenantManagementEndpoints
+internal static partial class TenantManagementEndpoints
 {
     private const string RoutePrefix = "api/tenants";
 
@@ -86,6 +86,26 @@ internal static class TenantManagementEndpoints
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status403Forbidden);
+
+        builder.MapManagementPost(RoutePrefix + "/{tenantName}:install", InstallAsync)
+            .WithName("ApiInstallTenantManagement")
+            .WithSummary("Creates and sets up a tenant.")
+            .WithDescription("Creates a new tenant, executes its setup recipe, and creates its administrator. Existing names are rejected. If setup fails, the created tenant is preserved for diagnosis and a separate setup retry.")
+            .WithCliCommand(new CliOperationMetadata(["tenants"], "install")
+            {
+                Capability = TenantManagementApiEndpointConventions.CapabilityName,
+                Arguments = { new CliArgumentMetadata("tenantName", 0) },
+                SecretProperties = { "password", "connectionString" },
+            })
+            .Accepts<TenantInstallRequest>("application/json")
+            .Produces<TenantResponse>(StatusCodes.Status201Created)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status500InternalServerError)
+            .ProducesValidationProblem();
 
         builder.MapManagementPost(RoutePrefix + "/{tenantName}:setup", SetupAsync)
             .WithName("ApiSetupTenantManagement")
@@ -341,7 +361,8 @@ internal static class TenantManagementEndpoints
         [FromServices] ITenantValidator tenantValidator,
         [FromServices] TenantDatabasePatternResolver tenantDatabasePatternResolver,
         [FromServices] IStringLocalizer<TenantApiController> localizer,
-        [FromServices] ILogger<TenantApiController> logger)
+        [FromServices] ILogger<TenantApiController> logger,
+        [FromServices] IDistributedLock distributedLock)
     {
         ArgumentNullException.ThrowIfNull(request);
 
@@ -350,6 +371,23 @@ internal static class TenantManagementEndpoints
             return authError;
         }
 
+        return await WithSetupLockAsync(request.Name, distributedLock, localizer, () =>
+            CreateCoreAsync(httpContext, request, shellHost, shellSettingsManager, dataProtectionProvider, clock, databaseProviders, tenantValidator, tenantDatabasePatternResolver, localizer, logger));
+    }
+
+    private static async Task<IResult> CreateCoreAsync(
+        HttpContext httpContext,
+        TenantCreateRequest request,
+        IShellHost shellHost,
+        IShellSettingsManager shellSettingsManager,
+        IDataProtectionProvider dataProtectionProvider,
+        IClock clock,
+        IEnumerable<DatabaseProvider> databaseProviders,
+        ITenantValidator tenantValidator,
+        TenantDatabasePatternResolver tenantDatabasePatternResolver,
+        IStringLocalizer<TenantApiController> localizer,
+        ILogger<TenantApiController> logger)
+    {
         var apiModel = request.ToApiModel();
         ApplyConfiguredDatabasePatterns(apiModel, tenantDatabasePatternResolver);
         ApplyPresetDatabaseConfiguration(apiModel, shellSettingsManager, databaseProviders);
@@ -525,20 +563,26 @@ internal static class TenantManagementEndpoints
             return authError;
         }
 
-        (var locker, var locked) = await distributedLock.TryAcquireLockAsync(
-            $"TENANT_SETUP_{tenantName.ToUpperInvariant()}",
-            TimeSpan.FromSeconds(3),
-            TimeSpan.FromHours(1));
-        if (!locked)
-        {
-            return TypedResults.Problem(
-                title: localizer["Conflict"],
-                detail: localizer["Tenant '{0}' is already being set up.", tenantName],
-                statusCode: StatusCodes.Status409Conflict);
-        }
+        return await WithSetupLockAsync(tenantName, distributedLock, localizer, () =>
+            SetupCoreAsync(httpContext, tenantName, request, shellHost, shellSettingsManager, dataProtectionProvider, clock, setupService, emailAddressValidator, identityOptions, databaseProviders, tenantDatabasePatternResolver, localizer, logger));
+    }
 
-        await using var setupLock = locker;
-
+    private static async Task<IResult> SetupCoreAsync(
+        HttpContext httpContext,
+        string tenantName,
+        TenantSetupRequest request,
+        IShellHost shellHost,
+        IShellSettingsManager shellSettingsManager,
+        IDataProtectionProvider dataProtectionProvider,
+        IClock clock,
+        ISetupService setupService,
+        IEmailAddressValidator emailAddressValidator,
+        IOptions<IdentityOptions> identityOptions,
+        IEnumerable<DatabaseProvider> databaseProviders,
+        TenantDatabasePatternResolver tenantDatabasePatternResolver,
+        IStringLocalizer<TenantApiController> localizer,
+        ILogger<TenantApiController> logger)
+    {
         if (!shellHost.TryGetSettings(tenantName, out var shellSettings))
         {
             return httpContext.ApiNotFoundProblem(detail: localizer["Tenant not found: '{0}'.", tenantName]);

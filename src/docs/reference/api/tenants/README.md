@@ -1,7 +1,7 @@
 # Tenant management API
 
 The tenant management API creates, reads, updates, starts, stops, and removes
-Orchard Core tenants. It can also prepare a running tenant for direct remote
+Orchard Core tenants. It can also create and initialize a tenant in one request, or prepare a running tenant for direct remote
 management.
 
 Enable the **Tenants** feature (`OrchardCore.Tenants`) on the `Default` tenant.
@@ -52,6 +52,7 @@ responses use `application/json`; Problem Details responses use
 | List tenants | `GET` | `/api/tenants` | `200 OK` |
 | Get tenant | `GET` | `/api/tenants/{tenantName}` | `200 OK` |
 | Create tenant | `POST` | `/api/tenants` | `201 Created`, equivalent retry `200 OK`, conflict `409 Conflict` |
+| Install tenant | `POST` | `/api/tenants/{tenantName}:install` | `201 Created` |
 | Set up tenant | `POST` | `/api/tenants/{tenantName}:setup` | `200 OK` |
 | Update tenant | `PUT` | `/api/tenants/{tenantName}` | `200 OK` |
 | Delete tenant | `DELETE` | `/api/tenants/{tenantName}` | `200 OK`, already absent `204 No Content` |
@@ -419,7 +420,7 @@ curl --request POST 'https://cms.example.com/api/tenants' \
   `/api/tenants/{percent-encoded-name}`.
 - `200 OK` returns the existing tenant when an equivalent effective create request is retried.
 - `409 Conflict` is returned when that tenant name already exists with
-  different effective settings.
+  different effective settings, or the per-tenant create/setup lock cannot be acquired.
 - `400 Bad Request` returns Validation Problem Details for invalid fields, or
   Problem Details if validation or persistence fails.
 - `415 Unsupported Media Type` is returned when the required body is not sent
@@ -458,6 +459,135 @@ Location: /api/tenants/TenantA
   "canStart": false,
   "canStop": false,
   "canDelete": true
+}
+```
+
+## Install a tenant
+
+```http
+POST /api/tenants/{tenantName}:install
+Content-Type: application/json
+```
+
+Creates a new tenant and immediately runs setup, including the recipe and
+initial administrator account. Use this operation when the tenant should be
+ready to use in one command. Unlike `oc install`, it uses an existing Orchard
+application selected by the current context; it does not create a local project,
+require a local .NET SDK, or start another server. It uses the server's setup
+service directly and does not require the Auto Setup feature.
+
+### CLI
+
+Select an authenticated context for the **Default** tenant, then run:
+
+```bash
+oc tenants install Blog \
+  --request-url-prefix blog \
+  --database-provider Sqlite \
+  --recipe-name Blog \
+  --site-name "My Blog" \
+  --user-name admin \
+  --email admin@example.com \
+  --site-time-zone Europe/Paris
+```
+
+The CLI prompts securely for the password. For automation, use
+`--password-env ADMIN_PASSWORD`, `--password-file <path>`, or
+`--password-stdin`. Connection strings use the corresponding
+`--connection-string-env`, `--connection-string-file`, and
+`--connection-string-stdin` options. Only one value can consume standard input.
+The [setup secret input rules](#set-up-a-tenant) also apply here: complete JSON
+is accepted through `--stdin` or `--body-file`, and inline secret values are
+not exposed as command options.
+
+The human response reports success, the running state, and the full site URL.
+It suggests `oc tenants enable-remote-management Blog` as a separate next step.
+Installation does not create a CLI context or acquire credentials for the new
+administrator. Remote Management is enabled only if the selected recipe does
+so or you explicitly enable it later. Use `--output json` for structured output.
+
+If the command is missing after updating the server, run `oc api refresh --force`.
+The command is discovered from the server's OpenAPI description.
+
+### Parameters and body
+
+`tenantName` is the required path parameter and uses the same name restrictions
+as [tenant creation](#create-a-tenant). It is the first CLI argument, not a
+`name` property in the JSON body.
+
+| Property | Type | Required | Behavior |
+| --- | --- | --- | --- |
+| `siteName` | string | Yes | Site display name. |
+| `userName` | string | Yes | Initial administrator user name. |
+| `email` | string | Yes | Valid initial administrator email address. |
+| `password` | string | Yes | Initial administrator password; existing password policies apply. |
+| `recipeName` | string or null | For setup | Available setup recipe, such as `Blog`, `SaaS`, or `Blank`; must resolve after host configuration. |
+| `siteTimeZone` | string or null | No | IANA/TZDB time zone, such as `Europe/Paris`, `America/Los_Angeles`, or `UTC`; defaults to the server time zone. |
+| `requestUrlHost` | string or null | No | Tenant host binding, with the same rules as creation. |
+| `requestUrlPrefix` | string or null | No | Single URL path segment. Together with the host it must identify an available tenant route. |
+| `category` | string or null | No | Administrative category. |
+| `description` | string or null | No | Administrative description. |
+| `featureProfiles` | array of string | No | Assigned feature profiles; defaults to an empty array. |
+| `databaseProvider` | string or null | For setup | Registered provider, such as `Sqlite`; may be supplied by host presets. |
+| `connectionString` | string or null | Provider-dependent | Database connection string; host presets take precedence. |
+| `tablePrefix` | string or null | Host-dependent | Table prefix; host requirements and patterns apply. |
+| `schema` | string or null | No | Database schema; host presets and patterns apply. |
+
+The creation and setup operations' validation and database precedence rules
+apply unchanged. For example, a host requiring a table prefix also requires one
+here unless it supplies a pattern.
+
+An HTTPS request with bearer authentication can send this JSON body:
+
+```json
+{
+  "requestUrlPrefix": "blog",
+  "databaseProvider": "Sqlite",
+  "recipeName": "Blog",
+  "siteName": "My Blog",
+  "userName": "admin",
+  "email": "admin@example.com",
+  "password": "<administrator-password>",
+  "siteTimeZone": "Europe/Paris"
+}
+```
+
+### Responses and retries
+
+- `201 Created` returns the complete [tenant representation](#tenant), with
+  `state: "Running"`, its `primaryUrl`, and `setupUrl: null`. The `Location`
+  header is `/api/tenants/{percent-encoded-name}`. No password or token is returned.
+- `409 Conflict` means the name already exists (in any state), or the per-tenant
+  create/setup lock could not be acquired. An identical retry also returns `409`;
+  it does not rerun the recipe or change the existing administrator.
+- `400 Bad Request` reports invalid creation or setup input, setup-component
+  validation errors, or creation persistence errors.
+- `500 Internal Server Error` reports an exception during setup without returning
+  internal exception details.
+- `404 Not Found` can occur if the tenant disappears between creation and setup.
+- `401 Unauthorized`, `403 Forbidden`, and `415 Unsupported Media Type` have the
+  same meaning as on the other tenant endpoints.
+
+Creation and setup are **not a single database transaction**. They share the
+per-tenant distributed lock with the separate management `create` and `setup`
+operations, but setup recipes can make partial progress. If setup fails after
+creation, the error includes `tenantName` and `stage: "setup"`, and the tenant
+is preserved. Inspect it with `oc tenants show Blog`; if it is `Uninitialized`,
+correct its configuration if necessary and run `oc tenants setup Blog` with the
+administrator details. Do not automatically delete a partially initialized tenant.
+If the response is lost or times out, inspect the tenant state before taking
+further action.
+
+Example setup failure:
+
+```json
+{
+  "title": "A validation error occurred.",
+  "status": 400,
+  "detail": "The tenant was created, but setup did not complete. Inspect its state and use the separate setup command if it is uninitialized.",
+  "errors": { "Password": ["Password does not meet requirements."] },
+  "tenantName": "Blog",
+  "stage": "setup"
 }
 ```
 
@@ -961,7 +1091,7 @@ those failures do not have an endpoint-defined JSON body.
 
 This page covers all **8** routes mapped by
 `TenantManagementEndpoints.AddTenantManagementEndpoints`. It was derived from
-`TenantManagementEndpoints.cs`, `TenantModelBase.cs`, `TenantValidator.cs`,
+`TenantManagementEndpoints.cs`, `TenantInstallEndpoints.cs`, `TenantModelBase.cs`, `TenantValidator.cs`,
 `TenantDatabasePatternResolver.cs`, `TenantConnectionStringRedactor.cs`,
 `TenantRemoteManagementCapabilityProvider.cs`, tenant and shell settings/state
 extensions, `TenantRemoteManagementConfigurationService.cs`, endpoint metadata

@@ -91,6 +91,7 @@ internal static class HumanOutputFormatter
             "api refresh" => "API metadata is up to date.",
             "docs refresh" => "Documentation index is up to date.",
             "install" => "Site created and initialized successfully.",
+            "tenants install" => "Tenant created and initialized successfully.",
             _ => null,
         };
         if (known is not null || !mutation)

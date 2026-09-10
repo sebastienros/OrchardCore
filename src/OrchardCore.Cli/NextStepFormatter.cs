@@ -35,7 +35,7 @@ internal static class NextStepFormatter
                 return $"Next: set up this tenant (replace the placeholders and adjust the site details).\n  {command}\nThe administrator password will be prompted securely. Choose a recipe such as SaaS or Blog if one is not already configured.";
             }
 
-            if (path is "tenants create" or "tenants setup" or "tenants start" && state == "Running")
+            if (path is "tenants create" or "tenants setup" or "tenants install" or "tenants start" && state == "Running")
             {
                 return $"Next: enable remote management for this tenant.\n  {parentCommand} tenants enable-remote-management {tenant}";
             }

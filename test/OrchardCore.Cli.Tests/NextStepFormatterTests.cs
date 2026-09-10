@@ -26,6 +26,7 @@ public class NextStepFormatterTests
     [Theory]
     [InlineData("create")]
     [InlineData("setup")]
+    [InlineData("install")]
     [InlineData("start")]
     public void RunningTenant_SuggestsRemoteManagementInParentContext(string verb)
     {

@@ -36,6 +36,7 @@ public class OwnedModuleEndpointMetadataTests
         AssertOperation(endpoints, "api/tenants", "GET", "ApiListTenants", "Tenants", ["tenants"], "list", null, [200, 400, 401, 403]);
         AssertOperation(endpoints, "api/tenants/{tenantName}", "GET", "ApiGetTenant", "Tenants", ["tenants"], "show", null, [200, 401, 403, 404]);
         AssertOperation(endpoints, "api/tenants", "POST", "ApiCreateTenantManagement", "Tenants", ["tenants"], "create", "application/json", [200, 201, 400, 401, 403, 409]);
+        AssertOperation(endpoints, "api/tenants/{tenantName}:install", "POST", "ApiInstallTenantManagement", "Tenants", ["tenants"], "install", "application/json", [201, 400, 401, 403, 404, 409, 500]);
         AssertOperation(endpoints, "api/tenants/{tenantName}:setup", "POST", "ApiSetupTenantManagement", "Tenants", ["tenants"], "setup", "application/json", [200, 400, 401, 403, 404, 409, 500]);
         AssertOperation(endpoints, "api/tenants/{tenantName}", "PUT", "ApiUpdateTenantManagement", "Tenants", ["tenants"], "update", "application/json", [200, 400, 401, 403, 404]);
         AssertOperation(endpoints, "api/tenants/{tenantName}", "DELETE", "ApiDeleteTenant", "Tenants", ["tenants"], "delete", null, [200, 204, 400, 401, 403]);
@@ -52,6 +53,11 @@ public class OwnedModuleEndpointMetadataTests
             string.Equals(endpoint.RoutePattern.RawText, "api/tenants/{tenantName}:setup", StringComparison.Ordinal))
             .Metadata.GetRequiredMetadata<CliOperationMetadata>();
         Assert.Equal("password", Assert.Single(setupMetadata.SecretProperties));
+        var installMetadata = endpoints.Single(endpoint =>
+            string.Equals(endpoint.RoutePattern.RawText, "api/tenants/{tenantName}:install", StringComparison.Ordinal))
+            .Metadata.GetRequiredMetadata<CliOperationMetadata>();
+        Assert.Equal(["password", "connectionString"], installMetadata.SecretProperties);
+
 
         AssertOperation(endpoints, "api/features", "GET", "ApiListFeatures", "Features", ["features"], "list", null, [200, 400, 401, 403]);
         AssertOperation(endpoints, "api/features/{featureId}", "GET", "ApiGetFeature", "Features", ["features"], "show", null, [200, 401, 403, 404]);
