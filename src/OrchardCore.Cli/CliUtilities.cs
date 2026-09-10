@@ -23,12 +23,13 @@ internal static class CliUtilities
     {
         if (string.IsNullOrWhiteSpace(value))
         {
-            return OutputFormat.Json;
+            return OutputFormat.Human;
         }
 
         return value.Trim().ToLowerInvariant() switch
         {
-            "auto" => Console.IsOutputRedirected ? OutputFormat.Json : OutputFormat.Table,
+            "auto" => Console.IsOutputRedirected ? OutputFormat.Json : OutputFormat.Human,
+            "human" => OutputFormat.Human,
             "json" => OutputFormat.Json,
             "table" => OutputFormat.Table,
             "csv" => OutputFormat.Csv,

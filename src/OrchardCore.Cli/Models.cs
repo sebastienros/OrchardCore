@@ -8,6 +8,7 @@ namespace OrchardCore.Cli;
 
 internal enum OutputFormat
 {
+    Human,
     Json,
     Table,
     Csv,
@@ -239,6 +240,12 @@ internal sealed class CommandOutput
     public JsonElement Json { get; init; }
 
     public IReadOnlyList<CliTableColumnMetadata>? TableColumns { get; init; }
+
+    public IReadOnlyList<string> CommandPath { get; init; } = [];
+
+    public string? HttpMethod { get; init; }
+
+    public int? StatusCode { get; init; }
 }
 
 internal sealed class ContextListOutput

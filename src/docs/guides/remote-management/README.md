@@ -355,7 +355,7 @@ to apply your site's branding.
 
 The callback page confirms **Authorization received** and directs you back to
 the terminal. You can close that browser tab. The terminal reports
-`grantType: browser` and the tenant issuer when the token exchange succeeds;
+`Grant type: browser` and the tenant issuer when the token exchange succeeds;
 receiving the authorization alone does not mean login has finished. The CLI
 serves this page locally, with light and dark appearances and no external
 assets. It is separate from the tenant's themeable consent page.
@@ -466,9 +466,27 @@ Capture a complete, stable response for scripts with explicit JSON output:
 oc content items list --status draft --output json > drafts.json
 ```
 
-The default `auto` output selects tables in a terminal and JSON when redirected.
-Tables shorten long cells for readability; use JSON when every value matters.
-Other formats include `csv`, `tsv`, `yaml`, `toml`, and `none`.
+The default `human` output reports successful changes in plain language and
+shows useful details with complete URLs. For example, `oc tenants create`
+reports the created tenant and its full **Setup URL**, so you can open it to
+finish setup. Single-resource responses use readable labels. Lists and search
+results remain tables, and `schema` commands retain JSON Schema output.
+
+Human output remains the default when redirected. **Scripts must request
+`--output json` explicitly** for a stable, complete response. Other explicit
+formats include `table`, `csv`, `tsv`, `yaml`, `toml`, and `none` (no result
+output). `--output auto` selects human output in a terminal and JSON when
+redirected. Tables may shorten long non-URL cells; HTTP and HTTPS URLs remain
+complete in both human and table output.
+
+```bash
+oc tenants create --name Demo --request-url-prefix demo
+oc tenants create --name Demo --request-url-prefix demo --output json
+```
+
+Successful changes receive a completion message. An HTTP 202 response is
+described as accepted rather than finished; an API-reported unsuccessful result
+does not receive a success message. Errors still appear on standard error.
 
 ## 6. Discover before writing
 

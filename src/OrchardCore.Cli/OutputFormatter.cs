@@ -17,6 +17,7 @@ internal static class OutputFormatter
 
         var text = format switch
         {
+            OutputFormat.Human => HumanOutputFormatter.Format(output),
             OutputFormat.Json => FormatJson(output.Json),
             OutputFormat.Table => FormatTable(output.Json, output.TableColumns),
             OutputFormat.Csv => FormatCsv(output.Json, output.TableColumns),
@@ -29,7 +30,7 @@ internal static class OutputFormatter
         await writer.WriteLineAsync(text.AsMemory(), cancellationToken);
     }
 
-    private static string FormatJson(JsonElement element)
+    internal static string FormatJson(JsonElement element)
     {
         using var stream = new MemoryStream();
         using (var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = true }))
@@ -40,7 +41,7 @@ internal static class OutputFormatter
         return Encoding.UTF8.GetString(stream.ToArray());
     }
 
-    private static string FormatTable(JsonElement element, IReadOnlyList<CliTableColumnMetadata>? tableColumns)
+    internal static string FormatTable(JsonElement element, IReadOnlyList<CliTableColumnMetadata>? tableColumns)
     {
         var rows = ExtractRows(element, tableColumns, out var headers);
         if ((tableColumns is null || tableColumns.Count == 0) && element.ValueKind == JsonValueKind.Object)
@@ -319,6 +320,7 @@ internal static class OutputFormatter
 
     private static string FormatTerminalCell(string value)
     {
+        var isUrl = Uri.TryCreate(value, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https";
         var builder = new StringBuilder();
         foreach (var character in value)
         {
@@ -331,7 +333,7 @@ internal static class OutputFormatter
                 builder.Append(character);
             }
 
-            if (builder.Length > 80)
+            if (!isUrl && builder.Length > 80)
             {
                 return builder.ToString(0, 77) + "...";
             }

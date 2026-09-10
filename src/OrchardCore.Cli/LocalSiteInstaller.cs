@@ -221,7 +221,6 @@ internal static partial class LocalSiteInstaller
             await SetupAsync(options, project, diagnostics, cancellationToken);
             var listenUrls = ParseListenUrls(options.Urls);
             var listenUrl = string.Join(';', listenUrls.Select(url => url.GetLeftPart(UriPartial.Authority)));
-            await log.WriteLineAsync($"Site setup completed in '{options.Directory}'. To start it later, run 'dotnet run --no-launch-profile --urls \"{listenUrl}\"' from that directory.");
             completed = true;
             return new LocalSiteInstallOutput
             {

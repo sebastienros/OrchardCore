@@ -58,3 +58,9 @@ recipe, URL, and secret-input options.
 Follow the [remote management guide](https://github.com/sebastienros/OrchardCore/blob/sebros/remote-tenant-cli-plan/src/docs/guides/remote-management/README.md)
 to prepare a tenant and authenticate. Run `oc --help` to discover commands
 available in the local cache, or `oc doctor` to inspect local configuration.
+
+Results use human-readable messages by default, including when redirected.
+Changes report completion and useful details, with full setup URLs. Lists remain
+tables. Use `--output json` explicitly in scripts, or choose `--output table`,
+`csv`, `tsv`, `yaml`, `toml`, or `none`. Explicit `--output auto` selects human
+output in terminals and JSON when redirected.

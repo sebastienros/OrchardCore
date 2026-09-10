@@ -66,8 +66,8 @@ internal sealed partial class CliApplication
 
         var outputOption = new Option<string?>("--output")
         {
-            Description = "Output format: auto (table in a terminal, JSON when redirected), json, table, csv, tsv, yaml, toml, none",
-            DefaultValueFactory = _ => "auto",
+            Description = "Output format: human, json, table, csv, tsv, yaml, toml, none, auto (human in a terminal, JSON when redirected)",
+            DefaultValueFactory = _ => "human",
             Recursive = true,
         };
 
@@ -696,7 +696,7 @@ internal sealed partial class CliApplication
                 body,
                 accessToken,
                 cancellationToken);
-            return await WriteOutputAsync(parseResult, response.Json, cancellationToken, response.TableColumns);
+            return await WriteOutputAsync(parseResult, response.Json, cancellationToken, response.TableColumns, response.HttpMethod, response.StatusCode);
         });
 
         return command;
@@ -1020,7 +1020,7 @@ internal sealed partial class CliApplication
             var accessToken = await ResolveAccessTokenAsync(context, null, null, false, cancellationToken);
             var response = await SendApiRequestAsync(context, operation.Method, routePath, query, headers, body, accessToken, cancellationToken);
             IReadOnlyList<CliTableColumnMetadata>? tableColumns = operation.CliMetadata.TableColumns.Count > 0 ? [.. operation.CliMetadata.TableColumns] : null;
-            return await WriteOutputAsync(parseResult, response.Json, cancellationToken, tableColumns);
+            return await WriteOutputAsync(parseResult, response.Json, cancellationToken, tableColumns, response.HttpMethod, response.StatusCode);
         });
     }
 
@@ -1267,7 +1267,7 @@ internal sealed partial class CliApplication
             || payload.StartsWith('['))
         {
             using var document = JsonDocument.Parse(payload);
-            return new CommandOutput { Json = document.RootElement.Clone() };
+            return new CommandOutput { Json = document.RootElement.Clone(), HttpMethod = request.Method.Method, StatusCode = (int)response.StatusCode };
         }
 
         var node = new JsonObject
@@ -1277,7 +1277,7 @@ internal sealed partial class CliApplication
             ["body"] = payload,
         };
 
-        return new CommandOutput { Json = CliUtilities.ToJsonElement(node) };
+        return new CommandOutput { Json = CliUtilities.ToJsonElement(node), HttpMethod = request.Method.Method, StatusCode = (int)response.StatusCode };
     }
 
     private static string? GetCorrelationId(HttpResponseMessage response)
@@ -1884,10 +1884,22 @@ internal sealed partial class CliApplication
         }
     }
 
-    private async Task<int> WriteOutputAsync(ParseResult parseResult, JsonElement element, CancellationToken cancellationToken, IReadOnlyList<CliTableColumnMetadata>? tableColumns = null)
+    private async Task<int> WriteOutputAsync(ParseResult parseResult, JsonElement element, CancellationToken cancellationToken,
+        IReadOnlyList<CliTableColumnMetadata>? tableColumns = null, string? httpMethod = null, int? statusCode = null)
     {
         var format = CliUtilities.ParseOutputFormat(parseResult.GetValue(_outputOption));
-        await OutputFormatter.WriteAsync(new CommandOutput { Json = element, TableColumns = tableColumns }, format, Console.Out, cancellationToken);
+        var commandPath = new Stack<string>();
+        var current = parseResult.CommandResult;
+        while (current.Parent is CommandResult parent)
+        {
+            commandPath.Push(current.Command.Name);
+            current = parent;
+        }
+
+        await OutputFormatter.WriteAsync(new CommandOutput
+        {
+            Json = element, TableColumns = tableColumns, CommandPath = commandPath.ToArray(), HttpMethod = httpMethod, StatusCode = statusCode,
+        }, format, Console.Out, cancellationToken);
         return 0;
     }
 

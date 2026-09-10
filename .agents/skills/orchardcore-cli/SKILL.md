@@ -15,7 +15,9 @@ targets one tenant URL and one tenant-local identity.
 2. Run `oc <group> schema [--operation <verb>]` before constructing JSON.
 3. Preserve JSON property casing exactly as emitted by the schema.
 4. Pass `--output json` explicitly for automation and schema capture. The
-   default `auto` format uses tables in terminals and JSON when redirected.
+   default is human-readable messages, including when redirected. Lists remain
+   tables and schema commands retain JSON. Do not parse human success messages;
+   use the explicit JSON response and process exit code.
 5. Select the intended context explicitly when changing more than one tenant:
    `oc --context <name> ...`. Use a new context name when changing tenant URLs.
 6. Never put passwords or client secrets directly on a command line.

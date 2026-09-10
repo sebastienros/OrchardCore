@@ -6,6 +6,123 @@ namespace OrchardCore.Cli.Tests;
 public class OutputFormatterTests
 {
     [Fact]
+    public async Task Human_TenantCreated_ReportsSuccessAndCompleteSetupUrl()
+    {
+        var setupUrl = "https://example.test/Demo/setup?token=" + new string('a', 240);
+        using var document = JsonDocument.Parse($$"""{"name":"Demo","state":"Uninitialized","setupUrl":"{{setupUrl}}","canDelete":false,"featureProfiles":[]} """);
+        using var writer = new StringWriter();
+        await OutputFormatter.WriteAsync(new CommandOutput
+        {
+            Json = document.RootElement, CommandPath = ["tenants", "create"], HttpMethod = "POST", StatusCode = 201,
+        }, OutputFormat.Human, writer, TestContext.Current.CancellationToken);
+        var text = writer.ToString();
+        Assert.StartsWith("Tenant 'Demo' created successfully.", text);
+        Assert.Contains("Setup URL: " + setupUrl, text);
+        Assert.Contains("State: Uninitialized", text);
+        Assert.DoesNotContain("Can delete", text);
+        Assert.DoesNotContain(" | ", text);
+    }
+
+    [Theory]
+    [InlineData("{\"name\":\"Demo\"}", 200, "completed successfully.")]
+    [InlineData("{\"name\":\"Demo\"}", 202, "Request accepted.")]
+    [InlineData("{\"success\":false,\"message\":\"Import failed\"}", 200, "unsuccessful result.")]
+    [InlineData("{\"errors\":{\"name\":[\"Name is required\"]}}", 200, "unsuccessful result.")]
+    public async Task Human_Mutation_DoesNotOverstateResult(string json, int statusCode, string expected)
+    {
+        using var document = JsonDocument.Parse(json);
+        using var writer = new StringWriter();
+        await OutputFormatter.WriteAsync(new CommandOutput
+        {
+            Json = document.RootElement, CommandPath = ["tenants", "create"], HttpMethod = "POST", StatusCode = statusCode,
+        }, OutputFormat.Human, writer, TestContext.Current.CancellationToken);
+        Assert.Contains(expected, writer.ToString());
+        Assert.DoesNotContain("created successfully", writer.ToString());
+        if (document.RootElement.TryGetProperty("message", out var message))
+        {
+            Assert.Contains(message.GetString()!, writer.ToString());
+        }
+        if (document.RootElement.TryGetProperty("errors", out _))
+        {
+            Assert.Contains("Name is required", writer.ToString());
+        }
+    }
+
+    [Fact]
+    public async Task Human_Install_PrioritizesSiteAndRestartInstructions()
+    {
+        using var document = JsonDocument.Parse("""{"directory":"/sites/My Site","url":"https://localhost:5001/","listenUrl":"https://localhost:5001;http://localhost:5000","tenant":"Default","tenantState":"Running","sdkVersion":"10.0.400"}""");
+        using var writer = new StringWriter();
+        await OutputFormatter.WriteAsync(new CommandOutput { Json = document.RootElement, CommandPath = ["install"] },
+            OutputFormat.Human, writer, TestContext.Current.CancellationToken);
+        Assert.StartsWith("Site created and initialized successfully.", writer.ToString());
+        Assert.Contains("Directory: /sites/My Site", writer.ToString());
+        Assert.Contains("--urls \"https://localhost:5001;http://localhost:5000\"", writer.ToString());
+        Assert.DoesNotContain("10.0.400", writer.ToString());
+        Assert.DoesNotContain("Running", writer.ToString());
+    }
+
+    [Fact]
+    public async Task Human_NoContentMutation_ReportsCompletionWithoutTransportFields()
+    {
+        using var document = JsonDocument.Parse("""{"statusCode":204,"body":"","contentType":null}""");
+        using var writer = new StringWriter();
+        await OutputFormatter.WriteAsync(new CommandOutput
+        {
+            Json = document.RootElement, CommandPath = ["tenants", "delete"], HttpMethod = "DELETE", StatusCode = 204,
+        }, OutputFormat.Human, writer, TestContext.Current.CancellationToken);
+        Assert.Equal("Tenant removed successfully.", writer.ToString().Trim());
+    }
+
+    [Fact]
+    public async Task Human_EscapesUntrustedTerminalSequencesWithoutTruncatingValues()
+    {
+        using var document = JsonDocument.Parse("""{"name":"Demo\u001b[2J","description":"first\nsecond"}""");
+        using var writer = new StringWriter();
+        await OutputFormatter.WriteAsync(new CommandOutput
+        {
+            Json = document.RootElement, CommandPath = ["tenants", "show"], HttpMethod = "GET", StatusCode = 200,
+        }, OutputFormat.Human, writer, TestContext.Current.CancellationToken);
+        Assert.DoesNotContain('\u001b', writer.ToString());
+        Assert.Contains("Demo\\u001b[2J", writer.ToString());
+        Assert.Contains("first\\u000asecond", writer.ToString());
+    }
+
+    [Fact]
+    public async Task Human_ContextClearCancelled_DoesNotClaimSuccess()
+    {
+        using var document = JsonDocument.Parse("""{"cleared":false,"deletedContexts":0}""");
+        using var writer = new StringWriter();
+        await OutputFormatter.WriteAsync(new CommandOutput { Json = document.RootElement, CommandPath = ["context", "clear"] },
+            OutputFormat.Human, writer, TestContext.Current.CancellationToken);
+        Assert.StartsWith("Cancelled. No contexts were removed.", writer.ToString());
+    }
+
+    [Fact]
+    public async Task Human_Schema_KeepsJsonSchemaUsable()
+    {
+        using var document = JsonDocument.Parse("""{"type":"object","properties":{"name":{"type":"string"}}}""");
+        using var writer = new StringWriter();
+        await OutputFormatter.WriteAsync(new CommandOutput { Json = document.RootElement, CommandPath = ["tenants", "schema"] },
+            OutputFormat.Human, writer, TestContext.Current.CancellationToken);
+        using var result = JsonDocument.Parse(writer.ToString());
+        Assert.Equal("object", result.RootElement.GetProperty("type").GetString());
+    }
+
+    [Theory]
+    [InlineData("human")]
+    [InlineData("table")]
+    public async Task ListTables_KeepLongUrlsUsable(string format)
+    {
+        var url = "https://example.test/" + new string('a', 240);
+        using var document = JsonDocument.Parse($$"""[{"url":"{{url}}"}]""");
+        using var writer = new StringWriter();
+        await OutputFormatter.WriteAsync(new CommandOutput { Json = document.RootElement, CommandPath = ["tenants", "list"] },
+            CliUtilities.ParseOutputFormat(format), writer, TestContext.Current.CancellationToken);
+        Assert.Contains(url, writer.ToString());
+    }
+
+    [Fact]
     public async Task WriteAsync_TableWithControlCharacters_EscapesTerminalSequences()
     {
         using var document = JsonDocument.Parse("""[{"name":"hello\u001b[2J\nworld"}]""");

@@ -27,13 +27,15 @@ public class CliUtilitiesTests
 
     [Theory]
     [InlineData("json", "Json")]
+    [InlineData(null, "Human")]
+    [InlineData("human", "Human")]
     [InlineData("table", "Table")]
     [InlineData("csv", "Csv")]
     [InlineData("tsv", "Tsv")]
     [InlineData("yaml", "Yaml")]
     [InlineData("toml", "Toml")]
     [InlineData("none", "None")]
-    public void ParseOutputFormat_SupportedFormat_ReturnsFormat(string value, string expected)
+    public void ParseOutputFormat_SupportedFormat_ReturnsFormat(string? value, string expected)
     {
         Assert.Equal(expected, CliUtilities.ParseOutputFormat(value).ToString());
     }
