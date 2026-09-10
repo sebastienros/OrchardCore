@@ -5,6 +5,54 @@ namespace OrchardCore.Cli.Tests;
 public class LocalSiteInstallerTests
 {
     [Fact]
+    public void InstallDefaults_UseNugetOrgAndHttps()
+    {
+        var options = CreateOptions();
+        Assert.Equal("https://api.nuget.org/v3/index.json", LocalSiteInstaller.ResolveSource(options));
+        Assert.Equal("https://localhost:5001/", LocalSiteInstaller.GetSiteUrl(options));
+    }
+
+    [Theory]
+    [InlineData("https://packages.example/v3/index.json")]
+    [InlineData("https://f.feedz.io/sebastienros/orchardcore/nuget/index.json")]
+    public void Source_UsesExplicitFeed(string source)
+    {
+        Assert.Equal(source, LocalSiteInstaller.ResolveSource(new LocalSiteInstallOptions
+        {
+            Directory = "unused", SiteName = "Test", UserName = "admin", Email = "admin@example.com", Source = source,
+        }));
+    }
+
+    [Theory]
+    [InlineData("http://localhost:5000;https://localhost:5001", "https://site.example:5001/news")]
+    [InlineData(" http://localhost:5000 ; http://localhost:5080 ", "http://site.example:5000/news")]
+    [InlineData("https://[::1]:5001;http://127.0.0.1:5000", "https://site.example:5001/news")]
+    public void ListenUrls_AcceptMultipleAddressesAndPreferHttps(string urls, string expected)
+    {
+        Assert.Equal(2, LocalSiteInstaller.ParseListenUrls(urls).Length);
+        Assert.Equal(expected, LocalSiteInstaller.GetSiteUrl(new LocalSiteInstallOptions
+        {
+            Directory = "unused", SiteName = "Test", UserName = "admin", Email = "admin@example.com",
+            Urls = urls, RequestUrlHost = "site.example", RequestUrlPrefix = "news",
+        }));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("https://localhost:5001;")]
+    [InlineData("https://localhost:5001;;http://localhost:5000")]
+    [InlineData("https://localhost:5001;http://localhost:0")]
+    [InlineData("https://localhost:5001;ftp://localhost:5000")]
+    [InlineData("https://localhost:5001;http://user:password@localhost:5000")]
+    [InlineData("https://localhost:5001;http://localhost:5000/path")]
+    [InlineData("https://localhost:5001;http://localhost:5000?query=value")]
+    [InlineData("https://localhost:5001;http://localhost:5000#fragment")]
+    public void ListenUrls_ValidateEveryAddress(string urls)
+    {
+        Assert.Throws<CliException>(() => LocalSiteInstaller.ParseListenUrls(urls));
+    }
+
+    [Fact]
     public void SelectSdk_RequiresStableMatchingMajorAndChoosesNewestPatch()
     {
         var major = DotnetEnvironment.RequiredMajor;

@@ -22,7 +22,7 @@ internal sealed class LocalSiteInstallOptions
     public string? RequestUrlPrefix { get; init; }
     public string? RequestUrlHost { get; init; }
     public string? Source { get; init; }
-    public string Urls { get; init; } = "http://localhost:5000";
+    public string Urls { get; init; } = LocalSiteInstaller.DefaultUrls;
     public int SetupTimeoutSeconds { get; init; } = 300;
     public bool Verbose { get; init; }
     public string Password { get; set; } = string.Empty;
@@ -44,7 +44,7 @@ internal sealed class LocalSiteInstallOutput
 
 internal static partial class LocalSiteInstaller
 {
-    internal const string FeedzSource = "https://f.feedz.io/sebastienros/orchardcore/nuget/index.json";
+    internal const string DefaultUrls = "https://localhost:5001";
     internal const string NugetSource = "https://api.nuget.org/v3/index.json";
     private const string AutoSetupPrefix = "OrchardCore__OrchardCore_AutoSetup__";
 
@@ -82,12 +82,7 @@ internal static partial class LocalSiteInstaller
             throw new CliException("--request-url-host must be a single host name without a scheme, port, or path.");
         }
 
-        if (!Uri.TryCreate(options.Urls, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https")
-            || uri.Port == 0 || uri.AbsolutePath != "/" || !string.IsNullOrEmpty(uri.UserInfo + uri.Query + uri.Fragment))
-        {
-            throw new CliException("--urls must be one HTTP or HTTPS listen URL without credentials, path, query, or fragment.");
-        }
-
+        _ = ParseListenUrls(options.Urls);
         _ = ResolveSource(options);
     }
 
@@ -104,9 +99,23 @@ internal static partial class LocalSiteInstaller
         }
     }
 
-    private static string ResolveSource(LocalSiteInstallOptions options)
+    internal static Uri[] ParseListenUrls(string urls)
     {
-        var source = options.Source ?? (DotnetEnvironment.PackageVersion.Contains("-cli.", StringComparison.Ordinal) ? FeedzSource : NugetSource);
+        return urls.Split(';', StringSplitOptions.TrimEntries).Select(value =>
+        {
+            if (!Uri.TryCreate(value, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https")
+                || uri.Port == 0 || uri.AbsolutePath != "/" || !string.IsNullOrEmpty(uri.UserInfo + uri.Query + uri.Fragment))
+            {
+                throw new CliException("--urls must be a quoted, semicolon-separated list of HTTP or HTTPS listen URLs without credentials, paths, queries, fragments, or empty entries. Example: --urls \"https://localhost:5001;http://localhost:5000\".");
+            }
+
+            return uri;
+        }).ToArray();
+    }
+
+    internal static string ResolveSource(LocalSiteInstallOptions options)
+    {
+        var source = options.Source ?? NugetSource;
         if (Directory.Exists(source))
         {
             return Path.GetFullPath(source);
@@ -118,6 +127,21 @@ internal static partial class LocalSiteInstaller
         }
 
         return source;
+    }
+
+    internal static string GetSiteUrl(LocalSiteInstallOptions options)
+    {
+        var urls = ParseListenUrls(options.Urls);
+        var uri = new UriBuilder(urls.FirstOrDefault(url => url.Scheme == "https") ?? urls[0])
+        {
+            Path = options.RequestUrlPrefix ?? string.Empty,
+        };
+        if (!string.IsNullOrEmpty(options.RequestUrlHost))
+        {
+            uri.Host = options.RequestUrlHost;
+        }
+
+        return uri.Uri.AbsoluteUri;
     }
 
     internal static async Task ExtractTemplateAsync(string destination, CancellationToken cancellationToken)
@@ -195,13 +219,9 @@ internal static partial class LocalSiteInstaller
             await DotnetEnvironment.RunAsync(["build", project, "--no-restore", "--disable-build-servers", "-m:1"], options.Directory, environment, diagnostics, cancellationToken, options.SecretEnvironmentVariables);
             await log.WriteLineAsync("Initializing the Default tenant.");
             await SetupAsync(options, project, diagnostics, cancellationToken);
-            await log.WriteLineAsync($"Site setup completed in '{options.Directory}'. To start it later, run 'dotnet run --no-launch-profile' from that directory.");
-            var uri = new UriBuilder(options.Urls) { Path = options.RequestUrlPrefix ?? string.Empty };
-            if (!string.IsNullOrEmpty(options.RequestUrlHost))
-            {
-                uri.Host = options.RequestUrlHost;
-            }
-
+            var listenUrls = ParseListenUrls(options.Urls);
+            var listenUrl = string.Join(';', listenUrls.Select(url => url.GetLeftPart(UriPartial.Authority)));
+            await log.WriteLineAsync($"Site setup completed in '{options.Directory}'. To start it later, run 'dotnet run --no-launch-profile --urls \"{listenUrl}\"' from that directory.");
             completed = true;
             return new LocalSiteInstallOutput
             {
@@ -209,8 +229,8 @@ internal static partial class LocalSiteInstaller
                 Project = project,
                 PackageVersion = DotnetEnvironment.PackageVersion,
                 SdkVersion = sdk,
-                Url = uri.Uri.AbsoluteUri,
-                ListenUrl = options.Urls,
+                Url = GetSiteUrl(options),
+                ListenUrl = listenUrl,
             };
         }
         finally

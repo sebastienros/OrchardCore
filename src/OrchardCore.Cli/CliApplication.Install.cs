@@ -15,13 +15,13 @@ internal sealed partial class CliApplication
         var provider = new Option<string>("--database-provider") { Description = "Database provider", DefaultValueFactory = _ => "Sqlite" };
         var tablePrefix = new Option<string?>("--table-prefix") { Description = "Database table prefix" };
         var schema = new Option<string?>("--schema") { Description = "Database schema" };
-        var timeZone = new Option<string>("--site-time-zone") { Description = "Site time zone", DefaultValueFactory = _ => "UTC" };
+        var timeZone = new Option<string>("--site-time-zone") { Description = "IANA/TZDB time zone ID, for example America/Los_Angeles, Europe/Paris, or UTC", DefaultValueFactory = _ => "UTC" };
         var urlPrefix = new Option<string?>("--request-url-prefix") { Description = "Optional site URL path prefix" };
         var host = new Option<string?>("--request-url-host") { Description = "Optional single site host name" };
-        var source = new Option<string?>("--source") { Description = "NuGet source for matching Orchard dependencies (defaults to Feedz for CLI previews, otherwise nuget.org)" };
+        var source = new Option<string?>("--source") { Description = "NuGet source for matching Orchard dependencies (defaults to nuget.org)" };
         var run = new Option<bool>("--run") { Description = "Start the completed site in the foreground; Ctrl+C stops it" };
         var verbose = new Option<bool>("--verbose") { Description = "Show template, build, and temporary setup logs as they happen" };
-        var urls = new Option<string>("--urls") { Description = "Listen URL for --run", DefaultValueFactory = _ => "http://localhost:5000" };
+        var urls = new Option<string>("--urls") { Description = "Listen URLs for --run; quote multiple addresses separated by semicolons, e.g. \"https://localhost:5001;http://localhost:5000\". HTTPS requires a certificate", DefaultValueFactory = _ => LocalSiteInstaller.DefaultUrls };
         var timeout = new Option<int>("--setup-timeout") { Description = "Setup timeout in seconds", DefaultValueFactory = _ => 300 };
         command.Arguments.Add(directory);
         foreach (var option in new Option[] { siteName, userName, email, recipe, provider, tablePrefix, schema, timeZone, urlPrefix, host, source, run, verbose, urls, timeout })

@@ -15,8 +15,10 @@ import urllib.request
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('oc', type=Path, help='Native CLI from the published build to test')
+parser.add_argument('--source', help='Explicit NuGet feed for preview dependencies')
 args = parser.parse_args()
 oc = str(args.oc.resolve())
+source_args = ['--source', args.source] if args.source else []
 
 
 def free_port():
@@ -51,7 +53,7 @@ with tempfile.TemporaryDirectory(prefix='oc-install-smoke-') as scratch:
     assert not (root / 'missing-sdk').exists()
 
     site = root / 'CMS with spaces'
-    base = [oc, 'install', str(site), '--site-name', 'Embedded CMS', '--email', 'admin@example.com', '--recipe-name', 'SaaS', '--output', 'json']
+    base = [oc, 'install', str(site), '--site-name', 'Embedded CMS', '--email', 'admin@example.com', '--recipe-name', 'SaaS', '--output', 'json', *source_args]
     completed = subprocess.run([*base, '--password-env', 'OC_INSTALL_PASSWORD'], env=env, capture_output=True, text=True, timeout=600)
     assert completed.returncode == 0, completed.stderr
     assert 'Now listening on:' not in completed.stderr, completed.stderr
@@ -72,7 +74,7 @@ with tempfile.TemporaryDirectory(prefix='oc-install-smoke-') as scratch:
     assert refused.returncode != 0 and 'overwrite' in refused.stderr, refused
 
     # A setup failure must be reported without claiming a ready site.
-    failure = subprocess.run([oc, 'install', str(root / 'bad-recipe'), '--site-name', 'Invalid recipe', '--email', 'admin@example.com', '--recipe-name', 'RecipeThatDoesNotExist', '--password-env', 'OC_INSTALL_PASSWORD', '--output', 'json'], env=env, capture_output=True, text=True, timeout=600)
+    failure = subprocess.run([oc, 'install', str(root / 'bad-recipe'), '--site-name', 'Invalid recipe', '--email', 'admin@example.com', '--recipe-name', 'RecipeThatDoesNotExist', '--password-env', 'OC_INSTALL_PASSWORD', '--output', 'json', *source_args], env=env, capture_output=True, text=True, timeout=600)
     assert failure.returncode != 0 and not failure.stdout.strip(), failure
     assert password not in failure.stderr
     assert 'Installation diagnostics:' in failure.stderr, failure.stderr
@@ -82,23 +84,28 @@ with tempfile.TemporaryDirectory(prefix='oc-install-smoke-') as scratch:
     # Check --run in the foreground, stdin input, path prefix, and cancellation.
     port = free_port()
     run_url = f'http://127.0.0.1:{port}'
+    second_port = free_port()
+    while second_port == port:
+        second_port = free_port()
+    second_url = f'http://127.0.0.1:{second_port}'
     output_path = root / 'run.json'
     error_path = root / 'run.log'
     with output_path.open('w') as output, error_path.open('w') as errors:
-        process = subprocess.Popen([oc, 'install', str(root / 'running-site'), '--site-name', 'Running CMS', '--email', 'admin@example.com', '--recipe-name', 'SaaS', '--request-url-prefix', 'news', '--password-stdin', '--run', '--urls', run_url, '--output', 'json'], env=env, stdin=subprocess.PIPE, stdout=output, stderr=errors, text=True, start_new_session=os.name != 'nt', creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == 'nt' else 0)
+        process = subprocess.Popen([oc, 'install', str(root / 'running-site'), '--site-name', 'Running CMS', '--email', 'admin@example.com', '--recipe-name', 'SaaS', '--request-url-prefix', 'news', '--password-stdin', '--run', '--urls', run_url + ';' + second_url, '--output', 'json', *source_args], env=env, stdin=subprocess.PIPE, stdout=output, stderr=errors, text=True, start_new_session=os.name != 'nt', creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == 'nt' else 0)
         try:
             process.stdin.write(password + '\n')
             process.stdin.close()
             deadline = time.monotonic() + 600
-            while not responds(run_url + '/news/'):
+            while not (responds(run_url + '/news/') and responds(second_url + '/news/')):
                 assert process.poll() is None, error_path.read_text()
                 assert time.monotonic() < deadline, error_path.read_text()
                 time.sleep(0.25)
             assert json.loads(output_path.read_text())['url'].rstrip('/') == run_url + '/news'
             run_logs = error_path.read_text()
-            assert run_logs.count('Now listening on:') == 1, run_logs
+            assert run_logs.count('Now listening on:') == 2, run_logs
             assert run_logs.count('Application started.') == 1, run_logs
             assert f'Now listening on: {run_url}' in run_logs, run_logs
+            assert f'Now listening on: {second_url}' in run_logs, run_logs
             if os.name == 'nt':
                 process.send_signal(signal.CTRL_BREAK_EVENT)
             else:
@@ -108,6 +115,7 @@ with tempfile.TemporaryDirectory(prefix='oc-install-smoke-') as scratch:
             while responds(run_url + '/news/') and time.monotonic() < deadline:
                 time.sleep(0.25)
             assert not responds(run_url + '/news/'), 'Foreground server survived CLI cancellation'
+            assert not responds(second_url + '/news/'), 'Second listener survived CLI cancellation'
             assert password not in output_path.read_text() + error_path.read_text()
         finally:
             if os.name != 'nt':

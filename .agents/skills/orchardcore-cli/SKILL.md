@@ -86,7 +86,10 @@ its Default tenant initialized. This static command needs no tenant context or
 login. It embeds this CLI build's `occms` template and uses matching Orchard
 dependency versions; no template download or version selection is needed.
 Run `oc doctor` to check for the required stable .NET SDK (currently .NET 10).
-Dependencies still need a NuGet feed or populated package cache.
+Dependencies still need a NuGet feed or populated package cache. The default
+source is nuget.org, including for previews. For this fork's temporary CLI
+previews, explicitly pass
+`--source https://f.feedz.io/sebastienros/orchardcore/nuget/index.json`.
 
 ```bash
 oc install ./MySite --site-name "My Site" --email admin@example.com --password-env OC_SITE_PASSWORD
@@ -102,7 +105,14 @@ recipe to the requested site: use `--recipe-name Blog` for a blog or
 `--recipe-name Blank` for a minimal site. A blog-like directory or site name
 does not select the Blog recipe. Consult
 `oc install --help` for other database, recipe, and URL options. `--source`
-changes the dependency feed only. Use `dotnet new` directly for other templates.
+adds a dependency feed alongside nuget.org. Use `dotnet new` directly for other
+templates. Time zones use IANA/TZDB IDs such as `Europe/Paris` and
+`America/Los_Angeles`, or `UTC`.
+
+The default listen address is `https://localhost:5001`, which needs a certificate.
+Use `dotnet dev-certs https --trust` for local development, or explicitly choose
+HTTP with `--urls http://localhost:5000`. Multiple addresses use one quoted
+semicolon-separated argument: `--urls "https://localhost:5001;http://localhost:5000"`.
 
 Without `--run`, installation stops its temporary setup host after completion.
 The JSON `tenantState` describes persisted tenant initialization, not a running

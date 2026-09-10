@@ -41,11 +41,18 @@ oc install ./MyOrchardSite --site-name "My Orchard Site" --email admin@example.c
 ```
 
 Enter the administrator password at the masked prompt. This uses SQLite and
-the SaaS setup recipe, then starts the site at `http://localhost:5000`.
+the SaaS setup recipe, then starts the site at `https://localhost:5001`.
+For local HTTPS, prepare the certificate with `dotnet dev-certs https --trust`.
+Multiple listen addresses use a quoted list, for example
+`--urls "https://localhost:5001;http://localhost:5000"`.
 Omit `--run` to stop after setup. Local installation requires the matching
 .NET SDK (currently .NET 10); `oc doctor` reports whether it is available.
 The template is embedded; restoring the site's dependencies still requires
-NuGet access or a populated package cache. Run `oc install --help` for database,
+NuGet access or a populated package cache. The default source is nuget.org;
+for this fork's temporary previews, explicitly add
+`--source https://f.feedz.io/sebastienros/orchardcore/nuget/index.json`.
+`--site-time-zone` takes an IANA/TZDB ID such as `Europe/Paris` or
+`America/Los_Angeles` (default `UTC`). Run `oc install --help` for database,
 recipe, URL, and secret-input options.
 
 Follow the [remote management guide](https://github.com/sebastienros/OrchardCore/blob/sebros/remote-tenant-cli-plan/src/docs/guides/remote-management/README.md)

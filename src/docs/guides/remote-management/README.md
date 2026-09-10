@@ -178,10 +178,32 @@ Other project templates remain available through `dotnet new`.
    project, restores dependencies, builds it, and uses
    [Auto Setup](../../reference/modules/AutoSetup/README.md) to initialize the
    site. Defaults are the `SaaS` recipe, SQLite, and the UTC time zone.
-4. With `--run`, open `http://localhost:5000` when setup finishes. Sign in with
+4. With `--run`, open `https://localhost:5001` when setup finishes. Sign in with
    the administrator account you just created. Press **Ctrl+C** to stop the
-   foreground server. Use `--urls http://localhost:5080` to select another
+   foreground server. Use `--urls https://localhost:5080` to select another
    listening address.
+
+HTTPS requires a certificate. For local development, create and trust the
+.NET development certificate before using `--run`:
+
+```bash
+dotnet dev-certs https --trust
+```
+
+`--urls` accepts one address or a **quoted, semicolon-separated list** in a
+single argument, following [ASP.NET Core's URL binding syntax](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/servers/kestrel/endpoints?view=aspnetcore-10.0).
+For example, to listen on both HTTPS and HTTP:
+
+```bash
+oc install ./MySite --site-name "My Site" --email admin@example.com \
+  --run --urls "https://localhost:5001;http://localhost:5000"
+```
+
+Use HTTP(S) addresses with a hostname or IP address and an optional port, without
+credentials, paths, queries, or fragments. Use `--request-url-prefix` for a site
+path. The result's `url` selects the first HTTPS address, or the first address
+when all use HTTP; `listenUrl` contains the complete semicolon-separated list.
+For local HTTP without a certificate, specify `--urls http://localhost:5000`.
 
 Installation shows concise progress messages. Add `--verbose` to see template,
 build, and setup logs as they happen. On failure, the CLI prints recent
@@ -199,17 +221,37 @@ left running. In JSON output, `tenantState:
 running. Start the site later with:
 
 ```bash
-dotnet run --project ./MyOrchardSite --no-launch-profile --urls http://localhost:5000
+dotnet run --project ./MyOrchardSite --no-launch-profile --urls https://localhost:5001
 ```
 
 The generated `global.json` pins the selected stable SDK, allowing later patches
-in that SDK feature band. A project-local `NuGet.Config` supplies nuget.org and,
-for `-cli.<number>` builds, the fork's Feedz feed. Orchard dependencies retain
+in that SDK feature band. A project-local `NuGet.Config` supplies **nuget.org
+only by default**, including for preview builds. Orchard dependencies retain
 their original package IDs. Dependency restore still needs network access or
 a populated package cache; embedding the template does not embed the runtime
-or the site's packages. `--source` overrides the Orchard dependency feed with
-an HTTPS NuGet URL or local package directory. It does not replace the embedded
-template or change the Orchard version.
+or the site's packages. `--source` adds an explicit Orchard dependency feed
+alongside nuget.org, using an HTTPS NuGet URL or local package directory. It
+does not replace the embedded template or change the Orchard version.
+
+For this fork's temporary CLI previews, whose matching packages are published
+on Feedz, pass the feed explicitly:
+
+```bash
+oc install ./MyPreviewSite --site-name "My Preview Site" --email admin@example.com \
+  --source https://f.feedz.io/sebastienros/orchardcore/nuget/index.json
+```
+
+`--site-time-zone` uses a case-sensitive [IANA/TZDB time zone ID](https://nodatime.org/TimeZones), as resolved
+by Orchard's Noda Time database on every operating system. Examples are `UTC`
+(the default), `America/Los_Angeles`, `America/New_York`, `Europe/Paris`, and
+`Asia/Tokyo`. Use these identifiers rather than Windows names such as
+`Pacific Standard Time`, abbreviations such as `PST`, or offsets such as `-08:00`.
+Region IDs account for daylight saving time automatically. For example:
+
+```bash
+oc install ./ParisSite --site-name "Paris Site" --email admin@example.com \
+  --site-time-zone Europe/Paris
+```
 
 Use the same argument names as tenant creation and setup, including
 `--recipe-name`, `--database-provider`, `--table-prefix`, `--schema`,

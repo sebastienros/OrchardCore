@@ -205,7 +205,7 @@ jobs:
           dotnet restore "$RUNNER_TEMP/feedz-cms" --source "$FEEDZ_SOURCE" --source https://api.nuget.org/v3/index.json
           dotnet build "$RUNNER_TEMP/feedz-cms" --no-restore
       - name: Verify embedded CMS installation and Auto Setup
-        run: python3 .scripts/remote-management/install-smoke.py "$RUNNER_TEMP/feedz-tool/oc"
+        run: python3 .scripts/remote-management/install-smoke.py "$RUNNER_TEMP/feedz-tool/oc" --source "$FEEDZ_SOURCE"
       - name: Add Feedz installation commands to the summary
         run: |
           cat >> "$GITHUB_STEP_SUMMARY" <<EOF
