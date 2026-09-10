@@ -80,6 +80,7 @@ oc graphql schema --output json > graphql-schema.json
 
 These built-in commands call GraphQL directly, reuse the current context/login,
 and need no OpenAPI refresh. GraphQL errors return exit code 4 while preserving
-partial data and errors in the response. See the
+partial data and errors in the JSON response. Human output shows readable errors
+on stderr and any partial data on stdout. See the
 [GraphQL CLI reference](https://github.com/sebastienros/OrchardCore/blob/sebros/remote-tenant-cli-plan/src/docs/reference/modules/Apis.GraphQL/README.md#use-graphql-from-the-cli)
 for permissions, stdin, operation names, custom endpoint paths, and mutations.

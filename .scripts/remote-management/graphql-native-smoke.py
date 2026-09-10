@@ -78,8 +78,13 @@ try:
             assert json.loads(result.stdout) == response_body
             assert 'GraphQL returned errors' in result.stderr
             assert len(requests) == before + 1  # Never retry a potentially committed mutation.
-        human = invoke('execute', '--query', query, '--output', 'human', expected=4).stdout
-        assert 'unsuccessful' in human and 'Partial' in human and 'Field denied' in human
+        human = invoke('execute', '--query', query, '--output', 'human', expected=4)
+        assert 'Partial' in human.stdout and 'Field denied' not in human.stdout
+        assert 'An error occurred.' in human.stderr and 'Field denied' in human.stderr
+        assert '"errors"' not in human.stderr
+        response_body = {'data': None, 'errors': [{'message': 'Field denied'}]}
+        human = invoke('execute', '--query', query, '--output', 'human', expected=4)
+        assert not human.stdout.strip() and 'Field denied' in human.stderr
         response_status = 302
         response_body = {}
         before = len(requests)

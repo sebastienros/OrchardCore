@@ -263,11 +263,13 @@ run mutation documents you intend to execute.
 
 The default output is readable in a terminal and JSON when redirected. Use
 `--output json` for automation. Introspection stays JSON by default. The complete
-GraphQL envelope is retained, including `data`, `errors`, and `extensions`.
+GraphQL envelope is retained in JSON output, including `data`, `errors`, and
+`extensions`.
 
 A nonempty `errors` array returns exit code **4**, including when the HTTP
-status is `200`. The response, including any partial data, is written to stdout
-and a brief diagnostic goes to stderr. `--output none` suppresses the response
+status is `200`. In human output, readable error messages go to stderr and any
+nonnull partial `data` goes to stdout. JSON output preserves the complete
+response on stdout with a brief diagnostic on stderr. `--output none` suppresses the response
 but still returns failure. Non-GraphQL HTTP failures use the CLI's normal API
 error reporting. Invalid input returns a nonzero exit code before a request is
 sent.

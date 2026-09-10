@@ -84,6 +84,17 @@ internal sealed partial class CliApplication
             var hasData = result.ValueKind == JsonValueKind.Object && result.TryGetProperty("data", out _);
             if (hasErrors || (response.IsSuccessStatusCode && hasData))
             {
+                if (hasErrors && CliUtilities.ParseOutputFormat(parseResult.GetValue(_outputOption)) == OutputFormat.Human)
+                {
+                    await Console.Error.WriteLineAsync(HumanErrorFormatter.Format("GraphQL returned errors.", JsonNode.Parse(result.GetRawText()), GetCorrelationId(response)));
+                    if (result.TryGetProperty("data", out var data) && data.ValueKind != JsonValueKind.Null)
+                    {
+                        await WriteOutputAsync(parseResult, data, cancellationToken);
+                    }
+                    await Console.Error.WriteLineAsync("The response may contain partial data; check it before retrying a mutation.");
+                    return 4;
+                }
+
                 // Preserve the GraphQL envelope, including partial data, even for HTTP 400/401.
                 // HTTP POST alone does not make a GraphQL query a management mutation.
                 await WriteOutputAsync(parseResult, result, cancellationToken);

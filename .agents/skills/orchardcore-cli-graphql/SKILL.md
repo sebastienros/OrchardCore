@@ -48,7 +48,8 @@ origin or tenant.
   normal CLI context/login onboarding uses Remote Management discovery.
 - Read the process exit code and the complete JSON envelope. A nonempty `errors`
   array returns exit code 4 even on HTTP 200. Partial `data` and `errors` remain
-  on stdout; a diagnostic is written to stderr. Do not report success merely
+  on stdout with `--output json`; a diagnostic is written to stderr. Human output
+  puts readable errors on stderr and only partial data on stdout. Do not report success merely
   because some data arrived.
 - `graphql execute` can send queries **or mutations**. It adds no confirmation
   prompt and does not retry. Execute mutations only within the user's authorized

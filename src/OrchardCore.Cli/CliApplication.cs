@@ -90,6 +90,8 @@ internal sealed partial class CliApplication
 
     public async Task<int> InvokeAsync(string[] args, TextWriter? errorWriter = null)
     {
+        var format = CliUtilities.ParseOutputFormat("auto");
+        var writer = errorWriter ?? Console.Error;
         try
         {
             var parsed = _rootCommand.Parse(args.Length == 0 ? ["--help"] : args);
@@ -129,12 +131,12 @@ internal sealed partial class CliApplication
                 return 1;
             }
 
-            _ = CliUtilities.ParseOutputFormat(parsed.GetValue(_outputOption));
+            format = CliUtilities.ParseOutputFormat(parsed.GetValue(_outputOption));
             return await parsed.InvokeAsync(invocation);
         }
         catch (ApiException exception)
         {
-            await WriteApiErrorAsync(exception);
+            await WriteApiErrorAsync(exception, format, writer);
             return 4;
         }
         catch (CliException exception)
@@ -144,12 +146,12 @@ internal sealed partial class CliApplication
         }
         catch (HttpRequestException exception)
         {
-            await WriteErrorAsync("http_error", exception.Message);
+            await WriteErrorAsync("http_error", exception.Message, format, writer);
             return 2;
         }
         catch (JsonException exception)
         {
-            await WriteErrorAsync("invalid_json", exception.Message);
+            await WriteErrorAsync("invalid_json", exception.Message, format, writer);
             return 3;
         }
     }
@@ -233,8 +235,13 @@ internal sealed partial class CliApplication
         AddDynamicSchemaCommands(operations);
     }
 
-    private static Task WriteErrorAsync(string code, string message)
+    private static Task WriteErrorAsync(string code, string message, OutputFormat format, TextWriter writer)
     {
+        if (format == OutputFormat.Human)
+        {
+            return writer.WriteLineAsync(HumanErrorFormatter.Format(message));
+        }
+
         var error = new JsonObject
         {
             ["error"] = new JsonObject
@@ -244,11 +251,16 @@ internal sealed partial class CliApplication
             },
         };
 
-        return Console.Error.WriteLineAsync(error.ToJsonString());
+        return writer.WriteLineAsync(error.ToJsonString());
     }
 
-    private static Task WriteApiErrorAsync(ApiException exception)
+    private static Task WriteApiErrorAsync(ApiException exception, OutputFormat format, TextWriter writer)
     {
+        if (format == OutputFormat.Human)
+        {
+            return writer.WriteLineAsync(HumanErrorFormatter.Format(exception.Message, exception.Details, exception.CorrelationId));
+        }
+
         var errorDetails = new JsonObject
         {
             ["code"] = "api_error",
@@ -266,7 +278,7 @@ internal sealed partial class CliApplication
             errorDetails["correlationId"] = exception.CorrelationId;
         }
 
-        return Console.Error.WriteLineAsync(new JsonObject { ["error"] = errorDetails }.ToJsonString());
+        return writer.WriteLineAsync(new JsonObject { ["error"] = errorDetails }.ToJsonString());
     }
 
     private Command CreateLoginCommand()
@@ -1852,7 +1864,17 @@ internal sealed partial class CliApplication
 
     private async Task<RemoteManagementManifest> FetchBootstrapAsync(string tenantUrl, CancellationToken cancellationToken)
     {
-        using var response = await _httpClient.GetAsync(new Uri(new Uri(tenantUrl, UriKind.Absolute), RemoteManagementConstants.BootstrapPath), cancellationToken);
+        var discoveryUri = new Uri(new Uri(tenantUrl, UriKind.Absolute), RemoteManagementConstants.BootstrapPath);
+        using var response = await _httpClient.GetAsync(discoveryUri, cancellationToken);
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            throw new CliException(
+                $"Remote Management discovery was not found at '{discoveryUri}' (HTTP 404)." + global::System.Environment.NewLine +
+                "Check that the URL targets the correct tenant, including any path prefix." + global::System.Environment.NewLine +
+                "Enable 'Remote Management' (OrchardCore.RemoteManagement) in Configuration > Features, then configure it in Settings > Remote Management." + global::System.Environment.NewLine +
+                "If the feature is unavailable, use a compatible Orchard Core server version that includes Remote Management.");
+        }
+
         response.EnsureSuccessStatusCode();
         var manifest = CliUtilities.ParseManifest(await response.Content.ReadAsStringAsync(cancellationToken));
         ValidateManifestEndpoints(tenantUrl, manifest);

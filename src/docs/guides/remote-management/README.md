@@ -495,7 +495,12 @@ oc tenants create --name Demo --request-url-prefix demo --output json
 
 Successful changes receive a completion message. An HTTP 202 response is
 described as accepted rather than finished; an API-reported unsuccessful result
-does not receive a success message. Errors still appear on standard error.
+does not receive a success message. Errors appear on standard error. In human
+output, API failures start with **An error occurred**, followed by the failed
+request and the server's explanation, including field validation messages when
+provided. HTTP connection and JSON parsing failures also use readable messages.
+With `--output json` (or redirected `auto`), API errors retain their structured
+JSON envelope and exit codes. `--output none` suppresses results, not errors.
 
 Human output also suggests the next step in tenant onboarding:
 
@@ -672,6 +677,7 @@ management API.
 | Command missing from help | Check the selected context and enabled features; run `oc api refresh --force` |
 | `401` | Verify the context and sign in again, or check injected client credentials |
 | `403` | Check both management access and the resource-specific tenant permissions |
+| Remote Management discovery not found (`404` during `oc context add`) | Check the exact tenant URL and path prefix. Enable `OrchardCore.RemoteManagement` in **Configuration → Features**, then configure it in **Settings → Remote Management**. If unavailable, use a server version containing the feature. The failed command does not save or select a context. |
 | `404` for a draft | Verify the ID and whether a draft exists; inspect the latest version |
 | Validation failure | Correct the named property using the live schema and exact casing |
 | Local storage or cache problem | Run `oc doctor` to inspect paths and storage availability |

@@ -362,6 +362,50 @@ public class CliApplicationTests
         Assert.Single((await store.LoadAsync(CancellationToken.None)).Contexts);
     }
 
+    [Theory]
+    [InlineData("https://cms.example.com/", "https://cms.example.com/.well-known/orchardcore-management")]
+    [InlineData("https://cms.example.com/blog/", "https://cms.example.com/blog/.well-known/orchardcore-management")]
+    public async Task ContextAdd_MissingDiscovery_ExplainsSetupAndPreservesExistingContext(string tenantUrl, string discoveryUrl)
+    {
+        var paths = new CliPaths(TestPaths.CreateScratchDirectory(nameof(ContextAdd_MissingDiscovery_ExplainsSetupAndPreservesExistingContext)));
+        var store = new ContextStore(paths);
+        await store.SaveAsync(new CliConfiguration
+        {
+            CurrentContext = "existing",
+            Contexts = [new TenantContextRecord { Name = "existing", TenantUrl = "https://existing.example/" }],
+        }, TestContext.Current.CancellationToken);
+        var handler = new MissingDiscoveryHandler();
+        using var client = new HttpClient(handler);
+        var args = new[] { "context", "add", "new-site", tenantUrl, "--current" };
+        var app = await CliApplication.CreateAsync(args, paths, client, TestContext.Current.CancellationToken, new UnsupportedCredentialStore());
+        using var errors = new StringWriter();
+
+        Assert.Equal(1, await app.InvokeAsync(args, errors));
+        Assert.Equal(discoveryUrl, Assert.Single(handler.Requests));
+        Assert.Contains("Remote Management discovery was not found", errors.ToString());
+        Assert.Contains(discoveryUrl, errors.ToString());
+        Assert.Contains("HTTP 404", errors.ToString());
+        Assert.Contains("path prefix", errors.ToString());
+        Assert.Contains("OrchardCore.RemoteManagement", errors.ToString());
+        Assert.Contains("Settings > Remote Management", errors.ToString());
+        Assert.DoesNotContain("Response status code does not indicate success", errors.ToString());
+        var saved = await store.LoadAsync(TestContext.Current.CancellationToken);
+        Assert.Equal("existing", saved.CurrentContext);
+        Assert.Equal("existing", Assert.Single(saved.Contexts).Name);
+    }
+
+    private sealed class MissingDiscoveryHandler : HttpMessageHandler
+    {
+        public List<string> Requests { get; } = [];
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Requests.Add(request.RequestUri!.AbsoluteUri);
+            Assert.Null(request.Headers.Authorization);
+            return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.NotFound));
+        }
+    }
+
     private sealed class RequestCountingHandler : HttpMessageHandler
     {
         public int RequestCount { get; private set; }
