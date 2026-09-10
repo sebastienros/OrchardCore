@@ -488,6 +488,28 @@ Successful changes receive a completion message. An HTTP 202 response is
 described as accepted rather than finished; an API-reported unsuccessful result
 does not receive a success message. Errors still appear on standard error.
 
+Human output also suggests the next step in tenant onboarding:
+
+1. `oc tenants create` suggests `oc tenants setup` for an uninitialized tenant,
+   with its actual name and placeholders for details such as the administrator
+   email and an unconfigured recipe. The password is prompted securely. The
+   example uses SQLite if no database provider is configured; adjust it before
+   running if needed.
+2. Successful setup suggests `oc tenants enable-remote-management`.
+3. Enabling remote management suggests `oc context add` with the exact tenant
+   URL and `--current`. Existing contexts for the URL are reused; name collisions
+   with other tenants receive a numbered suffix.
+4. Adding the context suggests `oc login` targeting that named context.
+5. Login suggests context-specific `oc --help` to explore available commands.
+
+The setup and enablement suggestions explicitly retain the parent context that
+manages tenants. Login targets the new tenant's context. Suggestions follow the
+returned tenant state, so an already initialized tenant skips setup. Missing
+URLs are shown as placeholders rather than guessed. Replace placeholders and
+review the settings before copying a command. Suggestions use POSIX shell
+quoting on macOS/Linux and PowerShell quoting on Windows. They are shown only in
+human output; `--output json` and other explicit data formats are unchanged.
+
 ## 6. Discover before writing
 
 Run `oc` or `oc --help` to see the same help: built-in commands and the selected

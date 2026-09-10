@@ -32,13 +32,17 @@ internal static class HumanOutputFormatter
         IReadOnlySet<string>? fields = ReportsFailure(output.Json) || output.StatusCode == 202 ? null : path == "install"
             ? new HashSet<string>(["directory", "url", "tenant"])
             : mutation && output.CommandPath.Count == 2 && output.CommandPath[0] == "tenants"
-                ? new HashSet<string>(["name", "tenantId", "state", "setupUrl", "primaryUrl", "requestUrlHost", "requestUrlPrefix", "recipeName", "databaseProvider"])
+                ? new HashSet<string>(["name", "tenantId", "state", "setupUrl", "primaryUrl", "url", "requestUrlHost", "requestUrlPrefix", "recipeName", "databaseProvider"])
                 : null;
         AppendValue(builder, output.Json, 0, skipTransportFields: output.HttpMethod is not null, fields);
         if (path == "install" && Property(output.Json, "listenUrl") is { ValueKind: JsonValueKind.String } listenUrl)
         {
             builder.AppendLine().AppendLine("To start the site later, run from that directory:")
                 .Append("  dotnet run --no-launch-profile --urls \"").Append(Safe(listenUrl.GetString()!)).AppendLine("\"");
+        }
+        if (!ReportsFailure(output.Json) && output.StatusCode != 202 && NextStepFormatter.Format(output) is { } nextStep)
+        {
+            builder.AppendLine().AppendLine(nextStep);
         }
         return builder.Length == 0 ? "No results." : builder.ToString().TrimEnd();
     }
@@ -109,6 +113,7 @@ internal static class HumanOutputFormatter
         "start" => "started", "stop" => "stopped", "clone" => "cloned", "move" => "moved", "rename" => "renamed",
         "restore" => "restored", "reset" => "reset", "save" => "saved", "setup" => "set up",
         "assign" => "assigned", "revoke" => "revoked", "apply" => "applied", "rebuild" => "rebuilt",
+        "enable-remote-management" => "configured for remote management",
         "add" => "added", "clear" => "cleared", "refresh" => "refreshed", "install" => "installed",
         _ => null,
     };

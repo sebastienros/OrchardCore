@@ -246,6 +246,10 @@ internal sealed class CommandOutput
     public string? HttpMethod { get; init; }
 
     public int? StatusCode { get; init; }
+
+    public string? ContextName { get; init; }
+
+    public IReadOnlyList<TenantContextRecord> KnownContexts { get; init; } = [];
 }
 
 internal sealed class ContextListOutput

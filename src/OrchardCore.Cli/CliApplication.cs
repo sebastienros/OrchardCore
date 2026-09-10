@@ -1899,6 +1899,8 @@ internal sealed partial class CliApplication
         await OutputFormatter.WriteAsync(new CommandOutput
         {
             Json = element, TableColumns = tableColumns, CommandPath = commandPath.ToArray(), HttpMethod = httpMethod, StatusCode = statusCode,
+            ContextName = ContextStore.FindContext(_configuration, parseResult.GetValue(_contextOption))?.Name,
+            KnownContexts = _configuration.Contexts,
         }, format, Console.Out, cancellationToken);
         return 0;
     }

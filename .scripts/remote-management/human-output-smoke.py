@@ -59,7 +59,7 @@ try:
                 'expiresAt': '9999-01-01T00:00:00Z',
                 'content': json.dumps({'paths': {'/api/tenants': {'post': {
                     'operationId': 'CreateTenant',
-                    'x-oc-cli': {'commandGroup': ['tenants'], 'verb': 'create'},
+                    'x-oc-cli': {'commandGroup': ['tenants'], 'verb': verb if verb != 'delete' else 'create'},
                 }, 'delete': {
                     'operationId': 'DeleteTenant',
                     'x-oc-cli': {'commandGroup': ['tenants'], 'verb': 'delete'},
@@ -72,6 +72,9 @@ try:
         assert human.startswith("Tenant 'Demo' created successfully."), human
         assert 'Setup URL: ' + setup_url in human, human
         assert ' | ' not in human and 'Can delete' not in human, human
+        assert 'oc --context=test tenants setup Demo' in human, human
+        assert "--email '<admin-email>'" in human, human
+        assert '--password' not in human, human
         assert json.loads(invoke('--output', 'json')) == result
         assert json.loads(invoke('--output', 'auto')) == result  # Explicit auto follows redirection.
         assert setup_url in invoke('--output', 'table')
@@ -83,6 +86,16 @@ try:
         pending = invoke()
         assert pending.startswith('Request accepted.') and 'job-42' in pending, pending
         response_status = 200
+        result = {'name': 'Demo', 'state': 'Running', 'primaryUrl': tenant + 'Demo/'}
+        running = invoke()
+        assert 'oc --context=test tenants enable-remote-management Demo' in running, running
+        setup = invoke(verb='setup')
+        assert "Tenant 'Demo' set up successfully." in setup, setup
+        assert 'oc --context=test tenants enable-remote-management Demo' in setup, setup
+        result = {'name': 'Demo', 'state': 'Running', 'url': tenant + 'Demo/'}
+        enabled = invoke(verb='enable-remote-management')
+        assert "Tenant 'Demo' configured for remote management successfully." in enabled, enabled
+        assert f'oc context add Demo {tenant}Demo/ --current' in enabled, enabled
         result = {'success': False, 'message': 'The request could not be completed'}
         failed = invoke()
         assert 'unsuccessful result' in failed and result['message'] in failed, failed
