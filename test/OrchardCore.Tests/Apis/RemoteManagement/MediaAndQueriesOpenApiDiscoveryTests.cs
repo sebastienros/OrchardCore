@@ -57,6 +57,7 @@ public class MediaAndQueriesOpenApiDiscoveryTests
         AssertOperation(endpoints, "api/media/file", "GET", "ApiGetMediaItem", ["media", "files"], "show");
         AssertOperation(endpoints, "api/media/file", "DELETE", "ApiDeleteMedia", ["media", "files"], "delete");
         AssertOperation(endpoints, "api/media/files", "GET", "ApiGetMediaItems", ["media", "files"], "list");
+        AssertOperation(endpoints, "api/media/items", "GET", "ApiGetAllMediaItems", ["media", "items"], "list");
         AssertOperation(endpoints, "api/media/files:copy", "POST", "ApiCopyMedia", ["media", "files"], "copy");
         AssertOperation(endpoints, "api/media/files:move", "POST", "ApiMoveMedia", ["media", "files"], "move");
         AssertOperation(endpoints, "api/media/files:delete", "POST", "ApiDeleteMediaList", ["media", "files"], "delete-batch", expectedInputMode: CliInputMode.Json, expectedRequestContentType: "application/json");

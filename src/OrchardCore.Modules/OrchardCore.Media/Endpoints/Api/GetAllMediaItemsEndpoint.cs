@@ -25,8 +25,8 @@ public static class GetAllMediaItemsEndpoint
 
         builder.MapManagementGet("api/media/items", HandleAsync)
             .WithName("ApiGetAllMediaItems")
-            .WithSummary("Lists all accessible media items.")
-            .WithDescription("Returns every accessible media file and folder under the media root, optionally filtered by file extension.")
+            .WithSummary("Lists media files recursively.")
+            .WithDescription("Returns accessible media files under the media root, optionally filtered by file extension. Use media folders list to list folders.")
             .WithCliCommand(new CliOperationMetadata(["media", "items"], "list")
             {
                 Capability = MediaApiEndpointConventions.CapabilityName,
@@ -92,6 +92,11 @@ public static class GetAllMediaItemsEndpoint
         var allItems = new List<FileStoreEntryDto>();
 
         await MediaEndpointHelpers.CollectAllItemsRecursiveAsync(mediaFileStore, authorizationService, httpContext, contentTypeProvider, fileVersionProvider, string.Empty, allowedExtensions, filterByExtensions, allItems);
+        if (isManagementEndpoint)
+        {
+            // Folders are traversed for accessible files but must not occupy file pages.
+            allItems.RemoveAll(item => item.IsDirectory);
+        }
         allItems.Sort((left, right) => StringComparer.OrdinalIgnoreCase.Compare(left.FilePath ?? left.DirectoryPath, right.FilePath ?? right.DirectoryPath));
 
         return isManagementEndpoint

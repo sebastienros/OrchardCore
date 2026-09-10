@@ -62,7 +62,7 @@ Paths in parameters are media-store-relative and use `/`, for example `images/lo
 | `DELETE` | `/api/media/folder` | Delete a folder | Manage Media + requested folder |
 | `GET` | `/api/media/directories/content` | List direct child folders and files | Manage Media + requested folder |
 | `GET` | `/api/media/files` | List direct child files | Manage Media + requested folder |
-| `GET` | `/api/media/items` | Recursively list accessible files and folders | Manage Media + root/folder checks |
+| `GET` | `/api/media/items` | Recursively list accessible files | Manage Media + root/folder checks |
 | `GET` | `/api/media/file` | Get one file's metadata | Manage Media + file path |
 | `DELETE` | `/api/media/file` | Delete one file | Manage Media + file path |
 | `GET` | `/api/media/files/metadata` | Get metadata for several files | Manage Media + every file path |
@@ -483,7 +483,7 @@ GET /api/media/items
 
 | Query parameter | Type | Required | Default/constraints |
 | --- | --- | --- | --- |
-| `extensions` | string | No | Space- or comma-separated configured extensions. The filter applies to files; folders remain included. If no value is allowed, files are unfiltered. |
+| `extensions` | string | No | Space- or comma-separated configured extensions. Only matching files are returned when a filter is supplied. |
 | `skip` | integer | No | `0`; must be at least `0`. |
 | `take` | integer | No | `50`; range `1`–`200`. |
 
@@ -494,7 +494,17 @@ curl -G -H 'Authorization: Bearer ACCESS_TOKEN' \
   'https://cms.example.com/tenant-a/api/media/items'
 ```
 
-`200 OK` returns the paged media envelope. It recursively contains accessible folders and matching files below the root.
+`200 OK` returns the paged media envelope containing accessible files recursively
+below the root. Folders are excluded from both `items` and `totalCount`; paging
+applies to files only. Use `GET /api/media/folders` to list folders.
+
+The corresponding CLI commands are:
+
+```bash
+oc media items list                        # Files recursively below the media root
+oc media files list --path assets          # Files directly inside assets
+oc media folders list --path assets        # Folders directly inside assets
+```
 
 Other responses: `400` for invalid paging, `401`, `403`.
 
