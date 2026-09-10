@@ -20,10 +20,11 @@ internal sealed partial class CliApplication
         var host = new Option<string?>("--request-url-host") { Description = "Optional single site host name" };
         var source = new Option<string?>("--source") { Description = "NuGet source for matching Orchard dependencies (defaults to Feedz for CLI previews, otherwise nuget.org)" };
         var run = new Option<bool>("--run") { Description = "Start the completed site in the foreground; Ctrl+C stops it" };
+        var verbose = new Option<bool>("--verbose") { Description = "Show template, build, and temporary setup logs as they happen" };
         var urls = new Option<string>("--urls") { Description = "Listen URL for --run", DefaultValueFactory = _ => "http://localhost:5000" };
         var timeout = new Option<int>("--setup-timeout") { Description = "Setup timeout in seconds", DefaultValueFactory = _ => 300 };
         command.Arguments.Add(directory);
-        foreach (var option in new Option[] { siteName, userName, email, recipe, provider, tablePrefix, schema, timeZone, urlPrefix, host, source, run, urls, timeout })
+        foreach (var option in new Option[] { siteName, userName, email, recipe, provider, tablePrefix, schema, timeZone, urlPrefix, host, source, run, verbose, urls, timeout })
         {
             command.Options.Add(option);
         }
@@ -53,6 +54,7 @@ internal sealed partial class CliApplication
                 Source = parsed.GetValue(source),
                 Urls = parsed.GetValue(urls)!,
                 SetupTimeoutSeconds = parsed.GetValue(timeout),
+                Verbose = parsed.GetValue(verbose),
                 SecretEnvironmentVariables = new[] { parsed.GetValue(password.EnvironmentVariableOption), parsed.GetValue(connection.EnvironmentVariableOption) }
                     .Where(name => !string.IsNullOrWhiteSpace(name)).Select(name => name!).ToArray(),
             };

@@ -54,6 +54,10 @@ with tempfile.TemporaryDirectory(prefix='oc-install-smoke-') as scratch:
     base = [oc, 'install', str(site), '--site-name', 'Embedded CMS', '--email', 'admin@example.com', '--recipe-name', 'SaaS', '--output', 'json']
     completed = subprocess.run([*base, '--password-env', 'OC_INSTALL_PASSWORD'], env=env, capture_output=True, text=True, timeout=600)
     assert completed.returncode == 0, completed.stderr
+    assert 'Now listening on:' not in completed.stderr, completed.stderr
+    assert '127.0.0.1' not in completed.stderr, completed.stderr
+    assert 'Failed to determine the https port' not in completed.stderr, completed.stderr
+    assert 'Build succeeded.' not in completed.stderr, completed.stderr
     result = json.loads(completed.stdout)
     assert result['tenantState'] == 'Running' and result['tenant'] == 'Default', result
     assert json.loads((site / 'App_Data/tenants.json').read_text())['Default']['State'] == 'Running'
@@ -71,6 +75,8 @@ with tempfile.TemporaryDirectory(prefix='oc-install-smoke-') as scratch:
     failure = subprocess.run([oc, 'install', str(root / 'bad-recipe'), '--site-name', 'Invalid recipe', '--email', 'admin@example.com', '--recipe-name', 'RecipeThatDoesNotExist', '--password-env', 'OC_INSTALL_PASSWORD', '--output', 'json'], env=env, capture_output=True, text=True, timeout=600)
     assert failure.returncode != 0 and not failure.stdout.strip(), failure
     assert password not in failure.stderr
+    assert 'Installation diagnostics:' in failure.stderr, failure.stderr
+    assert 'The AutoSetup failed installing the site' in failure.stderr, failure.stderr
     assert (root / 'bad-recipe/Program.cs').exists()
 
     # Check --run in the foreground, stdin input, path prefix, and cancellation.
@@ -89,6 +95,10 @@ with tempfile.TemporaryDirectory(prefix='oc-install-smoke-') as scratch:
                 assert time.monotonic() < deadline, error_path.read_text()
                 time.sleep(0.25)
             assert json.loads(output_path.read_text())['url'].rstrip('/') == run_url + '/news'
+            run_logs = error_path.read_text()
+            assert run_logs.count('Now listening on:') == 1, run_logs
+            assert run_logs.count('Application started.') == 1, run_logs
+            assert f'Now listening on: {run_url}' in run_logs, run_logs
             if os.name == 'nt':
                 process.send_signal(signal.CTRL_BREAK_EVENT)
             else:

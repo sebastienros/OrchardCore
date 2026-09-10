@@ -183,8 +183,18 @@ Other project templates remain available through `dotnet new`.
    foreground server. Use `--urls http://localhost:5080` to select another
    listening address.
 
-Without `--run`, the CLI starts a temporary loopback-only server for setup and
-stops it after the Default tenant is initialized. In JSON output, `tenantState:
+Installation shows concise progress messages. Add `--verbose` to see template,
+build, and setup logs as they happen. On failure, the CLI prints recent
+installation diagnostics automatically. Progress and logs go to standard error,
+keeping JSON results on standard output usable by scripts. With `--run`, the
+completed site's application logs stream to standard error.
+
+The CLI initializes the Default tenant on a temporary loopback-only server
+(`127.0.0.1` with an automatically chosen port). This address is internal to
+setup; you do not need to open it. That server stops when setup finishes, before
+`--run` starts the site at your chosen `--urls` address. Its startup logs appear
+only with `--verbose` or in failure diagnostics. Without `--run`, no server is
+left running. In JSON output, `tenantState:
 "Running"` means the tenant is initialized; it does not mean a server was left
 running. Start the site later with:
 

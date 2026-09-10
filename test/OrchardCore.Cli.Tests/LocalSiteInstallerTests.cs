@@ -107,6 +107,38 @@ public class LocalSiteInstallerTests
         Assert.Contains("[redacted]", output.ToString());
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task InstallLog_ShowsDiagnosticsOnFailureOrWhenVerbose(bool verbose)
+    {
+        using var output = new StringWriter();
+        using var log = new InstallProcessLog(output, verbose);
+        using var reader = new StreamReader(new MemoryStream("setup failed: a-secret"u8.ToArray()));
+        await DotnetEnvironment.DrainAsync(reader, log, secrets: ["a-secret"]);
+        Assert.Equal(verbose, output.ToString().Contains("setup failed", StringComparison.Ordinal));
+        await log.WriteFailureAsync();
+        Assert.Contains("setup failed: [redacted]", output.ToString());
+        Assert.DoesNotContain("a-secret", output.ToString());
+        Assert.Equal(1, output.ToString().Split("setup failed").Length - 1);
+    }
+
+    [Fact]
+    public async Task InstallLog_BoundsDiagnosticsAndRetainsLatestFailure()
+    {
+        using var output = new StringWriter();
+        using var log = new InstallProcessLog(output, verbose: false);
+        await log.WriteLineAsync("old output");
+        await log.WriteLineAsync(new string('x', InstallProcessLog.Capacity * 2));
+        await log.WriteLineAsync("latest failure");
+        Assert.Empty(output.ToString());
+        await log.WriteFailureAsync();
+        Assert.DoesNotContain("old output", output.ToString());
+        Assert.Contains("earlier output omitted", output.ToString());
+        Assert.Contains("latest failure", output.ToString());
+        Assert.True(output.ToString().Length < InstallProcessLog.Capacity + 200);
+    }
+
     [Fact]
     public async Task InstallHelp_IsLocalAndDoesNotOfferInlineSecrets()
     {

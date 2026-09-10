@@ -24,6 +24,7 @@ internal sealed class LocalSiteInstallOptions
     public string? Source { get; init; }
     public string Urls { get; init; } = "http://localhost:5000";
     public int SetupTimeoutSeconds { get; init; } = 300;
+    public bool Verbose { get; init; }
     public string Password { get; set; } = string.Empty;
     public string? ConnectionString { get; set; }
     public string[] SecretEnvironmentVariables { get; init; } = [];
@@ -148,6 +149,8 @@ internal static partial class LocalSiteInstaller
     {
         Validate(options);
         ValidateSecrets(options);
+        using var diagnostics = new InstallProcessLog(log, options.Verbose);
+        var completed = false;
         var scratch = Path.Combine(Path.GetTempPath(), "oc-install-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(scratch);
         var environment = new Dictionary<string, string>
@@ -161,10 +164,10 @@ internal static partial class LocalSiteInstaller
             var template = Path.Combine(scratch, "template");
             await ExtractTemplateAsync(template, cancellationToken);
             await WriteSdkSelectionAsync(scratch, sdk, cancellationToken);
-            await DotnetEnvironment.RunAsync(["new", "install", template], scratch, environment, log, cancellationToken, options.SecretEnvironmentVariables);
+            await DotnetEnvironment.RunAsync(["new", "install", template], scratch, environment, diagnostics, cancellationToken, options.SecretEnvironmentVariables);
             // Recheck after template extraction, before writing any project files.
             Validate(options);
-            await DotnetEnvironment.RunAsync(["new", "occms", "--output", options.Directory], scratch, environment, log, cancellationToken, options.SecretEnvironmentVariables);
+            await DotnetEnvironment.RunAsync(["new", "occms", "--output", options.Directory], scratch, environment, diagnostics, cancellationToken, options.SecretEnvironmentVariables);
             await WriteSdkSelectionAsync(options.Directory, sdk, cancellationToken);
             var config = new XDocument(new XElement("configuration", new XElement("packageSources",
                 new XElement("clear"), new XElement("add", new XAttribute("key", "nuget.org"), new XAttribute("value", NugetSource)))));
@@ -188,9 +191,10 @@ internal static partial class LocalSiteInstaller
                 orchardBuilder + global::System.Environment.NewLine + "    .AddSetupFeatures(\"OrchardCore.AutoSetup\")", StringComparison.Ordinal), cancellationToken);
             var project = Directory.GetFiles(options.Directory, "*.csproj").Single();
             await log.WriteLineAsync("Restoring and building the new site.");
-            await DotnetEnvironment.RunAsync(["restore", project, "--configfile", nugetConfig, "--disable-build-servers"], options.Directory, environment, log, cancellationToken, options.SecretEnvironmentVariables);
-            await DotnetEnvironment.RunAsync(["build", project, "--no-restore", "--disable-build-servers", "-m:1"], options.Directory, environment, log, cancellationToken, options.SecretEnvironmentVariables);
-            await SetupAsync(options, project, log, cancellationToken);
+            await DotnetEnvironment.RunAsync(["restore", project, "--configfile", nugetConfig, "--disable-build-servers"], options.Directory, environment, diagnostics, cancellationToken, options.SecretEnvironmentVariables);
+            await DotnetEnvironment.RunAsync(["build", project, "--no-restore", "--disable-build-servers", "-m:1"], options.Directory, environment, diagnostics, cancellationToken, options.SecretEnvironmentVariables);
+            await log.WriteLineAsync("Initializing the Default tenant.");
+            await SetupAsync(options, project, diagnostics, cancellationToken);
             await log.WriteLineAsync($"Site setup completed in '{options.Directory}'. To start it later, run 'dotnet run --no-launch-profile' from that directory.");
             var uri = new UriBuilder(options.Urls) { Path = options.RequestUrlPrefix ?? string.Empty };
             if (!string.IsNullOrEmpty(options.RequestUrlHost))
@@ -198,6 +202,7 @@ internal static partial class LocalSiteInstaller
                 uri.Host = options.RequestUrlHost;
             }
 
+            completed = true;
             return new LocalSiteInstallOutput
             {
                 Directory = options.Directory,
@@ -210,6 +215,11 @@ internal static partial class LocalSiteInstaller
         }
         finally
         {
+            if (!completed)
+            {
+                await diagnostics.WriteFailureAsync();
+            }
+
             options.Password = string.Empty;
             options.ConnectionString = null;
             try
@@ -258,7 +268,7 @@ internal static partial class LocalSiteInstaller
         listener.Stop();
         var url = $"http://127.0.0.1:{port}";
         var setupPath = "/oc-setup-" + Guid.NewGuid().ToString("N");
-        await log.WriteLineAsync("Initializing the Default tenant with Auto Setup on a temporary loopback listener.");
+        await log.WriteLineAsync("Auto Setup uses a temporary local-only server; it stops before the requested site URL starts.");
         using var process = DotnetEnvironment.Start([ApplicationPath(project), "--urls", url], options.Directory,
             CreateSetupEnvironment(options, setupPath), options.SecretEnvironmentVariables);
         string[] secrets = [options.Password, options.ConnectionString ?? string.Empty];
