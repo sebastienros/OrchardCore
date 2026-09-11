@@ -50,10 +50,6 @@ missing_resource_status = {
     'custom-settings update': 404, 'custom-settings schema': 404,
     'custom-settings list': 200,  # Filters out settings the identity cannot access.
 }
-# Translation routes require a supported culture even for authorization probes.
-status, payload = request('api/localization/settings', token=admin)
-assert status == 200
-probe_culture = json.loads(payload)['defaultCulture']
 ids = set()
 capabilities = {capability['id'] for capability in manifest['capabilities']}
 assert 'static-files' not in capabilities
@@ -73,12 +69,6 @@ for path, item in schema['paths'].items():
         ids.add(operation.get('operationId'))
         target = re.sub(r'\{[^}]+\}', 'MissingReviewResource', path)
         body = b'{}' if method.upper() in ('POST','PUT','PATCH') else None
-        if command.startswith('localization translations '):
-            translation = {'culture': probe_culture, 'context': 'Probe', 'key': 'Probe', 'value': 'Probe'}
-            if method.upper() == 'PUT':
-                body = json.dumps(translation).encode()
-            else:
-                target += '?' + urllib.parse.urlencode(translation)
         for identity, bearer, expected in [('anonymous',None,401),('denied',denied,403),('discovery',discovery,403)]:
             content_type = next(iter(operation.get('requestBody', {}).get('content', {'application/json':{}})))
             status, _ = request(target, method.upper(), bearer, body, content_type)

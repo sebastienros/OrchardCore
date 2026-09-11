@@ -219,7 +219,8 @@ Localization settings can be configured using the `Settings` recipe step:
 
 The [Localization API](../../api/localization/README.md) exposes culture settings,
 registered JavaScript UI strings, and database-backed dynamic translations through
-OpenAPI and the `pomi localization` command group. It uses the existing culture and
-translation permissions. See the API page for a CLI walkthrough, feature
+OpenAPI. The `pomi localization` command group exposes culture and settings
+management only; UI strings and dynamic translations remain HTTP API operations.
+These operations use the existing culture and translation permissions. See the API page for a CLI walkthrough, feature
 requirements, culture selection, and the distinction between PO catalogs and
 dynamic translations.

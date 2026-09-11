@@ -261,7 +261,7 @@ public class LocalizationManagementTests
     }
 
     [Fact]
-    public async Task Routes_AllEleven_RequireBearerAndManagementPermissionAndExposeCliMetadata()
+    public async Task Routes_AllEleven_RequireAuthorizationButOnlyCultureSettingsExposeCliMetadata()
     {
         var builder = WebApplication.CreateBuilder();
         await using var app = builder.Build();
@@ -269,14 +269,24 @@ public class LocalizationManagementTests
         app.AddTranslationManagementEndpoints();
         var endpoints = ((IEndpointRouteBuilder)app).DataSources.SelectMany(source => source.Endpoints).ToArray();
         Assert.Equal(11, endpoints.Length);
-        var commands = endpoints.Select(endpoint => endpoint.Metadata.GetMetadata<CliOperationMetadata>()).ToArray();
+        var commands = endpoints.Select(endpoint => endpoint.Metadata.GetMetadata<CliOperationMetadata>()).OfType<CliOperationMetadata>().ToArray();
+        Assert.Equal(6, commands.Length);
+        Assert.All(commands, command => Assert.Contains(command.CommandGroup.Last(), new[] { "cultures", "settings" }));
         Assert.True(Assert.Single(commands, command => command.Verb == "remove").RequiresConfirmation);
         Assert.False(Assert.Single(commands, command => command.Verb == "add").RequiresConfirmation);
         Assert.All(endpoints, endpoint =>
         {
             Assert.Contains(endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>(), data => data.AuthenticationSchemes == OrchardCoreConstants.AuthenticationSchemes.Api);
             Assert.Contains(endpoint.Metadata.GetOrderedMetadata<AuthorizationPolicy>().SelectMany(policy => policy.Requirements), requirement => requirement is PermissionRequirement permission && permission.Permission.Name == "AccessRemoteManagement");
-            Assert.NotNull(endpoint.Metadata.GetMetadata<CliOperationMetadata>());
+            var route = Assert.IsType<RouteEndpoint>(endpoint).RoutePattern.RawText;
+            if (route.Contains("/strings", StringComparison.Ordinal) || route.Contains("/translations", StringComparison.Ordinal))
+            {
+                Assert.Null(endpoint.Metadata.GetMetadata<CliOperationMetadata>());
+            }
+            else
+            {
+                Assert.NotNull(endpoint.Metadata.GetMetadata<CliOperationMetadata>());
+            }
         });
     }
 

@@ -69,37 +69,28 @@ content. Do not use them for collections of independently managed content.
 ## Localization
 
 Discover `pomi localization --help` after enabling `OrchardCore.Localization`
-and refreshing metadata. `OrchardCore.DataLocalization` adds translation editing.
+and refreshing metadata. It exposes culture and settings management only.
 
 ```bash
+pomi localization cultures list
+pomi localization cultures available --take 200
+pomi localization cultures add fr
+pomi localization cultures remove de --force
 pomi localization settings show --output json
-pomi localization cultures list --include-available true --take 200
 pomi localization settings schema --operation update
 pomi localization settings update --body-file cultures.json
-pomi localization strings show media-gallery --culture fr --take 200
-pomi localization translations list --culture fr --output json
-pomi localization translations schema --operation set
-pomi localization translations set --body-file translation.json
-pomi localization translations delete 'Content Types' Page --culture fr --force
 ```
 
 Culture settings **replace** the supported-culture list. Preserve existing
 cultures unless removal is requested; the default must remain in the list.
-Use names returned by culture discovery, not time zone identifiers.
+Use names returned by culture discovery, not time zone identifiers. These
+operations require `ManageCultures` and remote-management access.
 
-Translation JSON is `{ "culture": "fr", "context": "Content Types",
-"key": "Page", "value": "Page française" }`. Copy the exact context/key from
-this tenant's list; the example only works if that descriptor exists. Set/delete
-affect one pair and preserve other entries. Delete takes translation context and
-key positionally; global `--context` still selects the tenant.
-
-`--culture` on these commands chooses the requested data language. It does not
-install PO catalogs or change other commands' request language. UI strings use
-PO translations; `translations set` edits database-backed data localization,
-not PO files or localized content items. Missing/mismatched PO entries can still
-return English. Culture settings/strings require `ManageCultures`; translation
-reads require `ViewDynamicTranslations`, writes require `ManageTranslations`
-or `ManageTranslations_<culture>`, in addition to remote-management access.
+There are no generic string, PO catalog, or database translation commands.
+For Media UI labels, use `pomi media localizations show`. This reads the
+server-resolved labels, not PO catalog entries. For translation editing, use
+the Data Localization admin UI or its documented HTTP API; enabling that feature
+does not add translation commands to Pomi.
 
 ## Safety
 

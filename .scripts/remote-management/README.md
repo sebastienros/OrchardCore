@@ -57,10 +57,11 @@ password environment/stdin input, human and JSON results, complete tenant URLs,
 duplicate-name rejection, creation validation, setup failure/recovery, and
 unchanged local contexts. It creates tenants only inside the disposable host.
 
-`localization-smoke.py` exercises all eleven localization operations through the CLI,
-including available cultures, individual culture additions/removals, UI string group
-discovery, paging, explicit culture selection, settings readback, translation retries,
-French-only editing permissions, read-only access, and anonymous rejection. It
+`localization-smoke.py` exercises six culture/settings CLI operations and the
+dedicated Media label command. It also verifies that the five string-related
+operations stay in OpenAPI without CLI metadata, and tests them through HTTP,
+including group discovery, paging, translation retries, French-only editing
+permissions, read-only access, and anonymous rejection. It
 replaces culture settings on the disposable fixture with English and French.
 
 `api-revision-smoke.py` checks revision headers and HEAD authorization, then

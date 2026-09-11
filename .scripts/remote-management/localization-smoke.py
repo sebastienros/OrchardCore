@@ -31,9 +31,41 @@ def pomi(*args, body=None, client=None, status=None):
     return json.loads(result.stdout) if result.stdout.strip() else None
 
 
+tokens = {}
+
+
+def api(method, route, body=None, query=None, client='cli-fixture', status=200):
+    if client not in tokens:
+        credentials = urllib.parse.urlencode({'grant_type': 'client_credentials', 'client_id': client,
+                                             'client_secret': state['OC_CLIENT_SECRET'], 'scope': 'orchardcore.management'}).encode()
+        with urllib.request.urlopen(state['url'] + 'connect/token', data=credentials, timeout=30) as response:
+            tokens[client] = json.load(response)['access_token']
+    url = state['url'] + route
+    if query:
+        url += '?' + urllib.parse.urlencode(query)
+    request = urllib.request.Request(url, method=method, data=json.dumps(body).encode() if body is not None else None,
+                                     headers={'Authorization': 'Bearer ' + tokens[client], 'Content-Type': 'application/json'})
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            assert response.status == status, (route, response.status, status)
+            return json.load(response)
+    except urllib.error.HTTPError as error:
+        assert error.code == status, (route, error.code, status)
+        return json.load(error)
+
+
 pomi('context', 'add', 'localization-smoke', state['url'], '--current')
 pomi('api', 'refresh', '--force')
-assert set(pomi('localization', 'translations', 'schema', '--operation', 'set')['required']) == {'culture', 'context', 'key', 'value'}
+help_result = subprocess.run([sys.executable, str(wrapper), str(state_path), 'localization', '--help'],
+                             text=True, capture_output=True, timeout=30, check=True)
+assert 'cultures' in help_result.stdout and 'settings' in help_result.stdout
+assert all('  ' + name + ' ' not in help_result.stdout for name in ('strings', 'translations', 'js'))
+schema = api('GET', 'openapi/v1.json')
+for route, operations in schema['paths'].items():
+    if route.startswith(('/api/localization/strings', '/api/localization/translations')):
+        assert all('x-oc-cli' not in operation for operation in operations.values())
+assert schema['paths']['/api/media/localizations']['get']['x-oc-cli']['commandGroup'] == ['media', 'localizations']
+assert pomi('media', 'localizations', 'show')
 assert 'supportedCultures' in pomi('localization', 'settings', 'schema', '--operation', 'update')['properties']
 settings = pomi('localization', 'settings', 'show')
 assert settings['defaultCulture'] in settings['supportedCultures']
@@ -54,37 +86,37 @@ assert pomi('localization', 'cultures', 'remove', 'de', '--force') == updated
 pomi('localization', 'cultures', 'remove', 'en', '--force', status=400)
 pomi('localization', 'cultures', 'add', 'unknown-culture', status=400)
 assert pomi('localization', 'settings', 'show') == updated
-groups = pomi('localization', 'strings', 'list')
+groups = api('GET', 'api/localization/strings')
 assert {'name': 'media-gallery'} in groups['items']
-assert pomi('localization', 'strings', 'list', '--skip', str(groups['totalCount']))['items'] == []
-pomi('localization', 'strings', 'list', '--take', '201', status=400)
-pomi('localization', 'strings', 'list', client='cli-discovery', status=403)
+assert api('GET', 'api/localization/strings', query={'skip': groups['totalCount']})['items'] == []
+api('GET', 'api/localization/strings', query={'take': 201}, status=400)
+api('GET', 'api/localization/strings', client='cli-discovery', status=403)
 pomi('localization', 'cultures', 'add', 'de', client='cli-discovery', status=403)
 pomi('localization', 'cultures', 'remove', 'fr', '--force', client='cli-discovery', status=403)
-labels = pomi('localization', 'strings', 'show', 'media-gallery', '--culture', 'fr', '--take', '200')
+labels = api('GET', 'api/localization/strings/media-gallery', query={'culture': 'fr', 'take': 200})
 assert labels['culture'] == 'fr' and labels['totalCount'] > 0
-pomi('localization', 'strings', 'show', 'missing-group', status=404)
-pomi('localization', 'strings', 'show', 'media-gallery', '--culture', 'de', status=400)
+api('GET', 'api/localization/strings/missing-group', status=404)
+api('GET', 'api/localization/strings/media-gallery', query={'culture': 'de'}, status=400)
 pomi('localization', 'settings', 'update', '--stdin', body={**updated, 'defaultCulture': 'de'}, status=400)
 
-items = pomi('localization', 'translations', 'list', '--culture', 'fr')['items']
+items = api('GET', 'api/localization/translations', query={'culture': 'fr'})['items']
 assert items, 'Fixture must register at least one dynamic translation descriptor.'
 key = items[0]
 translation = {'culture': 'fr', 'context': key['context'], 'key': key['key'], 'value': 'Traduction CLI éàç'}
-assert pomi('localization', 'translations', 'set', '--stdin', body=translation)['changed']
-assert not pomi('localization', 'translations', 'set', '--stdin', body=translation)['changed']
-translated = pomi('localization', 'translations', 'list', '--culture', 'fr')['items']
+assert api('PUT', 'api/localization/translations', body=translation)['changed']
+assert not api('PUT', 'api/localization/translations', body=translation)['changed']
+translated = api('GET', 'api/localization/translations', query={'culture': 'fr'})['items']
 assert next(item for item in translated if item['context'] == key['context'] and item['key'] == key['key'])['value'] == translation['value']
 # A reader cannot edit. A French translator cannot edit English or change tenant culture settings.
-pomi('localization', 'translations', 'set', '--stdin', body=translation, client='cli-translation-reader', status=403)
-assert pomi('localization', 'translations', 'set', '--stdin', body={**translation, 'value': 'Français'}, client='cli-translator-fr')['changed']
-pomi('localization', 'translations', 'set', '--stdin', body={**translation, 'culture': 'en'}, client='cli-translator-fr', status=403)
+api('PUT', 'api/localization/translations', body=translation, client='cli-translation-reader', status=403)
+assert api('PUT', 'api/localization/translations', body={**translation, 'value': 'Français'}, client='cli-translator-fr')['changed']
+api('PUT', 'api/localization/translations', body={**translation, 'culture': 'en'}, client='cli-translator-fr', status=403)
 pomi('localization', 'settings', 'show', client='cli-translator-fr', status=403)
-pomi('localization', 'translations', 'list', '--culture', 'fr', client='cli-discovery', status=403)
-pomi('localization', 'translations', 'set', '--stdin', body={**translation, 'key': 'Unregistered CLI key'}, status=404)
-args = ('localization', 'translations', 'delete', key['context'], key['key'], '--culture', 'fr', '--force')
-assert pomi(*args)['changed']
-assert not pomi(*args)['changed']
+api('GET', 'api/localization/translations', query={'culture': 'fr'}, client='cli-discovery', status=403)
+api('PUT', 'api/localization/translations', body={**translation, 'key': 'Unregistered CLI key'}, status=404)
+query = {'context': key['context'], 'key': key['key'], 'culture': 'fr'}
+assert api('DELETE', 'api/localization/translations', query=query)['changed']
+assert not api('DELETE', 'api/localization/translations', query=query)['changed']
 # Anonymous callers cannot reach any of the new read APIs.
 for route in ('api/localization/cultures', 'api/localization/cultures/available', 'api/localization/settings', 'api/localization/strings', 'api/localization/strings/media-gallery', 'api/localization/translations?culture=fr'):
     try:
@@ -100,4 +132,4 @@ for method in ('PUT', 'DELETE'):
     except urllib.error.HTTPError as error:
         assert error.code == 401, (method, error.code)
 assert pomi('localization', 'settings', 'show') == updated
-print('Localization CLI smoke passed: eleven operations, incremental culture edits, group discovery, paging, retries, and authorization.')
+print('Localization smoke passed: six culture/settings CLI operations, Media UI labels, five HTTP-only string operations, paging, retries, and authorization.')

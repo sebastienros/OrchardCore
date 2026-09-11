@@ -68,21 +68,11 @@ internal static class LocalizationManagementEndpoints
             .Produces<CultureSettings>().ProducesValidationProblem().ProducesProblem(401).ProducesProblem(403);
         group.MapGet("/strings", StringGroupsAsync)
             .WithName("ApiListLocalizationStringGroups").WithSummary("Lists available UI string groups.")
-            .WithDescription("Lists group names advertised by enabled JavaScript localization providers. Use a returned name with localization strings show. Requires ManageCultures.")
-            .WithCliCommand(new CliOperationMetadata(["localization", "strings"], "list")
-            {
-                Capability = Capability,
-                TableColumns = { new("items[].name", "Group") },
-            })
+            .WithDescription("Lists group names advertised by enabled JavaScript localization providers. Use a returned name with GET /api/localization/strings/{groupName}. Requires ManageCultures.")
             .Produces<UiStringGroupsResponse>().ProducesProblem(400).ProducesProblem(401).ProducesProblem(403);
         group.MapGet("/strings/{groupName}", StringsAsync)
             .WithName("ApiGetLocalizationStrings").WithSummary("Shows translated UI strings.")
             .WithDescription("Reads a registered JavaScript localization group in a supported culture. Does not edit PO files. Untranslated strings retain their source text. Requires ManageCultures.")
-            .WithCliCommand(new CliOperationMetadata(["localization", "strings"], "show")
-            {
-                Capability = Capability, Arguments = { new("groupName", 0) },
-                TableColumns = { new("items[].key", "Key"), new("items[].value", "Value") },
-            })
             .Produces<UiStringsResponse>().ProducesProblem(400).ProducesProblem(401).ProducesProblem(403).ProducesProblem(404);
     }
 

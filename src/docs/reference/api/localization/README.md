@@ -1,6 +1,6 @@
 # Localization API
 
-Manage tenant cultures, inspect translated JavaScript UI strings, and edit database-backed translations. `OrchardCore.Localization` contributes culture settings and UI strings (capability `localization`). `OrchardCore.DataLocalization` additionally contributes dynamic translations (capability `localization-translations`). Enable [Remote Management](../../modules/RemoteManagement/README.md) to discover these operations through `pomi`.
+Manage tenant cultures, inspect translated JavaScript UI strings, and edit database-backed translations. `OrchardCore.Localization` contributes culture settings and UI strings (capability `localization`). `OrchardCore.DataLocalization` additionally contributes dynamic translations (capability `localization-translations`). Enable [Remote Management](../../modules/RemoteManagement/README.md) to use these authenticated APIs. Only culture and settings operations are projected into `pomi localization`; string inspection and translation editing remain HTTP/OpenAPI operations.
 
 These APIs serve different kinds of localization:
 
@@ -68,43 +68,31 @@ fallback, create `cultures.json`:
 }
 ```
 
-Apply it, then inspect the French Media UI labels:
+Apply it:
 
 ```bash
 pomi localization settings update --body-file cultures.json
-pomi localization strings list
-pomi localization strings show media-gallery --culture fr --take 200
 ```
 
-This replaces the complete supported-culture list. Read current settings first and retain any other cultures you need. The explicit `--culture` on these localization commands is independent of the CLI's saved tenant `--context`; it is not a global CLI language switch.
+This replaces the complete supported-culture list. Read current settings first
+and retain any other cultures you need. JSON bodies can also be supplied with
+`--stdin`; use `--output json` for scripts.
 
-For database-backed translations:
+`pomi localization` exposes culture and settings management only. There are no
+PO catalog, generic JavaScript string, or database translation commands. Use the
+[Data Localization admin UI](../../modules/DataLocalization/README.md) or the
+HTTP APIs below for database-backed translations. Their permissions and behavior
+are independent of CLI command discovery.
+
+Media retains its dedicated UI-label command:
 
 ```bash
-pomi features enable OrchardCore.DataLocalization
-pomi api refresh
-pomi localization translations list --culture fr
-pomi localization translations schema --operation set
+pomi media localizations show
 ```
 
-Copy an exact `context` and `key` from the list into `translation.json`. For example, **if** the tenant registers `Content Types` / `Page`:
-
-```json
-{
-  "culture": "fr",
-  "context": "Content Types",
-  "key": "Page",
-  "value": "Page française"
-}
-```
-
-```bash
-pomi localization translations set --body-file translation.json
-pomi localization translations list --culture fr --output json
-pomi localization translations delete 'Content Types' Page --culture fr --force
-```
-
-The delete command takes the translation context and key as positional arguments. The global `pomi --context <name>` continues to select the tenant. `--force` confirms removal. JSON bodies can also be supplied with `--stdin`; use `--output json` for scripts. Default output is human-readable in a terminal and JSON when redirected.
+It returns the Media gallery's resolved labels in the server-selected request
+culture; it does not enumerate module PO catalogs or edit translations. See the
+[Media localization endpoint](../media/README.md) for HTTP culture selection.
 
 ## List cultures
 
@@ -191,7 +179,7 @@ Changed settings are saved through the site settings service and request a tenan
 
 `GET /api/localization/strings` accepts no body. `skip` defaults to `0` and
 `take` to `50`, with the same bounds as culture listing. Invalid paging returns
-`400`. For example, `pomi localization strings list` returns:
+`400`. For example, `GET /api/localization/strings` returns:
 
 ```json
 {
@@ -206,12 +194,12 @@ Names come from enabled `IJSLocalizer` providers' `GetLocalizationGroups()`
 method. Exact duplicates are merged and names are sorted ordinally. Group names
 are case-sensitive unless the owning provider explicitly handles them otherwise.
 The list is independent of the selected culture and does not resolve translations.
-Use a returned name as the argument to `pomi localization strings show <groupName>`.
+Use a returned name with `GET /api/localization/strings/{groupName}`. This endpoint is exposed through HTTP/OpenAPI only.
 
 For compatibility, older providers can still serve strings by name but do not
 appear until they implement group discovery. Third-party modules can advertise
 their own groups without changing the CLI; see
-[JavaScript localization](../../modules/Localize/javascript-localization.md#advertise-groups-for-cli-discovery).
+[JavaScript localization](../../modules/Localize/javascript-localization.md#advertise-groups-for-http-discovery).
 The built-in Media provider advertises `media-gallery`.
 
 ## Read UI strings
@@ -235,7 +223,7 @@ Example `200 OK` response (values depend on installed catalogs):
 }
 ```
 
-Providers are merged using the existing JavaScript localization service and results are sorted by key. `400` indicates an unsupported culture or invalid paging/group length; `404` means no strings were supplied for that group. Use `pomi localization strings list` to discover advertised groups.
+Providers are merged using the existing JavaScript localization service and results are sorted by key. `400` indicates an unsupported culture or invalid paging/group length; `404` means no strings were supplied for that group. Use `GET /api/localization/strings` to discover advertised groups.
 
 Source text can remain visible when a PO entry is missing or its context does not match the current localizer. Selecting French cannot repair a stale translation catalog. This response reports resolved strings, not translation coverage or provenance. It does not expose an API to upload PO files.
 
@@ -268,7 +256,19 @@ Descriptors come from the enabled features' `ILocalizationDataProvider` implemen
 
 ## Set a dynamic translation
 
-`PUT /api/localization/translations` requires `application/json` with the `translation.json` shape above. All four strings are required:
+`PUT /api/localization/translations` requires `application/json`. For example,
+if the tenant registers the `Content Types` / `Page` descriptor:
+
+```json
+{
+  "culture": "fr",
+  "context": "Content Types",
+  "key": "Page",
+  "value": "Page française"
+}
+```
+
+All four strings are required:
 
 - `culture`: a supported non-invariant culture, normalized to the configured spelling.
 - `context` and `key`: nonblank, each at most 1000 characters, matching a registered descriptor **exactly, case-sensitively**.
@@ -300,4 +300,4 @@ Only the exact pair is removed; other translations remain. Repeating deletion, i
 
 All eleven operations return `401` for missing/invalid bearer authentication and `403` for insufficient permissions. Operation-specific errors are described above. Validation responses contain an `errors` dictionary; other errors use Problem Details. Malformed JSON returns `400`, and unsupported request content types return `415` on body operations. Routes are relative to the tenant, including its path prefix.
 
-Source: `OrchardCore.Localization/Endpoints/LocalizationManagementEndpoints.cs`, `OrchardCore.DataLocalization/Endpoints/TranslationManagementEndpoints.cs`, and the existing localization/site settings and translations document services. Each enabled module contributes its own capability and CLI metadata to the management OpenAPI document.
+Source: `OrchardCore.Localization/Endpoints/LocalizationManagementEndpoints.cs`, `OrchardCore.DataLocalization/Endpoints/TranslationManagementEndpoints.cs`, and the existing localization/site settings and translations document services. Each enabled module contributes its capability to the management manifest. Only the six culture/settings operations carry CLI metadata in the OpenAPI document.

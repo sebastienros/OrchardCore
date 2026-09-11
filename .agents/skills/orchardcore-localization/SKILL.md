@@ -134,13 +134,11 @@ Read live help and schemas first. Prefer `cultures add fr` or
 other cultures, default and fallback setting. Removing the default is rejected;
 change it through `settings update` first. `cultures available`
 discovers valid names. `settings show/update` reads/replaces the whole configuration.
-Use `strings list` to discover group names before `strings show <group> --culture fr`
-to inspect JavaScript UI strings from PO catalogs. Older third-party providers
-must implement `IJSLocalizer.GetLocalizationGroups()` to appear in discovery;
-their known groups remain readable without it. `translations list/set/delete` requires Data
-Localization and manages one exact database-backed context/key per mutation.
-It cannot edit PO catalogs or content-item translations. See
-`src/docs/reference/api/localization/README.md` for tested commands and permissions.
+The CLI does not expose general string inspection, PO catalogs, or database
+translation editing. `pomi media localizations show` remains available for
+Media gallery labels. Use the Data Localization admin UI or the existing
+HTTP APIs for database translations. See
+`src/docs/reference/api/localization/README.md` for commands and permissions.
 
 ## Quick Reference
 

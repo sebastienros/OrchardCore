@@ -18,8 +18,6 @@ namespace OrchardCore.DataLocalization.Endpoints;
 
 internal static class TranslationManagementEndpoints
 {
-    private const string Capability = "localization-translations";
-
     public static void AddTranslationManagementEndpoints(this IEndpointRouteBuilder routes)
     {
         var group = routes.MapGroup("api/localization/translations").WithTags("Data Localization")
@@ -30,22 +28,15 @@ internal static class TranslationManagementEndpoints
         group.MapGet("", ListAsync)
             .WithName("ApiListDataTranslations").WithSummary("Lists dynamic translation keys and values.")
             .WithDescription("Lists registered data localization descriptors with their stored translation in a supported culture. Does not read PO catalogs. Requires ViewDynamicTranslations.")
-            .WithCliCommand(new CliOperationMetadata(["localization", "translations"], "list")
-            {
-                Capability = Capability,
-                TableColumns = { new("items[].context", "Context"), new("items[].key", "Key"), new("items[].value", "Translation"), new("items[].isTranslated", "Translated") },
-            })
             .Produces<TranslationListResponse>().ProducesProblem(400).ProducesProblem(401).ProducesProblem(403);
         group.MapPut("", SetAsync)
             .WithName("ApiSetDataTranslation").WithSummary("Sets one dynamic translation.")
             .WithDescription("Sets a registered context/key in one supported culture, preserving other entries and cultures. Requires ManageTranslations or the culture-specific ManageTranslations permission.")
-            .WithCliCommand(new CliOperationMetadata(["localization", "translations"], "set") { Capability = Capability, InputMode = CliInputMode.Json })
             .Accepts<TranslationRequest>("application/json")
             .Produces<TranslationResult>().ProducesValidationProblem().ProducesProblem(401).ProducesProblem(403).ProducesProblem(404);
         group.MapDelete("", DeleteAsync)
             .WithName("ApiDeleteDataTranslation").WithSummary("Removes one stored dynamic translation.")
             .WithDescription("Removes an exact context/key in one supported culture, restoring source text or fallback. Repeating deletion is safe. Requires ManageTranslations or the culture-specific ManageTranslations permission.")
-            .WithCliCommand(new CliOperationMetadata(["localization", "translations"], "delete") { Capability = Capability, RequiresConfirmation = true, Arguments = { new("context", 0), new("key", 1) } })
             .Produces<TranslationResult>().ProducesProblem(400).ProducesProblem(401).ProducesProblem(403);
     }
 
