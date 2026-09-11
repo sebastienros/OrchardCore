@@ -249,6 +249,8 @@ internal sealed class CommandOutput
 
     public string? ContextName { get; init; }
 
+    public string? CurrentContextName { get; init; }
+
     public IReadOnlyList<TenantContextRecord> KnownContexts { get; init; } = [];
 }
 

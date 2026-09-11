@@ -15,7 +15,7 @@ internal static class NextStepFormatter
             return null;
         }
 
-        var parentCommand = ContextCommand(context);
+        var parentCommand = ContextCommand(context, output.CurrentContextName);
         if (name is not null && CanQuote(name) && !name.StartsWith('-'))
         {
             var tenant = QuoteArgument(name);
@@ -56,19 +56,20 @@ internal static class NextStepFormatter
 
             if (path == "context add")
             {
-                return $"Next: sign in to this tenant.\n  {ContextCommand(name)} login";
+                return $"Next: sign in to this tenant.\n  {ContextCommand(name, output.CurrentContextName)} login";
             }
         }
 
         if (path == "login" && Read(output.Json, "context") is { } loggedInContext && CanQuote(loggedInContext))
         {
-            return $"Next: explore the commands available for this tenant.\n  {ContextCommand(loggedInContext)} --help";
+            return $"Next: explore the commands available for this tenant.\n  {ContextCommand(loggedInContext, output.CurrentContextName)} --help";
         }
 
         return null;
     }
 
-    private static string ContextCommand(string? context) => string.IsNullOrEmpty(context)
+    private static string ContextCommand(string? context, string? currentContext) => string.IsNullOrEmpty(context)
+        || string.Equals(context, currentContext, StringComparison.OrdinalIgnoreCase)
         ? "oc" : $"oc --context={QuoteArgument(context)}";
 
     private static string ChooseContextName(string name, string? url, IReadOnlyList<TenantContextRecord> contexts)

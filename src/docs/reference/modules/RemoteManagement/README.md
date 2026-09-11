@@ -358,6 +358,10 @@ oc context add tenant-a https://cms.example.com/tenant-a --current
 oc login
 ```
 
+Next-command hints omit `--context` when the suggested context is already the
+current default. Hints targeting another context include its name explicitly,
+so copying the command keeps the intended tenant selected.
+
 The default `--output auto` writes human-readable messages in a terminal (tables for lists) and JSON when redirected to a pipe or file. Use `--output human` to keep readable messages even when redirected. Use `--output json` explicitly for automation, or `--output table|csv|tsv|yaml|toml|none` for other representations. Tables may shorten long non-URL cells; HTTP and HTTPS URLs remain complete. JSON preserves the full response. TOML omits properties whose value is `null`; root arrays and scalar values are emitted under `items` and `value`, respectively. JSON request bodies can come from `--body`, `--body-file`, or `--stdin`. Binary request bodies use `--file` or `--stdin`. Discovered option and argument names use lower kebab-case. List commands use zero-based `--skip` and `--take` options for paging.
 
 Every resource that accepts a request body exposes a `schema` verb. When all input operations use the same shape, the schema is returned directly:

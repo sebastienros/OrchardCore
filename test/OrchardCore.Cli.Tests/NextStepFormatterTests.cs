@@ -4,6 +4,35 @@ namespace OrchardCore.Cli.Tests;
 
 public class NextStepFormatterTests
 {
+    [Theory]
+    [InlineData("parent", false)]
+    [InlineData("PARENT", false)]
+    [InlineData("other", true)]
+    [InlineData(null, true)]
+    public void NextCommand_QualifiesContextOnlyWhenNotCurrent(string? currentContext, bool expectedQualifier)
+    {
+        foreach (var (path, json, command) in new (string[], string, string)[]
+        {
+            (["tenants", "create"], """{"name":"Demo","state":"Uninitialized"}""", "tenants setup Demo"),
+            (["tenants", "install"], """{"name":"Demo","state":"Running"}""", "tenants enable-remote-management Demo"),
+            (["tenants", "create"], """{"name":"Demo","state":"Disabled"}""", "tenants start Demo"),
+            (["context", "add"], """{"name":"parent"}""", "login"),
+            (["login"], """{"context":"parent"}""", "--help"),
+        })
+        {
+            using var data = JsonDocument.Parse(json);
+            var text = NextStepFormatter.Format(new CommandOutput
+            {
+                Json = data.RootElement, CommandPath = path, ContextName = "parent", CurrentContextName = currentContext,
+            });
+            Assert.Contains(expectedQualifier ? $"oc --context=parent {command}" : $"oc {command}", text);
+            if (!expectedQualifier)
+            {
+                Assert.DoesNotContain("--context", text);
+            }
+        }
+    }
+
     [Fact]
     public void CreatedTenant_SuggestsSetupInParentContextWithoutInlinePassword()
     {

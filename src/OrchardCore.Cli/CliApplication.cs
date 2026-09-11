@@ -1933,6 +1933,7 @@ internal sealed partial class CliApplication
         {
             Json = element, TableColumns = tableColumns, CommandPath = commandPath.ToArray(), HttpMethod = httpMethod, StatusCode = statusCode,
             ContextName = ContextStore.FindContext(_configuration, parseResult.GetValue(_contextOption))?.Name,
+            CurrentContextName = _configuration.CurrentContext,
             KnownContexts = _configuration.Contexts,
         }, format, Console.Out, cancellationToken);
         return 0;

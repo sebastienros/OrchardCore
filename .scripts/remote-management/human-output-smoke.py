@@ -49,7 +49,7 @@ try:
         env.pop('OC_CLIENT_ID', None)
         env.pop('OC_CLIENT_SECRET', None)
         (config / 'contexts.json').write_text(json.dumps({
-            'currentContext': 'test', 'contexts': [{'name': 'test', 'tenantUrl': tenant}],
+            'currentContext': 'test', 'contexts': [{'name': 'test', 'tenantUrl': tenant}, {'name': 'other', 'tenantUrl': tenant}],
         }))
         cache = config / 'cache' / hashlib.sha256(tenant.encode()).hexdigest()[:16]
         cache.mkdir(parents=True)
@@ -106,7 +106,11 @@ try:
         assert human.startswith("Tenant 'Demo' created successfully."), human
         assert 'Setup URL: ' + setup_url in human, human
         assert ' | ' not in human and 'Can delete' not in human, human
-        assert 'oc --context=test tenants setup Demo' in human, human
+        assert 'oc tenants setup Demo' in human, human
+        assert '--context' not in human, human
+        assert invoke('--context', 'test', '--output', 'human') == human
+        other = invoke('--context', 'other', '--output', 'human')
+        assert 'oc --context=other tenants setup Demo' in other, other
         assert "--email '<admin-email>'" in human, human
         assert '--password' not in human, human
         assert json.loads(invoke('--output', 'json')) == result
@@ -122,10 +126,10 @@ try:
         response_status = 200
         result = {'name': 'Demo', 'state': 'Running', 'primaryUrl': tenant + 'Demo/'}
         running = invoke('--output', 'human')
-        assert 'oc --context=test tenants enable-remote-management Demo' in running, running
+        assert 'oc tenants enable-remote-management Demo' in running, running
         setup = invoke('--output', 'human', verb='setup')
         assert "Tenant 'Demo' set up successfully." in setup, setup
-        assert 'oc --context=test tenants enable-remote-management Demo' in setup, setup
+        assert 'oc tenants enable-remote-management Demo' in setup, setup
         result = {'name': 'Demo', 'state': 'Running', 'url': tenant + 'Demo/'}
         enabled = invoke('--output', 'human', verb='enable-remote-management')
         assert "Tenant 'Demo' configured for remote management successfully." in enabled, enabled
