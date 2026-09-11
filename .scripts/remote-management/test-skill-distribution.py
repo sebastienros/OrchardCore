@@ -23,6 +23,8 @@ with zipfile.ZipFile(site / 'downloads/pomi-plugin.zip') as plugin, zipfile.ZipF
     claude = json.loads(plugin.read(root + '.claude-plugin/plugin.json'))
     assert manifest['version'] == claude['version'] == metadata['packageVersion']
     assert manifest['name'] == claude['name'] == 'pomi'
+    assert root + 'agents/pomi.agent.md' in plugin.namelist()
+    assert not any('/agents/' in name for name in skills.namelist()), 'Skills-only ZIP must not ship agent profiles'
     source = REPO / '.agents/skills/pomi'
     for file in source.rglob('*'):
         if not file.is_file() or '__pycache__' in file.parts:
@@ -45,10 +47,15 @@ with zipfile.ZipFile(site / 'downloads/pomi-plugin.zip') as plugin, zipfile.ZipF
         source = entry['source']['path'] if isinstance(entry['source'], dict) else entry['source']
         assert source == './plugins/pomi'
     count = 0
-    for file in sorted((REPO / '.agents/skills/pomi/skills').glob('orchardcore-cli*/**/*.md')):
+    canonical = REPO / '.agents/skills/pomi'
+    markdown_files = [file for directory in ('skills', 'agents')
+                      for file in (canonical / directory).rglob('*.md')]
+    for file in sorted(markdown_files):
         rel = file.relative_to(REPO / '.agents/skills/pomi').as_posix()
         expected = file.read_bytes()
-        assert plugin.read(root + rel) == skills.read('pomi-skills/' + rel) == expected, rel
+        assert plugin.read(root + rel) == expected, rel
+        if rel.startswith('skills/'):
+            assert skills.read('pomi-skills/' + rel) == expected, rel
         assert (site / 'agents/raw' / rel).read_bytes() == expected, rel
         assert not (site / 'agents/raw' / rel.removesuffix('.md') / 'index.html').exists(), rel
         rendered = site / 'agents' / rel.removesuffix('.md') / 'index.html'

@@ -7,6 +7,7 @@ import argparse
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -28,6 +29,14 @@ claude = json.loads((source / '.claude-plugin/plugin.json').read_text())
 assert manifest['name'] == claude['name'] == source.name == 'pomi'
 assert manifest['version'] == claude['version']
 assert manifest['skills'] == './skills/'
+agents = list(source.glob('agents/*.agent.md'))
+assert [path.name for path in agents] == ['pomi.agent.md'], 'Ship one canonical designer agent'
+profile = agents[0].read_text()
+frontmatter = profile.split('---\n', 2)
+assert len(frontmatter) == 3 and frontmatter[0] == '', 'Agent needs YAML frontmatter'
+assert re.search(r'^name: pomi$', frontmatter[1], re.M)
+assert re.search(r'^description: .+', frontmatter[1], re.M)
+assert len(frontmatter[2]) <= 30000, 'Copilot agent prompt exceeds the supported limit'
 assert json.loads((source / 'compatibility.json').read_text())['managementProtocolMajor'] == 1
 for icon in ('composerIcon', 'logo', 'logoDark'):
     assert (source / manifest['interface'][icon]).read_bytes().startswith(b'\x89PNG')
@@ -70,4 +79,4 @@ with tempfile.TemporaryDirectory(prefix='pomi-marketplace-') as temporary:
         for file in source.rglob('*'):
             if file.is_file() and '__pycache__' not in file.parts:
                 assert (destination / file.relative_to(source)).read_bytes() == file.read_bytes(), file
-print('Marketplace passed: two catalogs, one self-contained plugin, ten canonical skills, manifests, branding and relocated references.')
+print('Marketplace passed: two catalogs, one designer agent, ten canonical skills, manifests, branding and relocated references.')

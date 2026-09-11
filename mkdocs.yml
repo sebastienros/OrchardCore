@@ -96,9 +96,11 @@ plugins:
   - git-authors:
       exclude:
         - agents/skills/*
+        - agents/agents/*
   - git-revision-date-localized:
       exclude:
         - agents/skills/*
+        - agents/agents/*
   - exclude:
       glob:
         # Excluding the large node folder with all its MD files. We can't exclude everything apart from docs because there are links to e.g. C# files too.

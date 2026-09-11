@@ -36,7 +36,9 @@ def on_files(files, config):
         plugin = Path(result['plugin'])
         for path in sorted((plugin / 'assets').iterdir()):
             files.append(File.generated(config, 'agents/assets/' + path.name, content=path.read_bytes()))
-        for path in sorted((plugin / 'skills').rglob('*.md')):
+        markdown_files = [path for directory in ('skills', 'agents')
+                          for path in (plugin / directory).rglob('*.md')]
+        for path in sorted(markdown_files):
             relative = path.relative_to(plugin).as_posix()
             raw_uri = 'agents/raw/' + relative
             page_uri = 'agents/' + relative

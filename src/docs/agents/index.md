@@ -10,6 +10,11 @@ marketplace**: your agent fetches it, so no manual download or package build is
 required. The website also provides versioned ZIPs and browsable instructions.
 Opening a public skill URL does **not** register it with an agent.
 
+The plugin also includes **Pomi, a web and content designer** for Copilot CLI.
+It builds standalone websites or SaaS tenants, combines visual design with
+structured content modeling, and aims for a site editors can maintain without
+editing markup. Its agent profile uses the same ten bundled skills.
+
 ## Install Pomi and connect
 
 [Install Pomi and authenticate](../guides/remote-management/README.md) on the
@@ -117,6 +122,50 @@ branch when needed. Update with `copilot plugin marketplace update orchardcore`
 and `copilot plugin update pomi`. See the official
 [Copilot CLI plugin reference](https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference)
 and [installation guide](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/plugins-finding-installing).
+
+### Design a website with the Pomi agent
+
+After installing or updating the plugin, start a new Copilot CLI session and
+enter:
+
+```text
+/agent
+```
+
+Select **pomi**. Give it the audience, site purpose, brand material, target
+context or new-site directory, and whether to publish. For example:
+
+> Design a website for a community arts center in the existing arts context.
+> Use a warm, editorial visual style. Include upcoming events, artist profiles,
+> venue information, and booking links. Make events and artists reusable content
+> that editors can manage independently. Keep the new content in draft.
+
+For a SaaS host:
+
+> Using my authenticated Default-tenant context, create a tenant named Studio
+> at the studio URL prefix. Build a photography portfolio with reusable project
+> galleries and a distinctive monochrome design. Use SQLite and guide me through
+> authenticating to the child tenant before creating its content.
+
+Pomi inspects the tenant's capabilities, models editable content and page
+sections, creates Liquid presentation and Media assets, and verifies the
+visitor and editor workflows. It preserves an existing brand when requested
+and checks narrow and wide layouts when browser tools are available. Draft
+content does not isolate template or theme changes on a live site; specify a
+staging tenant for a redesign that must remain private.
+
+The agent inherits your session's model and available tools. It does not install
+Pomi, provide credentials, or grant extra Orchard permissions by itself; it can
+follow the installation and authentication skills as part of your request.
+No separate agent installation is needed with the complete plugin. The
+**skills-only ZIP does not include the agent profile**. Other clients can use
+the existing skills; agent discovery and selection depend on the client.
+
+Browse the [designer instructions](agents/pomi.agent.md) or read the
+[raw agent profile](raw/agents/pomi.agent.md). The canonical profile is
+`agents/pomi.agent.md` inside the plugin, alongside `skills/`. Its relative
+references remain resolvable when the plugin is installed
+outside this repository. See [Copilot's plugin agent documentation](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/plugins-creating).
 
 ### Copilot and other agents: install standalone skills
 

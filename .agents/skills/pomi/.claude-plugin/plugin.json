@@ -1,7 +1,7 @@
 {
   "name": "pomi",
-  "version": "0.9.2",
-  "description": "Install local Orchard Core sites and manage tenants through Pomi.",
+  "version": "0.10.0",
+  "description": "Design and build editor-friendly Orchard Core websites and SaaS tenants with Pomi.",
   "author": {
     "name": "Orchard Core contributors"
   },
