@@ -186,6 +186,27 @@ internal sealed partial class CliApplication
         var cacheKey = context.TenantUrl;
         var cached = await _cacheService.ReadAsync(cacheKey, CacheKind.OpenApi, cancellationToken);
         var offlineHelp = args.Contains("--help") || args.Contains("-h") || args.Contains("-?") || args.Any(arg => arg.StartsWith("[suggest", StringComparison.Ordinal));
+        if (!offlineHelp && cached is { ApiRevision: not null } && cached.ExpiresAt > DateTimeOffset.UtcNow)
+        {
+            // Older servers without revision headers retain the TTL-based behavior.
+            // A HEAD check discovers newly enabled commands before parsing arguments.
+            try
+            {
+                var manifestUri = CliUriPolicy.RequireTenantEndpoint(new Uri(context.TenantUrl), GetManagementManifestUri(context).AbsoluteUri);
+                using var request = new HttpRequestMessage(HttpMethod.Head, manifestUri);
+                AddAuthorization(request, await ResolveAccessTokenAsync(context, null, null, false, cancellationToken));
+                using var response = await _httpClient.SendAsync(request, cancellationToken);
+                if (await _cacheService.ObserveApiRevisionAsync(cacheKey, response, cancellationToken))
+                {
+                    cached = await _cacheService.ReadAsync(cacheKey, CacheKind.OpenApi, cancellationToken);
+                }
+            }
+            catch (Exception exception) when (!cancellationToken.IsCancellationRequested && exception is HttpRequestException or TaskCanceledException)
+            {
+                // Let the requested operation report connectivity failures normally.
+            }
+        }
+
         if (!offlineHelp && (cached is null || cached.ExpiresAt <= DateTimeOffset.UtcNow))
         {
             try
@@ -1169,7 +1190,7 @@ internal sealed partial class CliApplication
 
     private async Task<CachedContentResult> RefreshOpenApiAsync(TenantContextRecord context, bool force, bool allowStale, CancellationToken cancellationToken)
     {
-        var manifestCache = await RefreshManifestAsync(context, force: false, allowStale: false, cancellationToken);
+        var manifestCache = await RefreshManifestAsync(context, force, allowStale: false, cancellationToken);
         var manifest = CliUtilities.ParseManifest(manifestCache.CacheRecord.Content);
         EnsureCompatible(manifest);
         var openApiUri = manifest.OpenApiUrl ?? (!string.IsNullOrWhiteSpace(context.OpenApiUrl) ? new Uri(context.OpenApiUrl, UriKind.Absolute) : null)
@@ -1249,6 +1270,7 @@ internal sealed partial class CliApplication
         }
 
         using var response = await _httpClient.SendAsync(request, cancellationToken);
+        await _cacheService.ObserveApiRevisionAsync(context.TenantUrl, response, cancellationToken);
         var contentType = response.Content.Headers.ContentType?.MediaType;
         var payload = response.Content is null ? string.Empty : await response.Content.ReadAsStringAsync(cancellationToken);
 

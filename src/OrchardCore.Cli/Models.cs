@@ -80,6 +80,8 @@ internal sealed class CachedContentRecord
 
     public string? ETag { get; set; }
 
+    public string? ApiRevision { get; set; }
+
     public DateTimeOffset FetchedAt { get; set; }
 
     public DateTimeOffset ExpiresAt { get; set; }

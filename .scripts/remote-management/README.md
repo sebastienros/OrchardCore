@@ -21,6 +21,7 @@ In a second terminal, substitute that path below:
 python3 .scripts/remote-management/verify-fixture.py <fixture.json>
 python3 .scripts/remote-management/smoke-fixture.py <fixture.json>
 python3 .scripts/remote-management/localization-smoke.py <fixture.json>
+python3 .scripts/remote-management/api-revision-smoke.py <fixture.json>
 python3 .scripts/remote-management/content-versions-smoke.py <fixture.json>
 python3 .scripts/remote-management/content-validation-smoke.py <fixture.json>
 python3 .scripts/remote-management/tenant-install-smoke.py <fixture.json>
@@ -61,6 +62,11 @@ including available cultures, individual culture additions/removals, UI string g
 discovery, paging, explicit culture selection, settings readback, translation retries,
 French-only editing permissions, read-only access, and anonymous rejection. It
 replaces culture settings on the disposable fixture with English and French.
+
+`api-revision-smoke.py` checks revision headers and HEAD authorization, then
+disables and re-enables Templates through a separate HTTP client. It verifies
+that the CLI refreshes its still-fresh cache and discovers the restored command
+without an explicit refresh. Run it with the current CLI build.
 
 `graphql-smoke.py` verifies direct queries, full and single-type introspection,
 variables/stdin, errors, and permissions against Orchard without refreshing

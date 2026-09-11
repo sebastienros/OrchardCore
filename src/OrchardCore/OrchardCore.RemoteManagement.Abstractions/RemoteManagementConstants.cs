@@ -31,6 +31,12 @@ public static class RemoteManagementConstants
     public const string CliExtensionName = "x-oc-cli";
 
     /// <summary>
+    /// The response header identifying the active tenant's API feature and module revision.
+    /// This opaque value is independent of the management protocol version.
+    /// </summary>
+    public const string ApiRevisionHeaderName = "OrchardCore-Api-Revision";
+
+    /// <summary>
     /// The authentication scope required to call remote management APIs.
     /// </summary>
     public const string ManagementScope = "orchardcore.management";

@@ -440,7 +440,7 @@ To share uploads across nodes, configure the same shared backend, such as
 for the tenant on all nodes. Uploading to a local store does not replicate files.
 Tenant static files remain deployment assets and have no management API.
 
-Every static and discovered command supports `--help`. OpenAPI metadata is cached by tenant URL and ETag to reduce discovery requests. Help and completion read the cache offline. Successful mutations expire discovery metadata for the next online command. Use `oc api refresh --force` to bypass the cache and `oc api compatibility` for protocol checks.
+Every static and discovered command supports `--help`. OpenAPI metadata is cached by tenant URL and ETag to reduce discovery requests. Help and completion read the cache offline. Before an online dynamic command, the CLI checks the tenant's API revision with a lightweight authenticated `HEAD` request. When enabled features or module builds change, it refreshes the manifest and OpenAPI document before parsing the command. This also discovers features enabled in the admin UI or by another client. Successful mutations still expire discovery metadata for the next online command, including changes to resource schemas. Older servers without revision headers keep the time-based cache behavior. See [API revision and cache freshness](../../api/discovery/README.md#api-revision-and-cache-freshness) for the protocol and its limits. Use `oc api refresh --force` to bypass the cache and `oc api compatibility` for protocol checks.
 
 `oc --version` prints the CLI version number. Use `oc doctor` to inspect the CLI version, platform, local storage, and caches, or `oc doctor --output json` for structured diagnostics. Both commands work offline; `doctor` does not test server connectivity.
 

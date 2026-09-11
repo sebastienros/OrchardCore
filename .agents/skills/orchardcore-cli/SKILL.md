@@ -242,7 +242,10 @@ file credentials for tests or separate automation environments. It does not
 change the shared file location used by ordinary installations.
 
 `--help` and completion use cached metadata without authentication/network
-requests. If a command is missing, run `oc api refresh --force` explicitly;
+requests. Online dynamic commands check the server API revision and refresh
+metadata when enabled features or module builds changed. This does not make
+help/completion online or refresh arbitrary external content-definition changes.
+If a command is missing from help, run `oc api refresh --force` explicitly;
 `doctor` reports local state but does not test server connectivity.
 
 ## Route module work

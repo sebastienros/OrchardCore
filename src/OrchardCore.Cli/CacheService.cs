@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
+using OrchardCore.RemoteManagement;
 
 namespace OrchardCore.Cli;
 
@@ -88,6 +89,7 @@ internal sealed class CacheService
 
             if (response.StatusCode == HttpStatusCode.NotModified && cached is not null)
             {
+                cached.ApiRevision = ReadApiRevision(response) ?? cached.ApiRevision;
                 cached.FetchedAt = now;
                 cached.ExpiresAt = now.Add(ttl);
                 await WriteAsync(tenantUrl, kind, cached, cancellationToken);
@@ -106,6 +108,7 @@ internal sealed class CacheService
             {
                 Url = sourceUrl.AbsoluteUri,
                 ETag = response.Headers.ETag?.Tag,
+                ApiRevision = ReadApiRevision(response),
                 FetchedAt = now,
                 ExpiresAt = now.Add(ttl),
                 Content = content,
@@ -130,6 +133,33 @@ internal sealed class CacheService
                 IsStale = true,
             };
         }
+    }
+
+    public static string? ReadApiRevision(HttpResponseMessage response)
+    {
+        if (response.Headers.TryGetValues(RemoteManagementConstants.ApiRevisionHeaderName, out var values))
+        {
+            var revision = values.FirstOrDefault();
+            if (revision is { Length: 64 } && revision.All(char.IsAsciiHexDigit))
+            {
+                return revision.ToLowerInvariant();
+            }
+        }
+
+        return null;
+    }
+
+    public async Task<bool> ObserveApiRevisionAsync(string tenantUrl, HttpResponseMessage response, CancellationToken cancellationToken)
+    {
+        var revision = ReadApiRevision(response);
+        var cached = await ReadAsync(tenantUrl, CacheKind.OpenApi, cancellationToken);
+        if (revision is null || cached is null || string.Equals(revision, cached.ApiRevision, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        await InvalidateAsync(tenantUrl, cancellationToken);
+        return true;
     }
 
     public static void AddIfNoneMatchHeader(HttpRequestMessage request, string? eTag)

@@ -34,6 +34,52 @@ The service builds absolute URLs from the effective request scheme, host, and `P
 | --- | --- | --- | --- |
 | `GET` | `/.well-known/orchardcore-management` | Anonymous | Bootstrap authentication and manifest coordinates |
 | `GET` | `/api/management/manifest` | `Api` bearer + `AccessRemoteManagement` | Full tenant manifest and capabilities |
+| `HEAD` | `/api/management/manifest` | `Api` bearer + `AccessRemoteManagement` | Check the active API revision without downloading metadata |
+
+## API revision and cache freshness
+
+When Remote Management is enabled, responses under the tenant-relative `/api`
+and `/openapi` paths include an opaque revision header, including error responses:
+
+```http
+OrchardCore-Api-Revision: 734b0b52a9789cfc8628df2a0d49e19bd481b226d6e67de1f7b5f48448e38a09
+```
+
+The value is a lowercase, 64-character SHA-256 hash of the enabled feature IDs
+and participating module build identifiers. It is captured when the tenant
+pipeline is built. Enabling or disabling a feature, including a third-party
+module, changes the revision once the new pipeline serves requests. Identical
+feature sets and builds produce the same revision across server nodes and
+restarts. It is separate from the protocol version and HTTP ETags; it is not an
+authorization token or a list of permitted operations.
+
+An authenticated `HEAD /api/management/manifest` returns `200 OK`, no response
+body, this header, and `Cache-Control: no-store`. It requires the same permission
+as `GET`; missing credentials produce `401` and insufficient permissions produce
+`403`. It does not generate the OpenAPI document or enumerate capabilities.
+
+The CLI stores the revision alongside the downloaded OpenAPI document. Before
+parsing an online dynamic command, it probes the manifest with `HEAD`. A changed
+revision expires both the manifest and OpenAPI caches and triggers a refresh, so
+a newly enabled feature's commands can be used immediately. An unchanged revision
+avoids downloading those documents. API responses also invalidate the cache when
+they report a different revision, including when a feature disappeared between
+discovery and execution. The CLI preserves the operation's actual result; it does
+not automatically replay a request or use a special error status for cache changes.
+
+Help, bare `oc`, and shell completion remain offline and reflect the last cached
+command tree. Run `oc api refresh --force` to update these explicitly. Servers or
+existing cache entries without a revision retain the normal cache lifetimes
+(manifest: five minutes; OpenAPI: thirty minutes) until refreshed. A failed probe
+lets the requested operation report connectivity errors normally.
+
+This revision tracks feature and module changes, not arbitrary database-backed
+settings, content definitions, or a user's permissions. Successful CLI mutations
+still expire metadata; use `oc api refresh --force` after other schema changes
+made outside the CLI. During a rolling deployment, different nodes may temporarily
+serve different revisions: discovery is not a lock or a guarantee that a later
+request reaches the same pipeline. Keep node deployments and tenant feature state
+consistent. Each operation continues to enforce its permissions on the server.
 
 ## Manifest schema
 
