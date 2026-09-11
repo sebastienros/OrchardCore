@@ -1,6 +1,7 @@
 # Manage your first tenant with `oc`
 
-<img src="../../reference/branding/assets/logo/pomi/pomi-logo.png" alt="Pomi — Orchard Core CLI" width="160" />
+<img src="../../reference/branding/assets/logo/pomi/svg/pomi-terminal-logo-light.svg#only-light" alt="Pomi — Orchard Core CLI" width="160" />
+<img src="../../reference/branding/assets/logo/pomi/svg/pomi-terminal-logo-dark.svg#only-dark" alt="Pomi — Orchard Core CLI" width="160" />
 
 The Orchard Core CLI brings tenant management to your terminal. Sign in once,
 select a tenant, and discover the commands that its enabled features provide.
