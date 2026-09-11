@@ -16,8 +16,13 @@ extension `x-oc-cli` are unchanged.
 ## Guardrails
 
 1. Run `pomi --help` and `pomi <group> --help` before assuming a dynamic command is
-   available. Enabled features determine each tenant's command tree.
-2. Run `pomi <group> schema [--operation <verb>]` before constructing JSON.
+   available. Enabled features determine each tenant's dynamic command tree. Third-party
+   modules can contribute commands through OpenAPI `x-oc-cli` metadata without
+   rebuilding Pomi; an arbitrary OpenAPI endpoint is not automatically a command.
+2. For dynamic JSON operations, inspect the resource group's `schema` command
+   when listed in help (for example `pomi templates schema --operation create`).
+   Some resources expose a named schema, such as `pomi content items schema Article`.
+   Built-in commands do not all have JSON schemas; GraphQL uses introspection.
 3. Preserve JSON property casing exactly as emitted by the schema.
 4. Pass `--output json` explicitly for automation and schema capture. The
    default `auto` uses human-readable messages in a terminal and JSON when
@@ -37,7 +42,7 @@ add it merely to suppress a prompt.
 
 Dynamic discovery needs `ViewOpenApiContent` when OpenAPI document access is
 protected, plus `AccessRemoteManagement` and the operation's resource permissions.
-If the manifest is readable but refresh or group help returns 403, ask the tenant
+If the manifest is readable but OpenAPI refresh returns 403, ask the tenant
 administrator to check the identity's OpenAPI document permission. Do not keep
 retrying login or weaken document protection; a valid token can lack permission.
 
@@ -55,7 +60,7 @@ For agent-driven device login, prefer separate commands so each process returns
 one JSON result and the user can approve between tool calls:
 
 ```bash
-pomi --context production login device start --qr always --output json
+pomi --context production login device start --output json
 pomi login device show <session-id> --qr always --output json
 pomi login device wait <session-id> --output json
 ```
@@ -64,8 +69,8 @@ pomi login device wait <session-id> --output json
 `expiresAt`, and optional `qrCode: { mediaType: "image/png", base64: "..." }`.
 Present the URL/code or decoded image to the human. The `authorization_pending`
 status and exit code 0 mean a request was created, not a successful login.
-`show` redisplays it offline. `wait` polls until approval/denial/expiry and saves
-credentials on success. Use the local session ID, never the displayed user code
+`show` redisplays it offline; the example opts into a base64 PNG with `--qr always`.
+`wait` polls until approval/denial/expiry and saves credentials on success. Use the local session ID, never the displayed user code
 or a private device code. Do not read pending session files or expose their contents.
 Resume an interrupted wait using the same ID before expiry; only one waiter is
 allowed. The original context remains bound even if the current context changes.
@@ -163,7 +168,31 @@ Remote Management still needs configuring before using remote commands.
 
 ## Create and initialize a tenant
 
-Run tenant lifecycle commands from a context targeting the `Default` tenant:
+Use `pomi tenants install <name>` to create and set up a tenant in an existing
+Orchard application. Run it from an authenticated context targeting the
+`Default` tenant; it requires tenant-management permissions and no local SDK:
+
+```bash
+pomi --context default tenants install News \
+  --request-url-prefix news \
+  --recipe-name Blank \
+  --site-name "Contoso News" \
+  --user-name admin \
+  --email admin@example.com \
+  --password-env OC_TENANT_ADMIN_PASSWORD \
+  --output json
+```
+
+SQLite is the default unless the host supplies a database preset. This differs
+from local `pomi install`: tenant installation uses the existing server and
+creates no local application. It creates neither a context nor a login token.
+After success, follow the Remote Management and child-tenant login steps below.
+If creation succeeds but setup fails, inspect `pomi tenants show News`. For an
+uninitialized tenant, correct the setup inputs and use `tenants setup News`;
+do not blindly repeat installation or delete the partially created tenant.
+
+For separate creation and setup (for example, to hand off an uninitialized
+tenant), use:
 
 ```bash
 pomi --context default tenants create \
@@ -182,6 +211,7 @@ ordinary recipe discovery.
 Inspect the authoritative inputs when host database presets or patterns differ:
 
 ```bash
+pomi --context default tenants schema --operation install
 pomi --context default tenants schema --operation create
 pomi --context default tenants schema --operation setup
 ```
@@ -195,7 +225,8 @@ pomi --context default tenants setup News \
   --email admin@example.com
 ```
 
-The default password prompt is masked. For automation, use exactly one of:
+Both `tenants install` and `tenants setup` use a masked password prompt by
+default. For automation, use exactly one of:
 
 ```bash
 pomi --context default tenants setup News ... --password-env OC_TENANT_ADMIN_PASSWORD
@@ -205,7 +236,7 @@ pomi --context default tenants setup News ... --password-file /run/secrets/news-
 
 Prefer the prompt for interactive work, CI-injected environment variables for
 automation, and owner-readable short-lived files for mounted secrets. The
-secret-bearing setup command intentionally has no inline `--password` or
+secret-bearing install/setup commands intentionally have no inline `--password` or
 `--body` option.
 
 After setup, configure direct management and authenticate to the child tenant:
@@ -264,7 +295,7 @@ Load the narrowest relevant skill:
 - **Installed site/admin theme selection**: `orchardcore-cli-themes`
 - **Menu content and official menu-shape rendering**: `orchardcore-cli-menus`
 - **GraphQL documents, variables, and introspection**: `orchardcore-cli-graphql`
-- **Site Settings, Custom Settings, cultures, and dynamic translations**: `orchardcore-cli-settings`
+- **Site Settings, Custom Settings, and cultures**: `orchardcore-cli-settings`
 - **Features, recipes, queries, workflows, users, and roles**:
   `orchardcore-cli-automation`
 
@@ -276,8 +307,8 @@ content, then verify public routes.
 Use a content-driven model by default: page types compose ordered section
 widgets with `FlowPart`; collection-section widgets own semantic named
 `BagPart` attachments containing inner blocks/widgets. Keep design markup,
-classes, responsive behavior, and scripts in Liquid/templates and static
-assets—not in content fields.
+classes, responsive behavior, and scripts in Liquid/templates and Media assets.
+Theme files are deployed with the application; Pomi has no static-file upload API.
 
 ## Failure handling
 

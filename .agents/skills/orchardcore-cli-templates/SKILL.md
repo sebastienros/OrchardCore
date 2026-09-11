@@ -82,12 +82,16 @@ zones, messages, and the content section:
 
 Create it as template name `Layout` before relying on tenant CSS or scripts.
 
+Upload `assets/styles/site-v1.css` through Media first (see
+`orchardcore-cli-media`). Resolve it with `asset_url` so tenant prefixes and
+remote storage providers work.
+
 `article-template.json`:
 
 ```json
 {
   "name": "Content__Article",
-  "content": "{% style name:\"tenant-site\", src:\"~/styles/site.css?v=1\" %}<article class=\"article\"><h1>{{ Model.ContentItem.DisplayText }}</h1>{{ Model.Content.HtmlBodyPart | shape_render }}</article>",
+  "content": "{% assign stylesheet = \"assets/styles/site-v1.css\" | asset_url %}{% style name:\"tenant-site\", src:stylesheet %}<article class=\"article\"><h1>{{ Model.ContentItem.DisplayText }}</h1>{{ Model.Content.HtmlBodyPart | shape_render }}</article>",
   "description": "Article detail template."
 }
 ```
@@ -160,9 +164,10 @@ and resource patterns.
 pomi content items render <id> --version draft --display-type Detail
 pomi content items render <id> --version published --display-type Summary
 curl -fsS 'https://cms.example.com/tenant-a/article-path'
-curl -fsSI 'https://cms.example.com/tenant-a/styles/site.css?v=1'
+pomi media files show assets/styles/site-v1.css --output json
 ```
 
+Fetch the returned Media `url` to check the stylesheet response.
 Check semantic HTML, encoded values, image alternative text, tenant-prefixed
 URLs, missing shapes, stylesheet requests, and responsive behavior. Require:
 

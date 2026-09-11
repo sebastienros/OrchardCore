@@ -69,7 +69,11 @@ value property, such as `Text`, `Html`, `Markdown`, `Paths`, or referenced IDs.
 `show` defaults to a published version. Use `--version draft` for an existing
 draft or `--version latest` to inspect the newest version. A draft read returns
 404 if there is no draft; use `draft <id>` only when creating one is intended.
-`validate-update` does not persist changes or run update workflows.
+`validate --body-file item.json` validates a new item and requires `ContentType`
+in the body. For a partial edit of an existing item, use `validate-update <id>`;
+the server resolves its content type. It does not persist changes or run update
+workflows. Typed values must match the schema: `TitlePart.Title` is a string,
+not an object. Do not interpret a type-validation error as a missing feature.
 
 ## Lifecycle commands
 

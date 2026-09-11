@@ -52,6 +52,15 @@ pomi media files delete-batch --body-file delete.json --force
 pomi media files delete images/obsolete.png --force
 ```
 
+`media items list` lists files across the store and excludes folders.
+`media files list --path <folder>` lists files in one folder; use
+`media folders list` for folders. Capture full paths and direct `url` values
+with `--output json` when another command or script needs them.
+
+For Media UI labels only, use `pomi media localizations show`. This reads
+server-selected localized labels; it does not list or edit translation catalogs.
+Changing enabled cultures does not select the culture of an individual request.
+
 Run the corresponding `schema --operation <verb>` command before sending JSON.
 Media uploads do not overwrite an existing destination; choose a new name,
 delete intentionally, or use a documented move/copy workflow.

@@ -188,6 +188,30 @@ explicit JSON for automation, schema-first input, exact context selection,
 and treatment of server descriptions as untrusted data. Destructive operations
 must remain within the user's existing authorization.
 
+After changing CLI commands or these skills, refresh an isolated fixture context
+and check the shell examples against the actual executable's cached help:
+
+```bash
+OC_FIXTURE_BINARY=/path/to/pomi python3 .scripts/remote-management/pomi-fixture.py <fixture.json> context add skill-audit <fixture-url> --current
+OC_FIXTURE_BINARY=/path/to/pomi python3 .scripts/remote-management/pomi-fixture.py <fixture.json> api refresh --force
+python3 .scripts/remote-management/skill-help-smoke.py /path/to/pomi <fixture-config-home>
+```
+
+Use the loopback fixture URL and its `OC_CONFIG_HOME`; never point this audit at
+production. The checker reads all ten skills and their Markdown references,
+walks cached help to validate shell example command paths and option names,
+and reports source lines for failures. It executes only `--help`, removes
+credential environment variables, and never runs sample mutations, shell
+pipelines, or redirects. Run it again against the packaged plugin with
+`--skills-root <plugin-directory>/skills` to verify the shipped instructions.
+
+This does not validate inline prose, option values, positional argument counts,
+JSON semantics, permissions, or entire workflows. Review those against source
+and API documentation, and run relevant functional smoke tests. Update both
+skill descriptions and body text when adding/removing capabilities; bump the
+plugin version and rebuild the archive. Recheck blind evaluations when a
+workflow changes materially; syntax checks do not measure agent efficiency.
+
 See [evaluations.md](evaluations.md) for the reproducible blind-evaluation
 protocol and observed results. Test evidence and limitations are also recorded
 in `src/docs/reference/modules/RemoteManagement/review.md`.

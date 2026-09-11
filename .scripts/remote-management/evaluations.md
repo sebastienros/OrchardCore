@@ -234,3 +234,39 @@ efficiency. The separate native smoke verifies actual request counts, that API
 force alone cannot confirm, that confirmation alone sends no API force value,
 that query/body force values remain independent, and that context deletion uses
 `--force`. The smoke is included in all six native CI builds.
+
+
+## Skill synchronization audit (2026-09-10)
+
+Reviewed all ten CLI skills and both supporting Markdown references against
+Pomi, module command metadata, and canonical API documentation. Corrected stale
+translation-editing descriptions, missing combined `tenants install` guidance,
+offline-help permission advice, the blanket schema-command rule, and a template
+CSS example that bypassed Media. Clarified culture add/remove/discovery, file-only
+Media listings and direct URLs, typed content validation, third-party command
+discovery, and opt-in QR output. The executable rename, `--output auto`,
+`--force` versus `--api-force`, device sessions, GraphQL, content versions,
+embedded local installation, and API-revision refresh were already represented.
+
+`skill-help-smoke.py` checked 213 shell examples across 166 cached help pages
+using a NativeAOT Pomi executable and fresh metadata from a disposable current
+Orchard host. All command paths and option names passed. Deliberately stale
+`localization strings list` and `context delete ... --yes` examples failed the
+checker, confirming that it detects removed commands and options. All ten
+skills passed frontmatter validation, and all fenced JSON examples parsed.
+The rebuilt plugin is version 0.6.2; its twelve skill/reference files and ZIP
+entries match their canonical sources byte for byte.
+
+Live functional smoke tests passed for combined tenant installation (including
+secret inputs, SQLite defaults, partial-failure recovery, and no automatic
+context creation) and localization (six culture/settings CLI operations, Media
+labels, five HTTP-only string operations, and permission checks). Typed content
+validation also passed: missing ContentType, invalid TitlePart.Title values,
+human/JSON errors, unchanged persisted state after validation, and a valid
+partial update.
+
+This is a source, syntax, packaging, and targeted functional audit, not a new
+blind-model evaluation. It does not remeasure model efficiency or prove every
+sample payload and workflow. Earlier blind results above retain their original
+scope and limitations; the help checker is a repeatable guard against command
+and option drift, not a substitute for those evaluations.

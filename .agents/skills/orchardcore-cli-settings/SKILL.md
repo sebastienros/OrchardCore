@@ -1,6 +1,6 @@
 ---
 name: orchardcore-cli-settings
-description: Reads and updates Orchard Core Site Settings, Custom Settings, cultures, and dynamic translations through `pomi`. Use for tenant-wide configuration, schema-safe partial settings updates, custom-settings content types, feature-contributed settings, and validating settings without overwriting protected or unknown values.
+description: Reads and updates Orchard Core Site Settings, Custom Settings, and cultures through `pomi`. Use for tenant-wide configuration, schema-safe partial settings updates, custom-settings content types, feature-contributed settings, and validating settings without overwriting protected or unknown values.
 ---
 
 # Pomi CLI Settings
@@ -80,6 +80,11 @@ pomi localization settings show --output json
 pomi localization settings schema --operation update
 pomi localization settings update --body-file cultures.json
 ```
+
+`cultures list` returns enabled cultures; `cultures available` discovers names
+that can be enabled (page with `--skip` and `--take`). Prefer `cultures add`
+and `cultures remove` for individual changes; adding is idempotent. Removing
+the default requires selecting a different default in settings first.
 
 Culture settings **replace** the supported-culture list. Preserve existing
 cultures unless removal is requested; the default must remain in the list.
