@@ -7,3 +7,7 @@
 **/wwwroot/**/*.json text eol=lf
 **/wwwroot/**/*.ts text eol=lf
 **/wwwroot/**/*.svg text eol=lf
+
+# Keep canonical skill and packaging inputs identical across checkout platforms.
+.agents/skills/**/*.md text eol=lf
+.scripts/remote-management/*.py text eol=lf

@@ -73,7 +73,8 @@ assert '<!-- pomi-' not in page
 assert metadata['sourceCommit'] in page
 assert '../downloads/pomi-plugin.zip' in page and '../downloads/pomi-skills.zip' in page
 assert 'raw/skills/orchardcore-cli/SKILL.md' in page
-assert '/en/latest/' not in page  # Downloads must follow the selected version.
+download_links = re.findall(r'href="([^"]*downloads/[^"]*)"', page)
+assert download_links and all(link.startswith('../downloads/') for link in download_links)
 
 spec = importlib.util.spec_from_file_location('builder', REPO / '.scripts/remote-management/build-plugin.py')
 builder = importlib.util.module_from_spec(spec)

@@ -1,6 +1,7 @@
 # Use Pomi with an agent
 
-![Pomi](assets/logo.png){ width="280" }
+<img src="assets/logo.png#only-light" alt="Pomi" width="160" />
+<img src="assets/logo-dark.png#only-dark" alt="Pomi" width="160" />
 
 Give your coding agent the complete Pomi skill package to help it install an
 Orchard CMS site, connect to a tenant, and manage content, media, settings, and

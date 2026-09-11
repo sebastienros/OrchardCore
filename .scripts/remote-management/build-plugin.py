@@ -14,7 +14,7 @@ REPO = Path(__file__).resolve().parents[2]
 
 def write_json(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(value, indent=2) + '\n', encoding='utf-8')
+    path.write_text(json.dumps(value, indent=2) + '\n', encoding='utf-8', newline='\n')
 
 
 def archive_tree(root, destination):
@@ -35,7 +35,7 @@ def build(output, repo=REPO):
         raise ValueError(f'{output} already exists; choose a new output directory')
     output.mkdir(parents=True)
     revision = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=repo, text=True).strip()
-    inputs = ['.agents/skills', '.scripts/remote-management', 'design/artifacts/logos/pomi', 'LICENSE']
+    inputs = ['.agents/skills', '.scripts/remote-management', 'design/artifacts/logos/pomi', 'LICENSE', '.gitattributes']
     dirty = bool(subprocess.check_output(['git', 'status', '--porcelain', '--', *inputs], cwd=repo, text=True).strip())
     marketplace = output / 'pomi-plugin'
     plugin = marketplace / 'plugins/orchardcore-cli'
@@ -56,7 +56,7 @@ def build(output, repo=REPO):
                            ('pomi-terminal-logo-dark.png', 'logo-dark.png')]:
         (plugin / 'assets').mkdir(exist_ok=True)
         shutil.copyfile(assets / original, plugin / 'assets' / name)
-    shutil.copyfile(repo / 'LICENSE', plugin / 'LICENSE')
+    (plugin / 'LICENSE').write_text((repo / 'LICENSE').read_text(), encoding='utf-8', newline='\n')
     compatibility = json.loads((repo / '.scripts/remote-management/skill-compatibility.json').read_text())
     digest = hashlib.sha256(json.dumps(compatibility, sort_keys=True).encode())
     digest.update(Path(__file__).read_bytes())
@@ -84,7 +84,7 @@ Live tenant schemas take precedence. Install Pomi separately; this package
 contains instructions and branding, not a CLI executable or credentials.
 
 See package-metadata.json for the source revision and supported versions.
-''')
+''', encoding='utf-8', newline='\n')
     (marketplace / 'README.md').write_text('''# Install the Pomi plugin
 
 Keep this extracted directory in a stable location.
@@ -103,7 +103,7 @@ and `/plugin install orchardcore-cli@pomi-download` inside Claude Code.
 
 The [plugin instructions](plugins/orchardcore-cli/README.md) link to all skills.
 The website is the download location; downloading alone does not register skills.
-''')
+''', encoding='utf-8', newline='\n')
     spec = importlib.util.spec_from_file_location('plugin_links', Path(__file__).with_name('verify-plugin-links.py'))
     links = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(links)
@@ -125,7 +125,7 @@ The website is the download location; downloading alone does not register skills
         shutil.copyfile(archive, specific)
         artifacts[archive.name] = {'sha256': hashlib.sha256(archive.read_bytes()).hexdigest(), 'file': specific.name}
     write_json(output / 'package-metadata.json', {**metadata, 'artifacts': artifacts})
-    (output / 'SHA256SUMS').write_text(''.join(f'{info["sha256"]}  {name}\n{info["sha256"]}  {info["file"]}\n' for name, info in artifacts.items()))
+    (output / 'SHA256SUMS').write_text(''.join(f'{info["sha256"]}  {name}\n{info["sha256"]}  {info["file"]}\n' for name, info in artifacts.items()), encoding='utf-8', newline='\n')
     return {'plugin': str(plugin), 'archive': str(plugin_zip), 'skillsArchive': str(skills_zip),
             'skills': len(skills), 'metadata': metadata}
 
