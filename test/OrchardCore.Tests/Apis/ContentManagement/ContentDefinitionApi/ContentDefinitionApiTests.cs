@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Schema;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using OrchardCore.ContentManagement;
 using OrchardCore.ContentManagement.Metadata.Settings;
 using Microsoft.Extensions.DependencyInjection;
 using OrchardCore.ContentTypes.Models;
@@ -170,6 +171,90 @@ public class ContentDefinitionApiTests
             Assert.False(await InvokeAsync<bool>(service, "DeleteTypeAsync", "RemoteApiType"));
             Assert.True(await InvokeAsync<bool>(service, "DeletePartAsync", "RemoteTextPart"));
             Assert.False(await InvokeAsync<bool>(service, "DeletePartAsync", "RemoteTextPart"));
+        });
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ContentPickerSettings_AreDiscoverableAndControlMultipleItemValidation(bool multiple)
+    {
+        using var context = new SiteContext();
+        await context.InitializeAsync();
+        await EnableFeaturesAsync(context, "OrchardCore.ContentTypes", "OrchardCore.ContentFields");
+        await context.WaitForDeferredTasksAsync(TestContext.Current.CancellationToken);
+
+        await context.UsingTenantScopeAsync(async scope =>
+        {
+            var service = scope.ServiceProvider.GetRequiredService(GetServiceType("OrchardCore.ContentTypes.Services.ContentDefinitionApiService", "OrchardCore.ContentTypes"));
+            var schemas = Invoke<IReadOnlyList<ContentDefinitionSettingsSchemaDto>>(service, "ListSettingsSchemas");
+            var picker = Assert.Single(schemas, schema => schema.Name == "ContentPickerFieldSettings");
+            Assert.Equal("ContentPartField", picker.Scope);
+            Assert.Equal("ContentPickerField", picker.AppliesTo);
+            var discovered = Invoke<ContentDefinitionSettingsSchemaDto>(service, "GetSettingsSchema", picker.Name);
+            Assert.True(JsonNode.DeepEquals(picker.Schema, discovered.Schema));
+            var properties = discovered.Schema["properties"]!;
+            Assert.Equal("boolean", properties["Multiple"]!["type"]!.GetValue<string>());
+            Assert.Contains("Defaults to false", properties["Multiple"]!["description"]!.GetValue<string>());
+            Assert.NotNull(properties["DisplayedContentTypes"]);
+            Assert.NotNull(properties["Required"]);
+            Assert.NotNull(properties["Hint"]);
+
+            var state = new ModelStateDictionary();
+            await InvokeAsync<ContentPartDefinitionDto>(service, "CreatePartAsync", new ContentPartDefinitionDto { Name = "Team" }, state);
+            var field = JsonSerializer.Deserialize<ContentPartFieldDefinitionDto>("""
+                {
+                  "name": "Roster",
+                  "fieldName": "ContentPickerField",
+                  "settings": {
+                    "ContentPickerFieldSettings": {
+                      "DisplayedContentTypes": ["Person"]
+                    }
+                  }
+                }
+                """, JsonSerializerOptions.Web)!;
+            // Leaving Multiple absent must retain the single-item default.
+            if (multiple)
+            {
+                field.Settings.AdditionalSettings["ContentPickerFieldSettings"] = JsonSerializer.SerializeToElement(new
+                {
+                    Multiple = true,
+                    DisplayedContentTypes = new[] { "Person" },
+                });
+            }
+
+            await InvokeAsync<ContentPartFieldDefinitionDto>(service, "CreateFieldAsync", "Team", field, state);
+            await InvokeAsync<ContentTypeDefinitionDto>(service, "CreateTypeAsync", new ContentTypeDefinitionDto
+            {
+                Name = "Team",
+                DisplayName = "Team",
+                Parts = [new ContentTypePartDefinitionDto { Name = "Team", PartName = "Team" }],
+            }, state);
+            Assert.True(state.IsValid);
+
+            var stored = await InvokeAsync<ContentPartFieldDefinitionDto>(service, "GetFieldAsync", "Team", "Roster");
+            var settings = stored.Settings.AdditionalSettings["ContentPickerFieldSettings"];
+            Assert.Equal("Person", settings.GetProperty("DisplayedContentTypes")[0].GetString());
+            if (multiple)
+            {
+                Assert.True(settings.GetProperty("Multiple").GetBoolean());
+            }
+
+            var manager = scope.ServiceProvider.GetRequiredService<IContentManager>();
+            var item = JsonSerializer.Deserialize<ContentItem>("""
+                {
+                  "ContentType": "Team",
+                  "Team": {
+                    "Roster": { "ContentItemIds": ["person-1", "person-2"] }
+                  }
+                }
+                """)!;
+            var validation = await manager.ValidateAsync(item);
+            Assert.Equal(multiple, validation.Succeeded);
+            if (!multiple)
+            {
+                Assert.Contains(validation.Errors, error => error.ErrorMessage.Contains("cannot contain multiple items", StringComparison.Ordinal));
+            }
         });
     }
 

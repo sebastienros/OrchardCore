@@ -1,6 +1,6 @@
 ---
 name: orchardcore-cli
-description: Uses the `pomi` CLI to install and initialize local Orchard CMS sites or manage remote tenants. Use for local site creation, contexts, authentication, discovery, tenant setup, enabling Remote Management, compatibility checks, direct GraphQL, dynamic help, and coordinating module-specific management tasks.
+description: Installs or updates the `pomi` CLI and uses it to initialize local Orchard CMS sites or manage remote tenants. Use for local site creation, contexts, authentication, discovery, tenant setup, enabling Remote Management, compatibility checks, direct GraphQL, dynamic help, and coordinating module-specific management tasks.
 ---
 
 # Pomi CLI
@@ -14,6 +14,7 @@ Load only the procedure or specialist needed for the user's task.
 
 | Task | Read |
 | --- | --- |
+| Install/update the Pomi executable or discover its latest package version | [CLI installation](references/cli-installation.md) |
 | Create a local application and initialize its Default tenant (`pomi install`) | [Local installation](references/installation.md) |
 | Create/setup a tenant in an existing server (`pomi tenants install`, create, setup) | [Tenant installation and Remote Management setup](references/tenants.md) |
 | Connect, log in, approve a device code, or manage saved contexts | [Authentication and contexts](references/authentication.md) |

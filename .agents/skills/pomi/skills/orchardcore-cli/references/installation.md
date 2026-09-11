@@ -1,6 +1,7 @@
 # Install a local CMS
 
-Apply the [shared operating rules](shared-rules.md). For a new tenant in an
+Install the executable first using [CLI installation](cli-installation.md) if
+`pomi` is unavailable. Apply the [shared operating rules](shared-rules.md). For a new tenant in an
 existing application, use [tenant installation](tenants.md) instead.
 
 Use `pomi install <directory>` when the user wants a new local application and
@@ -19,13 +20,22 @@ sources; it leaves nuget.org and an explicit `--source`.
 pomi install ./MySite --site-name "My Site" --email admin@example.com --password-env OC_SITE_PASSWORD
 ```
 
-The password environment variable must already be provided by the user or
-secret manager. The masked interactive prompt, `--password-file`, and
+The password must meet the [setup password policy](setup-password.md). That
+reference includes a cryptographic generator guaranteed to meet the standard
+policy. The password environment variable must already be provided by the user,
+secret manager, or an authorized generation step. The masked interactive prompt, `--password-file`, and
 `--password-stdin` are alternatives. Connection strings use the analogous
-`--connection-string-*` options. Only one secret may consume stdin.
+`--connection-string-*` options. `--connection-string-env` takes a variable
+name, not the secret value. There is no inline `--connection-string` option.
+See the [safe connection-string examples](tenants.md#schema-properties-and-secret-cli-options)
+for the three input forms; local installation uses the same options. Only one
+secret may consume stdin.
 
-Defaults are SQLite, the SaaS recipe, administrator `admin`, and UTC. Match the
-recipe to the requested site: use `--recipe-name Blog` for a blog or
+If no database provider is specified, recommend SQLite and use the default
+`Sqlite`. For another requested provider, recommend a unique `--table-prefix`
+following the [database choice rules](shared-rules.md#database-choice-for-new-sites-and-tenants).
+Do not replace the user's chosen provider. Other defaults are the SaaS recipe,
+administrator `admin`, and UTC. Match the recipe to the requested site: use `--recipe-name Blog` for a blog or
 `--recipe-name Blank` for a minimal site. A blog-like directory or site name
 does not select the Blog recipe. Consult
 `pomi install --help` for other database, recipe, and URL options. `--source`

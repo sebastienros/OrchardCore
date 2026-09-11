@@ -132,6 +132,38 @@ public class TenantInstallEndpointsTests
         Assert.Equal(409, Assert.IsAssignableFrom<IStatusCodeHttpResult>(await fixture.InstallAsync()).StatusCode);
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("Aa1!")]
+    [InlineData("lowercase1!")]
+    [InlineData("UPPERCASE1!")]
+    [InlineData("NoDigitsHere!")]
+    [InlineData("NoSymbols123")]
+    [InlineData("Élowercase1!")]
+    public async Task Install_InvalidPassword_DoesNotCreateTenantOrRunSetup(string password)
+    {
+        var fixture = new Fixture { Password = password };
+        var result = Assert.IsType<ValidationProblem>(await fixture.InstallAsync());
+        Assert.Equal(400, result.StatusCode);
+        Assert.Contains("Password", result.ProblemDetails.Errors.Keys);
+        Assert.Null(fixture.Tenant);
+        Assert.Null(fixture.SetupContext);
+        fixture.Host.Verify(x => x.UpdateShellSettingsAsync(It.IsAny<ShellSettings>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(20, 1)]
+    [InlineData(6, 10)]
+    public async Task Install_CustomPasswordRequirements_RejectsBeforeCreation(int length, int unique)
+    {
+        var fixture = new Fixture();
+        fixture.IdentityOptions.Password.RequiredLength = length;
+        fixture.IdentityOptions.Password.RequiredUniqueChars = unique;
+        Assert.IsType<ValidationProblem>(await fixture.InstallAsync());
+        Assert.Null(fixture.Tenant);
+        Assert.Null(fixture.SetupContext);
+    }
+
     private sealed class Fixture
     {
         public Mock<IShellHost> Host { get; } = new();
@@ -139,6 +171,8 @@ public class TenantInstallEndpointsTests
         public Mock<IDistributedLock> DistributedLock { get; } = new();
         public ShellSettings Tenant { get; set; }
         public SetupContext SetupContext { get; private set; }
+        public string Password { get; init; } = "Secret1!";
+        public IdentityOptions IdentityOptions { get; } = new();
         public bool Authorized { get; init; } = true;
         public bool DefaultTenant { get; init; } = true;
         public bool LockAvailable { get; init; } = true;
@@ -205,11 +239,11 @@ public class TenantInstallEndpointsTests
             return await TenantManagementEndpoints.InstallAsync(context, "TenantA", new TenantManagementEndpoints.TenantInstallRequest
             {
                 RequestUrlPrefix = "blog", RecipeName = "SaaS",
-                SiteName = "Tenant A", UserName = "admin", Email = "admin@example.com", Password = "Secret1!", SiteTimeZone = "Etc/UTC",
+                SiteName = "Tenant A", UserName = "admin", Email = "admin@example.com", Password = Password, SiteTimeZone = "Etc/UTC",
             }, Host.Object, manager.Object, new EphemeralDataProtectionProvider(), Mock.Of<IClock>(),
                 [new DatabaseProvider { Name = "Sqlite", Value = "Sqlite" }, new DatabaseProvider { Name = "SQL Server", Value = "SqlConnection", HasConnectionString = true }], Validator.Object,
                 new TenantDatabasePatternResolver(new FluidParser(), Options.Create(new global::OrchardCore.Tenants.TenantsOptions()), Mock.Of<IStringLocalizer<TenantDatabasePatternResolver>>()),
-                localizer.Object, Mock.Of<ILogger<TenantApiController>>(), setup.Object, email.Object, Options.Create(new IdentityOptions()),
+                localizer.Object, Mock.Of<ILogger<TenantApiController>>(), setup.Object, email.Object, Options.Create(IdentityOptions),
                 new ShellSettings { Name = DefaultTenant ? ShellSettings.DefaultShellName : "Other" }, authorization.Object, DistributedLock.Object);
         }
     }

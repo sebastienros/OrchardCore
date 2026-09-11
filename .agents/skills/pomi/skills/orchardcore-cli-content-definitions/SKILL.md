@@ -86,10 +86,17 @@ pomi content settings list --take 200
 pomi content settings show AutoroutePartSettings
 pomi content settings show FlowPartSettings
 pomi content settings show BagPartSettings
+pomi content settings show ContentPickerFieldSettings
 ```
 
 Each contract reports its definition scope, target part/field type, and JSON
-Schema. Only settings providers contributed by enabled modules are available.
+Schema. Only settings providers contributed by enabled modules are available;
+absence from this catalog does not mean a field setting is unsupported. For
+rosters, calendars, and other multi-select relationships, follow the
+[canonical content picker example](references/modeling-patterns.md#multi-select-content-picker).
+Set `ContentPickerFieldSettings.Multiple` on each field definition before
+sending multiple `ContentItemIds`; configure `DisplayedContentTypes` for editor
+choices. These settings are separate from the content item's value schema.
 
 Create definitions in dependency order:
 

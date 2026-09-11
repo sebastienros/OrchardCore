@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -14,6 +15,7 @@ using OrchardCore.Email;
 using OrchardCore.Environment.Shell;
 using OrchardCore.Locking.Distributed;
 using OrchardCore.Modules;
+using OrchardCore.Mvc.ModelBinding;
 using OrchardCore.Setup.Services;
 using OrchardCore.Tenants.Controllers;
 using OrchardCore.Tenants.Services;
@@ -58,6 +60,13 @@ internal static partial class TenantManagementEndpoints
                     statusCode: StatusCodes.Status409Conflict);
             }
 
+            var validationState = new ModelStateDictionary();
+            ValidateSetupPassword(request.Password, identityOptions.Value.Password, validationState, localizer);
+            if (!validationState.IsValid)
+            {
+                return httpContext.ApiValidationProblem(modelState: validationState);
+            }
+
             var created = await CreateCoreAsync(httpContext, request.ToCreateRequest(tenantName), shellHost, shellSettingsManager, dataProtectionProvider, clock, databaseProviders, tenantValidator, tenantDatabasePatternResolver, localizer, logger);
             if (created is not IStatusCodeHttpResult { StatusCode: StatusCodes.Status201Created })
             {
@@ -90,6 +99,41 @@ internal static partial class TenantManagementEndpoints
 
             return setup;
         });
+    }
+
+    private static void ValidateSetupPassword(
+        string password,
+        PasswordOptions options,
+        ModelStateDictionary validationState,
+        IStringLocalizer<TenantApiController> localizer)
+    {
+        const string key = nameof(TenantInstallRequest.Password);
+        if (string.IsNullOrWhiteSpace(password) || password.Length < options.RequiredLength)
+        {
+            validationState.AddModelError(key, localizer["Passwords must be at least {0} characters.", options.RequiredLength]);
+        }
+
+        password ??= string.Empty;
+        if (options.RequireUppercase && !password.Any(char.IsAsciiLetterUpper))
+        {
+            validationState.AddModelError(key, localizer["Passwords must have at least one uppercase character ('A'-'Z')."]);
+        }
+        if (options.RequireLowercase && !password.Any(char.IsAsciiLetterLower))
+        {
+            validationState.AddModelError(key, localizer["Passwords must have at least one lowercase character ('a'-'z')."]);
+        }
+        if (options.RequireDigit && !password.Any(char.IsAsciiDigit))
+        {
+            validationState.AddModelError(key, localizer["Passwords must have at least one digit character ('0'-'9')."]);
+        }
+        if (options.RequireNonAlphanumeric && password.All(char.IsAsciiLetterOrDigit))
+        {
+            validationState.AddModelError(key, localizer["Passwords must have at least one non letter or digit character."]);
+        }
+        if (options.RequiredUniqueChars >= 1 && password.Distinct().Count() < options.RequiredUniqueChars)
+        {
+            validationState.AddModelError(key, localizer["Passwords must contain at least {0} unique characters.", options.RequiredUniqueChars]);
+        }
     }
 
     private static async Task<IResult> WithSetupLockAsync(

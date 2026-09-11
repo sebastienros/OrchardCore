@@ -153,6 +153,7 @@ Discover contracts contributed by enabled modules:
 ```bash
 pomi content settings list --take 200
 pomi content settings show AutoroutePartSettings
+pomi content settings show ContentPickerFieldSettings
 ```
 
 Each result contains `name`, `scope` (`ContentType`, `ContentTypePart`,
@@ -161,6 +162,14 @@ For example, the Autoroute feature contributes `AutoroutePartSettings` for the
 `AutoroutePart` attachment, while Flows contributes `FlowPartSettings` and
 `BagPartSettings`. Modules opt into this catalog, so an open settings bag does
 not imply that every accepted setting has a discoverable contract.
+
+Content Fields contributes `ContentPickerFieldSettings` with scope
+`ContentPartField`, applying to `ContentPickerField`. It includes `Multiple`,
+`DisplayedContentTypes`, and the inherited `Required` and `Hint` settings.
+A picker defaults to one item; configure `Multiple: true` before sending an
+array with several IDs. Follow the [multi-select picker example](../../modules/ContentFields/README.md#multi-select-content-picker)
+for a complete field definition, item payload, CLI commands, and discovery
+fallback on servers without this contract.
 
 ### Errors
 

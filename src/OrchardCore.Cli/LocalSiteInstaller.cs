@@ -89,10 +89,7 @@ internal static partial class LocalSiteInstaller
 
     public static void ValidateSecrets(LocalSiteInstallOptions options)
     {
-        if (string.IsNullOrWhiteSpace(options.Password))
-        {
-            throw new CliException("The administrator password cannot be empty.");
-        }
+        SetupPasswordValidator.Validate(options.Password);
 
         if (!string.Equals(options.DatabaseProvider, "Sqlite", StringComparison.Ordinal) && string.IsNullOrWhiteSpace(options.ConnectionString))
         {

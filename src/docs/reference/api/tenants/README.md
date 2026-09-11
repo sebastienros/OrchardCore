@@ -490,11 +490,26 @@ pomi tenants install Blog \
   --site-time-zone Europe/Paris
 ```
 
+The CLI rejects passwords that do not meet the standard setup policy before
+sending an install/setup request: at least six characters, including ASCII
+uppercase, lowercase, a digit, and a non-alphanumeric character. The server
+also checks its configured Identity password length, character groups, and
+unique-character requirements **before creating the tenant**; rejected passwords
+return `400` with a `Password` validation error and leave no tenant behind.
+See the [setup password guide and compliant generator](../../../agents/skills/orchardcore-cli/references/setup-password.md).
+
 The CLI prompts securely for the password. For automation, use
 `--password-env ADMIN_PASSWORD`, `--password-file <path>`, or
 `--password-stdin`. Connection strings use the corresponding
 `--connection-string-env`, `--connection-string-file`, and
 `--connection-string-stdin` options. Only one value can consume standard input.
+Schema properties are JSON field names, not generated option names.
+For example, `connectionString` maps to those three secret-safe options, **not**
+`--connection-string`. `--connection-string-env` takes the environment variable's
+name, not its expanded value. Use `pomi tenants install --help` to inspect the
+available CLI options. The [tenant guide](../../../agents/skills/orchardcore-cli/references/tenants.md#schema-properties-and-secret-cli-options)
+provides complete environment-variable, secret-file, and stdin examples.
+
 The [setup secret input rules](#set-up-a-tenant) also apply here: complete JSON
 is accepted through `--stdin` or `--body-file`, and inline secret values are
 not exposed as command options.
@@ -577,8 +592,9 @@ per-tenant distributed lock with the separate management `create` and `setup`
 operations, but setup recipes can make partial progress. If setup fails after
 creation, the error includes `tenantName` and `stage: "setup"`, and the tenant
 is preserved. Inspect it with `pomi tenants show Blog`; if it is `Uninitialized`,
-correct its configuration if necessary and run `pomi tenants setup Blog` with the
-administrator details. Do not automatically delete a partially initialized tenant.
+inspect whether the recipe or database has made partial progress before
+retrying `pomi tenants setup Blog` with corrected inputs. An `Uninitialized`
+shell state alone does not guarantee that rerunning setup is safe. Do not automatically delete a partially initialized tenant.
 If the response is lost or times out, inspect the tenant state before taking
 further action.
 
@@ -607,6 +623,11 @@ executes its setup recipe. Database and recipe values saved by tenant creation
 take precedence over values in this request. Server database presets and tenant
 table-prefix or schema patterns also apply. When `siteTimeZone` is omitted, the
 server time zone is used.
+
+Password complexity is checked before starting the setup recipe, using the
+same rules as tenant installation. Custom modules or recipes may enforce
+additional policies during user creation; early validation cannot predict
+those rules or prevent unrelated recipe failures.
 
 The command prompts for the password without echoing it when run interactively:
 

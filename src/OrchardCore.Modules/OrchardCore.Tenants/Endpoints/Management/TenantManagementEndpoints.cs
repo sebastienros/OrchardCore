@@ -115,7 +115,7 @@ internal static partial class TenantManagementEndpoints
             {
                 Capability = TenantManagementApiEndpointConventions.CapabilityName,
                 Arguments = { new CliArgumentMetadata("tenantName", 0) },
-                SecretProperties = { "password" },
+                SecretProperties = { "password", "connectionString" },
             })
             .Accepts<TenantSetupRequest>("application/json")
             .Produces<TenantResponse>(StatusCodes.Status200OK)
@@ -625,10 +625,7 @@ internal static partial class TenantManagementEndpoints
             validationState.AddModelError(nameof(request.Email), localizer["The email is invalid."]);
         }
 
-        if (string.IsNullOrEmpty(request.Password))
-        {
-            validationState.AddModelError(nameof(request.Password), localizer["The password is required."]);
-        }
+        ValidateSetupPassword(request.Password, identityOptions.Value.Password, validationState, localizer);
 
         if (!validationState.IsValid)
         {

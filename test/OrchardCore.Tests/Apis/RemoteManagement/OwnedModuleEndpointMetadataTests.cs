@@ -52,7 +52,7 @@ public class OwnedModuleEndpointMetadataTests
         var setupMetadata = endpoints.Single(endpoint =>
             string.Equals(endpoint.RoutePattern.RawText, "api/tenants/{tenantName}:setup", StringComparison.Ordinal))
             .Metadata.GetRequiredMetadata<CliOperationMetadata>();
-        Assert.Equal("password", Assert.Single(setupMetadata.SecretProperties));
+        Assert.Equal(["password", "connectionString"], setupMetadata.SecretProperties);
         var installMetadata = endpoints.Single(endpoint =>
             string.Equals(endpoint.RoutePattern.RawText, "api/tenants/{tenantName}:install", StringComparison.Ordinal))
             .Metadata.GetRequiredMetadata<CliOperationMetadata>();

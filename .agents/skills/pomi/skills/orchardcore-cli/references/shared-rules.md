@@ -9,14 +9,17 @@ targets one tenant URL and one tenant-local identity.
 The executable is `pomi` (`pomi.exe` on Windows); the .NET tool package is still
 `OrchardCore.Cli`. Keep the existing `OC_*` environment variable names, saved
 contexts, and credentials. The server client ID `orchardcore-cli` and discovery
-extension `x-oc-cli` are unchanged.
+extension `x-oc-cli` are unchanged. If the executable is missing or needs an
+update, follow [CLI installation and package-version discovery](cli-installation.md).
 
 ## Context and authentication
 
 Confirm the target tenant and selected context before remote work. Use
 `pomi context list` to inspect saved targets and `--context <name>` to select one.
 A parent tenant's identity cannot manage content as a child-tenant user.
-Local `pomi install` needs neither a context nor authentication.
+Local `pomi install` needs neither a context nor authentication. Before creating
+or setting up a site or tenant, follow the [setup password policy](setup-password.md)
+and its compliant generator when password generation is authorized.
 
 Reuse an authenticated context when available. Human access uses `pomi login`
 (browser with PKCE, or device authorization); unattended access uses a dedicated
@@ -25,6 +28,21 @@ Never use the public `orchardcore-cli` client for client credentials. Read
 [authentication and contexts](authentication.md) when onboarding, changing
 identities, handling device approval, or diagnosing authentication. Never print
 tokens, client secrets, passwords, or unredacted connection strings.
+
+## Database choice for new sites and tenants
+
+When the user has not specified a database provider, recommend **SQLite** and
+use `Sqlite` (the install commands' default). Preserve an explicitly requested
+provider and existing host database presets; explain when a preset overrides
+the requested/default provider.
+
+For a provider other than SQLite, recommend a **unique table prefix** and pass
+it with `--table-prefix <unique-prefix>`. Use a short site/tenant name plus a
+fresh random suffix, containing only ASCII letters, digits, and underscores;
+check that it is unused in the destination database/schema. Preserve an explicit
+user prefix or host-generated prefix pattern. Keep the chosen prefix across
+creation, setup, and retries; changing it is not a recovery strategy. SQLite's
+per-tenant database needs no additional prefix by default.
 
 ## Discovery, output, and authorization
 
@@ -36,7 +54,15 @@ tokens, client secrets, passwords, or unredacted connection strings.
    when listed in help (for example `pomi templates schema --operation create`).
    Some resources expose a named schema, such as `pomi content items schema Article`.
    Built-in commands do not all have JSON schemas; GraphQL uses introspection.
-3. Preserve JSON property casing exactly as emitted by the schema.
+3. A schema describes the **JSON payload**, not the command-line option names.
+   Preserve its property casing in JSON, but use `pomi <group> <verb> --help`
+   to discover actual CLI options. Do not blindly turn each property into a
+   kebab-case option: properties marked secret by `x-oc-cli.secretProperties`
+   expose only `-env`, `-file`, and `-stdin` inputs. For example, JSON
+   `connectionString` uses `--connection-string-env VARIABLE`,
+   `--connection-string-file PATH`, or `--connection-string-stdin`; there is no
+   inline `--connection-string` for tenant install/setup. See
+   [tenant connection-string examples](tenants.md#schema-properties-and-secret-cli-options).
 4. Pass `--output json` explicitly for automation and schema capture. The
    default `auto` uses human-readable messages in a terminal and JSON when
    redirected. In a terminal, lists remain tables and schema commands retain JSON. Do not parse human success messages;

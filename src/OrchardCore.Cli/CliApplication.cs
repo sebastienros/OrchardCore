@@ -1562,6 +1562,21 @@ internal sealed partial class CliApplication
     internal static void ValidateDynamicJsonBody(string content, OpenApiOperationDefinition operation)
     {
         using var document = JsonDocument.Parse(content);
+        if (operation.Method == "POST"
+            && operation.CliMetadata.CommandGroup.SequenceEqual(["tenants"])
+            && operation.CliMetadata.Verb is "install" or "setup")
+        {
+            var root = document.RootElement;
+            if (root.ValueKind != JsonValueKind.Object
+                || !root.TryGetProperty("password", out var password)
+                || password.ValueKind != JsonValueKind.String)
+            {
+                throw new CliException("The setup administrator password is required and must be a string.");
+            }
+
+            SetupPasswordValidator.Validate(password.GetString());
+        }
+
         if (operation.RequestBodyProperties.Count == 0)
         {
             return;

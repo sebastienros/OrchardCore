@@ -215,7 +215,8 @@ public class CliApplicationTests
                         "required": ["siteName", "password"],
                         "properties": {
                           "siteName": { "type": "string" },
-                          "password": { "type": "string" }
+                          "password": { "type": "string" },
+                          "connectionString": { "type": "string" }
                         }
                       }
                     }
@@ -225,7 +226,7 @@ public class CliApplicationTests
                   "commandGroup": ["tenants"],
                   "verb": "setup",
                   "arguments": [{ "parameterName": "tenantName", "position": 0 }],
-                  "secretProperties": ["password"]
+                  "secretProperties": ["password", "connectionString"]
                 }
               }
             }
@@ -254,6 +255,10 @@ public class CliApplicationTests
 
         Assert.DoesNotContain("--password", optionNames);
         Assert.DoesNotContain("--body", optionNames);
+        Assert.DoesNotContain("--connection-string", optionNames);
+        Assert.Contains("--connection-string-env", optionNames);
+        Assert.Contains("--connection-string-file", optionNames);
+        Assert.Contains("--connection-string-stdin", optionNames);
         Assert.Contains("--password-env", optionNames);
         Assert.Contains("--password-file", optionNames);
         Assert.Contains("--password-stdin", optionNames);

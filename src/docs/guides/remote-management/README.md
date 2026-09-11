@@ -45,8 +45,35 @@ If you have the .NET 10 SDK or later, you can install and update `pomi` through
 `dotnet tool`. It installs a native executable for your platform; running
 `pomi` does not require a separately installed .NET runtime.
 
-For a published push build, copy its version from the workflow's **Published to
-Feedz** summary, then install directly:
+To discover the latest published preview using your registered NuGet sources:
+
+```bash
+dotnet package search OrchardCore.Cli --prerelease --format json
+```
+
+Read `latestVersion` from the intended feed's result with the exact package ID
+`OrchardCore.Cli`. The platform-specific packages are selected automatically
+during installation. If the temporary Feedz source is not registered, append
+`--source https://f.feedz.io/sebastienros/orchardcore/nuget/index.json` to the
+query. `dotnet tool search` searches only NuGet.org, even when other feeds are
+registered; `dotnet package search` uses your configured feeds.
+
+To install the latest available version, including previews:
+
+```bash
+dotnet tool install --global OrchardCore.Cli --prerelease
+pomi --version
+```
+
+If Feedz is not registered, add
+`--add-source https://f.feedz.io/sebastienros/orchardcore/nuget/index.json` to
+that install command. A registered feed needs no extra argument. Use
+`dotnet tool update --global OrchardCore.Cli --prerelease` to update an existing
+installation, with the same optional `--add-source`. Without
+`--prerelease`, an unpinned install selects a stable version. For a reproducible
+installation, use the exact discovered version, or copy the version of a
+specific push build from its **Published to Feedz** workflow summary:
+
 
 ```bash
 dotnet tool install --global OrchardCore.Cli --add-source https://f.feedz.io/sebastienros/orchardcore/nuget/index.json --version <version>
@@ -298,6 +325,20 @@ not silently retry a partially initialized database. Use a fresh directory for
 a new attempt, or repair the preserved project manually. Creating a site does
 not configure Remote Management automatically; follow the next section to
 manage it through `pomi`.
+
+SQLite is recommended when you have no database preference; `Sqlite` is the
+installation default. For another provider, use a table prefix unique to the
+site or tenant in its destination database/schema with `--table-prefix`.
+A short site name plus a fresh random suffix helps avoid collisions; use only
+letters, digits, and underscores. Keep the same prefix through creation and
+setup. Existing host database presets and prefix patterns take precedence.
+
+Setup administrator passwords require at least six characters, with uppercase,
+lowercase, a digit, and a non-alphanumeric character under the standard policy.
+Pomi validates these requirements before local site creation or a tenant setup
+request. See the [setup password policy and generator](../../agents/skills/orchardcore-cli/references/setup-password.md)
+for a 24-character password that always includes all four character groups.
+Custom server policies can impose additional requirements.
 
 ## 2. Prepare the tenant
 
