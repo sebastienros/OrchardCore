@@ -18,11 +18,23 @@ assert metadata['skillCount'] == 10
 assert metadata['compatibility']['managementProtocolMajor'] == 1
 
 with zipfile.ZipFile(site / 'downloads/pomi-plugin.zip') as plugin, zipfile.ZipFile(site / 'downloads/pomi-skills.zip') as skills:
-    root = 'pomi-plugin/plugins/orchardcore-cli/'
+    root = 'pomi-plugin/plugins/pomi/'
     manifest = json.loads(plugin.read(root + '.codex-plugin/plugin.json'))
     claude = json.loads(plugin.read(root + '.claude-plugin/plugin.json'))
     assert manifest['version'] == claude['version'] == metadata['packageVersion']
-    assert manifest['name'] == claude['name'] == 'orchardcore-cli'
+    assert manifest['name'] == claude['name'] == 'pomi'
+    source = REPO / '.agents/skills/pomi'
+    for file in source.rglob('*'):
+        if not file.is_file() or '__pycache__' in file.parts:
+            continue
+        relative = file.relative_to(source).as_posix()
+        if relative in ('.codex-plugin/plugin.json', '.claude-plugin/plugin.json'):
+            original = json.loads(file.read_text())
+            packaged = json.loads(plugin.read(root + relative))
+            assert packaged.pop('version').startswith(original.pop('version') + '+git.')
+            assert packaged == original, relative
+        else:
+            assert plugin.read(root + relative) == file.read_bytes(), relative
     for icon in ('composerIcon', 'logo', 'logoDark'):
         assert plugin.read(root + manifest['interface'][icon].removeprefix('./')).startswith(b'\x89PNG')
     for package, location in [(plugin, root), (skills, 'pomi-skills/')]:
@@ -31,10 +43,10 @@ with zipfile.ZipFile(site / 'downloads/pomi-plugin.zip') as plugin, zipfile.ZipF
     for market in ('.agents/plugins/marketplace.json', '.claude-plugin/marketplace.json'):
         entry = json.loads(plugin.read('pomi-plugin/' + market))['plugins'][0]
         source = entry['source']['path'] if isinstance(entry['source'], dict) else entry['source']
-        assert source == './plugins/orchardcore-cli'
+        assert source == './plugins/pomi'
     count = 0
-    for file in sorted((REPO / '.agents/skills').glob('orchardcore-cli*/**/*.md')):
-        rel = file.relative_to(REPO / '.agents').as_posix()
+    for file in sorted((REPO / '.agents/skills/pomi/skills').glob('orchardcore-cli*/**/*.md')):
+        rel = file.relative_to(REPO / '.agents/skills/pomi').as_posix()
         expected = file.read_bytes()
         assert plugin.read(root + rel) == skills.read('pomi-skills/' + rel) == expected, rel
         assert (site / 'agents/raw' / rel).read_bytes() == expected, rel

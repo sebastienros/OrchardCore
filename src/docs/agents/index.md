@@ -5,26 +5,10 @@
 
 Give your coding agent the complete Pomi skill package to help it install an
 Orchard CMS site, connect to a tenant, and manage content, media, settings, and
-other enabled features. The website supplies the downloads; the plugin is the
-installable package. Opening a public skill URL does **not** register it with
-an agent.
-
-## Choose a download
-
-These downloads belong to the documentation version selected in the website's
-version selector. Both ZIPs contain the same ten canonical skill directories
-and all their references.
-
-| Download | Purpose |
-| --- | --- |
-| [Pomi plugin ZIP](../downloads/pomi-plugin.zip) | Complete skills, references, Codex and Claude Code manifests, local marketplaces, license, and Pomi branding |
-| [Skills-only ZIP](../downloads/pomi-skills.zip) | The same skill directories for Copilot and agents with other packaging requirements |
-| [Browse skills](#browse-skills) | Readable instructions and raw Markdown links, including linked references |
-
-[Package metadata](../downloads/package-metadata.json) and
-[SHA-256 checksums](../downloads/SHA256SUMS) identify the exact build. Download
-the ZIP to inspect it before installation. The packages do not contain the Pomi
-executable, credentials, connectors, or background services.
+other enabled features. Install the **Pomi plugin from the Orchard Core Git
+marketplace**: your agent fetches it, so no manual download or package build is
+required. The website also provides versioned ZIPs and browsable instructions.
+Opening a public skill URL does **not** register it with an agent.
 
 ## Install Pomi and connect
 
@@ -49,65 +33,92 @@ tokens or passwords into an agent prompt.
 
 ## Install in your agent
 
-Keep **all ten sibling directories** together. Individual specialists link to
-shared rules and references in the main skill. Do not copy just `SKILL.md` or
-flatten the directory layout. The shell examples below use macOS/Linux paths;
-on Windows, use **Extract All** and the equivalent absolute folder paths.
+Marketplace installation keeps all ten skills and their references together.
+For a manual skills installation, preserve **all ten sibling directories**;
+individual specialists link to shared references in the main skill. Do not copy
+just `SKILL.md` or flatten the layout. Download examples use macOS/Linux paths;
+on Windows, use **Extract All** and equivalent absolute folder paths.
 
-### Codex: install the plugin
+### Codex: install from the repository
 
-1. Download the **Pomi plugin ZIP** and extract it to a stable directory, such as
-   `~/agent-packages/pomi-plugin`. Its root contains `.agents/plugins/marketplace.json`
-   and `plugins/orchardcore-cli/`.
-2. Register that extracted local marketplace and install its plugin:
+Register the marketplace on the Pomi development branch, then install its plugin:
 
-    ```bash
-    codex plugin marketplace add "$HOME/agent-packages/pomi-plugin"
-    codex plugin add orchardcore-cli@pomi-download
-    ```
+```bash
+codex plugin marketplace add sebastienros/OrchardCore \
+  --ref sebros/remote-tenant-cli-plan
+codex plugin add pomi@orchardcore
+```
 
-3. Start a new Codex task. Ask it to use `orchardcore-cli`, or select a specialist
-   such as `orchardcore-cli-content-items`.
+The first command registers the catalog; the second installs and enables Pomi.
+Start a new Codex task and ask it to use `orchardcore-cli`, or select a specialist
+such as `orchardcore-cli-content-items`. The plugin is called `pomi`; the ten
+skill names remain `orchardcore-cli` and `orchardcore-cli-*`.
 
-Keep the extracted directory so the marketplace source remains available.
-When updating, extract the new download there and run the plugin-add command
-again, then start a new task. Compare `package-metadata.json` before updating.
-If your CLI lacks the plugin commands, update Codex; the command spelling above
-uses `plugin add`.
+For release documentation, replace the development branch in `--ref` with the
+corresponding release branch or tag that contains the marketplace. To match
+**this documentation build exactly**, use the commit command under
+[Version and provenance](#version-and-provenance).
+
+To receive fixes from a branch and reinstall the updated plugin:
+
+```bash
+codex plugin marketplace upgrade orchardcore
+codex plugin add pomi@orchardcore
+```
+
+Start a new task after updating. A full commit SHA pins a snapshot; a branch
+moves when its maintainers push changes. Tags identify releases, but can be
+moved by repository maintainers, so use a commit SHA for an immutable identity.
+If your CLI lacks the plugin commands, update Codex; these examples use
+`plugin add`, not `plugin install`.
 
 Related skills are distributed as a plugin following
 [OpenAI's distribution guidance](https://learn.chatgpt.com/docs/build-skills#distribute-skills-with-plugins).
-See [Codex plugins](https://learn.chatgpt.com/docs/plugins) for plugin discovery
-and workspace availability. This download is a local marketplace, not a listing
-in the OpenAI plugin directory.
+See [Codex plugins](https://learn.chatgpt.com/docs/plugins) for discovery and
+workspace availability. This is a repository marketplace, not a listing in
+the OpenAI plugin directory.
 
 ### Claude Code: install the same plugin
 
-The plugin ZIP also contains a Claude Code manifest; its skills are the same
-files used by Codex. After extraction, load it for one session:
-
-```bash
-claude --plugin-dir "$HOME/agent-packages/pomi-plugin/plugins/orchardcore-cli"
-```
-
-For persistent installation, run these commands **inside Claude Code**, replacing
-the path with your extracted directory:
+Run these commands **inside Claude Code**:
 
 ```text
-/plugin marketplace add /absolute/path/to/pomi-plugin
-/plugin install orchardcore-cli@pomi-download
+/plugin marketplace add sebastienros/OrchardCore@sebros/remote-tenant-cli-plan
+/plugin install pomi@orchardcore
 ```
 
-Invoke `/orchardcore-cli:orchardcore-cli`, or ask Claude to use the relevant Pomi
-skill. See the official [plugin installation guide](https://code.claude.com/docs/en/discover-plugins).
+Start a new session. Invoke `/pomi:orchardcore-cli`, or ask Claude to use the
+relevant Pomi skill. Replace the text after `@` in the repository source with
+a release branch or tag when needed. To update a branch installation:
 
-If you need repository-scoped skills instead, extract the **Skills-only ZIP**
-and copy its ten `skills/orchardcore-cli*` directories into `.claude/skills/`.
-For personal Claude Code skills, use `~/.claude/skills/`. These are standalone
-skills, invoked as `/orchardcore-cli` without the plugin namespace. Install one
-form to avoid duplicate skill listings. See [Claude Code skills](https://code.claude.com/docs/en/skills).
+```text
+/plugin marketplace update orchardcore
+/plugin update pomi@orchardcore
+```
 
-### GitHub Copilot: install the skills-only package
+Claude Code uses the same checked-in skill files as Codex. See its official
+[plugin installation guide](https://code.claude.com/docs/en/discover-plugins)
+and [marketplace reference](https://code.claude.com/docs/en/plugin-marketplaces).
+For an exact commit snapshot, use the commit-specific ZIP below and register
+its extracted local marketplace.
+
+### GitHub Copilot CLI: install the plugin
+
+Copilot CLI recognizes the Claude-compatible catalog and manifest in this
+repository:
+
+```bash
+copilot plugin marketplace add sebastienros/OrchardCore#sebros/remote-tenant-cli-plan
+copilot plugin install pomi@orchardcore
+```
+
+Start a new session. Use `#<release-branch-or-tag>` instead of the development
+branch when needed. Update with `copilot plugin marketplace update orchardcore`
+and `copilot plugin update pomi`. See the official
+[Copilot CLI plugin reference](https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference)
+and [installation guide](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/plugins-finding-installing).
+
+### Copilot and other agents: install standalone skills
 
 1. Download and extract the **Skills-only ZIP**. The outer directory is
    `pomi-skills`, containing `skills/`, a license, and package metadata.
@@ -126,8 +137,14 @@ form to avoid duplicate skill listings. See [Claude Code skills](https://code.cl
 
 Copilot also supports `.agents/skills/` for project skills. Choose one location
 rather than installing duplicates. For personal local skills, use
-`~/.copilot/skills/`. The Codex plugin manifest is not needed for this installation.
+`~/.copilot/skills/`. The plugin manifest is not needed for this installation.
 See [GitHub's skill installation instructions](https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-cloud-agent/add-skills).
+
+For Claude Code standalone skills, copy the same ten directories into
+`.claude/skills/` (project) or `~/.claude/skills/` (personal). Invoke
+`/orchardcore-cli` without the plugin namespace. See
+[Claude Code skills](https://code.claude.com/docs/en/skills). Choose the plugin
+or standalone installation to avoid duplicate listings.
 
 ### Try a bounded task
 
@@ -141,11 +158,54 @@ authentication, and output rules, and stay within your requested scope. A public
 Markdown link is useful for reading instructions, but installation is what makes
 the complete package discoverable to the agent.
 
+## Optional downloads
+
+These downloads belong to the documentation version selected in the website's
+version selector. Both ZIPs contain the same ten canonical skill directories
+and all their references.
+
+| Download | Purpose |
+| --- | --- |
+| [Pomi plugin ZIP](../downloads/pomi-plugin.zip) | Complete skills, references, Codex and Claude Code manifests, local marketplaces, license, and Pomi branding |
+| [Skills-only ZIP](../downloads/pomi-skills.zip) | The same skill directories for agents with other packaging requirements |
+| [Browse skills](#browse-skills) | Readable instructions and raw Markdown links, including linked references |
+
+[Package metadata](../downloads/package-metadata.json) and
+[SHA-256 checksums](../downloads/SHA256SUMS) identify the exact build. Use a ZIP for an
+archived snapshot or a local installation without fetching the Git marketplace.
+The packages do not contain the Pomi executable, credentials, connectors, or
+background services.
+
+### Install a downloaded plugin ZIP
+
+Extract the **Pomi plugin ZIP** to a stable directory such as
+`~/agent-packages/pomi-plugin`. Its root contains both marketplace catalogs
+and `plugins/pomi/`. Register that local marketplace, then install:
+
+```bash
+codex plugin marketplace add "$HOME/agent-packages/pomi-plugin"
+codex plugin add pomi@pomi-download
+```
+
+Inside Claude Code, use `/plugin marketplace add /absolute/path/to/pomi-plugin`
+and `/plugin install pomi@pomi-download`. Alternatively, load one session with
+`claude --plugin-dir /absolute/path/to/pomi-plugin/plugins/pomi`.
+Copilot CLI can use `copilot plugin marketplace add /absolute/path/to/pomi-plugin`
+and `copilot plugin install pomi@pomi-download`.
+
+The local catalog is named `pomi-download` to distinguish it from the Git
+marketplace. Install one form to avoid duplicate skills. Keep the extracted
+directory; to update it, extract the new ZIP there and reinstall its plugin.
+Start a new agent session after installation or updates. Older downloads named
+the plugin `orchardcore-cli`; remove that old installation when switching to
+`pomi`.
+
 ## Browse skills
 
-The rendered pages and raw Markdown are generated from `.agents/skills/` during
-the same build as the ZIPs. Each readable page links to its raw Markdown; raw
-references retain the original relative links and bytes.
+The rendered pages and raw Markdown are generated from
+`.agents/skills/pomi/skills/` during the same build as the ZIPs. Each readable
+page links to its raw Markdown; raw references retain the original relative
+links and bytes.
 
 | Workflow | Readable page | Raw instructions |
 | --- | --- | --- |
@@ -179,5 +239,10 @@ python3 .scripts/remote-management/build-plugin.py /tmp/pomi-package-rebuild
 
 Compare the generated checksums with the downloaded `SHA256SUMS`. ZIP entry order,
 timestamps, and permissions are fixed; no build date or local path enters the
-archives. All canonical skills remain in `.agents/skills/`; generated website
-pages and archives are not maintained as separate source copies.
+archives. All ten canonical skills remain in `.agents/skills/pomi/skills/`;
+generated website pages and archives are not maintained as separate source
+copies. Both repository
+catalogs point to `.agents/skills/pomi/`, which already contains the manifests,
+references, license, compatibility information, and branding. Marketplace
+installers do not run `build-plugin.py`; that script only generates optional
+ZIPs and documentation assets.

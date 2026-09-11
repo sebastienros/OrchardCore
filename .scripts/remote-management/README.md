@@ -168,7 +168,23 @@ before uploading the packages.
 
 ## Agent plugin
 
-The canonical skills live under `.agents/skills/orchardcore-cli*`.
+The canonical skills live under `.agents/skills/pomi/skills/orchardcore-cli*`.
+The parent `.agents/skills/pomi/` is a directly installable plugin. Repository
+catalogs at `.agents/plugins/marketplace.json` and `.claude-plugin/marketplace.json`
+resolve to that same directory, with marketplace name `orchardcore` and plugin
+name `pomi`. No build, external symlink, or generated distribution branch is
+needed for Git installation. `AGENTS.md` routes repository agents to the nested
+skills; the other Orchard development skills remain separate.
+
+Bump both checked-in manifest versions when changing plugin content; marketplace
+clients use them to discover updates. Run the standalone installation check:
+
+```bash
+python3 .scripts/remote-management/test-marketplace.py
+# Optional real Codex installation in a disposable CODEX_HOME:
+python3 .scripts/remote-management/test-marketplace.py --codex /path/to/codex
+```
+
 Build a portable plugin directory and ZIP into a **new** output directory:
 
 ```bash
@@ -178,7 +194,7 @@ python3 .scripts/remote-management/build-plugin.py /tmp/pomi-plugin
 The result contains `pomi-plugin.zip`, `pomi-skills.zip`, commit-specific ZIPs,
 `package-metadata.json`, and `SHA256SUMS`. The plugin ZIP has a `pomi-plugin/`
 marketplace root with Codex and Claude Code catalogs pointing to the same
-`plugins/orchardcore-cli/` directory. That plugin contains both manifests,
+`plugins/pomi/` directory. That plugin contains both manifests,
 branding, the canonical skills/references, provenance metadata, and license.
 The skills-only ZIP contains `pomi-skills/skills/` plus metadata and license.
 
@@ -209,7 +225,7 @@ python .scripts/remote-management/test-skill-distribution.py site
 
 Packaging does not install or register the plugin in the current agent.
 Installation requires a separately installed Pomi binary and, for remote work,
-an authorized tenant context. See `skill-compatibility.json` for the supported
+an authorized tenant context. See `.agents/skills/pomi/compatibility.json` for the supported
 Pomi/server baseline; update it when those requirements change.
 
 The main skill is a workflow router. Detailed authentication, local installation,
@@ -226,7 +242,7 @@ The builder checks local links and heading anchors before creating the ZIP.
 To verify a relocated or extracted plugin without access to this repository:
 
 ```bash
-python3 .scripts/remote-management/verify-plugin-links.py /path/to/extracted/orchardcore-cli
+python3 .scripts/remote-management/verify-plugin-links.py /path/to/extracted/pomi
 ```
 
 The checker rejects missing files, links outside the plugin, missing headings,

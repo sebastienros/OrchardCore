@@ -16,7 +16,7 @@ import subprocess
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('binary', type=Path, help='Native Pomi executable')
 parser.add_argument('config_home', type=Path, help='Isolated configuration with refreshed metadata')
-parser.add_argument('--skills-root', type=Path, default=Path(__file__).resolve().parents[2] / '.agents/skills')
+parser.add_argument('--skills-root', type=Path, default=Path(__file__).resolve().parents[2] / '.agents/skills/pomi/skills')
 args = parser.parse_args()
 env = {key: value for key, value in os.environ.items() if not key.startswith('OC_')}
 env.update(OC_CONFIG_HOME=str(args.config_home.resolve()), NO_COLOR='1', TERM='dumb')

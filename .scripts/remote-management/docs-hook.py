@@ -72,6 +72,18 @@ def on_page_markdown(markdown, page, config, files):
 
 {metadata['compatibility']['notes']}
 
+Install the same Git revision in Codex:
+
+```bash
+codex plugin marketplace add sebastienros/OrchardCore --ref {metadata['sourceCommit']}
+codex plugin add pomi@orchardcore
+```
+
+If `orchardcore` is already registered with a different ref, remove that
+marketplace with `codex plugin marketplace remove orchardcore` before adding
+the chosen ref and reinstalling. Uncommitted local changes are not included
+in a Git installation.
+
 Exact artifacts for this build:
 
 {artifacts}

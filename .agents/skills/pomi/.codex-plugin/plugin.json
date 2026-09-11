@@ -1,6 +1,6 @@
 {
-  "name": "orchardcore-cli",
-  "version": "0.8.0",
+  "name": "pomi",
+  "version": "0.9.0",
   "description": "Install local Orchard Core sites and manage tenants through Pomi.",
   "author": {
     "name": "Orchard Core contributors"

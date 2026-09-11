@@ -35,29 +35,20 @@ def build(output, repo=REPO):
         raise ValueError(f'{output} already exists; choose a new output directory')
     output.mkdir(parents=True)
     revision = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=repo, text=True).strip()
-    inputs = ['.agents/skills', '.scripts/remote-management', 'design/artifacts/logos/pomi', 'LICENSE', '.gitattributes']
+    inputs = ['.agents/skills/pomi', '.agents/plugins', '.claude-plugin', '.scripts/remote-management', 'design/artifacts/logos/pomi', 'LICENSE', '.gitattributes']
     dirty = bool(subprocess.check_output(['git', 'status', '--porcelain', '--', *inputs], cwd=repo, text=True).strip())
     marketplace = output / 'pomi-plugin'
-    plugin = marketplace / 'plugins/orchardcore-cli'
-    plugin.mkdir(parents=True)
-    manifest = json.loads((repo / '.scripts/remote-management/plugin.json').read_text())
-    base_version = manifest['version']
-    manifest['version'] = base_version + '+git.' + revision[:12] + ('.working' if dirty else '')
+    source = repo / '.agents/skills/pomi'
+    plugin = marketplace / 'plugins/pomi'
+    shutil.copytree(source, plugin, ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))
+    manifest = json.loads((plugin / '.codex-plugin/plugin.json').read_text())
+    manifest['version'] += '+git.' + revision[:12] + ('.working' if dirty else '')
     write_json(plugin / '.codex-plugin/plugin.json', manifest)
-    write_json(plugin / '.claude-plugin/plugin.json', {key: manifest[key] for key in ('name', 'version', 'description', 'author', 'license')})
-    skills = sorted((repo / '.agents/skills').glob('orchardcore-cli*'))
-    for skill in skills:
-        if not (skill / 'SKILL.md').is_file():
-            raise ValueError(f'Missing SKILL.md: {skill.name}')
-        shutil.copytree(skill, plugin / 'skills' / skill.name, ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))
-    assets = repo / 'design/artifacts/logos/pomi/png'
-    for original, name in [('pomi-terminal-icon-light-128.png', 'icon.png'),
-                           ('pomi-terminal-logo-light.png', 'logo.png'),
-                           ('pomi-terminal-logo-dark.png', 'logo-dark.png')]:
-        (plugin / 'assets').mkdir(exist_ok=True)
-        shutil.copyfile(assets / original, plugin / 'assets' / name)
-    (plugin / 'LICENSE').write_text((repo / 'LICENSE').read_text(), encoding='utf-8', newline='\n')
-    compatibility = json.loads((repo / '.scripts/remote-management/skill-compatibility.json').read_text())
+    claude = json.loads((plugin / '.claude-plugin/plugin.json').read_text())
+    claude['version'] = manifest['version']
+    write_json(plugin / '.claude-plugin/plugin.json', claude)
+    skills = sorted((plugin / 'skills').glob('orchardcore-cli*'))
+    compatibility = json.loads((plugin / 'compatibility.json').read_text())
     digest = hashlib.sha256(json.dumps(compatibility, sort_keys=True).encode())
     digest.update(Path(__file__).read_bytes())
     for path in sorted(plugin.rglob('*')):
@@ -67,24 +58,17 @@ def build(output, repo=REPO):
                 'sourceDirty': dirty, 'contentSha256': digest.hexdigest(), 'skillCount': len(skills),
                 'compatibility': compatibility}
     write_json(plugin / 'package-metadata.json', metadata)
-    # Both marketplaces refer to the very same plugin directory.
-    write_json(marketplace / '.agents/plugins/marketplace.json', {
-        'name': 'pomi-download', 'interface': {'displayName': 'Pomi download'},
-        'plugins': [{'name': manifest['name'], 'source': {'source': 'local', 'path': './plugins/orchardcore-cli'},
-                     'policy': {'installation': 'AVAILABLE', 'authentication': 'ON_INSTALL'}, 'category': 'Productivity'}]})
-    write_json(marketplace / '.claude-plugin/marketplace.json', {
-        'name': 'pomi-download', 'owner': {'name': 'Orchard Core contributors'},
-        'plugins': [{'name': manifest['name'], 'source': './plugins/orchardcore-cli'}]})
-    (plugin / 'README.md').write_text('''# Pomi agent plugin
-
-Start with the [workflow router](skills/orchardcore-cli/SKILL.md), or select a
-specialist directly. Each links to the bundled context, authentication, and
-output rules. Longer manuals use commit-pinned links and require network access.
-Live tenant schemas take precedence. Install Pomi separately; this package
-contains instructions and branding, not a CLI executable or credentials.
-
-See package-metadata.json for the source revision and supported versions.
-''', encoding='utf-8', newline='\n')
+    # Reuse the checked-in catalogs, adjusting only the extracted location and
+    # name so a downloaded snapshot can coexist with the Git marketplace.
+    for path in ('.agents/plugins/marketplace.json', '.claude-plugin/marketplace.json'):
+        catalog = json.loads((repo / path).read_text())
+        catalog['name'] = 'pomi-download'
+        if 'interface' in catalog:
+            catalog['interface']['displayName'] = 'Pomi download'
+        entry = catalog['plugins'][0]
+        entry['source'] = ({'source': 'local', 'path': './plugins/pomi'}
+                           if isinstance(entry['source'], dict) else './plugins/pomi')
+        write_json(marketplace / path, catalog)
     (marketplace / 'README.md').write_text('''# Install the Pomi plugin
 
 Keep this extracted directory in a stable location.
@@ -93,16 +77,17 @@ Codex CLI:
 
 ```bash
 codex plugin marketplace add /absolute/path/to/pomi-plugin
-codex plugin add orchardcore-cli@pomi-download
+codex plugin add pomi@pomi-download
 ```
 
 Start a new Codex task after installation. For Claude Code, load the plugin
-for a session with `claude --plugin-dir /absolute/path/to/pomi-plugin/plugins/orchardcore-cli`.
+for a session with `claude --plugin-dir /absolute/path/to/pomi-plugin/plugins/pomi`.
 For persistent Claude Code installation, run `/plugin marketplace add /absolute/path/to/pomi-plugin`
-and `/plugin install orchardcore-cli@pomi-download` inside Claude Code.
+and `/plugin install pomi@pomi-download` inside Claude Code.
 
-The [plugin instructions](plugins/orchardcore-cli/README.md) link to all skills.
-The website is the download location; downloading alone does not register skills.
+The [plugin instructions](plugins/pomi/README.md) link to all skills.
+For Git installation, use the Orchard Core repository marketplace instead.
+Downloading alone does not register skills.
 ''', encoding='utf-8', newline='\n')
     spec = importlib.util.spec_from_file_location('plugin_links', Path(__file__).with_name('verify-plugin-links.py'))
     links = importlib.util.module_from_spec(spec)

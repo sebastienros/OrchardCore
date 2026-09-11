@@ -8,6 +8,8 @@ on:
       - 'mkdocs.yml'
       - 'src/docs/**'
       - '.agents/skills/**'
+      - '.agents/plugins/**'
+      - '.claude-plugin/**'
       - '.scripts/remote-management/**'
       - 'design/artifacts/logos/pomi/**'
       - '.readthedocs.yml'
@@ -19,6 +21,8 @@ on:
       - 'mkdocs.yml'
       - 'src/docs/**'
       - '.agents/skills/**'
+      - '.agents/plugins/**'
+      - '.claude-plugin/**'
       - '.scripts/remote-management/**'
       - 'design/artifacts/logos/pomi/**'
       - '.readthedocs.yml'
@@ -45,6 +49,9 @@ jobs:
     - name: Install Dependencies
       run: |
         pip install -r src/docs/requirements.txt -v
+
+    - name: Validate directly installable Pomi marketplace
+      run: python .scripts/remote-management/test-marketplace.py
 
     - name: Build Documentation
       run: python -m mkdocs build --strict
