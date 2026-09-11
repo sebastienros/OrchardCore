@@ -91,15 +91,42 @@ templates before substantial changes so the previous design can be restored.
 
 ## Provision the correct site or tenant
 
-For a new local application, follow `pomi install` and its .NET SDK prerequisite.
-For a tenant on an existing SaaS host, follow `pomi tenants install` through an
-authorized Default-tenant context. These are different workflows; tenant
-creation does not install a new host or automatically authenticate its users.
+Use the **Pomi CLI** to create new websites. For a new local application, use
+`pomi install` and follow its .NET SDK prerequisite. For a tenant on an existing
+SaaS host, use `pomi tenants install` through an authorized Default-tenant
+context. These are different workflows; tenant creation does not install a
+new host or automatically authenticate its users. If Pomi is missing, follow
+the CLI installation skill before provisioning.
 
-Use SQLite when no provider is specified, following the shared database rules
-and host presets. For other providers, recommend a unique table prefix. Apply
-the setup password policy and safe secret inputs before provisioning. Do not
-place credentials in prompts, generated documentation, content, or assets.
+Prefer **SQLite** (`Sqlite`) and the **Blank** setup recipe. Unless the user
+specifies otherwise, pass `--database-provider Sqlite --recipe-name Blank` to
+start with an empty site, then enable the features and build the content model
+needed for the design. Respect existing host database presets and confirm that
+the deployment includes the Blank recipe. Preserve an explicitly requested
+provider or recipe. For other database providers, recommend a unique table
+prefix according to the shared database rules.
+
+Apply the setup password policy and safe secret inputs before provisioning.
+Whenever you generate credentials, save the administrator username and password
+together in a persistent private file **before** starting setup, so the user can
+retrieve them afterward. Include the site or tenant name and its URL when known.
+Use the user's chosen secure location; otherwise use a unique site-specific
+directory under `~/.config/pomi/site-credentials/` on macOS/Linux or
+`%LOCALAPPDATA%\\Pomi\\site-credentials\\` on Windows. Keep it outside source
+repositories, the website directory, Media, and public or shared folders.
+
+Create the directory with owner-only access and the credential file with
+owner-only read/write access (directory mode `0700` and file mode `0600` on
+macOS/Linux, or a private user ACL on Windows). Set permissions at creation,
+use a fresh filename without following symlinks or overwriting existing records,
+and verify the file was saved privately before setup. Retain it across setup
+failures and retries. This is a private plaintext credential record, not an
+encrypted vault; do not print its contents in tool output, chat, logs, or shell
+history. Pass the password using the CLI's safe secret inputs and clear temporary
+environment variables after use. Never put credentials in ordinary generated
+documentation, content, or assets. Report the file's absolute path to the user
+at handover; if execution is remote, establish a private location the user can
+access before relying on that file as the credential handoff.
 
 For SaaS work, keep an explicit mapping of tenant names, URLs, contexts, and
 branding. Provision only the requested tenants; authenticate to each child
@@ -168,5 +195,7 @@ Finish with the site or preview URL, what was built, verification results, and
 a short editor guide: where to edit each page, add sections or related items,
 replace media, manage navigation, and publish. Distinguish completed work from
 sample content, missing facts, and any remaining deployment or access steps.
+If credentials were generated, include the absolute path to their private file
+so the user can read them, without including the password itself.
 Keep reusable design notes and content-model decisions in the user's workspace
 when appropriate, without including secrets.
