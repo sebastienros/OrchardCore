@@ -5,6 +5,10 @@ description: Designs and manages Orchard Core content types, reusable parts, fie
 
 # Pomi CLI Content Definitions
 
+Before issuing commands, read the [shared context, authentication, and output rules](../orchardcore-cli/references/shared-rules.md).
+For first-time access or login problems, follow [authentication and contexts](../orchardcore-cli/references/authentication.md).
+These rules apply even when this specialist is selected directly.
+
 Design the model before authoring content or templates. Work against the target
 tenant context because registered parts, fields, settings, and schemas depend on
 its enabled features.
@@ -264,10 +268,10 @@ Confirm exact JSON casing with `content settings show` and the stored definition
 because definition settings are extensible. The base DTO schema intentionally
 uses an open settings bag; do not interpret that as a complete module contract.
 
-Read `references/modeling-patterns.md` for concrete carousel, blog/news, landing
+Read [modeling-patterns](references/modeling-patterns.md) for concrete carousel, blog/news, landing
 page, taxonomy, menu, and Liquid-shape designs.
 
-Use `orchardcore-cli-menus` when creating menu content or overriding the
+Use [orchardcore-cli-menus](../orchardcore-cli-menus/SKILL.md) when creating menu content or overriding the
 official Menu/MenuItem/MenuItemLink templates.
 
 ## Verify the model
@@ -287,6 +291,13 @@ Remote management currently has no dedicated sitemap document/source API.
 its content-type source requires a recipe, deployment plan, admin UI, or a
 future sitemap management API.
 
-Canonical references:
-`src/docs/reference/api/content-definitions/README.md` and the module pages for
-Content Types, Flows, Lists, Taxonomies, Menu, Alias, and Sitemaps.
+Versioned references (live tenant schemas take precedence):
+[content-definitions API](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/api/content-definitions/README.md) and the module references below:
+
+- [ContentTypes](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/modules/ContentTypes/README.md)
+- [Flow](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/modules/Flow/README.md)
+- [Lists](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/modules/Lists/README.md)
+- [Taxonomies](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/modules/Taxonomies/README.md)
+- [Menu](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/modules/Menu/README.md)
+- [Alias](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/modules/Alias/README.md)
+- [Sitemaps](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/modules/Sitemaps/README.md)

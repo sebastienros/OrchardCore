@@ -5,6 +5,10 @@ description: Creates and manages Orchard Core custom Liquid templates through `p
 
 # Pomi CLI Templates
 
+Before issuing commands, read the [shared context, authentication, and output rules](../orchardcore-cli/references/shared-rules.md).
+For first-time access or login problems, follow [authentication and contexts](../orchardcore-cli/references/authentication.md).
+These rules apply even when this specialist is selected directly.
+
 Use the Templates module for tenant-stored Liquid shape overrides. Keep content
 structure in definitions, content values in items, and presentation in Liquid.
 An active site theme is required: custom templates extend the active theme's
@@ -83,7 +87,7 @@ zones, messages, and the content section:
 Create it as template name `Layout` before relying on tenant CSS or scripts.
 
 Upload `assets/styles/site-v1.css` through Media first (see
-`orchardcore-cli-media`). Resolve it with `asset_url` so tenant prefixes and
+[orchardcore-cli-media](../orchardcore-cli-media/SKILL.md)). Resolve it with `asset_url` so tenant prefixes and
 remote storage providers work.
 
 `article-template.json`:
@@ -155,7 +159,7 @@ Example media rendering:
 Do not pass editor-controlled alternative text or other attribute values to
 `img_tag`; write them in normal Liquid HTML attributes so Liquid encodes them.
 
-Read `references/liquid-patterns.md` for content, summary, Flow/Bag, list, menu,
+Read [liquid-patterns](references/liquid-patterns.md) for content, summary, Flow/Bag, list, menu,
 and resource patterns.
 
 ## Verify
@@ -177,7 +181,7 @@ URLs, missing shapes, stylesheet requests, and responsive behavior. Require:
 - browser console has no errors;
 - layout works at approximately 375px, 768px, and 1440px viewport widths.
 
-Canonical references:
-`src/docs/reference/api/templates/README.md`,
-`src/docs/reference/modules/Templates/README.md`, and
-`src/docs/reference/modules/Liquid/README.md`.
+Versioned references (live tenant schemas take precedence):
+[templates API](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/api/templates/README.md),
+[Templates module](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/modules/Templates/README.md), and
+[Liquid module](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/modules/Liquid/README.md).

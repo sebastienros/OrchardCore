@@ -5,6 +5,10 @@ description: Reads and updates Orchard Core Site Settings, Custom Settings, and 
 
 # Pomi CLI Settings
 
+Before issuing commands, read the [shared context, authentication, and output rules](../orchardcore-cli/references/shared-rules.md).
+For first-time access or login problems, follow [authentication and contexts](../orchardcore-cli/references/authentication.md).
+These rules apply even when this specialist is selected directly.
+
 Site Settings are one tenant document with a safe management projection. Custom
 Settings are named content-type-backed sections embedded in that document.
 
@@ -106,9 +110,9 @@ does not add translation commands to Pomi.
 - Treat nested JSON type failures as validation errors; correct the exact path.
 - Read back after updates and verify user-facing behavior separately.
 
-Canonical references:
-`src/docs/reference/api/localization/README.md`,
-`src/docs/reference/api/settings/README.md`,
-`src/docs/reference/api/custom-settings/README.md`,
-`src/docs/reference/modules/Settings/README.md`, and
-`src/docs/reference/modules/CustomSettings/README.md`.
+Versioned references (live tenant schemas take precedence):
+[localization API](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/api/localization/README.md),
+[settings API](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/api/settings/README.md),
+[custom-settings API](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/api/custom-settings/README.md),
+[Settings module](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/modules/Settings/README.md), and
+[CustomSettings module](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/modules/CustomSettings/README.md).

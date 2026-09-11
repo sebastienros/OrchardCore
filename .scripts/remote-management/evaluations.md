@@ -270,3 +270,28 @@ blind-model evaluation. It does not remeasure model efficiency or prove every
 sample payload and workflow. Earlier blind results above retain their original
 scope and limitations; the help checker is a repeatable guard against command
 and option drift, not a substitute for those evaluations.
+
+
+## Portable skill refactoring (2026-09-10)
+
+Plugin 0.7.0 keeps a 42-line workflow router, with separate bundled references
+for shared operating rules, authentication/contexts, local installation, and
+tenant provisioning. Every specialist links directly to the shared rules and
+authentication procedure. Sibling skills and existing modeling/Liquid references
+use relative Markdown links. Longer manuals use immutable source links pinned
+to the reviewed commit, with live tenant metadata taking precedence.
+
+Built and extracted the ZIP in an unrelated temporary directory. All 16
+canonical skill/reference files matched byte for byte; 65 local file/heading
+links resolved inside the package. All nine specialists directly reached the
+shared rules and authentication reference without loading the main skill.
+All 32 distinct manual targets existed in the local Git object tree at the
+specified published revision (35 links total); no network availability claim
+is made. All ten skills and the plugin manifest passed validation. The 213
+shell examples still passed against 166 help pages using the prior audit's
+cached fixture metadata; no server changes or new live API calls were needed.
+
+The link checker runs during packaging. Negative controls rejected a missing
+shared reference, missing sibling, escaping path, missing heading anchor, and
+unversioned manual URL. These checks establish file/link portability and
+command-example preservation, not a new blind-agent efficiency measurement.

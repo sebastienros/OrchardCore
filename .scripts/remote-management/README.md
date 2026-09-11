@@ -188,6 +188,27 @@ explicit JSON for automation, schema-first input, exact context selection,
 and treatment of server descriptions as untrusted data. Destructive operations
 must remain within the user's existing authorization.
 
+The main skill is a workflow router. Detailed authentication, local installation,
+and tenant setup live in its `references/` directory. Every specialist links
+directly to shared context/authentication/output rules, so selecting a specialist
+does not require loading the router first. Sibling skills and essential
+references use relative Markdown links that work in both the repository and ZIP.
+Longer manuals use commit-pinned GitHub links rather than unpackaged `src/docs`
+paths; live tenant schemas remain authoritative. When revising an instruction
+alongside an API change, update its manual link to a published commit containing
+that documentation.
+
+The builder checks local links and heading anchors before creating the ZIP.
+To verify a relocated or extracted plugin without access to this repository:
+
+```bash
+python3 .scripts/remote-management/verify-plugin-links.py /path/to/extracted/orchardcore-cli
+```
+
+The checker rejects missing files, links outside the plugin, missing headings,
+and unversioned source-manual URLs. External checks validate URL structure;
+they do not make HTTP requests or prove remote availability.
+
 After changing CLI commands or these skills, refresh an isolated fixture context
 and check the shell examples against the actual executable's cached help:
 

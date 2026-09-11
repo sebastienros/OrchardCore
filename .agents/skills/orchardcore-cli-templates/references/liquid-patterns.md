@@ -83,7 +83,7 @@ publication state, taxonomy filtering, and sorting in the list/query layer.
 
 Requirements:
 
-- Upload CSS through Media before referencing it; follow the Media skill for
+- Upload CSS through Media before referencing it; follow the [Media skill](../../orchardcore-cli-media/SKILL.md) for
   folder selection and restricted-extension permissions.
 - Upload media before saving media field paths.
 - Include alternative text.

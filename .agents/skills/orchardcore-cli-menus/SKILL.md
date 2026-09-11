@@ -5,6 +5,10 @@ description: Creates, updates, publishes, and renders Orchard Core menus through
 
 # Pomi CLI Menus
 
+Before issuing commands, read the [shared context, authentication, and output rules](../orchardcore-cli/references/shared-rules.md).
+For first-time access or login problems, follow [authentication and contexts](../orchardcore-cli/references/authentication.md).
+These rules apply even when this specialist is selected directly.
+
 Manage menus through the content-definition, content-item, and template
 commands. Orchard Core currently exposes no separate `pomi menus` CRUD group.
 Always use the built-in `Menu` and `MenuItem` stereotypes supplied by
@@ -229,5 +233,5 @@ Verify the root and representative content routes, nested keyboard navigation,
 anchor targets, role-varying visibility, mobile/desktop layouts, script/CSS
 requests, and browser console.
 
-Canonical reference:
-`src/docs/reference/modules/Menu/README.md`.
+Versioned reference (live tenant schemas take precedence):
+[Menu module](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/modules/Menu/README.md).

@@ -5,6 +5,10 @@ description: Automates Orchard Core feature, recipe, query, workflow, user, and 
 
 # Pomi CLI Automation
 
+Before issuing commands, read the [shared context, authentication, and output rules](../orchardcore-cli/references/shared-rules.md).
+For first-time access or login problems, follow [authentication and contexts](../orchardcore-cli/references/authentication.md).
+These rules apply even when this specialist is selected directly.
+
 Use this skill after selecting the exact tenant context. Refresh OpenAPI after
 feature changes because commands and schemas are dynamic.
 
@@ -122,5 +126,11 @@ not exposed for secret-bearing operations. Inspect live help on older servers.
 9. Treat destructive actions and execution-style commands as non-retryable
    unless their API reference explicitly says otherwise.
 
-Canonical references are under `src/docs/reference/api/` in `features`,
-`recipes`, `queries`, `workflows`, `users`, and `roles`.
+Versioned API references (live tenant schemas take precedence):
+
+- [Features](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/api/features/README.md)
+- [Recipes](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/api/recipes/README.md)
+- [Queries](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/api/queries/README.md)
+- [Workflows](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/api/workflows/README.md)
+- [Users](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/api/users/README.md)
+- [Roles](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/api/roles/README.md)

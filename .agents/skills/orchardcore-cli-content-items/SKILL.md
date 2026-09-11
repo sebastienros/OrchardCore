@@ -5,6 +5,10 @@ description: Authors and manages Orchard Core content items through `pomi`. Use 
 
 # Pomi CLI Content Items
 
+Before issuing commands, read the [shared context, authentication, and output rules](../orchardcore-cli/references/shared-rules.md).
+For first-time access or login problems, follow [authentication and contexts](../orchardcore-cli/references/authentication.md).
+These rules apply even when this specialist is selected directly.
+
 Author against the live content-type schema. Content item JSON uses Pascal-cased
 well-known properties and type-specific part/field members.
 
@@ -172,4 +176,4 @@ pomi content items list --content-type Article --status published
 Inspect public URLs separately; a successful API save does not prove template,
 media, navigation, or CSS correctness.
 
-Canonical reference: `src/docs/reference/api/content-items/README.md`.
+Versioned reference (live tenant schemas take precedence): [content-items API](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/api/content-items/README.md).

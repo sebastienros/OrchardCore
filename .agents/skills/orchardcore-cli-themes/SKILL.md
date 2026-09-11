@@ -5,6 +5,10 @@ description: Lists, enables, and selects Orchard Core site and admin themes thro
 
 # Pomi CLI Themes
 
+Before issuing commands, read the [shared context, authentication, and output rules](../orchardcore-cli/references/shared-rules.md).
+For first-time access or login problems, follow [authentication and contexts](../orchardcore-cli/references/authentication.md).
+These rules apply even when this specialist is selected directly.
+
 Manage themes in the target tenant context. The authenticated identity requires
 `AccessRemoteManagement` and `ApplyTheme`.
 
@@ -44,11 +48,11 @@ Each result includes `id`, `name`, `description`, `isAdmin`, `isEnabled`, and
 - Refresh discovery only when theme enablement changes the available API
   surface: `pomi api refresh --force`.
 
-After selecting a site theme, use `orchardcore-cli-media` for tenant CSS/assets
-and `orchardcore-cli-templates` for custom Liquid shape overrides. Verify the
+After selecting a site theme, use [orchardcore-cli-media](../orchardcore-cli-media/SKILL.md) for tenant CSS/assets
+and [orchardcore-cli-templates](../orchardcore-cli-templates/SKILL.md) for custom Liquid shape overrides. Verify the
 public route because selecting a theme does not prove its resources or content
 templates render correctly.
 
-Canonical references:
-`src/docs/reference/api/themes/README.md` and
-`src/docs/reference/modules/Themes/README.md`.
+Versioned references (live tenant schemas take precedence):
+[themes API](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/api/themes/README.md) and
+[Themes module](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/modules/Themes/README.md).

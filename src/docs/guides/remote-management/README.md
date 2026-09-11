@@ -851,6 +851,10 @@ closing a shell does not log you out.
 Continue with the [complete management API reference](../../reference/api/README.md),
 [CLI reference](../../reference/modules/RemoteManagement/README.md), and
 [verification record](../../reference/modules/RemoteManagement/review.md).
+The agent plugin includes a workflow router, independently usable specialists,
+and shared authentication, context, and output guidance. Essential references
+are bundled; longer manuals use commit-pinned links that require network access.
+
 Agent skills and plugin packaging are documented in
 [the repository test toolkit](https://github.com/sebastienros/OrchardCore/tree/sebros/remote-tenant-cli-plan/.scripts/remote-management).
 

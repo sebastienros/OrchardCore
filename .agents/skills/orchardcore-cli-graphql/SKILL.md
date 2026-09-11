@@ -5,6 +5,10 @@ description: Executes Orchard Core GraphQL queries and mutations and inspects sc
 
 # Pomi CLI GraphQL
 
+Before issuing commands, read the [shared context, authentication, and output rules](../orchardcore-cli/references/shared-rules.md).
+For first-time access or login problems, follow [authentication and contexts](../orchardcore-cli/references/authentication.md).
+These rules apply even when this specialist is selected directly.
+
 Use `pomi graphql` to send documents directly to the existing GraphQL endpoint.
 These are built-in commands, independent of OpenAPI discovery. They reuse the
 selected context and `pomi login` credentials or `OC_CLIENT_ID`/`OC_CLIENT_SECRET`.
@@ -60,5 +64,5 @@ origin or tenant.
   Use GraphiQL for interactive query authoring. If a custom mutation changes
   management commands, explicitly refresh their metadata with `pomi api refresh`.
 
-Canonical reference: `src/docs/reference/modules/Apis.GraphQL/README.md`,
+Versioned reference (live tenant schemas take precedence): [Apis.GraphQL module](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/modules/Apis.GraphQL/README.md),
 section **Use GraphQL from the CLI**.

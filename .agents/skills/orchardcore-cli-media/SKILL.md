@@ -5,6 +5,10 @@ description: Manages Orchard Core Media assets through `pomi`. Use for image/fil
 
 # Pomi CLI Media
 
+Before issuing commands, read the [shared context, authentication, and output rules](../orchardcore-cli/references/shared-rules.md).
+For first-time access or login problems, follow [authentication and contexts](../orchardcore-cli/references/authentication.md).
+These rules apply even when this specialist is selected directly.
+
 Use Media for runtime assets, including images, CSS, JavaScript, and SVG. They
 share the store and permissions used by the Orchard admin Media library. Tenant
 static files are deployment files and have no management API.
@@ -138,6 +142,6 @@ Also verify the response content type. When a template references the asset,
 verify the rendered page and computed styles. Use returned `filePath` values for
 media fields, not public URLs.
 
-Canonical references:
-`src/docs/reference/api/media/README.md` and
-`src/docs/reference/modules/Media/README.md`.
+Versioned references (live tenant schemas take precedence):
+[media API](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/api/media/README.md) and
+[Media module](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/modules/Media/README.md).
