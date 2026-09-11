@@ -2,7 +2,9 @@
 
 Apply the [shared operating rules](shared-rules.md). Use
 [authentication and contexts](authentication.md) if the Default tenant context
-is not ready. To create a local application, use [local installation](installation.md).
+is not ready. This guide assumes the application already exists. To create the initial
+application, follow [local installation](installation.md); for a new SaaS host,
+use `pomi install <directory> --recipe-name SaaS`.
 
 Use `pomi tenants install <name>` to create and set up a tenant in an existing
 Orchard application. Run it from an authenticated context targeting the

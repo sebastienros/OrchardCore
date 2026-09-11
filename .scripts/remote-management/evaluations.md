@@ -295,3 +295,35 @@ The link checker runs during packaging. Negative controls rejected a missing
 shared reference, missing sibling, escaping path, missing heading anchor, and
 unversioned manual URL. These checks establish file/link portability and
 command-example preservation, not a new blind-agent efficiency measurement.
+
+
+## Initial website routing (2026-09-11)
+
+Plugin 0.10.2 makes initial application creation explicit in the main skill,
+shared rules, designer profile, and local installation reference. A new SaaS
+host uses `pomi install --recipe-name SaaS`; an unspecified standalone site
+prefers Blank. `pomi tenants install` is reserved for an existing host. Missing
+Pomi routes to tool installation instead of manual scaffolding.
+
+Two independent, read-only model dry runs received realistic requests and only
+the plugin entry point/profile and linked references, without the expected
+answer or the observed failure:
+
+- GPT-5.6 Sol: create a fresh SaaS host and an empty News child tenant, with no
+  running host or context. Selected `pomi install` with SaaS first, a persistent
+  server session, Default-tenant authentication, and then `pomi tenants install`
+  with Blank. Did not propose manual scaffolding.
+- GPT-5.6 Luna: create an architecture studio site with no tools, server, or
+  context. Selected prerequisite/tool installation, a privately saved generated
+  password, `pomi install` with SQLite and Blank, and remote design work after
+  initialization. Did not propose manual scaffolding.
+
+Source review also corrected the installation reference to recognize that the
+bundled SaaS recipe already configures Pomi Remote Management; the earlier SaaS
+dry run had proposed redundant admin configuration. These are routing dry runs,
+not executed site installations or proof of complete website-design quality.
+
+The main skill passed frontmatter validation. Both marketplace catalogs and
+manifests passed validation. The strict MkDocs build and distribution checks
+passed, including both ZIPs, 19 raw/rendered instruction files, 106 local links,
+version metadata, checksums, and reproducibility. No CLI/server behavior changed.

@@ -1,6 +1,6 @@
 ---
 name: orchardcore-cli
-description: Installs or updates the `pomi` CLI and uses it to initialize local Orchard CMS sites or manage remote tenants. Use for local site creation, contexts, authentication, discovery, tenant setup, enabling Remote Management, compatibility checks, direct GraphQL, dynamic help, and coordinating module-specific management tasks.
+description: Installs or updates the `pomi` CLI and uses it to initialize local Orchard CMS sites or manage remote tenants. Use for creating the initial website or a new SaaS host with pomi install, contexts, authentication, discovery, tenant setup, enabling Remote Management, compatibility checks, direct GraphQL, dynamic help, and coordinating module-specific management tasks.
 ---
 
 # Pomi CLI
@@ -10,12 +10,26 @@ Read the [shared context, authentication, and output rules](references/shared-ru
 before issuing commands. Specialists link to the same rules and can be used directly.
 Load only the procedure or specialist needed for the user's task.
 
+## Start a new website with Pomi
+
+For a new Orchard application, including the initial **SaaS host**, start with
+`pomi install <directory>`. It creates the project and initializes the Default
+tenant without a context or login. Read [local installation](references/installation.md)
+before creating files. For a requested SaaS host, pass `--recipe-name SaaS`;
+otherwise prefer `--recipe-name Blank` unless the user selects another recipe.
+Use `pomi tenants install` only to add a tenant to an **existing, running host**.
+
+If Pomi is unavailable, follow [CLI installation](references/cli-installation.md)
+first. Do not substitute manual `dotnet new`, project scaffolding, or hand-written
+Auto Setup configuration for `pomi install` unless the user explicitly requests
+that approach. Report an installation blocker rather than silently bypassing Pomi.
+
 ## Choose the workflow
 
 | Task | Read |
 | --- | --- |
 | Install/update the Pomi executable or discover its latest package version | [CLI installation](references/cli-installation.md) |
-| Create a local application and initialize its Default tenant (`pomi install`) | [Local installation](references/installation.md) |
+| Create a standalone application or the initial SaaS host (`pomi install`) | [Local installation](references/installation.md) |
 | Create/setup a tenant in an existing server (`pomi tenants install`, create, setup) | [Tenant installation and Remote Management setup](references/tenants.md) |
 | Connect, log in, approve a device code, or manage saved contexts | [Authentication and contexts](references/authentication.md) |
 | Diagnose missing commands, cache freshness, permissions, or output | [Shared operating rules](references/shared-rules.md) |
@@ -31,7 +45,8 @@ Load only the procedure or specialist needed for the user's task.
 
 ## Coordinate a site build
 
-For a complete site build, create/setup the tenant, enable the required features,
+For a complete site build, first choose new-host installation or existing-host
+tenant provisioning above, then enable the required features,
 design definitions, upload Media assets, author a draft, create templates, render
 and refine, then publish when requested and verify public routes. For an existing
 site, start at the relevant step and preserve its content model and configuration.

@@ -51,8 +51,17 @@ pomi --context default tenants install Blog \
   --email admin@example.com --user-name admin --password-env OC_SITE_PASSWORD
 ```
 
-Store the password in the user's chosen secret manager if it is needed later;
-do not print it in agent output. After the command and secure handoff, remove
+## Credential handoff
+
+When generating site credentials, save the username and password in a persistent
+private file **before setup** so the user can retrieve them. Use the user's secure
+location or a unique directory under `~/.config/pomi/site-credentials/` on
+macOS/Linux (`%LOCALAPPDATA%\Pomi\site-credentials\` on Windows), outside the
+site and repository. Create directories with mode `0700` and files with `0600`
+(or private user ACLs on Windows); use exclusive creation, no symlink following
+or overwriting, and verify permissions. Include the site/tenant name and URL.
+Report only the absolute file path, never its contents. Preserve the record on
+failure. A user-selected secret manager can hold an additional copy. After the command and secure handoff, remove
 the temporary variable with `unset OC_SITE_PASSWORD`. Keep shell tracing
 (`set -x`) disabled while generating and passing secrets. Do not replace a
 user-supplied password silently; report unmet requirements and let the user

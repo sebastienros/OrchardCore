@@ -27,8 +27,8 @@ working directory. Load only the specialist and references needed next.
 | Work | Procedure |
 | --- | --- |
 | Install or update Pomi | [CLI installation](../skills/orchardcore-cli/references/cli-installation.md) |
-| Create a standalone CMS application | [Local installation](../skills/orchardcore-cli/references/installation.md) |
-| Set up a SaaS tenant and enable remote access | [Tenant provisioning](../skills/orchardcore-cli/references/tenants.md) |
+| Create a standalone CMS application or the initial SaaS host | [Local installation](../skills/orchardcore-cli/references/installation.md) |
+| Add a tenant to an existing SaaS host and enable remote access | [Tenant provisioning](../skills/orchardcore-cli/references/tenants.md) |
 | Connect to the right tenant | [Authentication and contexts](../skills/orchardcore-cli/references/authentication.md) |
 | Design types, fields, relationships, and sections | [Content definitions](../skills/orchardcore-cli-content-definitions/SKILL.md) and [modeling patterns](../skills/orchardcore-cli-content-definitions/references/modeling-patterns.md) |
 | Author drafts, validate, publish, and manage versions | [Content items](../skills/orchardcore-cli-content-items/SKILL.md) |
@@ -92,13 +92,20 @@ templates before substantial changes so the previous design can be restored.
 ## Provision the correct site or tenant
 
 Use the **Pomi CLI** to create new websites. For a new local application, use
-`pomi install` and follow its .NET SDK prerequisite. For a tenant on an existing
+`pomi install` and follow its .NET SDK prerequisite. This includes creating the
+initial SaaS host: use `pomi install <directory> --recipe-name SaaS`, which
+initializes its Default tenant. Read the local installation reference before
+writing application files. Do not replace Pomi with manual `dotnet new`, project
+files, or hand-written Auto Setup configuration unless the user explicitly
+requests manual scaffolding. For a tenant on an existing
 SaaS host, use `pomi tenants install` through an authorized Default-tenant
 context. These are different workflows; tenant creation does not install a
 new host or automatically authenticate its users. If Pomi is missing, follow
 the CLI installation skill before provisioning.
 
-Prefer **SQLite** (`Sqlite`) and the **Blank** setup recipe. Unless the user
+Prefer **SQLite** (`Sqlite`) and the **Blank** setup recipe for an unspecified
+new site. A request for a **SaaS host** selects `--recipe-name SaaS` instead;
+the host and its child tenants can use different recipes. Unless the user
 specifies otherwise, pass `--database-provider Sqlite --recipe-name Blank` to
 start with an empty site, then enable the features and build the content model
 needed for the design. Respect existing host database presets and confirm that

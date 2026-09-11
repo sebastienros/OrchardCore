@@ -12,6 +12,17 @@ contexts, and credentials. The server client ID `orchardcore-cli` and discovery
 extension `x-oc-cli` are unchanged. If the executable is missing or needs an
 update, follow [CLI installation and package-version discovery](cli-installation.md).
 
+## Initial website creation
+
+When a task needs a new Orchard application, including a SaaS host, read
+[local installation](installation.md) and use `pomi install <directory>` before
+remote management work. No existing context or authenticated server is required.
+Prefer SQLite and Blank for an unspecified new site; use `--recipe-name SaaS`
+when the user requests a SaaS host. SaaS is a setup recipe for the same embedded
+CMS template. `pomi tenants install` adds a tenant only after its host exists.
+Do not scaffold the host manually to work around missing Pomi: follow
+[CLI installation](cli-installation.md), or report the blocker.
+
 ## Context and authentication
 
 Confirm the target tenant and selected context before remote work. Use

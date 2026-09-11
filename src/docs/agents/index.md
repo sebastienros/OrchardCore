@@ -140,7 +140,21 @@ context or new-site directory, and whether to publish. For example:
 > venue information, and booking links. Make events and artists reusable content
 > that editors can manage independently. Keep the new content in draft.
 
-For a SaaS host:
+For a **new SaaS host**, without an existing context:
+
+> Create an Orchard Core SaaS host in ./ContosoCloud using Pomi, SQLite,
+> and the SaaS recipe. Start it, guide me through login, then create a Blank
+> tenant named Studio for a photography portfolio.
+
+The agent uses `pomi install <directory> --recipe-name SaaS` for the initial
+host. For an unspecified standalone site it prefers `pomi install <directory>
+--recipe-name Blank`. Neither command needs an existing Orchard context. The
+installer creates the project and runs setup; agents should not replace it with
+manual project scaffolding. If Pomi is missing, the installation skill handles
+that prerequisite. Generated administrator credentials are saved privately for
+you before setup.
+
+For a tenant on an **existing SaaS host**:
 
 > Using my authenticated Default-tenant context, create a tenant named Studio
 > at the studio URL prefix. Build a photography portfolio with reusable project
