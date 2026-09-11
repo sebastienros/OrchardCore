@@ -56,8 +56,9 @@ password environment/stdin input, human and JSON results, complete tenant URLs,
 duplicate-name rejection, creation validation, setup failure/recovery, and
 unchanged local contexts. It creates tenants only inside the disposable host.
 
-`localization-smoke.py` exercises all seven localization operations through the CLI,
-including paging, explicit culture selection, settings readback, translation retries,
+`localization-smoke.py` exercises all eleven localization operations through the CLI,
+including available cultures, individual culture additions/removals, UI string group
+discovery, paging, explicit culture selection, settings readback, translation retries,
 French-only editing permissions, read-only access, and anonymous rejection. It
 replaces culture settings on the disposable fixture with English and French.
 

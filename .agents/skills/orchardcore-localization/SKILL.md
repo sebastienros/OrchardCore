@@ -129,10 +129,15 @@ The Localization module reads these at startup and calls `app.UseRequestLocaliza
 ## Remote management
 
 Use `oc localization` when managing an existing tenant through Remote Management.
-Read live help and schemas first. `cultures list` and `settings show/update`
-manage culture configuration; settings updates replace the entire culture set.
-`strings show media-gallery --culture fr` inspects registered JavaScript UI
-strings from PO catalogs. `translations list/set/delete` requires Data
+Read live help and schemas first. Prefer `cultures add fr` or
+`cultures remove fr --force` for a single culture change: they preserve the
+other cultures, default and fallback setting. Removing the default is rejected;
+change it through `settings update` first. `cultures available`
+discovers valid names. `settings show/update` reads/replaces the whole configuration.
+Use `strings list` to discover group names before `strings show <group> --culture fr`
+to inspect JavaScript UI strings from PO catalogs. Older third-party providers
+must implement `IJSLocalizer.GetLocalizationGroups()` to appear in discovery;
+their known groups remain readable without it. `translations list/set/delete` requires Data
 Localization and manages one exact database-backed context/key per mutation.
 It cannot edit PO catalogs or content-item translations. See
 `src/docs/reference/api/localization/README.md` for tested commands and permissions.

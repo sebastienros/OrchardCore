@@ -42,7 +42,25 @@ assert oc('localization', 'settings', 'update', '--stdin', body=updated) == upda
 assert oc('localization', 'settings', 'show') == updated
 assert oc('localization', 'settings', 'update', '--stdin', body=updated) == updated
 assert oc('localization', 'cultures', 'list')['totalCount'] == 2
-assert oc('localization', 'cultures', 'list', '--include-available', 'true', '--take', '1')['totalCount'] > 2
+assert oc('localization', 'cultures', 'available', '--take', '1')['totalCount'] > 2
+assert oc('localization', 'cultures', 'available', '--take', '1') == oc('localization', 'cultures', 'list', '--include-available', 'true', '--take', '1')
+oc('localization', 'cultures', 'available', client='cli-discovery', status=403)
+# Incremental edits preserve settings and repeat safely across tenant releases.
+added = {**updated, 'supportedCultures': ['de', 'en', 'fr']}
+assert oc('localization', 'cultures', 'add', 'DE') == added
+assert oc('localization', 'cultures', 'add', 'de') == added
+assert oc('localization', 'cultures', 'remove', 'de', '--force') == updated
+assert oc('localization', 'cultures', 'remove', 'de', '--force') == updated
+oc('localization', 'cultures', 'remove', 'en', '--force', status=400)
+oc('localization', 'cultures', 'add', 'unknown-culture', status=400)
+assert oc('localization', 'settings', 'show') == updated
+groups = oc('localization', 'strings', 'list')
+assert {'name': 'media-gallery'} in groups['items']
+assert oc('localization', 'strings', 'list', '--skip', str(groups['totalCount']))['items'] == []
+oc('localization', 'strings', 'list', '--take', '201', status=400)
+oc('localization', 'strings', 'list', client='cli-discovery', status=403)
+oc('localization', 'cultures', 'add', 'de', client='cli-discovery', status=403)
+oc('localization', 'cultures', 'remove', 'fr', '--force', client='cli-discovery', status=403)
 labels = oc('localization', 'strings', 'show', 'media-gallery', '--culture', 'fr', '--take', '200')
 assert labels['culture'] == 'fr' and labels['totalCount'] > 0
 oc('localization', 'strings', 'show', 'missing-group', status=404)
@@ -68,10 +86,18 @@ args = ('localization', 'translations', 'delete', key['context'], key['key'], '-
 assert oc(*args)['changed']
 assert not oc(*args)['changed']
 # Anonymous callers cannot reach any of the new read APIs.
-for route in ('api/localization/cultures', 'api/localization/settings', 'api/localization/strings/media-gallery', 'api/localization/translations?culture=fr'):
+for route in ('api/localization/cultures', 'api/localization/cultures/available', 'api/localization/settings', 'api/localization/strings', 'api/localization/strings/media-gallery', 'api/localization/translations?culture=fr'):
     try:
         urllib.request.urlopen(state['url'] + route, timeout=15)
         raise AssertionError('Anonymous access unexpectedly succeeded: ' + route)
     except urllib.error.HTTPError as error:
         assert error.code == 401, (route, error.code)
-print('Localization CLI smoke passed: seven operations, paging, culture selection, retries, and authorization.')
+for method in ('PUT', 'DELETE'):
+    request = urllib.request.Request(state['url'] + 'api/localization/cultures/de', method=method)
+    try:
+        urllib.request.urlopen(request, timeout=15)
+        raise AssertionError('Anonymous culture mutation unexpectedly succeeded: ' + method)
+    except urllib.error.HTTPError as error:
+        assert error.code == 401, (method, error.code)
+assert oc('localization', 'settings', 'show') == updated
+print('Localization CLI smoke passed: eleven operations, incremental culture edits, group discovery, paging, retries, and authorization.')

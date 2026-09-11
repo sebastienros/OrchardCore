@@ -17,8 +17,12 @@ Send a bearer token as described in [Authentication](../authentication/README.md
 | Method | Tenant-relative route | Operation | Additional permission |
 | --- | --- | --- | --- |
 | GET | `/api/localization/cultures` | List supported or available cultures | `ManageCultures` |
+| GET | `/api/localization/cultures/available` | List available cultures | `ManageCultures` |
+| PUT | `/api/localization/cultures/{culture}` | Add one supported culture | `ManageCultures` |
+| DELETE | `/api/localization/cultures/{culture}` | Remove one supported culture | `ManageCultures` |
 | GET | `/api/localization/settings` | Read culture settings | `ManageCultures` |
 | PUT | `/api/localization/settings` | Replace culture settings | `ManageCultures` |
+| GET | `/api/localization/strings` | List advertised UI string groups | `ManageCultures` |
 | GET | `/api/localization/strings/{groupName}` | Read a UI string group | `ManageCultures` |
 | GET | `/api/localization/translations` | List dynamic translation descriptors and stored values | `ViewDynamicTranslations` |
 | PUT | `/api/localization/translations` | Set one dynamic translation | `ManageTranslations` or `ManageTranslations_{culture}` |
@@ -38,7 +42,23 @@ oc localization cultures list
 oc localization settings show
 ```
 
-To support English and French, create `cultures.json`:
+For everyday changes, add or remove a single culture without replacing the other settings:
+
+```bash
+oc localization cultures available
+oc localization cultures add fr
+oc localization cultures remove de --force
+```
+
+`cultures list` shows enabled cultures with readable names and default flags.
+`cultures available` lists all cultures recognized by the server, with supported
+and default flags. Both lists support `--skip` and `--take` (up to 200 rows).
+`settings show` returns the whole configuration, including parent-culture
+fallback. Use `settings update` when changing the default culture or replacing
+the full configuration. All these commands live under `oc localization`.
+
+To set English as the default, support English and French, and enable parent
+fallback, create `cultures.json`:
 
 ```json
 {
@@ -52,6 +72,7 @@ Apply it, then inspect the French Media UI labels:
 
 ```bash
 oc localization settings update --body-file cultures.json
+oc localization strings list
 oc localization strings show media-gallery --culture fr --take 200
 ```
 
@@ -109,7 +130,46 @@ The `200 OK` response is sorted by culture name and contains `skip`, `take`, `to
 }
 ```
 
-Display names depend on the server's globalization data and request language. Culture names are .NET culture identifiers such as `en`, `en-US`, `fr`, or `fr-FR`; they are not time zone identifiers. Discover exact available names with `oc localization cultures list --include-available true`, paging as necessary. Invalid paging returns `400`.
+Display names depend on the server's globalization data and request language. Culture names are .NET culture identifiers such as `en`, `en-US`, `fr`, or `fr-FR`; they are not time zone identifiers. Discover exact available names with `oc localization cultures available`, paging as necessary. Invalid paging returns `400`.
+
+## List available cultures
+
+`GET /api/localization/cultures/available` accepts no body. It has the same
+`skip` and `take` parameters, response shape, and validation as culture listing,
+but always includes every culture recognized by the server. For example:
+
+```bash
+oc localization cultures available --take 200
+oc localization cultures available --skip 200 --take 200
+```
+
+The `totalCount` reports the full number of available cultures. A supported
+culture remains in this list with `isSupported: true`. The existing
+`cultures list --include-available true` option remains an equivalent way to
+request this information.
+
+## Add or remove one culture
+
+`PUT /api/localization/cultures/{culture}` adds one culture;
+`DELETE /api/localization/cultures/{culture}` removes one. Neither accepts a body.
+`culture` is an available .NET culture name, matched case-insensitively and
+normalized to server casing. Use settings replacement for the empty invariant
+culture name, which cannot be a route segment.
+
+Both return `200 OK` with the complete updated settings. Other cultures, the
+default, and parent fallback are preserved. Removing a culture does not delete
+its PO files, database translations, or localized content. Adding one does not
+install translation catalogs.
+
+Adding an already supported culture or removing an already absent available
+culture returns the current settings without saving or releasing the tenant.
+Unknown names and removal of the default return `400` validation details.
+Change the default with `settings update` before removing it. CLI removal asks
+for confirmation; use `--force` for an unattended operation.
+
+Changes use the same site settings service and tenant release as full settings
+replacement below. They have no API-level concurrency token; coordinate
+simultaneous culture edits and read back after an ambiguous failure.
 
 ## Read or replace culture settings
 
@@ -126,6 +186,33 @@ Display names depend on the server's globalization data and request language. Cu
 The empty string denotes .NET's invariant culture. Names are matched case-insensitively, normalized to server casing, deduplicated, and sorted. Invalid names, an empty list, or a default outside the list return `400` validation details. A successful update returns `200` with the normalized settings.
 
 Changed settings are saved through the site settings service and request a tenant release so request localization is reconfigured. An identical retry returns `200` without saving or releasing again: equivalence compares default culture case-insensitively, the supported-culture **set** case-insensitively, and the fallback Boolean. This is full replacement, not a patch. There is no ETag or compare-and-swap contract; coordinate concurrent settings edits and read back after an ambiguous failure.
+
+## List UI string groups
+
+`GET /api/localization/strings` accepts no body. `skip` defaults to `0` and
+`take` to `50`, with the same bounds as culture listing. Invalid paging returns
+`400`. For example, `oc localization strings list` returns:
+
+```json
+{
+  "skip": 0,
+  "take": 50,
+  "totalCount": 1,
+  "items": [{ "name": "media-gallery" }]
+}
+```
+
+Names come from enabled `IJSLocalizer` providers' `GetLocalizationGroups()`
+method. Exact duplicates are merged and names are sorted ordinally. Group names
+are case-sensitive unless the owning provider explicitly handles them otherwise.
+The list is independent of the selected culture and does not resolve translations.
+Use a returned name as the argument to `oc localization strings show <groupName>`.
+
+For compatibility, older providers can still serve strings by name but do not
+appear until they implement group discovery. Third-party modules can advertise
+their own groups without changing the CLI; see
+[JavaScript localization](../../modules/Localize/javascript-localization.md#advertise-groups-for-cli-discovery).
+The built-in Media provider advertises `media-gallery`.
 
 ## Read UI strings
 
@@ -148,7 +235,7 @@ Example `200 OK` response (values depend on installed catalogs):
 }
 ```
 
-Providers are merged using the existing JavaScript localization service and results are sorted by key. `400` indicates an unsupported culture or invalid paging/group length; `404` means no strings were supplied for that group. Groups cannot be enumerated through `IJSLocalizer`; consult the module contributing the UI.
+Providers are merged using the existing JavaScript localization service and results are sorted by key. `400` indicates an unsupported culture or invalid paging/group length; `404` means no strings were supplied for that group. Use `oc localization strings list` to discover advertised groups.
 
 Source text can remain visible when a PO entry is missing or its context does not match the current localizer. Selecting French cannot repair a stale translation catalog. This response reports resolved strings, not translation coverage or provenance. It does not expose an API to upload PO files.
 
@@ -211,6 +298,6 @@ Only the exact pair is removed; other translations remain. Repeating deletion, i
 
 ## Errors and source
 
-All seven operations return `401` for missing/invalid bearer authentication and `403` for insufficient permissions. Operation-specific errors are described above. Validation responses contain an `errors` dictionary; other errors use Problem Details. Malformed JSON returns `400`, and unsupported request content types return `415` on body operations. Routes are relative to the tenant, including its path prefix.
+All eleven operations return `401` for missing/invalid bearer authentication and `403` for insufficient permissions. Operation-specific errors are described above. Validation responses contain an `errors` dictionary; other errors use Problem Details. Malformed JSON returns `400`, and unsupported request content types return `415` on body operations. Routes are relative to the tenant, including its path prefix.
 
 Source: `OrchardCore.Localization/Endpoints/LocalizationManagementEndpoints.cs`, `OrchardCore.DataLocalization/Endpoints/TranslationManagementEndpoints.cs`, and the existing localization/site settings and translations document services. Each enabled module contributes its own capability and CLI metadata to the management OpenAPI document.

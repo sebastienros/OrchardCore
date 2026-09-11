@@ -63,6 +63,102 @@ public class LocalizationManagementTests
     }
 
     [Fact]
+    public async Task Cultures_Available_IncludesUnsupportedNamesAndPages()
+    {
+        var fixture = new Fixture();
+        var result = await AvailableCulturesAsync(fixture.Context, fixture.Authorization.Object, fixture.Localization.Object, new LocalizationListRequest { Take = 1 });
+        var cultures = Assert.IsType<CultureListResponse>(((IValueHttpResult)result).Value);
+        Assert.Equal(3, cultures.TotalCount);
+        var culture = Assert.Single(cultures.Items);
+        Assert.Equal("de", culture.Name);
+        Assert.False(culture.IsSupported);
+        Assert.False(culture.IsDefault);
+    }
+
+    [Theory]
+    [InlineData(false, "DE", new[] { "de", "en", "fr" })]
+    [InlineData(true, "FR", new[] { "en" })]
+    public async Task Cultures_ChangeOne_PreservesDefaultAndFallback(bool remove, string culture, string[] expected)
+    {
+        var fixture = new Fixture();
+        fixture.Localization.SetupGet(service => service.FallBackToParentCultures).Returns(true);
+        var site = new SiteSettings();
+        fixture.Site.Setup(service => service.LoadSiteSettingsAsync()).ReturnsAsync(site);
+        var result = remove
+            ? await RemoveCultureAsync(fixture.Context, fixture.Authorization.Object, fixture.Localization.Object, fixture.Site.Object, fixture.Release.Object, culture)
+            : await AddCultureAsync(fixture.Context, fixture.Authorization.Object, fixture.Localization.Object, fixture.Site.Object, fixture.Release.Object, culture);
+        var settings = Assert.IsType<CultureSettings>(((IValueHttpResult)result).Value);
+        Assert.Equal(expected, settings.SupportedCultures);
+        Assert.Equal("en", settings.DefaultCulture);
+        Assert.True(settings.FallBackToParentCulture);
+        Assert.Equal(expected, site.As<LocalizationSettings>().SupportedCultures);
+        fixture.Release.Verify(service => service.RequestRelease(), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(false, "FR", 200)]
+    [InlineData(true, "de", 200)]
+    [InlineData(true, "EN", 400)]
+    [InlineData(true, "unknown-culture", 400)]
+    [InlineData(false, "unknown-culture", 400)]
+    public async Task Cultures_RetryOrInvalidChange_DoesNotPersist(bool remove, string culture, int status)
+    {
+        var fixture = new Fixture();
+        var result = remove
+            ? await RemoveCultureAsync(fixture.Context, fixture.Authorization.Object, fixture.Localization.Object, fixture.Site.Object, fixture.Release.Object, culture)
+            : await AddCultureAsync(fixture.Context, fixture.Authorization.Object, fixture.Localization.Object, fixture.Site.Object, fixture.Release.Object, culture);
+        Assert.Equal(status, ((IStatusCodeHttpResult)result).StatusCode);
+        fixture.Site.Verify(service => service.UpdateSiteSettingsAsync(It.IsAny<ISite>()), Times.Never);
+        fixture.Release.Verify(service => service.RequestRelease(), Times.Never);
+    }
+
+    [Fact]
+    public async Task Cultures_AndGroups_RequireManageCultures()
+    {
+        var fixture = new Fixture("AccessRemoteManagement");
+        Assert.Equal(403, ((IStatusCodeHttpResult)await AvailableCulturesAsync(fixture.Context, fixture.Authorization.Object, fixture.Localization.Object, new LocalizationListRequest())).StatusCode);
+        Assert.Equal(403, ((IStatusCodeHttpResult)await AddCultureAsync(fixture.Context, fixture.Authorization.Object, fixture.Localization.Object, fixture.Site.Object, fixture.Release.Object, "de")).StatusCode);
+        Assert.Equal(403, ((IStatusCodeHttpResult)await RemoveCultureAsync(fixture.Context, fixture.Authorization.Object, fixture.Localization.Object, fixture.Site.Object, fixture.Release.Object, "fr")).StatusCode);
+        Assert.Equal(403, ((IStatusCodeHttpResult)await StringGroupsAsync(fixture.Context, fixture.Authorization.Object, [], new LocalizationListRequest())).StatusCode);
+        fixture.Site.Verify(service => service.UpdateSiteSettingsAsync(It.IsAny<ISite>()), Times.Never);
+        fixture.Release.Verify(service => service.RequestRelease(), Times.Never);
+    }
+
+    [Fact]
+    public async Task StringGroups_MergesAdvertisedNames_WithPagingAndLegacyProviderCompatibility()
+    {
+        var fixture = new Fixture();
+        var first = new Mock<IJSLocalizer>();
+        first.Setup(service => service.GetLocalizationGroups()).Returns(["z-group", "a-group", "", new string('a', 201)]);
+        var second = new Mock<IJSLocalizer>();
+        second.Setup(service => service.GetLocalizationGroups()).Returns(["a-group", "A-group"]);
+        IJSLocalizer legacy = new LegacyJSLocalizer();
+        Assert.Empty(legacy.GetLocalizationGroups());
+        Assert.NotEmpty(legacy.GetLocalizations("legacy"));
+        var result = await StringGroupsAsync(fixture.Context, fixture.Authorization.Object, [first.Object, second.Object, legacy], new LocalizationListRequest { Skip = 1, Take = 1 });
+        var groups = Assert.IsType<UiStringGroupsResponse>(((IValueHttpResult)result).Value);
+        Assert.Equal(3, groups.TotalCount);
+        Assert.Equal("a-group", Assert.Single(groups.Items).Name);
+        first.Verify(service => service.GetLocalizations(It.IsAny<string>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(-1, 10)]
+    [InlineData(0, 0)]
+    [InlineData(0, 201)]
+    public async Task StringGroups_InvalidPaging_IsRejected(int skip, int take)
+    {
+        var fixture = new Fixture();
+        var result = await StringGroupsAsync(fixture.Context, fixture.Authorization.Object, [], new LocalizationListRequest { Skip = skip, Take = take });
+        Assert.Equal(400, ((IStatusCodeHttpResult)result).StatusCode);
+    }
+
+    private sealed class LegacyJSLocalizer : IJSLocalizer
+    {
+        public IDictionary<string, string> GetLocalizations(string group) => new Dictionary<string, string> { ["Hello"] = "Hello" };
+    }
+
+    [Fact]
     public async Task Strings_ExplicitCulture_UsesAndRestoresRequestCulture()
     {
         var fixture = new Fixture();
@@ -165,14 +261,17 @@ public class LocalizationManagementTests
     }
 
     [Fact]
-    public async Task Routes_AllSeven_RequireBearerAndManagementPermissionAndExposeCliMetadata()
+    public async Task Routes_AllEleven_RequireBearerAndManagementPermissionAndExposeCliMetadata()
     {
         var builder = WebApplication.CreateBuilder();
         await using var app = builder.Build();
         app.AddLocalizationManagementEndpoints();
         app.AddTranslationManagementEndpoints();
         var endpoints = ((IEndpointRouteBuilder)app).DataSources.SelectMany(source => source.Endpoints).ToArray();
-        Assert.Equal(7, endpoints.Length);
+        Assert.Equal(11, endpoints.Length);
+        var commands = endpoints.Select(endpoint => endpoint.Metadata.GetMetadata<CliOperationMetadata>()).ToArray();
+        Assert.True(Assert.Single(commands, command => command.Verb == "remove").RequiresConfirmation);
+        Assert.False(Assert.Single(commands, command => command.Verb == "add").RequiresConfirmation);
         Assert.All(endpoints, endpoint =>
         {
             Assert.Contains(endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>(), data => data.AuthenticationSchemes == OrchardCoreConstants.AuthenticationSchemes.Api);

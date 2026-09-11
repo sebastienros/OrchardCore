@@ -36,6 +36,25 @@ internal static class LocalizationManagementEndpoints
                 TableColumns = { new("items[].name", "Culture"), new("items[].displayName", "Name"), new("items[].isSupported", "Supported"), new("items[].isDefault", "Default") },
             })
             .Produces<CultureListResponse>().ProducesProblem(400).ProducesProblem(401).ProducesProblem(403);
+        group.MapGet("/cultures/available", AvailableCulturesAsync)
+            .WithName("ApiListAvailableLocalizationCultures").WithSummary("Lists cultures available on the server.")
+            .WithDescription("Lists available culture names with supported and default flags. Use a name with localization cultures add. Requires ManageCultures.")
+            .WithCliCommand(new CliOperationMetadata(["localization", "cultures"], "available")
+            {
+                Capability = Capability,
+                TableColumns = { new("items[].name", "Culture"), new("items[].displayName", "Name"), new("items[].isSupported", "Supported"), new("items[].isDefault", "Default") },
+            })
+            .Produces<CultureListResponse>().ProducesProblem(400).ProducesProblem(401).ProducesProblem(403);
+        group.MapPut("/cultures/{culture}", AddCultureAsync)
+            .WithName("ApiAddLocalizationCulture").WithSummary("Adds a supported culture.")
+            .WithDescription("Adds one available culture, preserving the default culture, other supported cultures and fallback setting. Repeating an addition is harmless. Requires ManageCultures.")
+            .WithCliCommand(new CliOperationMetadata(["localization", "cultures"], "add") { Capability = Capability, Arguments = { new("culture", 0) } })
+            .Produces<CultureSettings>().ProducesValidationProblem().ProducesProblem(401).ProducesProblem(403);
+        group.MapDelete("/cultures/{culture}", RemoveCultureAsync)
+            .WithName("ApiRemoveLocalizationCulture").WithSummary("Removes a supported culture.")
+            .WithDescription("Removes one supported culture without deleting translations. The default culture cannot be removed; change it with localization settings update first. Repeating a removal is harmless. Requires ManageCultures.")
+            .WithCliCommand(new CliOperationMetadata(["localization", "cultures"], "remove") { Capability = Capability, RequiresConfirmation = true, Arguments = { new("culture", 0) } })
+            .Produces<CultureSettings>().ProducesValidationProblem().ProducesProblem(401).ProducesProblem(403);
         group.MapGet("/settings", GetAsync)
             .WithName("ApiGetLocalizationSettings").WithSummary("Shows culture settings.")
             .WithDescription("Returns the default culture, supported cultures and parent-culture fallback. Requires ManageCultures.")
@@ -47,6 +66,15 @@ internal static class LocalizationManagementEndpoints
             .WithCliCommand(new CliOperationMetadata(["localization", "settings"], "update") { Capability = Capability, InputMode = CliInputMode.Json })
             .Accepts<CultureSettings>("application/json")
             .Produces<CultureSettings>().ProducesValidationProblem().ProducesProblem(401).ProducesProblem(403);
+        group.MapGet("/strings", StringGroupsAsync)
+            .WithName("ApiListLocalizationStringGroups").WithSummary("Lists available UI string groups.")
+            .WithDescription("Lists group names advertised by enabled JavaScript localization providers. Use a returned name with localization strings show. Requires ManageCultures.")
+            .WithCliCommand(new CliOperationMetadata(["localization", "strings"], "list")
+            {
+                Capability = Capability,
+                TableColumns = { new("items[].name", "Group") },
+            })
+            .Produces<UiStringGroupsResponse>().ProducesProblem(400).ProducesProblem(401).ProducesProblem(403);
         group.MapGet("/strings/{groupName}", StringsAsync)
             .WithName("ApiGetLocalizationStrings").WithSummary("Shows translated UI strings.")
             .WithDescription("Reads a registered JavaScript localization group in a supported culture. Does not edit PO files. Untranslated strings retain their source text. Requires ManageCultures.")
@@ -98,6 +126,10 @@ internal static class LocalizationManagementEndpoints
         return TypedResults.Ok(new CultureListResponse { Skip = skip, Take = take, TotalCount = items.Length, Items = items.Skip(skip).Take(take).ToArray() });
     }
 
+    internal static Task<IResult> AvailableCulturesAsync(HttpContext context, [FromServices] IAuthorizationService authorization,
+        [FromServices] ILocalizationService localization, [AsParameters] LocalizationListRequest request)
+        => ListAsync(context, authorization, localization, new CultureListRequest { IncludeAvailable = true, Skip = request.Skip, Take = request.Take });
+
     internal static async Task<IResult> UpdateAsync(HttpContext context, [FromServices] IAuthorizationService authorization, [FromServices] ILocalizationService localization,
         [FromServices] ISiteService siteService, [FromServices] IShellReleaseManager release, [FromBody] CultureSettings request)
     {
@@ -114,7 +146,7 @@ internal static class LocalizationManagementEndpoints
             || request.DefaultCulture is null || !available.TryGetValue(request.DefaultCulture, out var defaultCulture)
             || request.SupportedCultures.Any(name => name is null || !available.ContainsKey(name)))
         {
-            return TypedResults.ValidationProblem(new Dictionary<string, string[]> { ["cultures"] = [S["Provide a valid default culture and between 1 and 1000 available supported cultures. Use localization cultures list --include-available true to discover names."]] });
+            return TypedResults.ValidationProblem(new Dictionary<string, string[]> { ["cultures"] = [S["Provide a valid default culture and between 1 and 1000 available supported cultures. Use localization cultures available to discover names."]] });
         }
 
         var supported = request.SupportedCultures.Select(name => available[name]).Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.Ordinal).ToArray();
@@ -136,6 +168,71 @@ internal static class LocalizationManagementEndpoints
         }
 
         return TypedResults.Ok(result);
+    }
+
+    internal static Task<IResult> AddCultureAsync(HttpContext context, [FromServices] IAuthorizationService authorization, [FromServices] ILocalizationService localization,
+        [FromServices] ISiteService siteService, [FromServices] IShellReleaseManager release, string culture)
+        => ChangeCultureAsync(context, authorization, localization, siteService, release, culture, remove: false);
+
+    internal static Task<IResult> RemoveCultureAsync(HttpContext context, [FromServices] IAuthorizationService authorization, [FromServices] ILocalizationService localization,
+        [FromServices] ISiteService siteService, [FromServices] IShellReleaseManager release, string culture)
+        => ChangeCultureAsync(context, authorization, localization, siteService, release, culture, remove: true);
+
+    private static async Task<IResult> ChangeCultureAsync(HttpContext context, IAuthorizationService authorization, ILocalizationService localization,
+        ISiteService siteService, IShellReleaseManager release, string culture, bool remove)
+    {
+        if (!await authorization.AuthorizeAsync(context.User, LocalizationPermissions.ManageCultures))
+        {
+            return context.ApiForbidProblem();
+        }
+
+        var S = context.RequestServices.GetRequiredService<IStringLocalizerFactory>().Create(typeof(LocalizationManagementEndpoints));
+        var name = localization.GetAllCulturesAndAliases().FirstOrDefault(item => string.Equals(item.Name, culture, StringComparison.OrdinalIgnoreCase))?.Name;
+        if (name is null)
+        {
+            return TypedResults.ValidationProblem(new Dictionary<string, string[]> { ["culture"] = [S["Use an available culture from localization cultures available."]] });
+        }
+
+        var current = await ReadAsync(localization);
+        if (remove && string.Equals(current.DefaultCulture, name, StringComparison.OrdinalIgnoreCase))
+        {
+            return TypedResults.ValidationProblem(new Dictionary<string, string[]> { ["culture"] = [S["The default culture cannot be removed. Change the default with localization settings update first."]] });
+        }
+
+        return await UpdateAsync(context, authorization, localization, siteService, release, new CultureSettings
+        {
+            DefaultCulture = current.DefaultCulture,
+            SupportedCultures = remove
+                ? current.SupportedCultures.Where(item => !string.Equals(item, name, StringComparison.OrdinalIgnoreCase)).ToArray()
+                : [.. current.SupportedCultures, name],
+            FallBackToParentCulture = current.FallBackToParentCulture,
+        });
+    }
+
+    internal static async Task<IResult> StringGroupsAsync(HttpContext context, [FromServices] IAuthorizationService authorization,
+        [FromServices] IEnumerable<IJSLocalizer> localizers, [AsParameters] LocalizationListRequest request)
+    {
+        if (!await authorization.AuthorizeAsync(context.User, LocalizationPermissions.ManageCultures))
+        {
+            return context.ApiForbidProblem();
+        }
+
+        var skip = request.Skip ?? 0;
+        var take = request.Take ?? 50;
+        if (skip < 0 || take < 1 || take > 200)
+        {
+            var S = context.RequestServices.GetRequiredService<IStringLocalizerFactory>().Create(typeof(LocalizationManagementEndpoints));
+            return context.ApiBadRequestProblem(detail: S["Skip must be nonnegative and take must be between 1 and 200."]);
+        }
+
+        var groups = localizers.SelectMany(localizer => localizer.GetLocalizationGroups())
+            .Where(name => !string.IsNullOrWhiteSpace(name) && name.Length <= 200)
+            .Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
+        return TypedResults.Ok(new UiStringGroupsResponse
+        {
+            Skip = skip, Take = take, TotalCount = groups.Length,
+            Items = groups.Skip(skip).Take(take).Select(name => new UiStringGroup { Name = name }).ToArray(),
+        });
     }
 
     internal static async Task<IResult> StringsAsync(HttpContext context, [FromServices] IAuthorizationService authorization, [FromServices] ILocalizationService localization,
@@ -181,7 +278,7 @@ internal static class LocalizationManagementEndpoints
         [Required(AllowEmptyStrings = true), Description("Default culture, which must also occur in supportedCultures. Empty string denotes invariant culture.")]
         public string DefaultCulture { get; init; } = null!;
 
-        [Required, MinLength(1), MaxLength(1000), Description("Complete set of supported culture names. Discover names with localization cultures list --include-available true.")]
+        [Required, MinLength(1), MaxLength(1000), Description("Complete set of supported culture names. Discover names with localization cultures available.")]
         public string[] SupportedCultures { get; init; } = null!;
 
         [Description("Whether requests may fall back to a supported parent culture. Defaults to false when omitted.")]
@@ -198,6 +295,31 @@ internal static class LocalizationManagementEndpoints
 
         [FromQuery]
         public int? Take { get; init; }
+    }
+
+    internal sealed class LocalizationListRequest
+    {
+        [FromQuery]
+        public int? Skip { get; init; }
+
+        [FromQuery]
+        public int? Take { get; init; }
+    }
+
+    internal sealed class UiStringGroup
+    {
+        public string Name { get; init; } = null!;
+    }
+
+    internal sealed class UiStringGroupsResponse
+    {
+        public int Skip { get; init; }
+
+        public int Take { get; init; }
+
+        public int TotalCount { get; init; }
+
+        public UiStringGroup[] Items { get; init; } = [];
     }
 
     internal sealed class UiStringsRequest
