@@ -58,7 +58,7 @@ else
         }
         @if (await ShellFeaturesManager.IsFeatureEnabledAsync("OrchardCore.RemoteManagement.Mcp"))
         {
-            <a class="btn btn-secondary" asp-controller="RemoteManagementMcp" asp-action="Index">@T["Configure MCP client"]</a>
+            <a class="btn btn-secondary" asp-controller="RemoteManagementMcp" asp-action="Index">@T["Configure MCP authentication"]</a>
         }
         <span class="hint">@T["Client applications are configured separately by the CLI and MCP features."]</span>
     </div>

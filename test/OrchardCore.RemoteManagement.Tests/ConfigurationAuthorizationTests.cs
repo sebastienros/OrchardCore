@@ -28,6 +28,7 @@ public class ConfigurationAuthorizationTests
         };
 
         Assert.IsType<ForbidResult>(await controller.Configure(new RemoteManagementMcpViewModel { RedirectUris = "https://client.example/callback" }));
+        Assert.IsType<ForbidResult>(await controller.ConfigureAutomatic(tenant.Object));
         manager.VerifyNoOtherCalls();
         tenant.VerifyNoOtherCalls();
     }

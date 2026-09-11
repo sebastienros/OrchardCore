@@ -45,6 +45,21 @@ public sealed class RemoteManagementMcpController : Controller
         return View(await _configurationService.GetConfigurationAsync(clientId));
     }
 
+    /// <summary>Configures shared authentication without pre-registering a particular client.</summary>
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> ConfigureAutomatic([FromServices] IRemoteManagementTenantConfigurationService configuration)
+    {
+        if (!await _authorizationService.AuthorizeAsync(User, RemoteManagementPermissions.ManageRemoteManagementConfiguration))
+        {
+            return Forbid();
+        }
+
+        await configuration.ConfigureAsync();
+        await _notifier.SuccessAsync(H["MCP authentication is configured. Compatible clients can register automatically when connecting."]);
+        await _shellHost.ReleaseShellContextAsync(_shellSettings);
+        return RedirectToAction(nameof(Index));
+    }
+
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Configure(RemoteManagementMcpViewModel model)
     {

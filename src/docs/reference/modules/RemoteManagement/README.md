@@ -561,25 +561,119 @@ MCP requests include this URL in the `WWW-Authenticate` challenge. The metadata
 identifies the MCP URL, the tenant's configured authorization server, and the
 `orchardcore.management` scope.
 
-Open **Settings → Remote Management → Configure MCP client**. Enter a client
-identifier (default `orchardcore-mcp`) and the exact callback URLs supplied by your
-MCP client, one per line. Select **Configure MCP authentication**. The action:
+### Automatic client registration
 
-- configures the shared tenant authentication and management scope;
-- registers a public application with authorization code and refresh token grants;
-- requires PKCE and explicit user consent;
-- permits `openid`, `profile`, `roles`, and `orchardcore.management`;
-- preserves existing roles and unrelated permissions when updating an application
-  previously created by this action.
+Open **Settings → Remote Management → Configure MCP authentication**. If shared
+Remote Management authentication is not ready, select **Configure MCP
+authentication** once. If it is already configured (for example, for Pomi), you
+can immediately connect an OAuth-capable MCP client using only the tenant's
+`/mcp` URL. No callback URLs or shared MCP client identifier are needed.
 
-Callbacks must use HTTPS, except that loopback HTTP callbacks are accepted for
-native clients. Saving an existing MCP client replaces its callback list with the
-entered URLs. The action rejects identifiers owned by other OpenID applications,
-including Pomi, and never creates or modifies the Pomi client. Use a separate
-identifier for each MCP client; revisit an existing registration using the page's
-`clientId` query parameter.
+The client follows this flow:
 
-The same setup is available in recipes after enabling the MCP feature:
+1. Request `/mcp` and receive `401 Unauthorized` with a `WWW-Authenticate`
+   challenge identifying the protected-resource metadata and required scope.
+2. Discover the tenant's authorization server and its `registration_endpoint`.
+3. Register its own callback URLs and receive a unique public client ID.
+4. Open the tenant's sign-in and consent pages using authorization code flow
+   with PKCE (`S256`) and the tenant's `/mcp` URL as the OAuth `resource`.
+5. Exchange the authorization code for a token, then retry the MCP request.
+
+Start the connection from your **MCP client**, which initiates the interactive
+OAuth flow; `/mcp` is not a browser sign-in page. Clients must support OAuth discovery and
+RFC 7591 Dynamic Client Registration for this automatic setup. Client ID Metadata
+Documents are not currently supported. Clients requiring pre-registration can
+use the manual workflow below.
+
+Every registration creates a separate OpenID application with an identifier
+such as `orchardcore-mcp-<random-id>`. No application is created until a client
+registers. Review or remove these in **Access Control → OpenID Connect →
+Applications**, also linked from the MCP configuration page. Names are supplied
+by clients and are **not verified identities**. Registration issues no token,
+assigns no roles, creates no user, and does not modify Pomi or shared settings.
+The signed-in user must consent and still needs remote management and each
+operation's permissions.
+
+Automatic applications require exact registered HTTPS callbacks, except that
+native clients may use loopback HTTP callbacks (including ephemeral loopback
+ports supported by OpenIddict). Wildcards, fragments, and embedded credentials
+are rejected. Authorization and token requests must specify the current tenant's
+MCP `resource`; another tenant's resource is rejected. Issued tokens include the
+MCP URL in their audiences alongside the existing management resources.
+
+### Registration endpoint and limits
+
+`POST /connect/mcp/register` is relative to the tenant URL prefix and accepts
+JSON using RFC 7591 property names. A successful request returns `201 Created`
+with `client_id`, `client_id_issued_at`, and the accepted metadata. It never
+returns a client secret or a registration-management token.
+
+```json
+{
+  "client_name": "My MCP client",
+  "redirect_uris": ["http://127.0.0.1:5123/callback"],
+  "grant_types": ["authorization_code", "refresh_token"],
+  "response_types": ["code"],
+  "token_endpoint_auth_method": "none",
+  "scope": "openid offline_access orchardcore.management"
+}
+```
+
+`redirect_uris` is required (1–8 URLs, at most 2,048 characters each). Defaults
+are `authorization_code`, `code`, `none`, and `orchardcore.management` for the
+last four properties. Only authorization-code and optional refresh-token grants
+are accepted. Optional scopes are `openid`, `profile`, `roles`, and
+`offline_access`; `orchardcore.management` must be included. Client names are
+limited to 100 characters, scopes to 256, and request bodies to 16 KiB.
+Unsupported metadata such as requested roles, client IDs, secrets, or remote
+logo/document URLs is ignored; it is never fetched or granted.
+
+Registration is anonymous but bounded to **10 attempts per minute per tenant
+per application instance**, with no queue. Rate-limited requests return `429`
+with `Retry-After: 60`. Automatic registration stops at **1,000 total OpenID
+applications** by default; capacity or unconfigured authentication returns `503`.
+The application count and creation are protected by the configured tenant
+lock. Deploy a distributed lock provider for coordination across nodes, and
+apply any additional global rate limits at your ingress.
+
+Configure the following tenant settings in `appsettings.json` (or through the
+host's Orchard configuration providers):
+
+```json
+{
+  "OrchardCore": {
+    "OrchardCore_OpenId": {
+      "Mcp": {
+        "AllowDynamicClientRegistration": true,
+        "MaximumApplications": 1000
+      }
+    }
+  }
+}
+```
+
+Set `AllowDynamicClientRegistration` to `false` to stop advertising the endpoint
+and return `404` for registrations. This does not delete existing applications
+or revoke their tokens; manage those separately in OpenID application management.
+
+Invalid metadata returns `400` with OAuth `invalid_client_metadata` or
+`invalid_redirect_uri`. Responses are not cacheable. Each successful registration
+creates a new application: clients should persist and reuse their client ID
+for that authorization server. Retrying after an uncertain response can create
+another application; administrators can remove unused registrations.
+
+### Manual registration and unattended clients
+
+Expand **Advanced: register a client manually** on the MCP configuration page.
+Enter an identifier (default `orchardcore-mcp`) and the exact callbacks supplied
+by that client, then select **Register MCP client**. This configures shared
+authentication and creates a public application with PKCE and explicit consent.
+It preserves existing roles and unrelated permissions when updating an application
+previously created by this action. Saving replaces its complete callback list.
+Identifiers owned by other applications, including Pomi, cannot be overwritten.
+Revisit a manual registration using the page's `clientId` query parameter.
+
+The same manual setup is available in recipes after enabling the MCP feature:
 
 ```json
 {
@@ -589,15 +683,14 @@ The same setup is available in recipes after enabling the MCP feature:
 }
 ```
 
-Replace the callback with the exact URL supplied by your client, and follow the
-step with `ReloadTenant` to apply shared server settings. The recipe uses the same
-validation and application ownership checks as the admin action.
+Follow it with `ReloadTenant` to apply shared settings. For automatic registration,
+use the shared `RemoteManagementConfiguration` step and `ReloadTenant`; there is
+no particular client to pre-register.
 
-The signed-in user still needs remote management and operation permissions. For
-machine-to-machine clients, configure a confidential OpenID application through
-OpenID application management and assign the required roles. Dynamic client
-registration is not implemented; clients must accept a preconfigured client ID or
-an externally obtained bearer token. Existing token audiences are preserved.
+For machine-to-machine clients, configure a confidential OpenID application
+through OpenID application management and assign the required roles. Automatic
+registration never enables client-credentials or password grants. Existing
+preconfigured clients and externally supplied bearer tokens remain supported.
 Requests carrying an `Origin` header must match the tenant URL's scheme and host.
 
 ### Tools

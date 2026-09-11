@@ -355,6 +355,20 @@ public sealed class RemoteManagementMcpStartup : StartupBase
     public override void ConfigureServices(IServiceCollection services)
     {
         services.AddScoped<RemoteManagementMcpConfigurationService>();
+        services.AddScoped<McpClientRegistrationService>();
+        services.AddSingleton<McpClientRegistrationLimiter>();
+        services.AddOptions<RemoteManagementMcpOptions>().BindConfiguration("OrchardCore_OpenId:Mcp");
+        services.AddOpenIddict().AddServer(options =>
+        {
+            options.AddEventHandler<OpenIddictServerEvents.HandleConfigurationRequestContext>(builder =>
+                builder.UseScopedHandler<McpRegistrationMetadataHandler>().SetOrder(int.MaxValue - 100_000));
+            options.AddEventHandler<OpenIddictServerEvents.ValidateAuthorizationRequestContext>(builder =>
+                builder.UseScopedHandler<McpAuthorizationRequestHandler>().SetOrder(OpenIddictServerHandlers.Authentication.ValidateResources.Descriptor.Order - 1_000));
+            options.AddEventHandler<OpenIddictServerEvents.ValidateTokenRequestContext>(builder =>
+                builder.UseScopedHandler<McpTokenRequestHandler>().SetOrder(OpenIddictServerHandlers.Exchange.ValidateResources.Descriptor.Order - 1_000));
+            options.AddEventHandler<OpenIddictServerEvents.ProcessSignInContext>(builder =>
+                builder.UseScopedHandler<McpTokenResourceHandler>().SetOrder(OpenIddictServerHandlers.PrepareAccessTokenPrincipal.Descriptor.Order - 1_000));
+        });
         services.AddRecipeExecutionStep<RemoteManagementMcpConfigurationStep>();
     }
 }

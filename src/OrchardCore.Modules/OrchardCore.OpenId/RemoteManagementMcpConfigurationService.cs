@@ -121,7 +121,7 @@ public sealed class RemoteManagementMcpConfigurationService
         descriptor.Properties.TryGetValue(ApplicationMarker, out var value) &&
         value.ValueKind == JsonValueKind.String && value.GetString() == "mcp";
 
-    private static Uri[] ParseRedirectUris(string value)
+    internal static Uri[] ParseRedirectUris(string value)
     {
         var lines = value.Split(['\r', '\n'], StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
         if (lines.Length == 0)

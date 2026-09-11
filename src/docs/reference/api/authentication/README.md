@@ -72,9 +72,13 @@ applications or enabling device authorization.
 
 Enable `OrchardCore.RemoteManagement.Cli` for the separate **Configure Pomi CLI**
 action, which additionally registers the native application and device flow. Enable
-`OrchardCore.RemoteManagement.Mcp` for **Configure MCP client**, which accepts a
-client ID and callback URLs and creates a separate public PKCE application. These
-POST actions require `ManageRemoteManagementConfiguration` and antiforgery tokens.
+`OrchardCore.RemoteManagement.Mcp` for **Configure MCP authentication**. Once shared
+authentication is ready, OAuth-capable MCP clients discover the tenant's
+`/connect/mcp/register` endpoint and register public PKCE applications automatically.
+The configuration page also offers manual client IDs and callbacks under
+**Advanced**. Admin configuration POST actions require
+`ManageRemoteManagementConfiguration` and antiforgery tokens. The bounded,
+anonymous registration endpoint never grants roles or issues access tokens.
 See [MCP client configuration](../../modules/RemoteManagement/README.md#mcp-server).
 
 The `RemoteManagement` recipe configures shared settings; `RemoteManagementCli`

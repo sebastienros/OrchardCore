@@ -65,7 +65,7 @@ public sealed class McpStartup : StartupBase
                 {
                     if (context.Response.StatusCode == StatusCodes.Status401Unauthorized)
                     {
-                        context.Response.Headers.Append("WWW-Authenticate", $"Bearer resource_metadata=\"{metadataUrl}\"");
+                        context.Response.Headers.Append("WWW-Authenticate", $"Bearer resource_metadata=\"{metadataUrl}\", scope=\"{RemoteManagementConstants.ManagementScope}\"");
                     }
 
                     return Task.CompletedTask;

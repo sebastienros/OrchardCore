@@ -51,6 +51,8 @@ jobs:
           -p:RepositoryCommit="$GITHUB_SHA"
       - name: Server tests
         run: dotnet test --project test/OrchardCore.Tests -c Release --no-build
+      - name: Remote management authentication and MCP tests
+        run: dotnet test --project test/OrchardCore.RemoteManagement.Tests -c Release --no-build
       - name: Pack the solution, including project templates
         run: >-
           dotnet pack OrchardCore.slnx -c Release --no-build
