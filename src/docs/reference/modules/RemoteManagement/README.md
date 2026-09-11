@@ -326,7 +326,7 @@ To create and initialize a tenant in one operation, use
 [`oc tenants install`](../../api/tenants/README.md#install-a-tenant):
 
 ```bash
-oc tenants install Blog --request-url-prefix blog --database-provider Sqlite --recipe-name Blog \
+oc tenants install Blog --request-url-prefix blog --recipe-name Blog \
   --site-name "My Blog" --user-name admin --email admin@example.com
 ```
 

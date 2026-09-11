@@ -40,8 +40,8 @@ before = oc('context', 'list')
 prefix = 'Install' + secrets.token_hex(4)
 for mode in ('env', 'stdin'):
     name = prefix + mode
-    args = ['tenants', 'install', name, '--request-url-prefix', name.lower(), '--recipe-name', 'Blank',
-            '--database-provider', 'Sqlite', '--site-name', 'Installed by CLI', '--user-name', 'admin',
+    args = ['tenants', 'install', name, '--request-url-prefix', name.lower(), '--recipe-name', 'Blog' if mode == 'env' else 'Blank',
+            '--site-name', 'Installed by CLI', '--user-name', 'admin',
             '--email', 'admin@example.com', '--site-time-zone', 'Europe/Paris']
     args += ['--password-env', 'OC_INSTALL_TEST_PASSWORD'] if mode == 'env' else ['--password-stdin']
     if mode == 'env':
@@ -53,6 +53,7 @@ for mode in ('env', 'stdin'):
     else:
         installed = oc(*args, stdin=password)
     assert installed['state'] == 'Running' and installed['setupUrl'] is None, installed
+    assert installed['databaseProvider'] == 'Sqlite', installed
     assert installed['primaryUrl'].rstrip('/') == state['url'].rstrip('/') + '/' + name.lower(), installed
     oc(*args, stdin=password if mode == 'stdin' else None, status=409)
     assert oc('tenants', 'show', name)['tenantId'] == installed['tenantId']

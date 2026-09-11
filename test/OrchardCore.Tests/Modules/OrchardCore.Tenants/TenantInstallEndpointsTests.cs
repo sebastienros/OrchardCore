@@ -43,7 +43,31 @@ public class TenantInstallEndpointsTests
         Assert.Equal("Tenant A", fixture.SetupContext.Properties[SetupConstants.SiteName]);
         Assert.Equal("Etc/UTC", fixture.SetupContext.Properties[SetupConstants.SiteTimeZone]);
         Assert.Equal("SaaS", fixture.SetupContext.Recipe.Name);
+        Assert.Equal("Sqlite", fixture.SetupContext.Properties[SetupConstants.DatabaseProvider]);
         fixture.DistributedLock.Verify(x => x.TryAcquireLockAsync("TENANT_SETUP_TENANTA", TimeSpan.FromSeconds(3), TimeSpan.FromHours(1)), Times.Once);
+    }
+
+    [Fact]
+    public async Task Install_HostDatabasePreset_TakesPrecedenceOverDefault()
+    {
+        var fixture = new Fixture { HostDatabaseProvider = "SqlConnection" };
+        var result = await fixture.InstallAsync();
+        Assert.Equal(201, Assert.IsAssignableFrom<IStatusCodeHttpResult>(result).StatusCode);
+        Assert.Equal("SqlConnection", fixture.Tenant["DatabaseProvider"]);
+        Assert.Equal("SqlConnection", fixture.SetupContext.Properties[SetupConstants.DatabaseProvider]);
+        Assert.Equal("Server=localhost;Database=TenantA;Integrated Security=true",
+            fixture.SetupContext.Properties[SetupConstants.DatabaseConnectionString]);
+    }
+
+    [Theory]
+    [InlineData("{}", "Sqlite")]
+    [InlineData("{\"databaseProvider\":\"Postgres\"}", "Postgres")]
+    public void InstallRequest_DatabaseProvider_UsesDefaultOnlyWhenOmitted(string json, string expected)
+    {
+        var request = System.Text.Json.JsonSerializer.Deserialize<TenantManagementEndpoints.TenantInstallRequest>(json,
+            System.Text.Json.JsonSerializerOptions.Web);
+        Assert.Equal(expected, request.ToCreateRequest("TenantA").DatabaseProvider);
+        Assert.Equal(expected, request.ToSetupRequest().DatabaseProvider);
     }
 
     [Theory]
@@ -118,6 +142,7 @@ public class TenantInstallEndpointsTests
         public bool Authorized { get; init; } = true;
         public bool DefaultTenant { get; init; } = true;
         public bool LockAvailable { get; init; } = true;
+        public string HostDatabaseProvider { get; init; }
         public bool FailSetup { get; init; }
         public bool ThrowDuringSetup { get; init; }
 
@@ -138,7 +163,16 @@ public class TenantInstallEndpointsTests
             authorization.Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<IEnumerable<IAuthorizationRequirement>>()))
                 .ReturnsAsync(Authorized ? AuthorizationResult.Success() : AuthorizationResult.Failed());
             var manager = new Mock<IShellSettingsManager>();
-            manager.Setup(x => x.CreateDefaultSettings()).Returns(() => new ShellSettings());
+            manager.Setup(x => x.CreateDefaultSettings()).Returns(() =>
+            {
+                var settings = new ShellSettings();
+                if (HostDatabaseProvider is not null)
+                {
+                    settings["DatabaseProvider"] = HostDatabaseProvider;
+                    settings["ConnectionString"] = "Server=localhost;Database=TenantA;Integrated Security=true";
+                }
+                return settings;
+            });
             var setup = new Mock<ISetupService>();
             setup.Setup(x => x.GetSetupRecipesAsync()).ReturnsAsync([new RecipeDescriptor { Name = "SaaS" }]);
             setup.Setup(x => x.SetupAsync(It.IsAny<SetupContext>())).Returns<SetupContext>(context =>
@@ -170,10 +204,10 @@ public class TenantInstallEndpointsTests
             context.Request.Host = new HostString("cms.example.com");
             return await TenantManagementEndpoints.InstallAsync(context, "TenantA", new TenantManagementEndpoints.TenantInstallRequest
             {
-                RequestUrlPrefix = "blog", RecipeName = "SaaS", DatabaseProvider = "Sqlite",
+                RequestUrlPrefix = "blog", RecipeName = "SaaS",
                 SiteName = "Tenant A", UserName = "admin", Email = "admin@example.com", Password = "Secret1!", SiteTimeZone = "Etc/UTC",
             }, Host.Object, manager.Object, new EphemeralDataProtectionProvider(), Mock.Of<IClock>(),
-                [new DatabaseProvider { Name = "Sqlite", Value = "Sqlite" }], Validator.Object,
+                [new DatabaseProvider { Name = "Sqlite", Value = "Sqlite" }, new DatabaseProvider { Name = "SQL Server", Value = "SqlConnection", HasConnectionString = true }], Validator.Object,
                 new TenantDatabasePatternResolver(new FluidParser(), Options.Create(new global::OrchardCore.Tenants.TenantsOptions()), Mock.Of<IStringLocalizer<TenantDatabasePatternResolver>>()),
                 localizer.Object, Mock.Of<ILogger<TenantApiController>>(), setup.Object, email.Object, Options.Create(new IdentityOptions()),
                 new ShellSettings { Name = DefaultTenant ? ShellSettings.DefaultShellName : "Other" }, authorization.Object, DistributedLock.Object);

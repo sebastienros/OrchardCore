@@ -140,8 +140,9 @@ internal static partial class TenantManagementEndpoints
         [Description("The site time zone. Defaults to the server time zone.")]
         public string SiteTimeZone { get; init; }
 
-        [Description("The database provider. Host database presets take precedence.")]
-        public string DatabaseProvider { get; init; }
+        [DefaultValue("Sqlite")]
+        [Description("The database provider. Defaults to Sqlite. Host database presets take precedence.")]
+        public string DatabaseProvider { get; init; } = "Sqlite";
 
         [Description("The database connection string. Host database presets take precedence.")]
         public string ConnectionString { get; init; }

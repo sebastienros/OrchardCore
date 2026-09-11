@@ -483,7 +483,6 @@ Select an authenticated context for the **Default** tenant, then run:
 ```bash
 oc tenants install Blog \
   --request-url-prefix blog \
-  --database-provider Sqlite \
   --recipe-name Blog \
   --site-name "My Blog" \
   --user-name admin \
@@ -528,10 +527,15 @@ as [tenant creation](#create-a-tenant). It is the first CLI argument, not a
 | `category` | string or null | No | Administrative category. |
 | `description` | string or null | No | Administrative description. |
 | `featureProfiles` | array of string | No | Assigned feature profiles; defaults to an empty array. |
-| `databaseProvider` | string or null | For setup | Registered provider, such as `Sqlite`; may be supplied by host presets. |
+| `databaseProvider` | string or null | No | Defaults to `Sqlite` when omitted. An explicit registered provider can be selected; host presets take precedence. |
 | `connectionString` | string or null | Provider-dependent | Database connection string; host presets take precedence. |
 | `tablePrefix` | string or null | Host-dependent | Table prefix; host requirements and patterns apply. |
 | `schema` | string or null | No | Database schema; host presets and patterns apply. |
+
+When no database provider is specified, installation uses SQLite, matching
+`oc install`. A database provider configured by the host takes precedence over
+this default. Select another provider with `--database-provider` and provide
+its required connection settings.
 
 The creation and setup operations' validation and database precedence rules
 apply unchanged. For example, a host requiring a table prefix also requires one
