@@ -7,11 +7,21 @@ on:
     paths:
       - 'mkdocs.yml'
       - 'src/docs/**'
-    branches: [ main, release/** ]
+      - '.agents/skills/**'
+      - '.scripts/remote-management/**'
+      - 'design/artifacts/logos/pomi/**'
+      - '.readthedocs.yml'
+      - '.github/workflows/docs_validation.yml'
+    branches: [ main, release/**, sebros/remote-tenant-cli-plan ]
   pull_request:
     paths:
       - 'mkdocs.yml'
       - 'src/docs/**'
+      - '.agents/skills/**'
+      - '.scripts/remote-management/**'
+      - 'design/artifacts/logos/pomi/**'
+      - '.readthedocs.yml'
+      - '.github/workflows/docs_validation.yml'
 
 concurrency:
   group: ${{ github.head_ref || github.run_id }}-docs_validation
@@ -36,3 +46,13 @@ jobs:
 
     - name: Build Documentation
       run: python -m mkdocs build --strict
+
+    - name: Validate published Pomi packages and raw skills
+      run: python .scripts/remote-management/test-skill-distribution.py site
+
+    - name: Upload Pomi downloads for this commit
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      with:
+        name: pomi-skills-${{ github.sha }}
+        path: site/downloads/
+        if-no-files-found: error

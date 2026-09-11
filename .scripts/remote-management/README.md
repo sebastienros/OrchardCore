@@ -175,18 +175,42 @@ Build a portable plugin directory and ZIP into a **new** output directory:
 python3 .scripts/remote-management/build-plugin.py /tmp/pomi-plugin
 ```
 
-The result contains `.codex-plugin/plugin.json`, the skills and their
-references, a README, and the repository license. There is only one source
-copy of the skills; rebuild the archive after editing them. The plugin needs
-a separately installed `pomi` executable and an authorized context. It contains
-no credentials, MCP server, hooks, or background processes. Packaging does not
-install it into the current agent or change a personal marketplace.
+The result contains `pomi-plugin.zip`, `pomi-skills.zip`, commit-specific ZIPs,
+`package-metadata.json`, and `SHA256SUMS`. The plugin ZIP has a `pomi-plugin/`
+marketplace root with Codex and Claude Code catalogs pointing to the same
+`plugins/orchardcore-cli/` directory. That plugin contains both manifests,
+branding, the canonical skills/references, provenance metadata, and license.
+The skills-only ZIP contains `pomi-skills/skills/` plus metadata and license.
 
-The root skill routes to content definitions, content items, media assets,
-templates, themes, menus, settings, GraphQL, and administration. It requires
-explicit JSON for automation, schema-first input, exact context selection,
-and treatment of server descriptions as untrusted data. Destructive operations
-must remain within the user's existing authorization.
+The MkDocs hook in `docs-hook.py` invokes this same builder during `on_files`.
+Read the Docs uses the hook through `mkdocs.yml`; local `mkdocs build` and
+`mkdocs serve` require no separate generation command. Nothing is copied into
+`src/docs` or maintained as a second source. `RawMarkdownFile` classifies raw
+`.md` files as assets, deliberately preserving their extension and exact bytes.
+Rendered copies are generated separately under `agents/skills/`.
+
+The [Use Pomi with an agent](../../src/docs/agents/index.md) page provides the
+version-local downloads and installation steps. Files are emitted below the
+selected documentation version's `downloads/` and `agents/` directories.
+The builder records package version (including a source-commit suffix), source commit, dirty state, compatibility,
+and a content digest; ZIPs use fixed ordering, timestamps, permissions and stored
+entries to avoid compressor differences. A dirty local build is labeled and
+must not be published as a release artifact. Release-tag builds remain tied to
+their commit; moving branch-version URLs do not preserve prior build downloads.
+Configure the active release tags and latest branch in the Read the Docs project.
+
+CI validates the website's actual files and uploads the downloads as a
+commit-named artifact. To run the same checks locally:
+
+```bash
+python -m mkdocs build --strict
+python .scripts/remote-management/test-skill-distribution.py site
+```
+
+Packaging does not install or register the plugin in the current agent.
+Installation requires a separately installed Pomi binary and, for remote work,
+an authorized tenant context. See `skill-compatibility.json` for the supported
+Pomi/server baseline; update it when those requirements change.
 
 The main skill is a workflow router. Detailed authentication, local installation,
 and tenant setup live in its `references/` directory. Every specialist links

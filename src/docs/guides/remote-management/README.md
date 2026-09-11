@@ -855,8 +855,8 @@ The agent plugin includes a workflow router, independently usable specialists,
 and shared authentication, context, and output guidance. Essential references
 are bundled; longer manuals use commit-pinned links that require network access.
 
-Agent skills and plugin packaging are documented in
-[the repository test toolkit](https://github.com/sebastienros/OrchardCore/tree/sebros/remote-tenant-cli-plan/.scripts/remote-management).
+Download the plugin or skills-only package and follow the installation steps
+in [Use Pomi with an agent](../../agents/index.md).
 
 ## Query GraphQL directly
 

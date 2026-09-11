@@ -1,6 +1,6 @@
 {
   "name": "orchardcore-cli",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Install local Orchard Core sites and manage tenants through Pomi.",
   "author": {
     "name": "Orchard Core contributors"
@@ -20,7 +20,10 @@
       "Inspect the capabilities of my Orchard Core tenant.",
       "Create and validate an unpublished article draft.",
       "Help me diagnose a denied management command."
-    ]
+    ],
+    "composerIcon": "./assets/icon.png",
+    "logo": "./assets/logo.png",
+    "logoDark": "./assets/logo-dark.png"
   },
   "repository": "https://github.com/sebastienros/OrchardCore",
   "license": "BSD-3-Clause"

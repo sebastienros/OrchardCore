@@ -1,45 +1,137 @@
 #!/usr/bin/env python3
-"""Package canonical CLI skills without maintaining a second copy in source."""
+"""Build reproducible Pomi plugin and skills archives from the current checkout."""
 import argparse
+import hashlib
+import importlib.util
 import json
 from pathlib import Path
 import shutil
 import subprocess
-import sys
+import zipfile
 
-parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument('output', type=Path, help='New parent directory for the plugin and ZIP')
-args = parser.parse_args()
-repo = Path(__file__).resolve().parents[2]
-output = args.output.resolve()
-plugin = output / 'orchardcore-cli'
-if plugin.exists():
-    parser.error(f'{plugin} already exists; choose a new output directory')
-(plugin / '.codex-plugin').mkdir(parents=True)
-manifest = Path(__file__).with_name('plugin.json')
-shutil.copy2(manifest, plugin / '.codex-plugin/plugin.json')
-skills = sorted((repo / '.agents/skills').glob('orchardcore-cli*'))
-for skill in skills:
-    if not (skill / 'SKILL.md').is_file():
-        raise SystemExit(f'Missing SKILL.md: {skill.name}')
-    shutil.copytree(skill, plugin / 'skills' / skill.name)
-shutil.copy2(repo / 'LICENSE', plugin / 'LICENSE')
-(plugin / 'README.md').write_text('''# Pomi CLI plugin
+REPO = Path(__file__).resolve().parents[2]
 
-Install `pomi` and start with the [workflow router](skills/orchardcore-cli/SKILL.md)
-to create a local CMS or connect to an existing tenant. Remote operations require an exact tenant context and
-authentication; local `pomi install` requires the matching .NET SDK instead.
-Specialists can be selected directly: each links to the same bundled
-[context, authentication, and output rules](skills/orchardcore-cli/references/shared-rules.md).
-Installation, authentication, and tenant setup procedures are bundled too.
-Longer API manuals use commit-pinned links in the skills and require network
-access; live tenant schemas take precedence over those reference versions.
-The plugin contains instructions only: it installs no binary, MCP server,
-credentials, or background process. It uses the CLI's existing authentication.
 
-Sources: https://github.com/sebastienros/OrchardCore/tree/sebros/remote-tenant-cli-plan
-Rebuild with `.scripts/remote-management/build-plugin.py <new-output-directory>`.
+def write_json(path, value):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(value, indent=2) + '\n', encoding='utf-8')
+
+
+def archive_tree(root, destination):
+    # Stored entries avoid compressor-version differences. Fixed timestamps,
+    # permissions and ordering make identical inputs produce identical bytes.
+    with zipfile.ZipFile(destination, 'w', compression=zipfile.ZIP_STORED) as archive:
+        for path in sorted(root.rglob('*')):
+            if path.is_file():
+                entry = zipfile.ZipInfo(root.name + '/' + path.relative_to(root).as_posix(), (1980, 1, 1, 0, 0, 0))
+                entry.create_system = 3
+                entry.external_attr = 0o100644 << 16
+                archive.writestr(entry, path.read_bytes())
+
+
+def build(output, repo=REPO):
+    output = Path(output).resolve()
+    if output.exists():
+        raise ValueError(f'{output} already exists; choose a new output directory')
+    output.mkdir(parents=True)
+    revision = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=repo, text=True).strip()
+    inputs = ['.agents/skills', '.scripts/remote-management', 'design/artifacts/logos/pomi', 'LICENSE']
+    dirty = bool(subprocess.check_output(['git', 'status', '--porcelain', '--', *inputs], cwd=repo, text=True).strip())
+    marketplace = output / 'pomi-plugin'
+    plugin = marketplace / 'plugins/orchardcore-cli'
+    plugin.mkdir(parents=True)
+    manifest = json.loads((repo / '.scripts/remote-management/plugin.json').read_text())
+    base_version = manifest['version']
+    manifest['version'] = base_version + '+git.' + revision[:12] + ('.working' if dirty else '')
+    write_json(plugin / '.codex-plugin/plugin.json', manifest)
+    write_json(plugin / '.claude-plugin/plugin.json', {key: manifest[key] for key in ('name', 'version', 'description', 'author', 'license')})
+    skills = sorted((repo / '.agents/skills').glob('orchardcore-cli*'))
+    for skill in skills:
+        if not (skill / 'SKILL.md').is_file():
+            raise ValueError(f'Missing SKILL.md: {skill.name}')
+        shutil.copytree(skill, plugin / 'skills' / skill.name, ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))
+    assets = repo / 'design/artifacts/logos/pomi/png'
+    for original, name in [('pomi-terminal-icon-light-128.png', 'icon.png'),
+                           ('pomi-terminal-logo-light.png', 'logo.png'),
+                           ('pomi-terminal-logo-dark.png', 'logo-dark.png')]:
+        (plugin / 'assets').mkdir(exist_ok=True)
+        shutil.copyfile(assets / original, plugin / 'assets' / name)
+    shutil.copyfile(repo / 'LICENSE', plugin / 'LICENSE')
+    compatibility = json.loads((repo / '.scripts/remote-management/skill-compatibility.json').read_text())
+    digest = hashlib.sha256(json.dumps(compatibility, sort_keys=True).encode())
+    digest.update(Path(__file__).read_bytes())
+    for path in sorted(plugin.rglob('*')):
+        if path.is_file():
+            digest.update(path.relative_to(plugin).as_posix().encode() + b'\0' + path.read_bytes() + b'\0')
+    metadata = {'packageVersion': manifest['version'], 'sourceCommit': revision,
+                'sourceDirty': dirty, 'contentSha256': digest.hexdigest(), 'skillCount': len(skills),
+                'compatibility': compatibility}
+    write_json(plugin / 'package-metadata.json', metadata)
+    # Both marketplaces refer to the very same plugin directory.
+    write_json(marketplace / '.agents/plugins/marketplace.json', {
+        'name': 'pomi-download', 'interface': {'displayName': 'Pomi download'},
+        'plugins': [{'name': manifest['name'], 'source': {'source': 'local', 'path': './plugins/orchardcore-cli'},
+                     'policy': {'installation': 'AVAILABLE', 'authentication': 'ON_INSTALL'}, 'category': 'Productivity'}]})
+    write_json(marketplace / '.claude-plugin/marketplace.json', {
+        'name': 'pomi-download', 'owner': {'name': 'Orchard Core contributors'},
+        'plugins': [{'name': manifest['name'], 'source': './plugins/orchardcore-cli'}]})
+    (plugin / 'README.md').write_text('''# Pomi agent plugin
+
+Start with the [workflow router](skills/orchardcore-cli/SKILL.md), or select a
+specialist directly. Each links to the bundled context, authentication, and
+output rules. Longer manuals use commit-pinned links and require network access.
+Live tenant schemas take precedence. Install Pomi separately; this package
+contains instructions and branding, not a CLI executable or credentials.
+
+See package-metadata.json for the source revision and supported versions.
 ''')
-subprocess.run([sys.executable, str(Path(__file__).with_name('verify-plugin-links.py')), str(plugin)], check=True, stdout=sys.stderr)
-archive = shutil.make_archive(str(output / 'orchardcore-cli'), 'zip', root_dir=output, base_dir=plugin.name)
-print(json.dumps({'plugin': str(plugin), 'archive': archive, 'skills':len(skills)}))
+    (marketplace / 'README.md').write_text('''# Install the Pomi plugin
+
+Keep this extracted directory in a stable location.
+
+Codex CLI:
+
+```bash
+codex plugin marketplace add /absolute/path/to/pomi-plugin
+codex plugin add orchardcore-cli@pomi-download
+```
+
+Start a new Codex task after installation. For Claude Code, load the plugin
+for a session with `claude --plugin-dir /absolute/path/to/pomi-plugin/plugins/orchardcore-cli`.
+For persistent Claude Code installation, run `/plugin marketplace add /absolute/path/to/pomi-plugin`
+and `/plugin install orchardcore-cli@pomi-download` inside Claude Code.
+
+The [plugin instructions](plugins/orchardcore-cli/README.md) link to all skills.
+The website is the download location; downloading alone does not register skills.
+''')
+    spec = importlib.util.spec_from_file_location('plugin_links', Path(__file__).with_name('verify-plugin-links.py'))
+    links = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(links)
+    validation = links.verify(plugin)
+    if validation['failures']:
+        raise ValueError(validation['failures'])
+    skills_only = output / 'pomi-skills'
+    shutil.copytree(plugin / 'skills', skills_only / 'skills')
+    shutil.copyfile(plugin / 'LICENSE', skills_only / 'LICENSE')
+    write_json(skills_only / 'package-metadata.json', metadata)
+    plugin_zip = output / 'pomi-plugin.zip'
+    skills_zip = output / 'pomi-skills.zip'
+    archive_tree(marketplace, plugin_zip)
+    archive_tree(skills_only, skills_zip)
+    artifacts = {}
+    identity = revision if not dirty else revision + '-working-' + metadata['contentSha256'][:12]
+    for archive in (plugin_zip, skills_zip):
+        specific = archive.with_name(f'{archive.stem}-{identity}.zip')
+        shutil.copyfile(archive, specific)
+        artifacts[archive.name] = {'sha256': hashlib.sha256(archive.read_bytes()).hexdigest(), 'file': specific.name}
+    write_json(output / 'package-metadata.json', {**metadata, 'artifacts': artifacts})
+    (output / 'SHA256SUMS').write_text(''.join(f'{info["sha256"]}  {name}\n{info["sha256"]}  {info["file"]}\n' for name, info in artifacts.items()))
+    return {'plugin': str(plugin), 'archive': str(plugin_zip), 'skillsArchive': str(skills_zip),
+            'skills': len(skills), 'metadata': metadata}
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('output', type=Path, help='New directory for the plugin, skills and ZIP files')
+    args = parser.parse_args()
+    print(json.dumps(build(args.output)))
