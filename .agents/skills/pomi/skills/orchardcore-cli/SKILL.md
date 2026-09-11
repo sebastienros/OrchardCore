@@ -28,7 +28,7 @@ that approach. Report an installation blocker rather than silently bypassing Pom
 
 | Task | Read |
 | --- | --- |
-| Install/update the Pomi executable or discover its latest package version | [CLI installation](references/cli-installation.md) |
+| Install or update the Pomi executable | [CLI installation](references/cli-installation.md) |
 | Create a standalone application or the initial SaaS host (`pomi install`) | [Local installation](references/installation.md) |
 | Create/setup a tenant in an existing server (`pomi tenants install`, create, setup) | [Tenant installation and Remote Management setup](references/tenants.md) |
 | Connect, log in, approve a device code, or manage saved contexts | [Authentication and contexts](references/authentication.md) |

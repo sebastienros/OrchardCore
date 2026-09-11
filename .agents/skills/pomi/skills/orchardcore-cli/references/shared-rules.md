@@ -10,7 +10,7 @@ The executable is `pomi` (`pomi.exe` on Windows); the .NET tool package is still
 `OrchardCore.Cli`. Keep the existing `OC_*` environment variable names, saved
 contexts, and credentials. The server client ID `orchardcore-cli` and discovery
 extension `x-oc-cli` are unchanged. If the executable is missing or needs an
-update, follow [CLI installation and package-version discovery](cli-installation.md).
+update, follow [CLI installation and updates](cli-installation.md).
 
 ## Initial website creation
 
