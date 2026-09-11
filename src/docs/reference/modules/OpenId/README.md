@@ -56,6 +56,14 @@ when no site theme is selected.
 The SaaS theme focuses **Allow access** when the browser consent page opens,
 so pressing Enter approves the request. Tab moves focus to **Deny**.
 
+Its green accents, cream background, and serif headings take inspiration from
+[orchardcore.net](https://orchardcore.net/). It follows the browser's light or
+dark color preference and uses locally available fonts. To adjust this palette
+in a derived theme, override the `--saas-*` CSS custom properties, including
+`--saas-primary`, `--saas-surface`, `--saas-ink`, and `--saas-heading-font`,
+after the theme stylesheet. Provide corresponding dark-mode overrides as needed.
+See the [SaaS consent example](../../../guides/remote-management/README.md#4-sign-in-once).
+
 You can also select an installed site theme through the
 [theme management CLI/API](../../api/themes/README.md#set-the-current-theme):
 
