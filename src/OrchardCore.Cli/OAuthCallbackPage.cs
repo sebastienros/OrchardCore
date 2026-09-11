@@ -2,6 +2,8 @@ namespace OrchardCore.Cli;
 
 internal static class OAuthCallbackPage
 {
+    private static readonly string _favicon = LoadFavicon();
+
     public static string Render(bool authorizationReceived)
     {
         var title = authorizationReceived ? "Authorization received" : "Authorization not completed";
@@ -24,6 +26,7 @@ internal static class OAuthCallbackPage
               <meta name="viewport" content="width=device-width, initial-scale=1">
               <meta name="color-scheme" content="light dark">
               <title>{{title}} · Orchard Core CLI</title>
+              <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,{{_favicon}}">
               <style>
                 :root { color-scheme: light dark; --bg: #f5f8f6; --surface: #fff; --text: #0f1a14; --muted: #566058; --line: #e2e8e3; --accent: #15803d; --on-accent: #fff; --tint: #edf2ee; }
                 * { box-sizing: border-box; }
@@ -78,7 +81,16 @@ internal static class OAuthCallbackPage
 
     public static Task WriteAsync(TextWriter writer, bool authorizationReceived) => writer.WriteAsync(
         "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nCache-Control: no-store\r\n"
-        + "Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'\r\n"
+        + "Content-Security-Policy: default-src 'none'; img-src data:; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'\r\n"
         + "Referrer-Policy: no-referrer\r\nX-Content-Type-Options: nosniff\r\nConnection: close\r\n\r\n"
         + Render(authorizationReceived));
+
+    private static string LoadFavicon()
+    {
+        using var resource = typeof(OAuthCallbackPage).Assembly.GetManifestResourceStream("PomiFavicon")
+            ?? throw new InvalidOperationException("The embedded Pomi favicon is missing.");
+        using var buffer = new MemoryStream();
+        resource.CopyTo(buffer);
+        return Convert.ToBase64String(buffer.ToArray());
+    }
 }

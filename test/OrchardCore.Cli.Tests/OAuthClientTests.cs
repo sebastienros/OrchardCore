@@ -10,6 +10,26 @@ namespace OrchardCore.Cli.Tests;
 public class OAuthClientTests
 {
     [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task CallbackPage_EmbedsPngFavicon_WithoutAllowingNetworkImages(bool authorizationReceived)
+    {
+        using var writer = new StringWriter();
+        await OAuthCallbackPage.WriteAsync(writer, authorizationReceived);
+        var response = writer.ToString();
+        Assert.Contains("Content-Security-Policy: default-src 'none'; img-src data:;", response);
+        const string prefix = "href=\"data:image/png;base64,";
+        var start = response.IndexOf(prefix, StringComparison.Ordinal);
+        Assert.True(start >= 0);
+        start += prefix.Length;
+        var end = response.IndexOf('"', start);
+        var icon = Convert.FromBase64String(response[start..end]);
+        Assert.Equal(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 }, icon[..8]);
+        Assert.Equal(32, System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(icon.AsSpan(16, 4)));
+        Assert.Equal(32, System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(icon.AsSpan(20, 4)));
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task DeviceLogin_JsonQr_EmitsPngBeforePollingWithoutPrivateCodes(bool completeUrl)
