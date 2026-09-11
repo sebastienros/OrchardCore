@@ -195,7 +195,7 @@ internal static partial class TenantManagementEndpoints
         builder.MapManagementPost(RoutePrefix + "/{tenantName}:enable-remote-management", EnableRemoteManagementAsync)
             .WithName("ApiEnableTenantRemoteManagement")
             .WithSummary("Enables remote management for a tenant.")
-            .WithDescription("Enables and configures Remote Management and OpenID Connect in a running tenant so the CLI can register its URL and authenticate directly.")
+            .WithDescription("Enables and configures the Remote Management CLI feature and OpenID Connect in a running tenant so the CLI can register its URL and authenticate directly.")
             .WithCliCommand(new CliOperationMetadata(["tenants"], "enable-remote-management")
             {
                 Capability = TenantManagementApiEndpointConventions.CapabilityName,
@@ -242,7 +242,7 @@ internal static partial class TenantManagementEndpoints
         {
             var featureManager = childScope.ServiceProvider.GetRequiredService<IShellFeaturesManager>();
             var feature = (await featureManager.GetAvailableFeaturesAsync())
-                .FirstOrDefault(feature => feature.Id == "OrchardCore.RemoteManagement");
+                .FirstOrDefault(feature => feature.Id == "OrchardCore.RemoteManagement.Cli");
 
             if (feature is not null &&
                 !(await featureManager.GetEnabledFeaturesAsync()).Any(candidate => candidate.Id == feature.Id))
@@ -256,12 +256,15 @@ internal static partial class TenantManagementEndpoints
         await verificationScope.UsingAsync(async childScope =>
         {
             enabled = (await childScope.ServiceProvider.GetRequiredService<IShellFeaturesManager>().GetEnabledFeaturesAsync())
-                .Any(candidate => candidate.Id == "OrchardCore.RemoteManagement");
+                .Any(candidate => candidate.Id == "OrchardCore.RemoteManagement.Cli");
 
             if (enabled)
             {
                 await childScope.ServiceProvider
                     .GetRequiredService<IRemoteManagementTenantConfigurationService>()
+                    .ConfigureAsync();
+                await childScope.ServiceProvider
+                    .GetRequiredService<IRemoteManagementCliConfigurationService>()
                     .ConfigureAsync();
             }
         });

@@ -4,7 +4,7 @@ using OrchardCore.Recipes.Services;
 namespace OrchardCore.OpenId.Recipes;
 
 /// <summary>
-/// Configures the OpenID Connect server, validation, scope, and public client used for remote management.
+/// Configures the OpenID Connect server, validation, and scope shared by remote management clients.
 /// </summary>
 public sealed class RemoteManagementConfigurationStep : NamedRecipeStepHandler
 {

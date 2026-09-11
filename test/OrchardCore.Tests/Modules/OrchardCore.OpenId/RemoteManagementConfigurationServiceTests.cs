@@ -1,6 +1,5 @@
 using System.Collections.Immutable;
 using System.ComponentModel.DataAnnotations;
-using Microsoft.AspNetCore.Http;
 using OpenIddict.Abstractions;
 using OrchardCore.Environment.Shell;
 using OrchardCore.OpenId;
@@ -17,16 +16,13 @@ public class RemoteManagementConfigurationServiceTests
     public async Task GetStatusAsync_MissingConfiguration_ReturnsNotReady()
     {
         var service = CreateService();
-
         var status = await service.GetStatusAsync();
-
         Assert.False(status.IsReady);
         Assert.False(status.ManagementScopeConfigured);
-        Assert.False(status.CliApplicationConfigured);
     }
 
     [Fact]
-    public async Task ConfigureAsync_MissingConfiguration_CreatesRequiredConfiguration()
+    public async Task ConfigureAsync_MissingConfiguration_ConfiguresSharedSettingsWithoutDeviceFlow()
     {
         var serverSettings = new OpenIdServerSettings
         {
@@ -40,33 +36,10 @@ public class RemoteManagementConfigurationServiceTests
             Audience = "preserved-audience",
         };
         OpenIdScopeDescriptor createdScope = null;
-        OpenIdApplicationDescriptor createdApplication = null;
-
-        var serverService = new Mock<IOpenIdServerService>();
-        serverService.Setup(service => service.LoadSettingsAsync()).ReturnsAsync(serverSettings);
-        serverService.Setup(service => service.ValidateSettingsAsync(serverSettings))
-            .ReturnsAsync(ImmutableArray<ValidationResult>.Empty);
-
-        var validationService = new Mock<IOpenIdValidationService>();
-        validationService.Setup(service => service.LoadSettingsAsync()).ReturnsAsync(validationSettings);
-        validationService.Setup(service => service.ValidateSettingsAsync(validationSettings))
-            .ReturnsAsync(ImmutableArray<ValidationResult>.Empty);
-
         var scopeManager = new Mock<IOpenIdScopeManager>();
-        scopeManager
-            .Setup(manager => manager.CreateAsync(It.IsAny<OpenIdScopeDescriptor>(), It.IsAny<CancellationToken>()))
+        scopeManager.Setup(manager => manager.CreateAsync(It.IsAny<OpenIdScopeDescriptor>(), It.IsAny<CancellationToken>()))
             .Callback<OpenIddictScopeDescriptor, CancellationToken>((descriptor, _) => createdScope = (OpenIdScopeDescriptor)descriptor);
-
-        var applicationManager = new Mock<IOpenIdApplicationManager>();
-        applicationManager
-            .Setup(manager => manager.CreateAsync(It.IsAny<OpenIdApplicationDescriptor>(), It.IsAny<CancellationToken>()))
-            .Callback<OpenIddictApplicationDescriptor, CancellationToken>((descriptor, _) => createdApplication = (OpenIdApplicationDescriptor)descriptor);
-
-        var service = CreateService(
-            applicationManager,
-            scopeManager,
-            serverService,
-            validationService);
+        var service = CreateService(scopeManager, serverSettings, validationSettings);
 
         await service.ConfigureAsync();
 
@@ -74,7 +47,7 @@ public class RemoteManagementConfigurationServiceTests
         Assert.True(serverSettings.AllowPasswordFlow);
         Assert.True(serverSettings.AllowAuthorizationCodeFlow);
         Assert.True(serverSettings.AllowClientCredentialsFlow);
-        Assert.True(serverSettings.AllowDeviceAuthorizationFlow);
+        Assert.False(serverSettings.AllowDeviceAuthorizationFlow);
         Assert.True(serverSettings.AllowRefreshTokenFlow);
         Assert.True(serverSettings.RequireProofKeyForCodeExchange);
         Assert.Equal("TestTenant", validationSettings.Tenant);
@@ -82,94 +55,60 @@ public class RemoteManagementConfigurationServiceTests
         Assert.Null(validationSettings.MetadataAddress);
         Assert.Equal("preserved-audience", validationSettings.Audience);
         Assert.Contains("orchardcore", createdScope.Resources);
-        Assert.Equal("orchardcore-cli", createdApplication.ClientId);
-        Assert.Contains(new Uri("http://127.0.0.1/callback"), createdApplication.RedirectUris);
-        Assert.Contains(
-            OpenIddictConstants.Permissions.Prefixes.Scope + "orchardcore.management",
-            createdApplication.Permissions);
     }
 
     [Fact]
-    public async Task ConfigureAsync_ExistingConfiguration_PreservesUnrelatedValues()
+    public async Task ConfigureAsync_ExistingConfiguration_PreservesAdditionalResourcesAndDeviceFlow()
     {
         var existingScope = new object();
-        var existingApplication = new object();
         OpenIdScopeDescriptor updatedScope = null;
-        OpenIdApplicationDescriptor updatedApplication = null;
-
-        var serverService = new Mock<IOpenIdServerService>();
-        serverService.Setup(service => service.LoadSettingsAsync()).ReturnsAsync(new OpenIdServerSettings());
-        serverService.Setup(service => service.ValidateSettingsAsync(It.IsAny<OpenIdServerSettings>()))
-            .ReturnsAsync(ImmutableArray<ValidationResult>.Empty);
-
-        var validationService = new Mock<IOpenIdValidationService>();
-        validationService.Setup(service => service.LoadSettingsAsync()).ReturnsAsync(new OpenIdValidationSettings());
-        validationService.Setup(service => service.ValidateSettingsAsync(It.IsAny<OpenIdValidationSettings>()))
-            .ReturnsAsync(ImmutableArray<ValidationResult>.Empty);
-
         var scopeManager = new Mock<IOpenIdScopeManager>();
         scopeManager.Setup(manager => manager.FindByNameAsync("orchardcore.management", It.IsAny<CancellationToken>()))
             .ReturnsAsync(existingScope);
-        scopeManager
-            .Setup(manager => manager.PopulateAsync(existingScope, It.IsAny<OpenIdScopeDescriptor>(), It.IsAny<CancellationToken>()))
+        scopeManager.Setup(manager => manager.PopulateAsync(existingScope, It.IsAny<OpenIdScopeDescriptor>(), It.IsAny<CancellationToken>()))
             .Callback<object, OpenIddictScopeDescriptor, CancellationToken>((_, descriptor, _) => descriptor.Resources.Add("other-resource"));
-        scopeManager
-            .Setup(manager => manager.UpdateAsync(existingScope, It.IsAny<OpenIdScopeDescriptor>(), It.IsAny<CancellationToken>()))
+        scopeManager.Setup(manager => manager.UpdateAsync(existingScope, It.IsAny<OpenIdScopeDescriptor>(), It.IsAny<CancellationToken>()))
             .Callback<object, OpenIddictScopeDescriptor, CancellationToken>((_, descriptor, _) => updatedScope = (OpenIdScopeDescriptor)descriptor);
-
-        var applicationManager = new Mock<IOpenIdApplicationManager>();
-        applicationManager.Setup(manager => manager.FindByClientIdAsync("orchardcore-cli", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(existingApplication);
-        applicationManager
-            .Setup(manager => manager.PopulateAsync(It.IsAny<OpenIdApplicationDescriptor>(), existingApplication, It.IsAny<CancellationToken>()))
-            .Callback<OpenIddictApplicationDescriptor, object, CancellationToken>((descriptor, _, _) =>
-            {
-                descriptor.RedirectUris.Add(new Uri("https://example.com/existing-callback"));
-                descriptor.Permissions.Add(OpenIddictConstants.Permissions.Prefixes.Scope + "existing-scope");
-                ((OpenIdApplicationDescriptor)descriptor).Roles.Add("ExistingRole");
-            });
-        applicationManager
-            .Setup(manager => manager.UpdateAsync(existingApplication, It.IsAny<OpenIdApplicationDescriptor>(), It.IsAny<CancellationToken>()))
-            .Callback<object, OpenIddictApplicationDescriptor, CancellationToken>((_, descriptor, _) => updatedApplication = (OpenIdApplicationDescriptor)descriptor);
-
-        var service = CreateService(
-            applicationManager,
-            scopeManager,
-            serverService,
-            validationService);
+        var settings = new OpenIdServerSettings { AllowDeviceAuthorizationFlow = true, DeviceAuthorizationEndpointPath = "/custom/device" };
+        var service = CreateService(scopeManager, settings);
 
         await service.ConfigureAsync();
 
         Assert.Contains("other-resource", updatedScope.Resources);
         Assert.Contains("orchardcore", updatedScope.Resources);
-        Assert.Contains(new Uri("https://example.com/existing-callback"), updatedApplication.RedirectUris);
-        Assert.Contains(OpenIddictConstants.Permissions.Prefixes.Scope + "existing-scope", updatedApplication.Permissions);
-        Assert.Contains("ExistingRole", updatedApplication.Roles);
+        Assert.True(settings.AllowDeviceAuthorizationFlow);
+        Assert.Equal("/custom/device", settings.DeviceAuthorizationEndpointPath);
+    }
+
+    [Fact]
+    public async Task GetStatusAsync_SharedSettingsConfigured_IsReadyWithoutClientRegistration()
+    {
+        var scope = new object();
+        var manager = new Mock<IOpenIdScopeManager>();
+        manager.Setup(value => value.FindByNameAsync("orchardcore.management", It.IsAny<CancellationToken>())).ReturnsAsync(scope);
+        manager.Setup(value => value.GetResourcesAsync(scope, It.IsAny<CancellationToken>())).ReturnsAsync(ImmutableArray.Create("orchardcore"));
+        var service = CreateService(manager);
+        await service.ConfigureAsync();
+        Assert.True((await service.GetStatusAsync()).IsReady);
     }
 
     private static RemoteManagementConfigurationService CreateService(
-        Mock<IOpenIdApplicationManager> applicationManager = null,
         Mock<IOpenIdScopeManager> scopeManager = null,
-        Mock<IOpenIdServerService> serverService = null,
-        Mock<IOpenIdValidationService> validationService = null)
+        OpenIdServerSettings serverSettings = null,
+        OpenIdValidationSettings validationSettings = null)
     {
-        applicationManager ??= new Mock<IOpenIdApplicationManager>();
         scopeManager ??= new Mock<IOpenIdScopeManager>();
-        serverService ??= new Mock<IOpenIdServerService>();
-        validationService ??= new Mock<IOpenIdValidationService>();
-
-        serverService
-            .Setup(service => service.GetSettingsAsync())
-            .ReturnsAsync(new OpenIdServerSettings());
-        validationService
-            .Setup(service => service.GetSettingsAsync())
-            .ReturnsAsync(new OpenIdValidationSettings());
-
-        return new RemoteManagementConfigurationService(
-            applicationManager.Object,
-            scopeManager.Object,
-            serverService.Object,
-            validationService.Object,
+        serverSettings ??= new OpenIdServerSettings();
+        validationSettings ??= new OpenIdValidationSettings();
+        var serverService = new Mock<IOpenIdServerService>();
+        var validationService = new Mock<IOpenIdValidationService>();
+        serverService.Setup(service => service.GetSettingsAsync()).ReturnsAsync(serverSettings);
+        serverService.Setup(service => service.LoadSettingsAsync()).ReturnsAsync(serverSettings);
+        serverService.Setup(service => service.ValidateSettingsAsync(serverSettings)).ReturnsAsync(ImmutableArray<ValidationResult>.Empty);
+        validationService.Setup(service => service.GetSettingsAsync()).ReturnsAsync(validationSettings);
+        validationService.Setup(service => service.LoadSettingsAsync()).ReturnsAsync(validationSettings);
+        validationService.Setup(service => service.ValidateSettingsAsync(validationSettings)).ReturnsAsync(ImmutableArray<ValidationResult>.Empty);
+        return new RemoteManagementConfigurationService(scopeManager.Object, serverService.Object, validationService.Object,
             new ShellSettings { Name = "TestTenant" });
     }
 }

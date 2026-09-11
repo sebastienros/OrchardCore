@@ -343,16 +343,15 @@ Custom server policies can impose additional requirements.
 ## 2. Prepare the tenant
 
 Sign into the tenant's administration dashboard as an administrator. Enable
-**Remote Management** under **Configuration → Features**, then open
-**Settings → Remote Management**. Select **Configure Remote Management** or
-**Repair configuration**. The page should report that the tenant is ready.
+**Remote Management CLI** under **Configuration → Features**, then open
+**Settings → Remote Management → Configure Pomi CLI**. Select **Configure CLI
+authentication** or **Repair CLI configuration**.
 
-![Remote Management settings showing all nine requirements configured](images/readiness.png)
-
-This configures the management scope, the public `orchardcore-cli` application,
-PKCE, device authorization, refresh tokens, and local token validation.
-The action preserves unrelated OpenID settings. For automation, the Remote
-Management recipe performs the same configuration for the current tenant.
+This configures shared authentication, the management scope, the public
+`orchardcore-cli` application, PKCE, device authorization, refresh tokens, and
+local token validation. Unrelated OpenID settings are preserved. For automation,
+the **Orchard Core Remote Management CLI** recipe (`RemoteManagementCli`) performs
+the same configuration for the current tenant.
 
 Your identity needs **Access remote management API** and the permissions for
 the resources you will use. A production automation account should receive

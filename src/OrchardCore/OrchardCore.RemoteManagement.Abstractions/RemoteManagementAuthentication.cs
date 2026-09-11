@@ -11,9 +11,9 @@ public sealed class RemoteManagementAuthentication
     public Uri Authority { get; set; }
 
     /// <summary>
-    /// Gets or sets the public CLI client identifier.
+    /// Gets or sets the public CLI client identifier. It is null when the CLI feature is disabled.
     /// </summary>
-    public string ClientId { get; set; } = RemoteManagementConstants.CliClientId;
+    public string ClientId { get; set; }
 
     /// <summary>
     /// Gets the supported OAuth grant types.

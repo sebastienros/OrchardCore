@@ -16,7 +16,7 @@ public sealed class RemoteManagementFeatureEventHandler : FeatureEventHandler
 
     public override Task EnablingAsync(IFeatureInfo feature)
     {
-        if (feature.Id == "OrchardCore.RemoteManagement")
+        if (feature.Id is "OrchardCore.RemoteManagement" or "OrchardCore.RemoteManagement.Cli" or "OrchardCore.RemoteManagement.Mcp")
         {
             return NotifyEnabledAsync();
         }
@@ -46,6 +46,6 @@ public sealed class RemoteManagementFeatureEventHandler : FeatureEventHandler
             .Add(new PathString('/' + adminOptions.AdminUrlPrefix))
             .Add(new PathString("/RemoteManagement"));
 
-        await notifier.WarningAsync(H["Remote Management is enabled. <a href=\"{0}\">Review and configure authentication</a> before connecting the Pomi CLI.", configurationUrl]);
+        await notifier.WarningAsync(H["Remote Management is enabled. <a href=\"{0}\">Review and configure authentication</a> before connecting remote clients.", configurationUrl]);
     }
 }

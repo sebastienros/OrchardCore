@@ -11,13 +11,13 @@ This page documents the protocol endpoints configured for remote management. The
 The remote-management setup creates or repairs:
 
 - scope `orchardcore.management`, with resource `orchardcore`;
-- public native client `orchardcore-cli`;
-- authorization-code, device-code, client-credentials, and refresh-token server flows;
+- no client applications; client registration is owned by the CLI and MCP features;
+- authorization-code, client-credentials, and refresh-token server flows;
 - PKCE enforcement;
 - local token validation for the current tenant;
 - the fixed endpoint paths documented below.
 
-The `orchardcore-cli` application has no secret, requires PKCE, uses explicit consent, and is permitted to use authorization code, device code, refresh token, logout, and revocation. Its registered loopback redirect URI is `http://127.0.0.1/callback`, and its post-logout redirect URI is `http://127.0.0.1/`. Native loopback clients may select an ephemeral port, as the Pomi CLI does.
+Enable `OrchardCore.RemoteManagement.Cli` and use its configuration action to register `orchardcore-cli` and enable device authorization. The `orchardcore-cli` application has no secret, requires PKCE, uses explicit consent, and is permitted to use authorization code, device code, refresh token, logout, and revocation. Its registered loopback redirect URI is `http://127.0.0.1/callback`, and its post-logout redirect URI is `http://127.0.0.1/`. Native loopback clients may select an ephemeral port, as the Pomi CLI does.
 
 The application is permitted to request `email`, `openid`, `profile`, `roles`, and `orchardcore.management`. The remote-management manifest advertises `openid`, `profile`, `roles`, `orchardcore.management`, and, when refresh tokens are enabled, `offline_access`.
 
@@ -65,9 +65,22 @@ An administrator with `ManageRemoteManagementConfiguration` can open the **Remot
 https://host/{tenant-prefix}/Admin/RemoteManagement
 ```
 
-The page reports nine readiness checks: fixed server endpoints, authorization code, client credentials, device authorization, refresh tokens, PKCE, local validation, management scope, and CLI application. Its antiforgery-protected **Configure Remote Management** action adds or repairs only required values and preserves unrelated OpenID settings, scope resources, application redirect URIs, permissions, and roles.
+The page reports seven shared readiness checks: fixed server endpoints, authorization
+code, client credentials, refresh tokens, PKCE, local validation, and management
+scope. **Configure Remote Management** repairs shared settings without registering
+applications or enabling device authorization.
 
-The same configuration can be provisioned with the `RemoteManagement` recipe. In a non-default tenant, the service-based admin action sets token validation to the current shell name; adjust a copied recipe's `OpenIdValidationSettings.Tenant` instead of retaining the recipe's `Default` value.
+Enable `OrchardCore.RemoteManagement.Cli` for the separate **Configure Pomi CLI**
+action, which additionally registers the native application and device flow. Enable
+`OrchardCore.RemoteManagement.Mcp` for **Configure MCP client**, which accepts a
+client ID and callback URLs and creates a separate public PKCE application. These
+POST actions require `ManageRemoteManagementConfiguration` and antiforgery tokens.
+See [MCP client configuration](../../modules/RemoteManagement/README.md#mcp-server).
+
+The `RemoteManagement` recipe configures shared settings; `RemoteManagementCli`
+adds Pomi registration. `RemoteManagementMcpConfiguration` is a recipe step with
+explicit `clientId` and `redirectUris` values for MCP registration. All configuration
+services use the current tenant name for local token validation.
 
 The configuration action sets:
 
@@ -76,12 +89,12 @@ The configuration action sets:
 | Authorization endpoint | `/connect/authorize` |
 | Token endpoint | `/connect/token` |
 | Logout endpoint | `/connect/logout` |
-| Device authorization endpoint | `/connect/device` |
-| End-user verification endpoint | `/connect/verify` |
+| Device authorization endpoint (CLI action) | `/connect/device` |
+| End-user verification endpoint (CLI action) | `/connect/verify` |
 | Revocation endpoint | `/connect/revoke` |
 | Authorization code flow | Enabled |
 | Client credentials flow | Enabled |
-| Device authorization flow | Enabled |
+| Device authorization flow (CLI action) | Enabled |
 | Refresh token flow | Enabled |
 | Require PKCE | Enabled |
 | Validation tenant | Current tenant name |

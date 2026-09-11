@@ -1917,7 +1917,7 @@ internal sealed partial class CliApplication
             throw new CliException(
                 $"Remote Management discovery was not found at '{discoveryUri}' (HTTP 404)." + global::System.Environment.NewLine +
                 "Check that the URL targets the correct tenant, including any path prefix." + global::System.Environment.NewLine +
-                "Enable 'Remote Management' (OrchardCore.RemoteManagement) in Configuration > Features, then configure it in Settings > Remote Management." + global::System.Environment.NewLine +
+                "Enable 'Remote Management CLI' (OrchardCore.RemoteManagement.Cli) in Configuration > Features, then use Configure Pomi CLI in Settings > Remote Management." + global::System.Environment.NewLine +
                 "If the feature is unavailable, use a compatible Orchard Core server version that includes Remote Management.");
         }
 

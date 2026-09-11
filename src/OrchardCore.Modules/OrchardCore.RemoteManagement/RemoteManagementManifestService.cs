@@ -13,15 +13,18 @@ internal sealed class RemoteManagementManifestService
     private readonly IEnumerable<IRemoteManagementCapabilityProvider> _capabilityProviders;
     private readonly OpenIddictServerOptions _serverOptions;
     private readonly ShellSettings _shellSettings;
+    private readonly bool _cliEnabled;
 
     public RemoteManagementManifestService(
         IEnumerable<IRemoteManagementCapabilityProvider> capabilityProviders,
         IOptions<OpenIddictServerOptions> serverOptions,
-        ShellSettings shellSettings)
+        ShellSettings shellSettings,
+        IOptions<RemoteManagementOptions> options = null)
     {
         _capabilityProviders = capabilityProviders;
         _serverOptions = serverOptions.Value;
         _shellSettings = shellSettings;
+        _cliEnabled = options?.Value.CliEnabled == true;
     }
 
     public RemoteManagementManifest CreateBootstrap(HttpRequest request)
@@ -44,8 +47,11 @@ internal sealed class RemoteManagementManifestService
         manifest.TenantId = _shellSettings.Name;
         manifest.OpenApiUrl = new Uri(tenantUrl, "openapi/v1.json");
         manifest.JsonSchemaDialect = s_jsonSchemaDialect;
-        manifest.MinimumCliVersion = "1.0.0";
-        manifest.RecommendedCliVersion = "1.0.0";
+        if (_cliEnabled)
+        {
+            manifest.MinimumCliVersion = "1.0.0";
+            manifest.RecommendedCliVersion = "1.0.0";
+        }
         manifest.DocumentationIndexUrl = new Uri("https://docs.orchardcore.net/en/latest/search/search_index.json");
 
         foreach (var provider in _capabilityProviders)
@@ -64,6 +70,7 @@ internal sealed class RemoteManagementManifestService
         var authentication = new RemoteManagementAuthentication
         {
             Authority = _serverOptions.Issuer ?? tenantUrl,
+            ClientId = _cliEnabled ? RemoteManagementConstants.CliClientId : null,
         };
 
         AddGrantType(authentication, GrantTypes.AuthorizationCode);

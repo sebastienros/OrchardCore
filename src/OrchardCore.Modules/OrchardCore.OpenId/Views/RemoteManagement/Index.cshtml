@@ -1,3 +1,5 @@
+@using OrchardCore.Environment.Shell
+@inject IShellFeaturesManager ShellFeaturesManager
 @model OrchardCore.OpenId.RemoteManagementConfigurationStatus
 
 <zone Name="Title"><h1>@RenderTitleSegments(T["Remote Management"])</h1></zone>
@@ -28,12 +30,10 @@ else
                 <partial name="_RemoteManagementCheck" model='(T["Server endpoints"], Model.ServerEndpointsConfigured)' />
                 <partial name="_RemoteManagementCheck" model='(T["Authorization code flow"], Model.AuthorizationCodeFlowConfigured)' />
                 <partial name="_RemoteManagementCheck" model='(T["Client credentials flow"], Model.ClientCredentialsFlowConfigured)' />
-                <partial name="_RemoteManagementCheck" model='(T["Device authorization flow"], Model.DeviceFlowConfigured)' />
                 <partial name="_RemoteManagementCheck" model='(T["Refresh token flow"], Model.RefreshFlowConfigured)' />
                 <partial name="_RemoteManagementCheck" model='(T["Proof Key for Code Exchange (PKCE)"], Model.ProofKeyForCodeExchangeRequired)' />
                 <partial name="_RemoteManagementCheck" model='(T["Token validation for this tenant"], Model.ValidationConfigured)' />
                 <partial name="_RemoteManagementCheck" model='(T["Remote management scope"], Model.ManagementScopeConfigured)' />
-                <partial name="_RemoteManagementCheck" model='(T["Pomi CLI application"], Model.CliApplicationConfigured)' />
             </tbody>
         </table>
     </div>
@@ -49,3 +49,17 @@ else
         </div>
     </div>
 </form>
+
+<div class="ocat-wrapper">
+    <div class="ocat-end-offset">
+        @if (await ShellFeaturesManager.IsFeatureEnabledAsync("OrchardCore.RemoteManagement.Cli"))
+        {
+            <a class="btn btn-secondary" asp-controller="RemoteManagementCli" asp-action="Index">@T["Configure Pomi CLI"]</a>
+        }
+        @if (await ShellFeaturesManager.IsFeatureEnabledAsync("OrchardCore.RemoteManagement.Mcp"))
+        {
+            <a class="btn btn-secondary" asp-controller="RemoteManagementMcp" asp-action="Index">@T["Configure MCP client"]</a>
+        }
+        <span class="hint">@T["Client applications are configured separately by the CLI and MCP features."]</span>
+    </div>
+</div>

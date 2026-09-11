@@ -4,7 +4,7 @@
 
 Remote management discovery gives a client the tenant-specific authentication coordinates, management manifest, OpenAPI URL, protocol versions, and enabled capabilities needed to invoke Orchard Core management APIs.
 
-Enable **Remote Management** (`OrchardCore.RemoteManagement`). The feature depends on `OrchardCore.OpenApi` and the dependency-only `OrchardCore.OpenId.RemoteManagement` feature.
+Enable **Remote Management** (`OrchardCore.RemoteManagement`) for shared discovery; enable **Remote Management CLI** (`OrchardCore.RemoteManagement.Cli`) for Pomi client and OpenAPI command metadata. The feature depends on `OrchardCore.OpenApi` and the dependency-only `OrchardCore.OpenId.RemoteManagement` feature.
 
 ## Authentication and authorization
 
@@ -97,8 +97,8 @@ JSON property names are camel-cased.
 | `openApiETag` | string or null | null | Currently null | Reserved OpenAPI entity tag coordinate. |
 | `capabilities` | array | Empty | Set | Enabled capability descriptors. |
 | `jsonSchemaDialect` | absolute URI or null | null | `https://json-schema.org/draft/2020-12/schema` | Dialect used by resource schemas. |
-| `minimumCliVersion` | string or null | null | `1.0.0` | Oldest supported CLI version. |
-| `recommendedCliVersion` | string or null | null | `1.0.0` | Recommended CLI version. |
+| `minimumCliVersion` | string or null | null | `1.0.0` | Oldest supported CLI version; null when the CLI feature is disabled. |
+| `recommendedCliVersion` | string or null | null | `1.0.0` | Recommended CLI version; null when the CLI feature is disabled. |
 | `documentationIndexUrl` | absolute URI or null | null | `https://docs.orchardcore.net/en/latest/search/search_index.json` | Documentation search index. |
 
 The HTTP JSON serializer may omit null properties when an application customizes `Microsoft.AspNetCore.Http.Json.JsonOptions`; clients must accept both an absent property and JSON `null` for optional coordinates.
@@ -108,7 +108,7 @@ The HTTP JSON serializer may omit null properties when an application customizes
 | Property | Type | Meaning |
 | --- | --- | --- |
 | `authority` | absolute URI | Configured OpenID issuer, otherwise the request-derived tenant base URL. |
-| `clientId` | string | Always `orchardcore-cli` for the default public native client. |
+| `clientId` | string or null | `orchardcore-cli` when the CLI feature is enabled; otherwise null. |
 | `grantTypes` | array of string | Enabled remote-use grants, selected only from `authorization_code`, `urn:ietf:params:oauth:grant-type:device_code`, and `client_credentials`. |
 | `scopes` | array of string | `openid`, `profile`, `roles`, optionally `offline_access` when refresh tokens are enabled, and always `orchardcore.management`. |
 
