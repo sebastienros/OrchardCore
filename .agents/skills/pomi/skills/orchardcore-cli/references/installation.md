@@ -36,7 +36,7 @@ For a new SaaS host, create and initialize its **Default tenant** with SaaS:
 pomi install ./MySaaS \
   --recipe-name SaaS --database-provider Sqlite \
   --site-name "My SaaS" --user-name admin --email admin@example.com \
-  --password-env OC_SITE_PASSWORD --output json
+  --password-env OC_SITE_PASSWORD --output json > ./MySaaS.install.json
 ```
 
 SaaS is the setup recipe, not a different .NET project template. The SaaS
@@ -46,7 +46,8 @@ After starting the host, add a context for its root URL and authenticate, then
 use [tenant installation](tenants.md) for each requested child:
 
 ```bash
-pomi context add default https://localhost:5001 --current
+SITE_URL="$(python3 -c 'import json; print(json.load(open("MySaaS.install.json"))["url"])')"
+pomi context add default "$SITE_URL" --current
 pomi login
 pomi api refresh
 pomi tenants install --help
@@ -93,7 +94,11 @@ template other than `occms` needs direct template tooling. SaaS, Blank, and Blog
 are all supported recipes within `pomi install`. Time zones use IANA/TZDB IDs such as `Europe/Paris` and
 `America/Los_Angeles`, or `UTC`.
 
-The default listen address is `https://localhost:5001`, which needs a certificate.
+By default Pomi chooses and reserves an available random HTTPS localhost port.
+Read `url` and `listenUrl` from the installation result; do not assume port 5001
+or guess a new port after setup. Pomi persists these addresses in the generated
+application settings and project launch profiles. Explicit `--urls` ports are
+checked and a busy/unavailable address fails before setup. HTTPS needs a certificate.
 Use `dotnet dev-certs https --trust` for local development, or explicitly choose
 HTTP with `--urls http://localhost:5000`. Multiple addresses use one quoted
 semicolon-separated argument: `--urls "https://localhost:5001;http://localhost:5000"`.
@@ -106,8 +111,8 @@ server process.
 Add `--run` only when the user wants the site left running in the foreground;
 Ctrl+C stops it. For an agent-managed development server, install without
 `--run`, then use the environment's supported persistent process/session mechanism
-with `dotnet run --project ./MySaaS --no-launch-profile --urls https://localhost:5001`
-(replace the path and URL as needed). Starting an already installed project with
+with `dotnet run --project ./MySaaS --no-launch-profile`
+(replace the path as needed). This uses the selected URLs saved by the installer. Starting an already installed project with
 `dotnet run` is separate from scaffolding it. Do not treat a foreground server
 waiting for requests as a failed installation. Existing nonempty destinations are refused. On failure, inspect
 the preserved project and output before deciding how to proceed; do not blindly

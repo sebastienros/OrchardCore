@@ -1,3 +1,5 @@
+using System.Net;
+using System.Net.Sockets;
 using System.Text.Json;
 
 namespace OrchardCore.Cli.Tests;
@@ -9,7 +11,96 @@ public class LocalSiteInstallerTests
     {
         var options = CreateOptions();
         Assert.Equal("https://api.nuget.org/v3/index.json", LocalSiteInstaller.ResolveSource(options));
-        Assert.Equal("https://localhost:5001/", LocalSiteInstaller.GetSiteUrl(options));
+        using var ports = InstallPortReservation.Create(options.Urls);
+        options.Urls = ports.Urls;
+        var url = new Uri(LocalSiteInstaller.GetSiteUrl(options));
+        Assert.Equal("https", url.Scheme);
+        Assert.Equal("localhost", url.Host);
+        Assert.InRange(url.Port, 1, 65535);
+    }
+
+    [Fact]
+    public void AutomaticPorts_StayReservedAndConcurrentInstallsChooseDifferentPorts()
+    {
+        using var first = InstallPortReservation.Create(null);
+        using var second = InstallPortReservation.Create(null);
+        Assert.NotEqual(first.Urls, second.Urls);
+        var error = Assert.Throws<CliException>(() => InstallPortReservation.Create(first.Urls));
+        Assert.Contains("--urls", error.Message);
+        Assert.Contains("already in use", error.Message);
+        first.Dispose();
+        using var released = InstallPortReservation.Create(first.Urls);
+        Assert.Equal(first.Urls, released.Urls);
+    }
+
+    [Fact]
+    public void ExplicitPorts_CheckEveryAddressAndReleaseEarlierReservationsOnFailure()
+    {
+        using var available = InstallPortReservation.Create(null);
+        var firstUrl = available.Urls;
+        available.Dispose();
+        using var busy = InstallPortReservation.Create(null);
+        Assert.Throws<CliException>(() => InstallPortReservation.Create(firstUrl + ";" + busy.Urls));
+        using var recovered = InstallPortReservation.Create(firstUrl);
+        Assert.Equal(firstUrl, recovered.Urls);
+    }
+
+    [Fact]
+    public void LocalhostPorts_RejectAnOccupiedIpv6Address()
+    {
+        if (!Socket.OSSupportsIPv6)
+        {
+            return;
+        }
+
+        using var busy = new TcpListener(IPAddress.IPv6Loopback, 0);
+        busy.Server.DualMode = false;
+        busy.Start();
+        var port = ((IPEndPoint)busy.LocalEndpoint).Port;
+        Assert.Throws<CliException>(() => InstallPortReservation.Create($"https://localhost:{port}"));
+    }
+
+    [Fact]
+    public void Ipv6Wildcard_RejectsOccupiedIpv4WildcardPort()
+    {
+        using var busy = new TcpListener(IPAddress.Any, 0);
+        busy.Start();
+        var port = ((IPEndPoint)busy.LocalEndpoint).Port;
+        Assert.Throws<CliException>(() => InstallPortReservation.Create($"http://[::]:{port}"));
+    }
+
+    [Fact]
+    public async Task OccupiedExplicitPort_FailsBeforeSdkOrPasswordAndDoesNotCreateProject()
+    {
+        using var busy = InstallPortReservation.Create(null);
+        var directory = TestPaths.CreateScratchDirectory(nameof(OccupiedExplicitPort_FailsBeforeSdkOrPasswordAndDoesNotCreateProject));
+        var args = new[] { "install", directory, "--site-name", "Test", "--email", "admin@example.com", "--urls", busy.Urls };
+        using var client = new HttpClient(new RejectNetworkHandler());
+        var app = await CliApplication.CreateAsync(args, new CliPaths(TestPaths.CreateScratchDirectory("port-test-config")), client, TestContext.Current.CancellationToken, new UnsupportedCredentialStore());
+        using var errors = new StringWriter();
+        Assert.Equal(1, await app.InvokeAsync(args, errors));
+        Assert.Contains("already in use", errors.ToString());
+        Assert.Empty(Directory.GetFiles(directory, "*.csproj"));
+    }
+
+    [Fact]
+    public async Task PersistedUrls_UpdateProjectProfilesAndPreserveOtherSettings()
+    {
+        var directory = TestPaths.CreateScratchDirectory(nameof(PersistedUrls_UpdateProjectProfilesAndPreserveOtherSettings));
+        Directory.CreateDirectory(Path.Combine(directory, "Properties"));
+        await File.WriteAllTextAsync(Path.Combine(directory, "appsettings.json"), """{"AllowedHosts":"*",/* template comment */"Logging":{"Level":"Warning"}}""", TestContext.Current.CancellationToken);
+        var launchPath = Path.Combine(directory, "Properties", "launchSettings.json");
+        await File.WriteAllTextAsync(launchPath, """{"profiles":{"Cms":{"commandName":"Project","applicationUrl":"https://localhost:5001","environmentVariables":{"ASPNETCORE_ENVIRONMENT":"Development"}},"IIS":{"commandName":"IISExpress"}}}""", TestContext.Current.CancellationToken);
+        const string urls = "https://localhost:53127;http://localhost:53128";
+        await LocalSiteInstaller.WriteListenUrlsAsync(directory, urls, TestContext.Current.CancellationToken);
+        using var settings = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(directory, "appsettings.json"), TestContext.Current.CancellationToken));
+        Assert.Equal(urls, settings.RootElement.GetProperty("Urls").GetString());
+        Assert.Equal("Warning", settings.RootElement.GetProperty("Logging").GetProperty("Level").GetString());
+        using var launch = JsonDocument.Parse(await File.ReadAllTextAsync(launchPath, TestContext.Current.CancellationToken));
+        var profiles = launch.RootElement.GetProperty("profiles");
+        Assert.Equal(urls, profiles.GetProperty("Cms").GetProperty("applicationUrl").GetString());
+        Assert.Equal("Development", profiles.GetProperty("Cms").GetProperty("environmentVariables").GetProperty("ASPNETCORE_ENVIRONMENT").GetString());
+        Assert.False(profiles.GetProperty("IIS").TryGetProperty("applicationUrl", out _));
     }
 
     [Theory]

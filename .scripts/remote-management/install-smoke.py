@@ -12,6 +12,7 @@ import tempfile
 import time
 import urllib.error
 import urllib.request
+import urllib.parse
 import xml.etree.ElementTree as ET
 
 parser = argparse.ArgumentParser(description=__doc__)
@@ -75,6 +76,24 @@ with tempfile.TemporaryDirectory(prefix='pomi-install-smoke-') as scratch:
     assert 'Failed to determine the https port' not in completed.stderr, completed.stderr
     assert 'Build succeeded.' not in completed.stderr, completed.stderr
     result = json.loads(completed.stdout)
+    selected = urllib.parse.urlsplit(result['listenUrl'])
+    assert selected.scheme == 'https' and selected.hostname == 'localhost' and selected.port > 0, result
+    assert json.loads((site / 'appsettings.json').read_text())['Urls'] == result['listenUrl']
+    for profile in json.loads((site / 'Properties/launchSettings.json').read_text())['profiles'].values():
+        if profile.get('commandName') == 'Project':
+            assert profile['applicationUrl'] == result['listenUrl'], profile
+    # Explicit occupied ports fail before SDK discovery, password input, or file creation.
+    with socket.socket() as busy:
+        busy.bind(('127.0.0.1', 0))
+        busy.listen()
+        busy_url = f"http://127.0.0.1:{busy.getsockname()[1]}"
+        blocked_path = root / 'busy-site'
+        blocked = subprocess.run([pomi, 'install', str(blocked_path), '--site-name', 'Busy',
+                                  '--email', 'admin@example.com', '--urls', busy_url],
+                                 env=no_sdk, capture_output=True, text=True, timeout=15)
+        assert blocked.returncode != 0 and 'already in use' in blocked.stderr, blocked
+        assert not blocked_path.exists()
+
     assert ET.parse(site / 'NuGet.Config').find('./packageSources/clear') is None
     restored_sources = json.loads((site / 'obj/project.assets.json').read_text())['project']['restore']['sources']
     assert str(inherited) in restored_sources, restored_sources

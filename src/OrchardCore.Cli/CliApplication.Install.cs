@@ -22,7 +22,7 @@ internal sealed partial class CliApplication
         var clearSources = new Option<bool>("--clear-sources") { Description = "Clear inherited NuGet package sources; use only nuget.org and an explicit --source" };
         var run = new Option<bool>("--run") { Description = "Start the completed site in the foreground; Ctrl+C stops it" };
         var verbose = new Option<bool>("--verbose") { Description = "Show template, build, and temporary setup logs as they happen" };
-        var urls = new Option<string>("--urls") { Description = "Listen URLs for --run; quote multiple addresses separated by semicolons, e.g. \"https://localhost:5001;http://localhost:5000\". HTTPS requires a certificate", DefaultValueFactory = _ => LocalSiteInstaller.DefaultUrls };
+        var urls = new Option<string?>("--urls") { Description = "Listen URLs (default: HTTPS on an available random localhost port); quote multiple addresses separated by semicolons, e.g. \"https://localhost:5001;http://localhost:5000\". HTTPS requires a certificate" };
         var timeout = new Option<int>("--setup-timeout") { Description = "Setup timeout in seconds", DefaultValueFactory = _ => 300 };
         command.Arguments.Add(directory);
         foreach (var option in new Option[] { siteName, userName, email, recipe, provider, tablePrefix, schema, timeZone, urlPrefix, host, source, clearSources, run, verbose, urls, timeout })
@@ -54,13 +54,18 @@ internal sealed partial class CliApplication
                 RequestUrlHost = parsed.GetValue(host),
                 Source = parsed.GetValue(source),
                 ClearSources = parsed.GetValue(clearSources),
-                Urls = parsed.GetValue(urls)!,
+                Urls = parsed.GetValue(urls),
                 SetupTimeoutSeconds = parsed.GetValue(timeout),
                 Verbose = parsed.GetValue(verbose),
                 SecretEnvironmentVariables = new[] { parsed.GetValue(password.EnvironmentVariableOption), parsed.GetValue(connection.EnvironmentVariableOption) }
                     .Where(name => !string.IsNullOrWhiteSpace(name)).Select(name => name!).ToArray(),
             };
             LocalSiteInstaller.Validate(options);
+            if (options.Urls is not null)
+            {
+                // Report occupied explicit ports before SDK discovery or password prompts.
+                using var preflight = InstallPortReservation.Create(options.Urls);
+            }
             var sdk = await DotnetEnvironment.FindSdkAsync(cancellationToken, options.SecretEnvironmentVariables)
                 ?? throw new CliException($"Install the .NET {DotnetEnvironment.RequiredMajor} SDK and make 'dotnet' available on PATH to use 'pomi install'. Remote commands do not require it.");
             options.Password = await ResolveSecretValueAsync(parsed, password, cancellationToken) ?? ReadSecretFromConsole("password");

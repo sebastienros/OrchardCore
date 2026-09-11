@@ -23,7 +23,7 @@ internal sealed class LocalSiteInstallOptions
     public string? RequestUrlHost { get; init; }
     public string? Source { get; init; }
     public bool ClearSources { get; init; }
-    public string Urls { get; init; } = LocalSiteInstaller.DefaultUrls;
+    public string? Urls { get; set; }
     public int SetupTimeoutSeconds { get; init; } = 300;
     public bool Verbose { get; init; }
     public string Password { get; set; } = string.Empty;
@@ -45,7 +45,6 @@ internal sealed class LocalSiteInstallOutput
 
 internal static partial class LocalSiteInstaller
 {
-    internal const string DefaultUrls = "https://localhost:5001";
     internal const string NugetSource = "https://api.nuget.org/v3/index.json";
     private const string AutoSetupPrefix = "OrchardCore__OrchardCore_AutoSetup__";
 
@@ -83,7 +82,10 @@ internal static partial class LocalSiteInstaller
             throw new CliException("--request-url-host must be a single host name without a scheme, port, or path.");
         }
 
-        _ = ParseListenUrls(options.Urls);
+        if (options.Urls is not null)
+        {
+            _ = ParseListenUrls(options.Urls!);
+        }
         _ = ResolveSource(options);
     }
 
@@ -129,7 +131,7 @@ internal static partial class LocalSiteInstaller
 
     internal static string GetSiteUrl(LocalSiteInstallOptions options)
     {
-        var urls = ParseListenUrls(options.Urls);
+        var urls = ParseListenUrls(options.Urls!);
         var uri = new UriBuilder(urls.FirstOrDefault(url => url.Scheme == "https") ?? urls[0])
         {
             Path = options.RequestUrlPrefix ?? string.Empty,
@@ -171,6 +173,8 @@ internal static partial class LocalSiteInstaller
     {
         Validate(options);
         ValidateSecrets(options);
+        using var ports = InstallPortReservation.Create(options.Urls);
+        options.Urls = ports.Urls;
         using var diagnostics = new InstallProcessLog(log, options.Verbose);
         var completed = false;
         var scratch = Path.Combine(Path.GetTempPath(), "pomi-install-" + Guid.NewGuid().ToString("N"));
@@ -191,6 +195,7 @@ internal static partial class LocalSiteInstaller
             Validate(options);
             await DotnetEnvironment.RunAsync(["new", "occms", "--output", options.Directory], scratch, environment, diagnostics, cancellationToken, options.SecretEnvironmentVariables);
             await WriteSdkSelectionAsync(options.Directory, sdk, cancellationToken);
+            await WriteListenUrlsAsync(options.Directory, options.Urls, cancellationToken);
             var sources = new XElement("packageSources");
             if (options.ClearSources)
             {
@@ -226,7 +231,7 @@ internal static partial class LocalSiteInstaller
             await DotnetEnvironment.RunAsync(["build", project, "--no-restore", "--disable-build-servers", "-m:1"], options.Directory, environment, diagnostics, cancellationToken, options.SecretEnvironmentVariables);
             await log.WriteLineAsync("Initializing the Default tenant.");
             await SetupAsync(options, project, diagnostics, cancellationToken);
-            var listenUrls = ParseListenUrls(options.Urls);
+            var listenUrls = ParseListenUrls(options.Urls!);
             var listenUrl = string.Join(';', listenUrls.Select(url => url.GetLeftPart(UriPartial.Authority)));
             completed = true;
             return new LocalSiteInstallOutput
@@ -256,6 +261,41 @@ internal static partial class LocalSiteInstaller
             {
                 await log.WriteLineAsync($"Warning: could not remove temporary template files in '{scratch}'.");
             }
+        }
+    }
+
+    internal static async Task WriteListenUrlsAsync(string directory, string urls, CancellationToken cancellationToken)
+    {
+        var path = Path.Combine(directory, "appsettings.json");
+        var settings = JsonNode.Parse(await File.ReadAllTextAsync(path, cancellationToken), documentOptions: new JsonDocumentOptions
+        {
+            CommentHandling = JsonCommentHandling.Skip,
+            AllowTrailingCommas = true,
+        })!.AsObject();
+        settings["Urls"] = urls;
+        await File.WriteAllTextAsync(path, settings.ToJsonString(new JsonSerializerOptions { WriteIndented = true, TypeInfoResolver = CliJsonContext.Default }), cancellationToken);
+
+        // dotnet run's project profiles otherwise override appsettings with template ports.
+        path = Path.Combine(directory, "Properties", "launchSettings.json");
+        if (File.Exists(path))
+        {
+            var launch = JsonNode.Parse(await File.ReadAllTextAsync(path, cancellationToken), documentOptions: new JsonDocumentOptions
+            {
+                CommentHandling = JsonCommentHandling.Skip,
+                AllowTrailingCommas = true,
+            })!.AsObject();
+            if (launch["profiles"] is JsonObject profiles)
+            {
+                foreach (var profile in profiles.Select(entry => entry.Value).OfType<JsonObject>())
+                {
+                    if (profile["commandName"]?.GetValue<string>() == "Project")
+                    {
+                        profile["applicationUrl"] = urls;
+                    }
+                }
+            }
+
+            await File.WriteAllTextAsync(path, launch.ToJsonString(new JsonSerializerOptions { WriteIndented = true, TypeInfoResolver = CliJsonContext.Default }), cancellationToken);
         }
     }
 
@@ -364,6 +404,12 @@ internal static partial class LocalSiteInstaller
     public static async Task RunAsync(LocalSiteInstallOutput output, TextWriter log, CancellationToken cancellationToken,
         IEnumerable<string>? secretEnvironmentVariables = null)
     {
+        // The installation reservation must be released before the child server can bind.
+        // Check again to report a useful error if another process took a port meanwhile.
+        using (InstallPortReservation.Create(output.ListenUrl))
+        {
+        }
+
         await log.WriteLineAsync($"Starting {output.Url} — press Ctrl+C to stop.");
         await DotnetEnvironment.RunAsync([ApplicationPath(output.Project), "--urls", output.ListenUrl], output.Directory, null, log, cancellationToken, secretEnvironmentVariables);
     }

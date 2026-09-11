@@ -208,7 +208,8 @@ Other project templates remain available through `dotnet new`.
    project, restores dependencies, builds it, and uses
    [Auto Setup](../../reference/modules/AutoSetup/README.md) to initialize the
    site. Defaults are the `SaaS` recipe, SQLite, and the UTC time zone.
-4. With `--run`, open `https://localhost:5001` when setup finishes. Sign in with
+4. With `--run`, open the HTTPS URL printed when setup finishes. Pomi selects
+   an available random localhost port by default. Sign in with
    the administrator account you just created. Press **Ctrl+C** to stop the
    foreground server. Use `--urls https://localhost:5080` to select another
    listening address.
@@ -233,6 +234,14 @@ Use HTTP(S) addresses with a hostname or IP address and an optional port, withou
 credentials, paths, queries, or fragments. Use `--request-url-prefix` for a site
 path. The result's `url` selects the first HTTPS address, or the first address
 when all use HTTP; `listenUrl` contains the complete semicolon-separated list.
+Explicit ports are checked before password prompts and reserved during installation;
+a busy or unavailable address fails with a message to choose another `--urls`.
+The default reserves a random port on IPv4 and, where available, IPv6 localhost.
+Pomi saves the selected URLs in `appsettings.json` and the generated project launch
+profiles, so `dotnet run` and `dotnet run --no-launch-profile` reuse them.
+The reservation is released before starting the server; another process could
+still claim a port afterward. Startup rechecks availability, but no preflight can
+guarantee a port remains free between checking it and the server binding it.
 For local HTTP without a certificate, specify `--urls http://localhost:5000`.
 
 Installation shows concise progress messages. Add `--verbose` to see template,
@@ -251,7 +260,7 @@ left running. In JSON output, `tenantState:
 running. Start the site later with:
 
 ```bash
-dotnet run --project ./MyOrchardSite --no-launch-profile --urls https://localhost:5001
+dotnet run --project ./MyOrchardSite --no-launch-profile
 ```
 
 The generated `global.json` pins the selected stable SDK, allowing later patches
