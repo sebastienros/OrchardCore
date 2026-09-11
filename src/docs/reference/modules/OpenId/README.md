@@ -62,6 +62,10 @@ dark color preference and uses locally available fonts. To adjust this palette
 in a derived theme, override the `--saas-*` CSS custom properties, including
 `--saas-primary`, `--saas-surface`, `--saas-ink`, and `--saas-heading-font`,
 after the theme stylesheet. Provide corresponding dark-mode overrides as needed.
+The decorative leaf background is the `SaaSBackground` shape. Override
+`Views/SaaSBackground.cshtml` in a derived theme to replace it, or set
+`--saas-background-opacity: 0` to hide it. The leaf is inline SVG and requires
+no image download.
 See the [SaaS consent example](../../../guides/remote-management/README.md#4-sign-in-once).
 
 You can also select an installed site theme through the

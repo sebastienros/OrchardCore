@@ -380,6 +380,7 @@ assets. It is separate from the tenant's themeable consent page.
 The callback shares the SaaS theme's Orchard-inspired palette but keeps its
 CSS and icons inline and uses system fonts. It does not download theme files,
 fonts, scripts, or images from the tenant or another website.
+Both pages include a subtle decorative leaf watermark rendered as inline SVG.
 
 ![Self-contained CLI callback confirming authorization was received](images/cli-callback.png)
 

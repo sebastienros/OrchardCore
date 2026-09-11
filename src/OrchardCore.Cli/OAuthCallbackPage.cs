@@ -27,7 +27,9 @@ internal static class OAuthCallbackPage
               <style>
                 :root { color-scheme: light dark; --bg: #f5f8f6; --surface: #fff; --text: #0f1a14; --muted: #566058; --line: #e2e8e3; --accent: #15803d; --on-accent: #fff; --tint: #edf2ee; }
                 * { box-sizing: border-box; }
-                body { margin: 0; min-height: 100svh; padding: 48px 24px; display: grid; place-items: center; background: var(--bg); color: var(--text); font: 16px/1.6 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+                body { isolation: isolate; margin: 0; min-height: 100svh; padding: 48px 24px; display: grid; place-items: center; background: var(--bg); color: var(--text); font: 16px/1.6 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+                .background { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; user-select: none; color: var(--accent); opacity: .05; }
+                .background svg { position: absolute; right: -100px; bottom: -100px; width: clamp(360px, 65vw, 680px); height: auto; }
                 .page { width: 100%; max-width: 560px; }
                 .brand { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 0 0 24px 4px; font-weight: 650; }
                 .brand-mark { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 11px; background: var(--accent); color: var(--on-accent); font: 600 18px ui-monospace, monospace; }
@@ -44,10 +46,18 @@ internal static class OAuthCallbackPage
                 code { font: .95em ui-monospace, monospace; color: var(--text); }
                 footer { margin-top: 22px; text-align: center; color: var(--muted); font-size: 13px; }
                 @media (max-width: 480px) { body { padding: 28px 16px; } main { padding: 28px 24px; } .brand { gap: 9px; } .next { padding: 16px; } }
-                @media (prefers-color-scheme: dark) { :root { --bg: #07150d; --surface: #12291b; --text: #e4efe8; --muted: #9db2a4; --line: #21402e; --accent: #86cda0; --on-accent: #07150d; --tint: #16331f; } }
+                @media (prefers-color-scheme: dark) { :root { --bg: #07150d; --surface: #12291b; --text: #e4efe8; --muted: #9db2a4; --line: #21402e; --accent: #86cda0; --on-accent: #07150d; --tint: #16331f; } .background { opacity: .07; } }
               </style>
             </head>
             <body>
+              <div class="background" aria-hidden="true">
+                  <svg viewBox="68.84 223.2 148.88 148.88" fill="currentColor" focusable="false">
+                      <path d="M143.28,223.2c-41.11,0-74.44,33.33-74.44,74.44s33.33,74.44,74.44,74.44c41.11,0,74.44-33.33,74.44-74.44S184.4,223.2,143.28,223.2z M143.28,357.75c-33.2,0-60.12-26.91-60.12-60.12c0-33.2,26.91-60.12,60.12-60.12c33.2,0,60.12,26.91,60.12,60.12C203.4,330.84,176.48,357.75,143.28,357.75z"/>
+                      <path d="M179.12,333.16L179.12,333.16L179.12,333.16c-19.36-19.36-19.36-50.76,0-70.13l0,0l0,0C198.48,282.4,198.48,313.8,179.12,333.16z"/>
+                      <path d="M159.2,313.24L159.2,313.24L159.2,313.24c-27.39,0-49.59-22.2-49.59-49.59v0h0C137,263.66,159.2,285.86,159.2,313.24z"/>
+                      <path d="M108.77,333.35L108.77,333.35L108.77,333.35c19.36-19.36,50.76-19.36,70.13,0l0,0l0,0C159.53,352.71,128.13,352.71,108.77,333.35z"/>
+                  </svg>
+              </div>
               <div class="page">
                 <header class="brand"><span class="brand-mark" aria-hidden="true">oc</span> Orchard Core <span>Command-line interface</span></header>
                 <main>

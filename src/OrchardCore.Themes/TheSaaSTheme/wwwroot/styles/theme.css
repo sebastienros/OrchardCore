@@ -10,6 +10,7 @@
   --saas-tint: #edf2ee;
   --saas-border: #e2e8e3;
   --saas-focus-rgb: 21, 128, 61;
+  --saas-background-opacity: .05;
   --saas-shadow: 0 12px 40px #0f1a140a;
   --saas-heading-font: Georgia, "Times New Roman", serif;
   --bs-body-color: var(--saas-ink);
@@ -33,6 +34,7 @@
     --saas-tint: #16331f;
     --saas-border: #21402e;
     --saas-focus-rgb: 134, 205, 160;
+    --saas-background-opacity: .07;
     --saas-shadow: 0 12px 40px #0003;
     --bs-danger-rgb: 255, 180, 171;
     --bs-danger-text-emphasis: #ffb4ab;
@@ -58,6 +60,7 @@ html {
 }
 
 body {
+  isolation: isolate;
   min-height: 100vh;
   min-height: 100svh;
   margin: 0;
@@ -66,6 +69,24 @@ body {
   font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+}
+
+.saas-background {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+  color: var(--saas-primary);
+  opacity: var(--saas-background-opacity);
+}
+.saas-background svg {
+  position: absolute;
+  right: -100px;
+  bottom: -100px;
+  width: clamp(360px, 65vw, 680px);
+  height: auto;
 }
 
 a {
