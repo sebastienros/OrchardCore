@@ -72,22 +72,22 @@ You can also select an installed site theme through the
 [theme management CLI/API](../../api/themes/README.md#set-the-current-theme):
 
 ```bash
-oc themes list --admin false
-oc themes set-current TheAgencyTheme
+pomi themes list --admin false
+pomi themes set-current TheAgencyTheme
 ```
 
 Replace `TheAgencyTheme` with the theme ID returned by the list command. The
 selection operation also enables the theme and its base themes.
 
-The login-theme flag itself is not exposed by `oc settings update` or
+The login-theme flag itself is not exposed by `pomi settings update` or
 `PUT /api/settings`, which only accept
 [safe core site settings](../../api/settings/README.md#site-settings-representation).
 For automation, include the
 [login settings recipe configuration](../Users/README.md#login-settings)
 in an installed non-setup recipe, then run it through the
 [recipe management API](../../api/recipes/README.md#execute-a-recipe)
-or its `oc recipes execute <recipeId> --json '{}' --force` CLI command, using an ID
-returned by `oc recipes list`.
+or its `pomi recipes execute <recipeId> --json '{}' --force` CLI command, using an ID
+returned by `pomi recipes list`.
 That API executes installed recipes; it does not accept a new recipe body.
 The `Settings` recipe step replaces the supplied `LoginSettings` section, so
 include the other login settings you intend to retain.

@@ -33,7 +33,7 @@ thread = threading.Thread(target=server.serve_forever, daemon=True)
 thread.start()
 tenant = f'http://127.0.0.1:{server.server_port}/'
 try:
-    with tempfile.TemporaryDirectory(prefix='oc-force-confirmation-') as directory:
+    with tempfile.TemporaryDirectory(prefix='pomi-force-confirmation-') as directory:
         env = os.environ.copy()
         env['OC_CONFIG_HOME'] = directory
         for name in ('OC_CLIENT_ID', 'OC_CLIENT_SECRET'):

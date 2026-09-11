@@ -7,7 +7,7 @@ It also explains the fundamental theming concepts, namely __Shapes__, __Alternat
 
 The [Theme management API](../../api/themes/README.md) exposes installed theme
 discovery, enablement, and current site/admin theme selection to authenticated
-remote clients and the `oc` CLI.
+remote clients and the `pomi` CLI.
 
 ## Goals
 

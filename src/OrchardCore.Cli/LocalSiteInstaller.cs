@@ -54,7 +54,7 @@ internal static partial class LocalSiteInstaller
         var directory = new DirectoryInfo(options.Directory);
         if (File.Exists(options.Directory) || directory.LinkTarget is not null || directory.Exists && directory.EnumerateFileSystemInfos().Any())
         {
-            throw new CliException("Choose a new or empty directory. 'oc install' does not overwrite an existing site or follow a destination symlink.");
+            throw new CliException("Choose a new or empty directory. 'pomi install' does not overwrite an existing site or follow a destination symlink.");
         }
 
         if (string.IsNullOrWhiteSpace(options.SiteName) || string.IsNullOrWhiteSpace(options.UserName)
@@ -176,7 +176,7 @@ internal static partial class LocalSiteInstaller
         ValidateSecrets(options);
         using var diagnostics = new InstallProcessLog(log, options.Verbose);
         var completed = false;
-        var scratch = Path.Combine(Path.GetTempPath(), "oc-install-" + Guid.NewGuid().ToString("N"));
+        var scratch = Path.Combine(Path.GetTempPath(), "pomi-install-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(scratch);
         var environment = new Dictionary<string, string>
         {
@@ -296,7 +296,7 @@ internal static partial class LocalSiteInstaller
         var port = ((IPEndPoint)listener.LocalEndpoint).Port;
         listener.Stop();
         var url = $"http://127.0.0.1:{port}";
-        var setupPath = "/oc-setup-" + Guid.NewGuid().ToString("N");
+        var setupPath = "/pomi-setup-" + Guid.NewGuid().ToString("N");
         await log.WriteLineAsync("Auto Setup uses a temporary local-only server; it stops before the requested site URL starts.");
         using var process = DotnetEnvironment.Start([ApplicationPath(project), "--urls", url], options.Directory,
             CreateSetupEnvironment(options, setupPath), options.SecretEnvironmentVariables);

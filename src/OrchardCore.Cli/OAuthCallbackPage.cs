@@ -9,11 +9,11 @@ internal static class OAuthCallbackPage
         var title = authorizationReceived ? "Authorization received" : "Authorization not completed";
         var status = authorizationReceived ? "Browser step complete" : "Login interrupted";
         var message = authorizationReceived
-            ? "Your authorization has been sent to the Orchard Core CLI."
+            ? "Your authorization has been sent to the Pomi CLI."
             : "Access was denied or the authorization request could not be completed.";
         var nextStep = authorizationReceived
             ? "Check your terminal to confirm that login completed."
-            : "Run <code>oc login</code> in your terminal to try again.";
+            : "Run <code>pomi login</code> in your terminal to try again.";
 
         // CSS, system fonts, and inline SVG keep this page self-contained.
         // All interpolated content is fixed text. Never include callback parameters,
@@ -25,7 +25,7 @@ internal static class OAuthCallbackPage
               <meta charset="utf-8">
               <meta name="viewport" content="width=device-width, initial-scale=1">
               <meta name="color-scheme" content="light dark">
-              <title>{{title}} · Orchard Core CLI</title>
+              <title>{{title}} · Pomi CLI</title>
               <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,{{_favicon}}">
               <style>
                 :root { color-scheme: light dark; --bg: #f5f8f6; --surface: #fff; --text: #0f1a14; --muted: #566058; --line: #e2e8e3; --accent: #15803d; --on-accent: #fff; --tint: #edf2ee; }
@@ -35,7 +35,7 @@ internal static class OAuthCallbackPage
                 .background svg { position: absolute; right: -100px; bottom: -100px; width: clamp(360px, 65vw, 680px); height: auto; }
                 .page { width: 100%; max-width: 560px; }
                 .brand { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 0 0 24px 4px; font-weight: 650; }
-                .brand-mark { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 11px; background: var(--accent); color: var(--on-accent); font: 600 18px ui-monospace, monospace; }
+                .brand-mark { display: grid; place-items: center; width: 54px; height: 38px; border-radius: 11px; background: var(--accent); color: var(--on-accent); font: 600 18px ui-monospace, monospace; }
                 .brand span:last-child { color: var(--muted); font-size: 13px; font-weight: 450; padding-left: 12px; border-left: 1px solid var(--line); }
                 main { padding: 40px; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); box-shadow: 0 12px 40px #0f1a140a; }
                 .status { display: flex; align-items: center; gap: 8px; margin: 0 0 18px; color: var(--accent); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
@@ -62,7 +62,7 @@ internal static class OAuthCallbackPage
                   </svg>
               </div>
               <div class="page">
-                <header class="brand"><span class="brand-mark" aria-hidden="true">oc</span> Orchard Core <span>Command-line interface</span></header>
+                <header class="brand"><span class="brand-mark" aria-hidden="true">pomi</span> Orchard Core <span>Command-line interface</span></header>
                 <main>
                   <p class="status">{{status}}</p>
                   <h1>{{title}}</h1>

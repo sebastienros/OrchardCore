@@ -1,7 +1,7 @@
 {
   "name": "RemoteManagement",
   "displayName": "Orchard Core Remote Management",
-  "description": "Configures the OpenID Connect server, token validation, management scope, and public native client required by the Orchard Core CLI.",
+  "description": "Configures the OpenID Connect server, token validation, management scope, and public native client required by the Pomi CLI.",
   "author": "The Orchard Core Team",
   "website": "https://orchardcore.net",
   "version": "1.0.0",

@@ -1,9 +1,9 @@
 ---
 name: orchardcore-cli-content-definitions
-description: Designs and manages Orchard Core content types, reusable parts, fields, and modeling patterns through `oc`. Use for Content Types, Flow, Bag, Lists, Taxonomies, Menus, Alias, Autoroute, Sitemaps, widgets, or planning carousel, blog, news, and landing-page models rendered with Liquid.
+description: Designs and manages Orchard Core content types, reusable parts, fields, and modeling patterns through `pomi`. Use for Content Types, Flow, Bag, Lists, Taxonomies, Menus, Alias, Autoroute, Sitemaps, widgets, or planning carousel, blog, news, and landing-page models rendered with Liquid.
 ---
 
-# Orchard Core CLI Content Definitions
+# Pomi CLI Content Definitions
 
 Design the model before authoring content or templates. Work against the target
 tenant context because registered parts, fields, settings, and schemas depend on
@@ -64,24 +64,24 @@ For a composable content site, inspect and enable the required subset of:
 ## Schema-first workflow
 
 ```bash
-oc --context site content part-types list --take 200
-oc --context site content field-types list --take 200
-oc --context site content types schema
-oc --context site content parts schema
-oc --context site content fields schema
+pomi --context site content part-types list --take 200
+pomi --context site content field-types list --take 200
+pomi --context site content types schema
+pomi --context site content parts schema
+pomi --context site content fields schema
 ```
 
-Enable missing features, run `oc api refresh`, and repeat discovery. Never copy
+Enable missing features, run `pomi api refresh`, and repeat discovery. Never copy
 settings blindly from another tenant.
 
 The safe definition DTO preserves unknown settings values but its base schema
 cannot describe every enabled module. Discover contributed contracts:
 
 ```bash
-oc content settings list --take 200
-oc content settings show AutoroutePartSettings
-oc content settings show FlowPartSettings
-oc content settings show BagPartSettings
+pomi content settings list --take 200
+pomi content settings show AutoroutePartSettings
+pomi content settings show FlowPartSettings
+pomi content settings show BagPartSettings
 ```
 
 Each contract reports its definition scope, target part/field type, and JSON
@@ -99,23 +99,23 @@ Create definitions in dependency order:
 ## Commands
 
 ```bash
-oc content types list --skip 0 --take 200
-oc content types show Article
-oc content types create --body-file article-type.json
-oc content types update Article --body-file article-type.json
-oc content types delete Article --force
+pomi content types list --skip 0 --take 200
+pomi content types show Article
+pomi content types create --body-file article-type.json
+pomi content types update Article --body-file article-type.json
+pomi content types delete Article --force
 
-oc content parts list --skip 0 --take 200
-oc content parts show ArticleDetails
-oc content parts create --body-file article-details.json
-oc content parts update ArticleDetails --body-file article-details.json
-oc content parts delete ArticleDetails --force
+pomi content parts list --skip 0 --take 200
+pomi content parts show ArticleDetails
+pomi content parts create --body-file article-details.json
+pomi content parts update ArticleDetails --body-file article-details.json
+pomi content parts delete ArticleDetails --force
 
-oc content fields list ArticleDetails
-oc content fields show ArticleDetails Summary
-oc content fields create ArticleDetails --body-file summary-field.json
-oc content fields update ArticleDetails Summary --body-file summary-field.json
-oc content fields delete ArticleDetails Summary --force
+pomi content fields list ArticleDetails
+pomi content fields show ArticleDetails Summary
+pomi content fields create ArticleDetails --body-file summary-field.json
+pomi content fields update ArticleDetails Summary --body-file summary-field.json
+pomi content fields delete ArticleDetails Summary --force
 ```
 
 Create/update bodies are full definitions, not patches. Keep technical names
@@ -273,9 +273,9 @@ official Menu/MenuItem/MenuItemLink templates.
 ## Verify the model
 
 ```bash
-oc content parts show ArticleDetails
-oc content types show Article
-oc content items schema Article
+pomi content parts show ArticleDetails
+pomi content types show Article
+pomi content items schema Article
 ```
 
 The content-item schema is the authoritative authoring contract and includes

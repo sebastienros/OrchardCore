@@ -1,6 +1,6 @@
 # Localization API
 
-Manage tenant cultures, inspect translated JavaScript UI strings, and edit database-backed translations. `OrchardCore.Localization` contributes culture settings and UI strings (capability `localization`). `OrchardCore.DataLocalization` additionally contributes dynamic translations (capability `localization-translations`). Enable [Remote Management](../../modules/RemoteManagement/README.md) to discover these operations through `oc`.
+Manage tenant cultures, inspect translated JavaScript UI strings, and edit database-backed translations. `OrchardCore.Localization` contributes culture settings and UI strings (capability `localization`). `OrchardCore.DataLocalization` additionally contributes dynamic translations (capability `localization-translations`). Enable [Remote Management](../../modules/RemoteManagement/README.md) to discover these operations through `pomi`.
 
 These APIs serve different kinds of localization:
 
@@ -35,19 +35,19 @@ For example, `ManageTranslations_fr` allows editing French translations, but doe
 With an authenticated context pointing at the intended tenant:
 
 ```bash
-oc features enable OrchardCore.Localization
-oc api refresh
-oc localization --help
-oc localization cultures list
-oc localization settings show
+pomi features enable OrchardCore.Localization
+pomi api refresh
+pomi localization --help
+pomi localization cultures list
+pomi localization settings show
 ```
 
 For everyday changes, add or remove a single culture without replacing the other settings:
 
 ```bash
-oc localization cultures available
-oc localization cultures add fr
-oc localization cultures remove de --force
+pomi localization cultures available
+pomi localization cultures add fr
+pomi localization cultures remove de --force
 ```
 
 `cultures list` shows enabled cultures with readable names and default flags.
@@ -55,7 +55,7 @@ oc localization cultures remove de --force
 and default flags. Both lists support `--skip` and `--take` (up to 200 rows).
 `settings show` returns the whole configuration, including parent-culture
 fallback. Use `settings update` when changing the default culture or replacing
-the full configuration. All these commands live under `oc localization`.
+the full configuration. All these commands live under `pomi localization`.
 
 To set English as the default, support English and French, and enable parent
 fallback, create `cultures.json`:
@@ -71,9 +71,9 @@ fallback, create `cultures.json`:
 Apply it, then inspect the French Media UI labels:
 
 ```bash
-oc localization settings update --body-file cultures.json
-oc localization strings list
-oc localization strings show media-gallery --culture fr --take 200
+pomi localization settings update --body-file cultures.json
+pomi localization strings list
+pomi localization strings show media-gallery --culture fr --take 200
 ```
 
 This replaces the complete supported-culture list. Read current settings first and retain any other cultures you need. The explicit `--culture` on these localization commands is independent of the CLI's saved tenant `--context`; it is not a global CLI language switch.
@@ -81,10 +81,10 @@ This replaces the complete supported-culture list. Read current settings first a
 For database-backed translations:
 
 ```bash
-oc features enable OrchardCore.DataLocalization
-oc api refresh
-oc localization translations list --culture fr
-oc localization translations schema --operation set
+pomi features enable OrchardCore.DataLocalization
+pomi api refresh
+pomi localization translations list --culture fr
+pomi localization translations schema --operation set
 ```
 
 Copy an exact `context` and `key` from the list into `translation.json`. For example, **if** the tenant registers `Content Types` / `Page`:
@@ -99,12 +99,12 @@ Copy an exact `context` and `key` from the list into `translation.json`. For exa
 ```
 
 ```bash
-oc localization translations set --body-file translation.json
-oc localization translations list --culture fr --output json
-oc localization translations delete 'Content Types' Page --culture fr --force
+pomi localization translations set --body-file translation.json
+pomi localization translations list --culture fr --output json
+pomi localization translations delete 'Content Types' Page --culture fr --force
 ```
 
-The delete command takes the translation context and key as positional arguments. The global `oc --context <name>` continues to select the tenant. `--force` confirms removal. JSON bodies can also be supplied with `--stdin`; use `--output json` for scripts. Default output is human-readable in a terminal and JSON when redirected.
+The delete command takes the translation context and key as positional arguments. The global `pomi --context <name>` continues to select the tenant. `--force` confirms removal. JSON bodies can also be supplied with `--stdin`; use `--output json` for scripts. Default output is human-readable in a terminal and JSON when redirected.
 
 ## List cultures
 
@@ -130,7 +130,7 @@ The `200 OK` response is sorted by culture name and contains `skip`, `take`, `to
 }
 ```
 
-Display names depend on the server's globalization data and request language. Culture names are .NET culture identifiers such as `en`, `en-US`, `fr`, or `fr-FR`; they are not time zone identifiers. Discover exact available names with `oc localization cultures available`, paging as necessary. Invalid paging returns `400`.
+Display names depend on the server's globalization data and request language. Culture names are .NET culture identifiers such as `en`, `en-US`, `fr`, or `fr-FR`; they are not time zone identifiers. Discover exact available names with `pomi localization cultures available`, paging as necessary. Invalid paging returns `400`.
 
 ## List available cultures
 
@@ -139,8 +139,8 @@ Display names depend on the server's globalization data and request language. Cu
 but always includes every culture recognized by the server. For example:
 
 ```bash
-oc localization cultures available --take 200
-oc localization cultures available --skip 200 --take 200
+pomi localization cultures available --take 200
+pomi localization cultures available --skip 200 --take 200
 ```
 
 The `totalCount` reports the full number of available cultures. A supported
@@ -191,7 +191,7 @@ Changed settings are saved through the site settings service and request a tenan
 
 `GET /api/localization/strings` accepts no body. `skip` defaults to `0` and
 `take` to `50`, with the same bounds as culture listing. Invalid paging returns
-`400`. For example, `oc localization strings list` returns:
+`400`. For example, `pomi localization strings list` returns:
 
 ```json
 {
@@ -206,7 +206,7 @@ Names come from enabled `IJSLocalizer` providers' `GetLocalizationGroups()`
 method. Exact duplicates are merged and names are sorted ordinally. Group names
 are case-sensitive unless the owning provider explicitly handles them otherwise.
 The list is independent of the selected culture and does not resolve translations.
-Use a returned name as the argument to `oc localization strings show <groupName>`.
+Use a returned name as the argument to `pomi localization strings show <groupName>`.
 
 For compatibility, older providers can still serve strings by name but do not
 appear until they implement group discovery. Third-party modules can advertise
@@ -235,7 +235,7 @@ Example `200 OK` response (values depend on installed catalogs):
 }
 ```
 
-Providers are merged using the existing JavaScript localization service and results are sorted by key. `400` indicates an unsupported culture or invalid paging/group length; `404` means no strings were supplied for that group. Use `oc localization strings list` to discover advertised groups.
+Providers are merged using the existing JavaScript localization service and results are sorted by key. `400` indicates an unsupported culture or invalid paging/group length; `404` means no strings were supplied for that group. Use `pomi localization strings list` to discover advertised groups.
 
 Source text can remain visible when a PO entry is missing or its context does not match the current localizer. Selecting French cannot repair a stale translation catalog. This response reports resolved strings, not translation coverage or provenance. It does not expose an API to upload PO files.
 

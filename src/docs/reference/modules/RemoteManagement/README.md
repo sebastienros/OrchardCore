@@ -1,11 +1,11 @@
 # Remote Management (`OrchardCore.RemoteManagement`)
 
-<img src="../../branding/assets/logo/pomi/svg/pomi-terminal-logo-light.svg#only-light" alt="Pomi — Orchard Core CLI" width="160" />
-<img src="../../branding/assets/logo/pomi/svg/pomi-terminal-logo-dark.svg#only-dark" alt="Pomi — Orchard Core CLI" width="160" />
+<img src="../../branding/assets/logo/pomi/svg/pomi-terminal-logo-light.svg#only-light" alt="Pomi — Orchard Core command-line interface" width="160" />
+<img src="../../branding/assets/logo/pomi/svg/pomi-terminal-logo-dark.svg#only-dark" alt="Pomi — Orchard Core command-line interface" width="160" />
 
-The Remote Management module exposes a versioned management protocol and tenant-specific OpenAPI document for the Orchard Core command-line interface (`oc`). Enabled Orchard Core features contribute resource commands and JSON Schemas, so the commands available for one tenant may differ from another tenant.
+The Remote Management module exposes a versioned management protocol and tenant-specific OpenAPI document for the Orchard Core command-line interface (`pomi`). Enabled Orchard Core features contribute resource commands and JSON Schemas, so the commands available for one tenant may differ from another tenant.
 
-The CLI uses OpenAPI as its management protocol. GraphQL remains available for application queries but is not required by `oc`.
+The CLI uses OpenAPI as its management protocol. GraphQL remains available for application queries but is not required by `pomi`.
 
 Start with the illustrated [first-tenant walkthrough](../../../guides/remote-management/README.md).
 
@@ -36,7 +36,7 @@ Access to the authenticated manifest and management APIs requires the **Access r
 
 ## Install the CLI
 
-The `oc` project can be run as a framework-dependent application during development:
+The `pomi` project can be run as a framework-dependent application during development:
 
 ```bash
 dotnet run --project src/OrchardCore.Cli -- --help
@@ -55,8 +55,8 @@ For example, use `osx-arm64`, `osx-x64`, `linux-arm64`, `linux-x64`, `win-arm64`
 A context identifies one exact tenant URL. Add and select a context before logging in:
 
 ```bash
-oc context add production https://cms.example.com/tenant-a --current
-oc login
+pomi context add production https://cms.example.com/tenant-a --current
+pomi login
 ```
 
 Browser login uses OAuth authorization code with PKCE and a temporary loopback listener. Credentials are renewed silently with refresh tokens stored in Windows Credential Manager on Windows. On macOS, Linux, and other Unix-like systems, tokens are stored as plaintext owner-only files under `~/.orchardcore/credentials`.
@@ -77,15 +77,15 @@ by a logout of the new login.
 For a terminal without a browser, use device authorization:
 
 ```bash
-oc login --grant device
+pomi login --grant device
 ```
 
 For multiple tenants, run one device flow per named context and approve each
 code as the intended tenant-local user:
 
 ```bash
-oc --context news login --grant device
-oc --context marketing login --grant device
+pomi --context news login --grant device
+pomi --context marketing login --grant device
 ```
 
 Tokens are stored separately per context and must not be copied between
@@ -98,30 +98,30 @@ For unattended jobs, follow [Client credentials for automation](#client-credenti
 Manage multiple tenants with named contexts:
 
 ```bash
-oc context list
-oc context use staging
-oc --context production content items list
-oc logout production
+pomi context list
+pomi context use staging
+pomi --context production content items list
+pomi logout production
 ```
 
-Delete one context with `oc context delete <name> --force`. To delete every saved context and its stored credentials, use `oc context clear`; confirm the interactive prompt, or pass `--force` for non-interactive use:
+Delete one context with `pomi context delete <name> --force`. To delete every saved context and its stored credentials, use `pomi context clear`; confirm the interactive prompt, or pass `--force` for non-interactive use:
 
 ```bash
-oc context clear --force
+pomi context clear --force
 ```
 
 A context represents and authenticates to exactly one tenant. From a context for the Default tenant, an administrator can prepare another running tenant for remote management:
 
 ```bash
-oc tenants enable-remote-management Site1
+pomi tenants enable-remote-management Site1
 ```
 
 The command enables Remote Management and its dependencies, configures the tenant's OpenID server and CLI application, and grants **Access remote management API** to the tenant's Administrator role. Its output includes the tenant URL. Register that URL as a separate context and authenticate directly as a user of the tenant:
 
 ```bash
-oc context add site1 https://cms.example.com/site1 --current
-oc login
-oc content items list
+pomi context add site1 https://cms.example.com/site1 --current
+pomi login
+pomi content items list
 ```
 
 Direct authentication ensures tenant-local roles and permissions are enforced and newly created content is associated with the authenticated tenant user. Each context stores separate credentials. Discovery caches are keyed by tenant URL, so aliases for the same URL share metadata; `--help` reflects that tenant's enabled features.
@@ -129,7 +129,7 @@ Direct authentication ensures tenant-local roles and permissions are enforced an
 ## Client credentials for automation
 
 Use client credentials when a CI job, scheduled script, or service needs to run
-`oc` without a person opening a browser. The application authenticates as itself;
+`pomi` without a person opening a browser. The application authenticates as itself;
 its tenant-local roles determine what it can do. There is no user consent page
 or administrator password in this flow.
 
@@ -147,7 +147,7 @@ This enables the token endpoint and client-credentials grant, creates the
 
 Open **Access Control → Roles**, create a role named `Automation`, and grant
 **Access remote management API** (`AccessRemoteManagement`). Add the permissions
-required by your intended commands. For the `oc features list` example below,
+required by your intended commands. For the `pomi features list` example below,
 also grant **Manage Features** (`ManageFeatures`). That permission also permits
 feature changes; it is not a read-only permission. Save the role.
 
@@ -165,7 +165,7 @@ With legacy navigation, use **Security → OpenID Connect → Management → App
 | Field | Value |
 | --- | --- |
 | Display Name | `Orchard automation` |
-| Application type | **Web application**; this is the application registration type even when the caller is `oc` |
+| Application type | **Web application**; this is the application registration type even when the caller is `pomi` |
 | Client type | **Confidential client** |
 | Client Id | `orchard-automation` |
 | Client Secret | Generate a secret using the button beside the field and store it in your secret manager |
@@ -179,7 +179,7 @@ scope is missing, complete step 1 in this same tenant first.
 
 ### 3. Supply credentials and register the context
 
-Configure these environment variables for the process running `oc`:
+Configure these environment variables for the process running `pomi`:
 
 | Variable | Value |
 | --- | --- |
@@ -201,13 +201,13 @@ export OC_CLIENT_SECRET
 Add a context for the exact tenant URL:
 
 ```bash
-oc context add production-automation https://cms.example.com/tenant-a/ --current
+pomi context add production-automation https://cms.example.com/tenant-a/ --current
 ```
 
 A context stores the tenant address and discovery metadata, not your automation
 secret. Setting these variables before discovery also lets the CLI fetch the
 authenticated manifest and tenant-specific commands without browser login.
-The same variables apply to every `oc` command in that environment, so use
+The same variables apply to every `pomi` command in that environment, so use
 `--context` explicitly and supply credentials registered in that target tenant.
 
 ### 4. Verify authentication and run a command
@@ -215,7 +215,7 @@ The same variables apply to every `oc` command in that environment, so use
 An optional login check verifies that the server accepts the application:
 
 ```bash
-oc --context production-automation login --grant client-credentials \
+pomi --context production-automation login --grant client-credentials \
   --client-id orchard-automation \
   --client-secret-env OC_CLIENT_SECRET
 ```
@@ -227,10 +227,10 @@ the application has permission to perform every management operation.
 **Client-credentials login does not establish a saved session.** Neither the
 secret nor the token is persisted. Keep `OC_CLIENT_ID` and `OC_CLIENT_SECRET`
 available for subsequent commands, which obtain tokens automatically. A
-preceding `oc login` is optional:
+preceding `pomi login` is optional:
 
 ```bash
-oc --context production-automation features list --output json
+pomi --context production-automation features list --output json
 ```
 
 The environment credentials take precedence over saved browser/device
@@ -242,12 +242,12 @@ For the login check, `--client-secret-env` may name a different variable, or
 with a protected file provided by your secret manager:
 
 ```bash
-oc --context production-automation login --grant client-credentials \
+pomi --context production-automation login --grant client-credentials \
   --client-id orchard-automation \
   --client-secret-stdin < /path/to/client-secret.txt
 ```
 
-These explicit secret options are also available on `oc api invoke`. They apply
+These explicit secret options are also available on `pomi api invoke`. They apply
 to that invocation only; dynamic resource commands use `OC_CLIENT_ID` and
 `OC_CLIENT_SECRET`.
 
@@ -257,15 +257,15 @@ When finished with the local test, clear the variables:
 unset OC_CLIENT_ID OC_CLIENT_SECRET
 ```
 
-`oc logout` removes saved human credentials; it does not disable an automation
+`pomi logout` removes saved human credentials; it does not disable an automation
 application or clear environment variables. Change the application's secret in
 the admin UI and update your secret store when rotating credentials. Already
 issued access tokens may remain valid until expiry.
 
 ### Provisioning during tenant setup
 
-`oc tenants setup` does not currently accept a client ID or client secret.
-`oc tenants enable-remote-management` configures the server and public CLI
+`pomi tenants setup` does not currently accept a client ID or client secret.
+`pomi tenants enable-remote-management` configures the server and public CLI
 application but does not provision a confidential client.
 
 For repeatable provisioning, a custom setup recipe can enable the required
@@ -294,10 +294,10 @@ configuration provider. The recipe's
 reads that value without embedding a literal secret in the recipe. JavaScript
 recipe expressions require **JavaScript Scripting** (`OrchardCore.Scripting.JavaScript`).
 Configuration is resolved by the **Orchard server process**, not the computer
-running `oc`; exporting `OC_CLIENT_SECRET` in your CLI shell does not send it to
+running `pomi`; exporting `OC_CLIENT_SECRET` in your CLI shell does not send it to
 a remote server's setup recipe.
 
-Select the recipe with `oc tenants setup Site1 --recipe-name <recipe-name>`
+Select the recipe with `pomi tenants setup Site1 --recipe-name <recipe-name>`
 alongside the other required setup arguments. The recipe must already be
 available on the server, and a recipe configured when the tenant was created
 takes precedence.
@@ -312,7 +312,7 @@ takes precedence.
 | `403` when fetching metadata | The application's selected role needs **Access remote management API**. |
 | Login succeeds but a command returns `403` | The application role also needs that operation's permissions. |
 | A command asks for login after a successful check | The check did not save a session. Supply `OC_CLIENT_ID` and `OC_CLIENT_SECRET` to the command's process. |
-| Authentication targets an unexpected tenant or client | Check `oc context show`, the explicit `--context`, and any inherited `OC_CLIENT_ID` / `OC_CLIENT_SECRET` variables. |
+| Authentication targets an unexpected tenant or client | Check `pomi context show`, the explicit `--context`, and any inherited `OC_CLIENT_ID` / `OC_CLIENT_SECRET` variables. |
 
 See the [client-credentials HTTP contract](../../api/authentication/README.md#client-credentials)
 for token endpoint parameters and OAuth error responses.
@@ -322,14 +322,14 @@ for token endpoint parameters and OAuth error responses.
 The CLI downloads the selected tenant's OpenAPI document and maps operations carrying `x-oc-cli` metadata to noun-and-verb commands:
 
 ```text
-oc <resource> <verb> [arguments] [options]
+pomi <resource> <verb> [arguments] [options]
 ```
 
 To create and initialize a tenant in one operation, use
-[`oc tenants install`](../../api/tenants/README.md#install-a-tenant):
+[`pomi tenants install`](../../api/tenants/README.md#install-a-tenant):
 
 ```bash
-oc tenants install Blog --request-url-prefix blog --recipe-name Blog \
+pomi tenants install Blog --request-url-prefix blog --recipe-name Blog \
   --site-name "My Blog" --user-name admin --email admin@example.com
 ```
 
@@ -339,26 +339,26 @@ context or sign in to the new tenant. The separate create and setup commands
 remain available when these stages need to happen independently. Other examples:
 
 ```bash
-oc tenants create --name TenantA --request-url-prefix tenant-a --recipe-name SaaS
-oc tenants setup TenantA --site-name "Tenant A" --user-name admin --email admin@example.com
-oc content items list
-oc content items show 4abc...
-oc features enable OrchardCore.Media
-oc queries execute RecentPosts --body '{ "parameters": {} }'
+pomi tenants create --name TenantA --request-url-prefix tenant-a --recipe-name SaaS
+pomi tenants setup TenantA --site-name "Tenant A" --user-name admin --email admin@example.com
+pomi content items list
+pomi content items show 4abc...
+pomi features enable OrchardCore.Media
+pomi queries execute RecentPosts --body '{ "parameters": {} }'
 ```
 
-`oc tenants create` creates an uninitialized tenant but no user account. Run
-`oc tenants setup` to execute the selected recipe and create the initial
+`pomi tenants create` creates an uninitialized tenant but no user account. Run
+`pomi tenants setup` to execute the selected recipe and create the initial
 administrator. It securely prompts for the password by default; automation can
 use `--password-env`, `--password-stdin`, or `--password-file`. After setup,
 enable Remote Management from the Default tenant context, add the initialized
 tenant URL as its own context, and authenticate directly:
 
 ```bash
-oc tenants setup TenantA --site-name "Tenant A" --user-name admin --email admin@example.com
-oc tenants enable-remote-management TenantA
-oc context add tenant-a https://cms.example.com/tenant-a --current
-oc login
+pomi tenants setup TenantA --site-name "Tenant A" --user-name admin --email admin@example.com
+pomi tenants enable-remote-management TenantA
+pomi context add tenant-a https://cms.example.com/tenant-a --current
+pomi login
 ```
 
 Next-command hints omit `--context` when the suggested context is already the
@@ -370,20 +370,20 @@ The default `--output auto` writes human-readable messages in a terminal (tables
 Every resource that accepts a request body exposes a `schema` verb. When all input operations use the same shape, the schema is returned directly:
 
 ```bash
-oc content types schema
-oc content parts schema
+pomi content types schema
+pomi content parts schema
 ```
 
 Use `--operation` when a resource accepts different request shapes:
 
 ```bash
-oc users schema --operation create
-oc media files schema --operation move-batch
+pomi users schema --operation create
+pomi media files schema --operation move-batch
 ```
 
-The result is a standalone JSON Schema extracted from the tenant's OpenAPI document. Content items use the tenant-aware `oc content items schema <content-type>` command so attached parts and fields reflect the selected content type.
+The result is a standalone JSON Schema extracted from the tenant's OpenAPI document. Content items use the tenant-aware `pomi content items schema <content-type>` command so attached parts and fields reflect the selected content type.
 
-Content-definition schemas include the built-in settings contracts while allowing settings contributed by other features. For example, `oc content parts schema` describes `ContentPartSettings.attachable` and `ContentPartSettings.reusable`, so an attachable reusable part can be submitted without relying on an existing definition as an example:
+Content-definition schemas include the built-in settings contracts while allowing settings contributed by other features. For example, `pomi content parts schema` describes `ContentPartSettings.attachable` and `ContentPartSettings.reusable`, so an attachable reusable part can be submitted without relying on an existing definition as an example:
 
 ```json
 {
@@ -409,12 +409,12 @@ same store, folder permissions, extension policy, and size limits as the admin
 Media library. Inspect the caller's permitted extensions first:
 
 ```bash
-oc media constraints show --output json
-oc media folders create --name assets
-oc media folders create --path assets --name styles
-oc media files upload site-v1.css --path assets/styles --file ./site.css
-oc media files show assets/styles/site-v1.css --output json
-oc media files list --path assets/styles --output table
+pomi media constraints show --output json
+pomi media folders create --name assets
+pomi media folders create --path assets --name styles
+pomi media files upload site-v1.css --path assets/styles --file ./site.css
+pomi media files show assets/styles/site-v1.css --output json
+pomi media files list --path assets/styles --output table
 ```
 
 Media file commands preserve resource paths and also return direct, absolute
@@ -440,33 +440,39 @@ To share uploads across nodes, configure the same shared backend, such as
 for the tenant on all nodes. Uploading to a local store does not replicate files.
 Tenant static files remain deployment assets and have no management API.
 
-Every static and discovered command supports `--help`. OpenAPI metadata is cached by tenant URL and ETag to reduce discovery requests. Help and completion read the cache offline. Before an online dynamic command, the CLI checks the tenant's API revision with a lightweight authenticated `HEAD` request. When enabled features or module builds change, it refreshes the manifest and OpenAPI document before parsing the command. This also discovers features enabled in the admin UI or by another client. Successful mutations still expire discovery metadata for the next online command, including changes to resource schemas. Older servers without revision headers keep the time-based cache behavior. See [API revision and cache freshness](../../api/discovery/README.md#api-revision-and-cache-freshness) for the protocol and its limits. Use `oc api refresh --force` to bypass the cache and `oc api compatibility` for protocol checks.
+Every static and discovered command supports `--help`. OpenAPI metadata is cached by tenant URL and ETag to reduce discovery requests. Help and completion read the cache offline. Before an online dynamic command, the CLI checks the tenant's API revision with a lightweight authenticated `HEAD` request. When enabled features or module builds change, it refreshes the manifest and OpenAPI document before parsing the command. This also discovers features enabled in the admin UI or by another client. Successful mutations still expire discovery metadata for the next online command, including changes to resource schemas. Older servers without revision headers keep the time-based cache behavior. See [API revision and cache freshness](../../api/discovery/README.md#api-revision-and-cache-freshness) for the protocol and its limits. Use `pomi api refresh --force` to bypass the cache and `pomi api compatibility` for protocol checks.
 
-`oc --version` prints the CLI version number. Use `oc doctor` to inspect the CLI version, platform, local storage, and caches, or `oc doctor --output json` for structured diagnostics. Both commands work offline; `doctor` does not test server connectivity.
+`pomi --version` prints the CLI version number. Use `pomi doctor` to inspect the CLI version, platform, local storage, and caches, or `pomi doctor --output json` for structured diagnostics. Both commands work offline; `doctor` does not test server connectivity.
 
 The CLI is distributed as standalone native archives and NativeAOT .NET tool
 packages for Linux, Windows, and macOS on x64 and Arm64. See
 [installation instructions](../../../guides/remote-management/README.md#install-as-a-net-tool)
 for installing from the fork's workflow artifacts with the .NET 10 SDK or later.
 
-Set `OC_CONFIG_HOME` to an absolute directory to isolate contexts, caches, and Unix file credentials for testing. The default installation keeps the shared token-file location described above. `oc login --no-browser` prints the PKCE login URL instead of launching a browser; open it on the same computer as the CLI.
+The executable is named `pomi` (`pomi.exe` on Windows). Its NuGet package ID
+remains `OrchardCore.Cli`. Existing contexts, credential storage, and `OC_*`
+environment variables continue to work. After updating, change script invocations
+to `pomi` and regenerate shell completion. The server authentication client ID
+`orchardcore-cli` and OpenAPI extension `x-oc-cli` remain stable for compatibility.
 
-Generate shell completion with `oc completion --shell bash|zsh|fish|pwsh`. The generated script uses the CLI's cached command tree; no separate suggestion service is required.
+Set `OC_CONFIG_HOME` to an absolute directory to isolate contexts, caches, and Unix file credentials for testing. The default installation keeps the shared token-file location described above. `pomi login --no-browser` prints the PKCE login URL instead of launching a browser; open it on the same computer as the CLI.
+
+Generate shell completion with `pomi completion --shell bash|zsh|fish|pwsh`. The generated script uses the CLI's cached command tree; no separate suggestion service is required.
 
 ## Raw API and documentation search
 
-`oc api invoke` is the escape hatch for an authenticated endpoint not projected as a dynamic command:
+`pomi api invoke` is the escape hatch for an authenticated endpoint not projected as a dynamic command:
 
 ```bash
-oc api invoke GET /api/example
+pomi api invoke GET /api/example
 ```
 
 The CLI maintains a local cache of the search index published by `docs.orchardcore.net`:
 
 ```bash
-oc docs update
-oc docs search "content definition"
-oc docs show <result-id>
+pomi docs update
+pomi docs search "content definition"
+pomi docs show <result-id>
 ```
 
 Documentation is treated as untrusted text and is never executed.

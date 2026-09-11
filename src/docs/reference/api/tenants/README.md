@@ -312,7 +312,7 @@ Content-Type: application/json
 
 Creates shell settings in the `Uninitialized` state. This operation does not
 run tenant setup and does not create a user account. Use
-[`oc tenants setup`](#set-up-a-tenant) or open the returned `setupUrl` to
+[`pomi tenants setup`](#set-up-a-tenant) or open the returned `setupUrl` to
 execute the recipe and create the tenant's initial administrator account.
 
 ### Parameters
@@ -366,7 +366,7 @@ The CLI exposes each body property as an option while retaining `--body`,
 `--body-file`, and `--stdin` for complete JSON payloads:
 
 ```bash
-oc tenants create \
+pomi tenants create \
   --name TenantA \
   --request-url-prefix tenant-a \
   --database-provider Sqlite \
@@ -378,20 +378,20 @@ When the host presets its database provider and generates table prefixes, the
 minimum practical command is:
 
 ```bash
-oc tenants create --name TenantA --request-url-prefix tenant-a --recipe-name SaaS
+pomi tenants create --name TenantA --request-url-prefix tenant-a --recipe-name SaaS
 ```
 
-Run `oc tenants schema --operation create` to inspect the authoritative JSON
+Run `pomi tenants schema --operation create` to inspect the authoritative JSON
 Schema, including required properties and constraints.
 
 After creation:
 
-1. Run `oc tenants setup TenantA` and supply the site name and initial
+1. Run `pomi tenants setup TenantA` and supply the site name and initial
    administrator details. The stored `recipeName` is executed during this step.
 3. From the Default tenant context, run
-   `oc tenants enable-remote-management TenantA`.
+   `pomi tenants enable-remote-management TenantA`.
 4. Register the initialized tenant using
-   `oc context add tenant-a <primaryUrl> --current`, then run `oc login`.
+   `pomi context add tenant-a <primaryUrl> --current`, then run `pomi login`.
 
 ### Request
 
@@ -471,7 +471,7 @@ Content-Type: application/json
 
 Creates a new tenant and immediately runs setup, including the recipe and
 initial administrator account. Use this operation when the tenant should be
-ready to use in one command. Unlike `oc install`, it uses an existing Orchard
+ready to use in one command. Unlike `pomi install`, it uses an existing Orchard
 application selected by the current context; it does not create a local project,
 require a local .NET SDK, or start another server. It uses the server's setup
 service directly and does not require the Auto Setup feature.
@@ -481,7 +481,7 @@ service directly and does not require the Auto Setup feature.
 Select an authenticated context for the **Default** tenant, then run:
 
 ```bash
-oc tenants install Blog \
+pomi tenants install Blog \
   --request-url-prefix blog \
   --recipe-name Blog \
   --site-name "My Blog" \
@@ -500,12 +500,12 @@ is accepted through `--stdin` or `--body-file`, and inline secret values are
 not exposed as command options.
 
 The human response reports success, the running state, and the full site URL.
-It suggests `oc tenants enable-remote-management Blog` as a separate next step.
+It suggests `pomi tenants enable-remote-management Blog` as a separate next step.
 Installation does not create a CLI context or acquire credentials for the new
 administrator. Remote Management is enabled only if the selected recipe does
 so or you explicitly enable it later. Use `--output json` for structured output.
 
-If the command is missing after updating the server, run `oc api refresh --force`.
+If the command is missing after updating the server, run `pomi api refresh --force`.
 The command is discovered from the server's OpenAPI description.
 
 ### Parameters and body
@@ -533,7 +533,7 @@ as [tenant creation](#create-a-tenant). It is the first CLI argument, not a
 | `schema` | string or null | No | Database schema; host presets and patterns apply. |
 
 When no database provider is specified, installation uses SQLite, matching
-`oc install`. A database provider configured by the host takes precedence over
+`pomi install`. A database provider configured by the host takes precedence over
 this default. Select another provider with `--database-provider` and provide
 its required connection settings.
 
@@ -576,8 +576,8 @@ Creation and setup are **not a single database transaction**. They share the
 per-tenant distributed lock with the separate management `create` and `setup`
 operations, but setup recipes can make partial progress. If setup fails after
 creation, the error includes `tenantName` and `stage: "setup"`, and the tenant
-is preserved. Inspect it with `oc tenants show Blog`; if it is `Uninitialized`,
-correct its configuration if necessary and run `oc tenants setup Blog` with the
+is preserved. Inspect it with `pomi tenants show Blog`; if it is `Uninitialized`,
+correct its configuration if necessary and run `pomi tenants setup Blog` with the
 administrator details. Do not automatically delete a partially initialized tenant.
 If the response is lost or times out, inspect the tenant state before taking
 further action.
@@ -611,7 +611,7 @@ server time zone is used.
 The command prompts for the password without echoing it when run interactively:
 
 ```bash
-oc tenants setup TenantA \
+pomi tenants setup TenantA \
   --site-name "Tenant A" \
   --user-name admin \
   --email admin@example.com
@@ -620,7 +620,7 @@ oc tenants setup TenantA \
 For automation, provide exactly one secret source:
 
 ```bash
-oc tenants setup TenantA \
+pomi tenants setup TenantA \
   --site-name "Tenant A" \
   --user-name admin \
   --email admin@example.com \

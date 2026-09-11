@@ -135,7 +135,7 @@ public class CliApplicationTests
 
         Assert.Equal(1, exitCode);
         Assert.Equal(
-            "Error: No context is selected. Add one with 'oc context add <name> <url>'.",
+            "Error: No context is selected. Add one with 'pomi context add <name> <url>'.",
             errorWriter.ToString().Trim());
         Assert.DoesNotContain("Unhandled exception", errorWriter.ToString(), StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain(nameof(CliException), errorWriter.ToString(), StringComparison.Ordinal);
@@ -182,7 +182,7 @@ public class CliApplicationTests
         }, CancellationToken.None);
         var handler = new RequestCountingHandler();
         using var httpClient = new HttpClient(handler);
-        var args = new[] { "oc", "context", "clear", "--force" };
+        var args = new[] { "pomi", "context", "clear", "--force" };
 
         _ = await CliApplication.CreateAsync(args, paths, httpClient, CancellationToken.None, new UnsupportedCredentialStore());
 

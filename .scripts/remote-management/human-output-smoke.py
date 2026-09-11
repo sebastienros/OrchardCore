@@ -12,9 +12,9 @@ import tempfile
 import threading
 
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument('oc', type=Path)
+parser.add_argument('pomi', type=Path)
 args = parser.parse_args()
-oc = str(args.oc.resolve())
+pomi = str(args.pomi.resolve())
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -42,7 +42,7 @@ result = {'name': 'Demo', 'state': 'Uninitialized', 'setupUrl': setup_url,
           'primaryUrl': tenant + 'Demo/', 'canDelete': False, 'featureProfiles': []}
 response_status = 201
 try:
-    with tempfile.TemporaryDirectory(prefix='oc-human-output-') as directory:
+    with tempfile.TemporaryDirectory(prefix='pomi-human-output-') as directory:
         config = Path(directory)
         env = os.environ.copy()
         env['OC_CONFIG_HOME'] = directory
@@ -66,7 +66,7 @@ try:
                     'x-oc-cli': {'commandGroup': ['tenants'], 'verb': 'delete'},
                 }}}}),
             }))
-            command = [oc, 'tenants', verb, *options]
+            command = [pomi, 'tenants', verb, *options]
             if terminal:
                 master, slave = os.openpty()
                 try:
@@ -106,11 +106,11 @@ try:
         assert human.startswith("Tenant 'Demo' created successfully."), human
         assert 'Setup URL: ' + setup_url in human, human
         assert ' | ' not in human and 'Can delete' not in human, human
-        assert 'oc tenants setup Demo' in human, human
+        assert 'pomi tenants setup Demo' in human, human
         assert '--context' not in human, human
         assert invoke('--context', 'test', '--output', 'human') == human
         other = invoke('--context', 'other', '--output', 'human')
-        assert 'oc --context=other tenants setup Demo' in other, other
+        assert 'pomi --context=other tenants setup Demo' in other, other
         assert "--email '<admin-email>'" in human, human
         assert '--password' not in human, human
         assert json.loads(invoke('--output', 'json')) == result
@@ -126,14 +126,14 @@ try:
         response_status = 200
         result = {'name': 'Demo', 'state': 'Running', 'primaryUrl': tenant + 'Demo/'}
         running = invoke('--output', 'human')
-        assert 'oc tenants enable-remote-management Demo' in running, running
+        assert 'pomi tenants enable-remote-management Demo' in running, running
         setup = invoke('--output', 'human', verb='setup')
         assert "Tenant 'Demo' set up successfully." in setup, setup
-        assert 'oc tenants enable-remote-management Demo' in setup, setup
+        assert 'pomi tenants enable-remote-management Demo' in setup, setup
         result = {'name': 'Demo', 'state': 'Running', 'url': tenant + 'Demo/'}
         enabled = invoke('--output', 'human', verb='enable-remote-management')
         assert "Tenant 'Demo' configured for remote management successfully." in enabled, enabled
-        assert f'oc context add Demo {tenant}Demo/ --current' in enabled, enabled
+        assert f'pomi context add Demo {tenant}Demo/ --current' in enabled, enabled
         result = {'success': False, 'message': 'The request could not be completed'}
         failed = invoke('--output', 'human')
         assert 'unsuccessful result' in failed and result['message'] in failed, failed
@@ -144,7 +144,7 @@ try:
         except subprocess.CalledProcessError as error:
             assert not error.stdout.strip() and 'api_error' in error.stderr, error
         # The spelling is deliberately --output; --format is not an alias.
-        help_result = subprocess.run([oc, '--help'], env=env, capture_output=True, text=True, check=True)
+        help_result = subprocess.run([pomi, '--help'], env=env, capture_output=True, text=True, check=True)
         assert '--output' in help_result.stdout and '--format' not in help_result.stdout
         print(human.strip())
         print('Verified default auto output, human messages, complete URLs, and explicit JSON/table/none/auto modes.')

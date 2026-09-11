@@ -95,7 +95,7 @@ internal static class DotnetEnvironment
         }
         catch (Win32Exception)
         {
-            throw new CliException($"Install the .NET {RequiredMajor} SDK and make 'dotnet' available on PATH to use 'oc install'.");
+            throw new CliException($"Install the .NET {RequiredMajor} SDK and make 'dotnet' available on PATH to use 'pomi install'.");
         }
     }
 

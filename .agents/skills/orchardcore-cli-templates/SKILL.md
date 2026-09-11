@@ -1,9 +1,9 @@
 ---
 name: orchardcore-cli-templates
-description: Creates and manages Orchard Core custom Liquid templates through `oc`. Use for content, summary, widget, field, and layout shape overrides; rendering content models; registering CSS/media; and validating template output for remotely managed tenants.
+description: Creates and manages Orchard Core custom Liquid templates through `pomi`. Use for content, summary, widget, field, and layout shape overrides; rendering content models; registering CSS/media; and validating template output for remotely managed tenants.
 ---
 
-# Orchard Core CLI Templates
+# Pomi CLI Templates
 
 Use the Templates module for tenant-stored Liquid shape overrides. Keep content
 structure in definitions, content values in items, and presentation in Liquid.
@@ -23,12 +23,12 @@ model, then refresh discovery.
 For a tenant created with the `Blank` recipe, start from Safe Mode:
 
 ```bash
-oc themes list --admin false --take 200
-oc themes set-current TheTheme
-oc features enable OrchardCore.Templates
-oc features enable OrchardCore.Liquid
-oc features enable OrchardCore.Resources
-oc api refresh --force
+pomi themes list --admin false --take 200
+pomi themes set-current TheTheme
+pomi features enable OrchardCore.Templates
+pomi features enable OrchardCore.Liquid
+pomi features enable OrchardCore.Resources
+pomi api refresh --force
 ```
 
 Use a theme ID returned by `themes list`; `TheTheme` is the standard host
@@ -44,11 +44,11 @@ template. If the root is still in Safe Mode, fix theme selection first.
 5. Render an item and verify its public route, media, and CSS.
 
 ```bash
-oc content types show Article
-oc content items schema Article
-oc content items show <id> --version published
-oc templates schema --operation create
-oc templates list --search Article
+pomi content types show Article
+pomi content items schema Article
+pomi content items show <id> --version published
+pomi templates schema --operation create
+pomi templates list --search Article
 ```
 
 ## Manage templates
@@ -93,10 +93,10 @@ Create it as template name `Layout` before relying on tenant CSS or scripts.
 ```
 
 ```bash
-oc templates create --body-file article-template.json
-oc templates show Content__Article
-oc templates update Content__Article --body-file article-template.json
-oc templates delete Content__Article --force
+pomi templates create --body-file article-template.json
+pomi templates show Content__Article
+pomi templates update Content__Article --body-file article-template.json
+pomi templates delete Content__Article --force
 ```
 
 Create uses a stable case-insensitive name. An identical retry converges;
@@ -116,7 +116,7 @@ Widget__Hero
 Field alternates depend on part name, field name, field shape type, content
 type, and display type. Do not guess them. Follow the Templates module's field
 alternate table, inspect rendered shape metadata or existing templates, and
-confirm the override with `oc content items render`.
+confirm the override with `pomi content items render`.
 
 ## Liquid rules
 
@@ -157,8 +157,8 @@ and resource patterns.
 ## Verify
 
 ```bash
-oc content items render <id> --version draft --display-type Detail
-oc content items render <id> --version published --display-type Summary
+pomi content items render <id> --version draft --display-type Detail
+pomi content items render <id> --version published --display-type Summary
 curl -fsS 'https://cms.example.com/tenant-a/article-path'
 curl -fsSI 'https://cms.example.com/tenant-a/styles/site.css?v=1'
 ```

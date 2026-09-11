@@ -99,25 +99,25 @@ jobs:
           $python = if ($IsWindows) { 'python' } else { 'python3' }
           & $python .scripts/remote-management/native-smoke.py artifacts/native ${{ matrix.rid }}
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $python .scripts/remote-management/human-output-smoke.py (Join-Path artifacts/native $(if ($IsWindows) { 'oc.exe' } else { 'oc' }))
+          & $python .scripts/remote-management/human-output-smoke.py (Join-Path artifacts/native $(if ($IsWindows) { 'pomi.exe' } else { 'pomi' }))
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Verify confirmation flags
         shell: pwsh
         run: |
           $python = if ($IsWindows) { 'python' } else { 'python3' }
-          & $python .scripts/remote-management/force-confirmation-smoke.py (Join-Path artifacts/native $(if ($IsWindows) { 'oc.exe' } else { 'oc' }))
+          & $python .scripts/remote-management/force-confirmation-smoke.py (Join-Path artifacts/native $(if ($IsWindows) { 'pomi.exe' } else { 'pomi' }))
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Verify native GraphQL commands
         shell: pwsh
         run: |
           $python = if ($IsWindows) { 'python' } else { 'python3' }
-          & $python .scripts/remote-management/graphql-native-smoke.py (Join-Path artifacts/native $(if ($IsWindows) { 'oc.exe' } else { 'oc' }))
+          & $python .scripts/remote-management/graphql-native-smoke.py (Join-Path artifacts/native $(if ($IsWindows) { 'pomi.exe' } else { 'pomi' }))
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Verify native device login QR output
         shell: pwsh
         run: |
           $python = if ($IsWindows) { 'python' } else { 'python3' }
-          & $python .scripts/remote-management/device-qr-native-smoke.py (Join-Path artifacts/native $(if ($IsWindows) { 'oc.exe' } else { 'oc' }))
+          & $python .scripts/remote-management/device-qr-native-smoke.py (Join-Path artifacts/native $(if ($IsWindows) { 'pomi.exe' } else { 'pomi' }))
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Pack tool installer
         run: dotnet pack src/OrchardCore.Cli -c Release -p:PackAsTool=true -p:Version=${{ env.CLI_PACKAGE_VERSION }} -p:RepositoryUrl=https://github.com/sebastienros/OrchardCore -p:RepositoryCommit=${{ github.sha }} -p:TreatWarningsAsErrors=true -o artifacts/tool
@@ -133,9 +133,9 @@ jobs:
         id: upload
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: oc-${{ matrix.rid }}
+          name: pomi-${{ matrix.rid }}
           path: |
-            artifacts/oc-*
+            artifacts/pomi-*
             artifacts/native/verification.json
           if-no-files-found: error
           retention-days: 30
@@ -144,7 +144,7 @@ jobs:
         id: upload-tool
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: oc-tool-${{ matrix.rid }}
+          name: pomi-tool-${{ matrix.rid }}
           path: artifacts/tool/*
           if-no-files-found: error
           retention-days: 30
@@ -159,7 +159,7 @@ jobs:
           @"
           ### Native CLI: $env:TARGET_RID
 
-          [Download oc-$env:TARGET_RID]($env:ARTIFACT_URL)
+          [Download pomi-$env:TARGET_RID]($env:ARTIFACT_URL)
 
           Built commit: $env:GITHUB_SHA
 
@@ -172,7 +172,7 @@ jobs:
 
           Extract the tool artifact and follow INSTALL.md. It contains both packages
           needed to install OrchardCore.Cli using the .NET 10 SDK or later.
-          The installed oc command is native and needs no separate .NET runtime.
+          The installed pomi command is native and needs no separate .NET runtime.
 
           GitHub sign-in is required. Artifacts are retained for 30 days.
           "@ | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
@@ -196,7 +196,7 @@ jobs:
       - name: Download all native tool implementations
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          pattern: oc-tool-*
+          pattern: pomi-tool-*
           path: artifacts/downloads
       - name: Package publication regression tests
         run: python3 .scripts/remote-management/test-prepare-feedz.py
@@ -219,13 +219,13 @@ jobs:
         run: |
           dotnet tool install OrchardCore.Cli --tool-path "$RUNNER_TEMP/feedz-tool" \
             --add-source "$FEEDZ_SOURCE" --version "$PACKAGE_VERSION"
-          test "$("$RUNNER_TEMP/feedz-tool/oc" --version)" = "$PACKAGE_VERSION"
+          test "$("$RUNNER_TEMP/feedz-tool/pomi" --version)" = "$PACKAGE_VERSION"
           dotnet new install "OrchardCore.ProjectTemplates@$PACKAGE_VERSION" --add-source "$FEEDZ_SOURCE"
           dotnet new occms -o "$RUNNER_TEMP/feedz-cms"
           dotnet restore "$RUNNER_TEMP/feedz-cms" --source "$FEEDZ_SOURCE" --source https://api.nuget.org/v3/index.json
           dotnet build "$RUNNER_TEMP/feedz-cms" --no-restore
       - name: Verify embedded CMS installation and Auto Setup
-        run: python3 .scripts/remote-management/install-smoke.py "$RUNNER_TEMP/feedz-tool/oc" --source "$FEEDZ_SOURCE"
+        run: python3 .scripts/remote-management/install-smoke.py "$RUNNER_TEMP/feedz-tool/pomi" --source "$FEEDZ_SOURCE"
       - name: Add Feedz installation commands to the summary
         run: |
           cat >> "$GITHUB_STEP_SUMMARY" <<EOF

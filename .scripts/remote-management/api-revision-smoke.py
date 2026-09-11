@@ -12,7 +12,7 @@ import urllib.request
 state_path = Path(sys.argv[1])
 state = json.loads(state_path.read_text())
 assert urllib.parse.urlparse(state['url']).hostname in ('127.0.0.1', 'localhost', '::1')
-wrapper = Path(__file__).with_name('oc-fixture.py')
+wrapper = Path(__file__).with_name('pomi-fixture.py')
 header = 'OrchardCore-Api-Revision'
 
 
@@ -34,7 +34,7 @@ def token(client):
     return json.loads(payload)['access_token']
 
 
-def oc(*args):
+def pomi(*args):
     result = subprocess.run([sys.executable, str(wrapper), str(state_path), *args, '--output', 'json'],
                             text=True, capture_output=True, env=os.environ.copy(), timeout=90)
     assert result.returncode == 0, (args, result.stderr, result.stdout)
@@ -56,11 +56,11 @@ for auth, expected in [(None, 401), (token('cli-denied'), 403), (admin, 200)]:
     assert len(headers[header]) == 64
 status, headers, _ = request('api/not-an-endpoint', token=admin)
 assert status == 404 and len(headers[header]) == 64
-oc('context', 'add', 'revision-smoke', state['url'], '--current')
-oc('api', 'refresh', '--force')
+pomi('context', 'add', 'revision-smoke', state['url'], '--current')
+pomi('api', 'refresh', '--force')
 before = cache()
 assert 'templates' in before['content']
-oc('features', 'list')
+pomi('features', 'list')
 assert cache()['fetchedAt'] == before['fetchedAt'], 'Unchanged revision downloaded OpenAPI again'
 
 # Change the feature directly: this cannot invalidate the CLI's files itself.
@@ -69,7 +69,7 @@ status, _, body = request('api/features/' + feature + ':disable', 'POST', admin)
 assert status == 200, (status, body.decode())
 try:
     assert cache()['expiresAt'] == before['expiresAt']
-    oc('features', 'list')
+    pomi('features', 'list')
     disabled = cache()
     assert disabled['apiRevision'] != before['apiRevision']
     assert '/api/templates' not in json.loads(disabled['content'])['paths']
@@ -78,7 +78,7 @@ finally:
     assert status == 200, (status, body.decode())
 
 # A newly restored command is absent from the current cache, but must parse and execute.
-oc('templates', 'list')
+pomi('templates', 'list')
 restored = cache()
 assert restored['apiRevision'] == before['apiRevision'], 'Equivalent feature sets should have the same revision'
 assert '/api/templates' in json.loads(restored['content'])['paths']

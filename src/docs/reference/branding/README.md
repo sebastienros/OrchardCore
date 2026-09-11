@@ -86,12 +86,12 @@ A printable 3D model of the Orchard Core symbol logo is available below.
 
 # Pomi CLI logo
 
-Use the Pomi terminal-and-leaf symbol and wordmark for the Orchard Core CLI (`oc`).
+Use the Pomi terminal-and-leaf symbol and wordmark for the Pomi CLI (`pomi`).
 The transparent SVG logos below adapt to this documentation's light and dark themes.
 All lettering is outlined, so no fonts or external assets are required.
 
-<img src="assets/logo/pomi/svg/pomi-terminal-logo-light.svg#only-light" alt="Pomi — Orchard Core CLI" width="200" />
-<img src="assets/logo/pomi/svg/pomi-terminal-logo-dark.svg#only-dark" alt="Pomi — Orchard Core CLI" width="200" />
+<img src="assets/logo/pomi/svg/pomi-terminal-logo-light.svg#only-light" alt="Pomi — Orchard Core command-line interface" width="200" />
+<img src="assets/logo/pomi/svg/pomi-terminal-logo-dark.svg#only-dark" alt="Pomi — Orchard Core command-line interface" width="200" />
 
 Use the icon alone where the wordmark would be too small to read:
 

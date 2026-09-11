@@ -12,7 +12,7 @@ using OrchardCore.Modules.Manifest;
 [assembly: Feature(
     Id = "OrchardCore.RemoteManagement",
     Name = "Remote Management",
-    Description = "Enables the versioned remote management protocol used by the Orchard Core CLI.",
+    Description = "Enables the versioned remote management protocol used by the Pomi CLI.",
     Category = "Api",
     Dependencies =
     [

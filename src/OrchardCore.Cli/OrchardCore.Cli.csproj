@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <AssemblyName>oc</AssemblyName>
+    <AssemblyName>pomi</AssemblyName>
     <RootNamespace>OrchardCore.Cli</RootNamespace>
     <TargetFramework>$(DefaultTargetFramework)</TargetFramework>
     <OutputType>Exe</OutputType>
@@ -15,7 +15,7 @@
     <IsPackable Condition="'$(PackAsTool)' == 'true'">true</IsPackable>
     <PackageId>OrchardCore.Cli</PackageId>
     <Authors>Orchard Core Community and Contributors</Authors>
-    <ToolCommandName>oc</ToolCommandName>
+    <ToolCommandName>pomi</ToolCommandName>
     <ToolPackageRuntimeIdentifiers>linux-x64;linux-arm64;win-x64;win-arm64;osx-arm64;osx-x64</ToolPackageRuntimeIdentifiers>
     <Description>Native Orchard Core command-line tool for local CMS installation and remote tenant management.</Description>
     <PackageLicenseExpression>BSD-3-Clause</PackageLicenseExpression>

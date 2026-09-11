@@ -67,15 +67,15 @@ they report a different revision, including when a feature disappeared between
 discovery and execution. The CLI preserves the operation's actual result; it does
 not automatically replay a request or use a special error status for cache changes.
 
-Help, bare `oc`, and shell completion remain offline and reflect the last cached
-command tree. Run `oc api refresh --force` to update these explicitly. Servers or
+Help, bare `pomi`, and shell completion remain offline and reflect the last cached
+command tree. Run `pomi api refresh --force` to update these explicitly. Servers or
 existing cache entries without a revision retain the normal cache lifetimes
 (manifest: five minutes; OpenAPI: thirty minutes) until refreshed. A failed probe
 lets the requested operation report connectivity errors normally.
 
 This revision tracks feature and module changes, not arbitrary database-backed
 settings, content definitions, or a user's permissions. Successful CLI mutations
-still expire metadata; use `oc api refresh --force` after other schema changes
+still expire metadata; use `pomi api refresh --force` after other schema changes
 made outside the CLI. During a rolling deployment, different nodes may temporarily
 serve different revisions: discovery is not a lock or a guarantee that a later
 request reaches the same pipeline. Keep node deployments and tenant feature state
@@ -292,7 +292,7 @@ Compatibility is body-based; these endpoints define no custom compatibility requ
 - `recommendedCliVersion` is advisory.
 - Capability versions are evaluated independently. Built-in capability major versions currently align with protocol major `1`.
 
-The Orchard Core CLI fetches bootstrap first, then the authenticated manifest, and refuses a different protocol major or a CLI version below `minimumCliVersion`.
+The Pomi CLI fetches bootstrap first, then the authenticated manifest, and refuses a different protocol major or a CLI version below `minimumCliVersion`.
 
 `openApiETag` exists in the schema so a client can seed conditional OpenAPI retrieval, but the current manifest service does not populate it. The manifest endpoints themselves do not set an ETag or implement `If-None-Match`. When a fetched resource supplies an ordinary HTTP `ETag`, the CLI cache can send `If-None-Match`; that is standard HTTP caching, not a protocol compatibility header.
 

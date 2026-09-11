@@ -51,7 +51,7 @@ internal static class NextStepFormatter
                 var contextName = ChooseContextName(name, url, output.KnownContexts);
                 var destination = url ?? "<tenant-url>";
                 var note = url is null ? " Replace <tenant-url> with the exact tenant URL, including its path prefix." : string.Empty;
-                return $"Next: save a context for this tenant.{note}\n  oc context add {QuoteArgument(contextName)} {QuoteArgument(destination)} --current";
+                return $"Next: save a context for this tenant.{note}\n  pomi context add {QuoteArgument(contextName)} {QuoteArgument(destination)} --current";
             }
 
             if (path == "context add")
@@ -70,7 +70,7 @@ internal static class NextStepFormatter
 
     private static string ContextCommand(string? context, string? currentContext) => string.IsNullOrEmpty(context)
         || string.Equals(context, currentContext, StringComparison.OrdinalIgnoreCase)
-        ? "oc" : $"oc --context={QuoteArgument(context)}";
+        ? "pomi" : $"pomi --context={QuoteArgument(context)}";
 
     private static string ChooseContextName(string name, string? url, IReadOnlyList<TenantContextRecord> contexts)
     {

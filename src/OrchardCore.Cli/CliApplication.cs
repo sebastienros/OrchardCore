@@ -77,7 +77,7 @@ internal sealed partial class CliApplication
             Recursive = true,
         };
 
-        var root = new RootCommand("Orchard Core remote management CLI");
+        var root = new RootCommand("Pomi: Orchard Core command-line interface");
         root.Options.Add(outputOption);
         root.Options.Add(contextOption);
 
@@ -813,33 +813,33 @@ internal sealed partial class CliApplication
             var text = shell switch
             {
                 "bash" => """
-                    _oc_complete() {
+                    _pomi_complete() {
                       COMPREPLY=()
                       local candidate
-                      while IFS= read -r candidate; do COMPREPLY+=("$candidate"); done < <(oc "[suggest:${COMP_POINT}]" "$COMP_LINE" 2>/dev/null)
+                      while IFS= read -r candidate; do COMPREPLY+=("$candidate"); done < <(pomi "[suggest:${COMP_POINT}]" "$COMP_LINE" 2>/dev/null)
                     }
-                    complete -F _oc_complete oc
+                    complete -F _pomi_complete pomi
                     """,
                 "zsh" => """
-                    #compdef oc
-                    _oc_complete() {
+                    #compdef pomi
+                    _pomi_complete() {
                       local -a candidates
-                      candidates=("${(@f)$(oc "[suggest:${CURSOR}]" "$BUFFER" 2>/dev/null)}")
+                      candidates=("${(@f)$(pomi "[suggest:${CURSOR}]" "$BUFFER" 2>/dev/null)}")
                       compadd -- "${candidates[@]}"
                     }
-                    compdef _oc_complete oc
+                    compdef _pomi_complete pomi
                     """,
                 "fish" => """
-                    function __oc_complete
+                    function __pomi_complete
                       set -l line (commandline -cp)
-                      oc "[suggest:"(string length -- "$line")"]" "$line" 2>/dev/null
+                      pomi "[suggest:"(string length -- "$line")"]" "$line" 2>/dev/null
                     end
-                    complete -c oc -f -a '(__oc_complete)'
+                    complete -c pomi -f -a '(__pomi_complete)'
                     """,
                 "pwsh" => """
-                    Register-ArgumentCompleter -Native -CommandName oc -ScriptBlock {
+                    Register-ArgumentCompleter -Native -CommandName pomi -ScriptBlock {
                       param($wordToComplete, $commandAst, $cursorPosition)
-                      & oc "[suggest:$cursorPosition]" $commandAst.ToString() 2>$null | ForEach-Object {
+                      & pomi "[suggest:$cursorPosition]" $commandAst.ToString() 2>$null | ForEach-Object {
                         [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
                       }
                     }
@@ -874,7 +874,7 @@ internal sealed partial class CliApplication
                 HasDocumentationCache = await _cacheService.ReadAsync(DocumentationIndexUri.AbsoluteUri, CacheKind.Documentation, cancellationToken) is not null,
                 LocalInstallSdk = sdk,
                 LocalInstallWarning = sdk is null
-                    ? $"The .NET {DotnetEnvironment.RequiredMajor} SDK is required for 'oc install'. Remote management commands do not require .NET."
+                    ? $"The .NET {DotnetEnvironment.RequiredMajor} SDK is required for 'pomi install'. Remote management commands do not require .NET."
                     : null,
             };
 
@@ -1551,7 +1551,7 @@ internal sealed partial class CliApplication
 
     internal static string CreateRequiredBodyMessage(OpenApiOperationDefinition operation, bool includeInputOptions)
     {
-        var schemaCommand = $"oc {string.Join(' ', operation.CliMetadata.CommandGroup)} schema --operation {operation.CliMetadata.Verb}";
+        var schemaCommand = $"pomi {string.Join(' ', operation.CliMetadata.CommandGroup)} schema --operation {operation.CliMetadata.Verb}";
         var inputGuidance = includeInputOptions
             ? " Provide --body, --body-file, or --stdin."
             : string.Empty;
@@ -1844,7 +1844,7 @@ internal sealed partial class CliApplication
             "install",
         ];
 
-        var startIndex = args.Length > 0 && string.Equals(args[0], "oc", StringComparison.Ordinal)
+        var startIndex = args.Length > 0 && string.Equals(args[0], "pomi", StringComparison.Ordinal)
             ? 1
             : 0;
 
@@ -1879,7 +1879,7 @@ internal sealed partial class CliApplication
     {
         var context = ContextStore.FindContext(_configuration, name);
         return context ?? throw new CliException(name is null
-            ? "No context is selected. Add one with 'oc context add <name> <url>'."
+            ? "No context is selected. Add one with 'pomi context add <name> <url>'."
             : $"Context '{name}' was not found.");
     }
 

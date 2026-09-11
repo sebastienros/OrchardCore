@@ -18,24 +18,24 @@ assert len(files) == 1, 'Sign into exactly one fixture context with OC_FIXTURE_H
 credential = files[0]
 env = os.environ.copy()
 env['OC_FIXTURE_HUMAN'] = '1'
-wrapper = Path(__file__).with_name('oc-fixture.py')
-def oc(*args):
+wrapper = Path(__file__).with_name('pomi-fixture.py')
+def pomi(*args):
     result = subprocess.run([sys.executable,str(wrapper),str(state_path),*args,'--output','json'],env=env,text=True,capture_output=True)
     assert result.returncode == 0, f'{args[0]} failed; inspect fixture authentication without printing tokens'
     return json.loads(result.stdout)
-oc('content','items','list','--take','1')
+pomi('content','items','list','--take','1')
 original = json.loads(credential.read_text())
 assert original.get('refreshToken'), 'Login did not return a refresh token'
 original['expiresAt'] = '2000-01-01T00:00:00+00:00'
 credential.write_text(json.dumps(original))
-oc('content','items','list','--take','1')
+pomi('content','items','list','--take','1')
 refreshed = json.loads(credential.read_text())
 assert refreshed['expiresAt'] != original['expiresAt']
 assert refreshed['refreshToken'] != original['refreshToken'], 'Expected refresh-token rotation'
 if os.name != 'nt':
     assert credential.stat().st_mode & 0o777 == 0o600
     assert credential.parent.stat().st_mode & 0o777 == 0o700
-logout = oc('logout')
+logout = pomi('logout')
 assert logout['removed'] and logout['revoked']
 assert not credential.exists()
 body = urllib.parse.urlencode({'grant_type':'refresh_token','client_id':'orchardcore-cli','refresh_token':refreshed['refreshToken']}).encode()

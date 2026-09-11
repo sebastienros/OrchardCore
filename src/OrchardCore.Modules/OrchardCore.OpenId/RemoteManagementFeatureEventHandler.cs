@@ -46,6 +46,6 @@ public sealed class RemoteManagementFeatureEventHandler : FeatureEventHandler
             .Add(new PathString('/' + adminOptions.AdminUrlPrefix))
             .Add(new PathString("/RemoteManagement"));
 
-        await notifier.WarningAsync(H["Remote Management is enabled. <a href=\"{0}\">Review and configure authentication</a> before connecting the Orchard Core CLI.", configurationUrl]);
+        await notifier.WarningAsync(H["Remote Management is enabled. <a href=\"{0}\">Review and configure authentication</a> before connecting the Pomi CLI.", configurationUrl]);
     }
 }

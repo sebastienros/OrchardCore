@@ -1,12 +1,12 @@
 ---
 name: orchardcore-cli-menus
-description: Creates, updates, publishes, and renders Orchard Core menus through `oc` using the built-in Menu content model and official Menu/MenuItem/MenuItemLink shapes. Use for menu aliases, link/content/HTML menu items, nested navigation, Liquid menu rendering, caching, active links, and custom menu shape templates.
+description: Creates, updates, publishes, and renders Orchard Core menus through `pomi` using the built-in Menu content model and official Menu/MenuItem/MenuItemLink shapes. Use for menu aliases, link/content/HTML menu items, nested navigation, Liquid menu rendering, caching, active links, and custom menu shape templates.
 ---
 
-# Orchard Core CLI Menus
+# Pomi CLI Menus
 
 Manage menus through the content-definition, content-item, and template
-commands. Orchard Core currently exposes no separate `oc menus` CRUD group.
+commands. Orchard Core currently exposes no separate `pomi menus` CRUD group.
 Always use the built-in `Menu` and `MenuItem` stereotypes supplied by
 `OrchardCore.Menu`.
 
@@ -18,15 +18,15 @@ layout/navigation markup in an HTML field.
 ## Prepare and inspect
 
 ```bash
-oc features enable OrchardCore.Menu
-oc api refresh --force
-oc content types show Menu
-oc content types show LinkMenuItem
-oc content types show ContentMenuItem
-oc content types show HtmlMenuItem
-oc content items schema Menu
-oc content items schema LinkMenuItem
-oc content items schema ContentMenuItem
+pomi features enable OrchardCore.Menu
+pomi api refresh --force
+pomi content types show Menu
+pomi content types show LinkMenuItem
+pomi content types show ContentMenuItem
+pomi content types show HtmlMenuItem
+pomi content items schema Menu
+pomi content items schema LinkMenuItem
+pomi content items schema ContentMenuItem
 ```
 
 Do not recreate these built-in definitions. The Menu feature provides:
@@ -90,10 +90,10 @@ Build the complete payload from the live schemas:
 ```
 
 ```bash
-oc content items validate --body-file main-menu.json
-oc content items create-draft --body-file main-menu.json
-oc content items render <menu-id> --version draft --display-type Detail
-oc content items publish <menu-id>
+pomi content items validate --body-file main-menu.json
+pomi content items create-draft --body-file main-menu.json
+pomi content items render <menu-id> --version draft --display-type Detail
+pomi content items publish <menu-id>
 ```
 
 Use `DisplayText` as a link item's visible name. Use application-relative `~/`
@@ -127,10 +127,10 @@ requirement.
 Menu updates replace the complete content payload:
 
 ```bash
-oc content items show <menu-id> --version draft > main-menu-current.json
-oc content items validate-update <menu-id> --body-file main-menu-updated.json
-oc content items update-draft <menu-id> --body-file main-menu-updated.json
-oc content items publish <menu-id>
+pomi content items show <menu-id> --version draft > main-menu-current.json
+pomi content items validate-update <menu-id> --body-file main-menu-updated.json
+pomi content items update-draft <menu-id> --body-file main-menu-updated.json
+pomi content items publish <menu-id>
 ```
 
 Preserve nested item IDs and unknown properties returned by the API. Replacing
@@ -199,9 +199,9 @@ Example base `MenuItem` template:
 </li>
 ```
 
-Inspect `oc templates schema --operation create`, then use
-`oc templates create --body-file <file>` or
-`oc templates update <name> --body-file <file>`. Keep `MenuItemLink`
+Inspect `pomi templates schema --operation create`, then use
+`pomi templates create --body-file <file>` or
+`pomi templates update <name> --body-file <file>`. Keep `MenuItemLink`
 responsible for producing the anchor so content links, targets, and URL
 normalization remain centralized.
 

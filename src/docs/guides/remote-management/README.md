@@ -1,9 +1,9 @@
-# Manage your first tenant with `oc`
+# Manage your first tenant with `pomi`
 
-<img src="../../reference/branding/assets/logo/pomi/svg/pomi-terminal-logo-light.svg#only-light" alt="Pomi — Orchard Core CLI" width="160" />
-<img src="../../reference/branding/assets/logo/pomi/svg/pomi-terminal-logo-dark.svg#only-dark" alt="Pomi — Orchard Core CLI" width="160" />
+<img src="../../reference/branding/assets/logo/pomi/svg/pomi-terminal-logo-light.svg#only-light" alt="Pomi — Orchard Core command-line interface" width="160" />
+<img src="../../reference/branding/assets/logo/pomi/svg/pomi-terminal-logo-dark.svg#only-dark" alt="Pomi — Orchard Core command-line interface" width="160" />
 
-The Orchard Core CLI brings tenant management to your terminal. Sign in once,
+The Pomi CLI brings tenant management to your terminal. Sign in once,
 select a tenant, and discover the commands that its enabled features provide.
 This walkthrough starts with a read-only content listing, then creates and
 validates an unpublished article.
@@ -21,17 +21,17 @@ targeting the fork.
 
    | Your computer | Artifact |
    | --- | --- |
-   | macOS, Apple Silicon | `oc-osx-arm64` |
-   | macOS, Intel | `oc-osx-x64` |
-   | Windows, x64 | `oc-win-x64` |
-   | Windows, Arm64 | `oc-win-arm64` |
-   | Linux, x64 | `oc-linux-x64` |
-   | Linux, Arm64 | `oc-linux-arm64` |
+   | macOS, Apple Silicon | `pomi-osx-arm64` |
+   | macOS, Intel | `pomi-osx-x64` |
+   | Windows, x64 | `pomi-win-x64` |
+   | Windows, Arm64 | `pomi-win-arm64` |
+   | Linux, x64 | `pomi-linux-x64` |
+   | Linux, Arm64 | `pomi-linux-arm64` |
 
 3. Extract the downloaded artifact, then extract the `.tar.gz` or `.zip`
    native archive inside it. The artifact also includes its SHA-256 checksum
    and a verification record; the job summary identifies the built commit.
-4. Put the extracted directory on your `PATH` and run `oc --version`.
+4. Put the extracted directory on your `PATH` and run `pomi --version`.
 
 You must be signed into GitHub to download workflow artifacts. These builds
 are retained for 30 days and are unsigned development artifacts. For PR runs,
@@ -41,16 +41,16 @@ so each pushed commit can publish its own packages.
 
 ### Install as a .NET tool
 
-If you have the .NET 10 SDK or later, you can install and update `oc` through
+If you have the .NET 10 SDK or later, you can install and update `pomi` through
 `dotnet tool`. It installs a native executable for your platform; running
-`oc` does not require a separately installed .NET runtime.
+`pomi` does not require a separately installed .NET runtime.
 
 For a published push build, copy its version from the workflow's **Published to
 Feedz** summary, then install directly:
 
 ```bash
 dotnet tool install --global OrchardCore.Cli --add-source https://f.feedz.io/sebastienros/orchardcore/nuget/index.json --version <version>
-oc --version
+pomi --version
 ```
 
 Use `dotnet tool update --global` with the same package/source and a newer exact
@@ -60,32 +60,32 @@ The native implementation is selected automatically for your computer.
 
 To use a downloadable artifact instead (also available for PR builds):
 
-1. From the same workflow run, download `oc-tool-<rid>` for your computer,
-   such as **oc-tool-osx-arm64** for an Apple Silicon Mac.
-2. Extract the artifact into a directory such as `oc-packages`. Keep the two
+1. From the same workflow run, download `pomi-tool-<rid>` for your computer,
+   such as **pomi-tool-osx-arm64** for an Apple Silicon Mac.
+2. Extract the artifact into a directory such as `pomi-packages`. Keep the two
    `.nupkg` files together: the installer package and your platform's native
    implementation. Open `INSTALL.md` for a command with the exact build version.
 3. Install from that directory, replacing `<version>` with the version in
    `INSTALL.md` or the job summary:
 
    ```bash
-   dotnet tool install --global OrchardCore.Cli --add-source ./oc-packages --version <version>
-   oc --version
-   oc
+   dotnet tool install --global OrchardCore.Cli --add-source ./pomi-packages --version <version>
+   pomi --version
+   pomi
    ```
 
-   If `oc` is not found, add the tool directory printed by the installer to
+   If `pomi` is not found, add the tool directory printed by the installer to
    your `PATH` and open a new terminal.
 
 To update, download the newer artifact and run:
 
 ```bash
-dotnet tool update --global OrchardCore.Cli --add-source ./oc-packages --version <new-version>
+dotnet tool update --global OrchardCore.Cli --add-source ./pomi-packages --version <new-version>
 ```
 
 For a project-local installation, run `dotnet new tool-manifest` if the project
 does not already have a tool manifest, then use `--local` instead of `--global`.
-Run it with `dotnet tool run oc -- <arguments>`. You can remove a global
+Run it with `dotnet tool run pomi -- <arguments>`. You can remove a global
 installation with `dotnet tool uninstall --global OrchardCore.Cli`.
 
 The development packages are available on Feedz and as workflow artifacts,
@@ -126,14 +126,14 @@ From a checkout containing `src/OrchardCore.Cli`, with the .NET SDK selected by
 `global.json`, publish a native executable:
 
 ```bash
-dotnet publish src/OrchardCore.Cli -c Release -r osx-arm64 -o artifacts/oc
-./artifacts/oc/oc --version
+dotnet publish src/OrchardCore.Cli -c Release -r osx-arm64 -o artifacts/pomi
+./artifacts/pomi/pomi --version
 ```
 
 Replace `osx-arm64` with your runtime identifier: `osx-x64`, `linux-x64`,
 `linux-arm64`, `win-x64`, or `win-arm64`. Native publishing also requires the
-platform's native compiler toolchain. Windows produces `oc.exe`.
-Add the output directory to your `PATH`; the examples below use `oc`.
+platform's native compiler toolchain. Windows produces `pomi.exe`.
+Add the output directory to your `PATH`; the examples below use `pomi`.
 
 For development without native compilation, use
 `dotnet run --project src/OrchardCore.Cli -- <command>`.
@@ -144,7 +144,7 @@ To create installable NativeAOT tool packages on your own computer:
 dotnet pack src/OrchardCore.Cli -c Release -p:PackAsTool=true -o artifacts/tool
 dotnet pack src/OrchardCore.Cli -c Release -p:PackAsTool=true -r osx-arm64 -o artifacts/tool
 dotnet tool install --tool-path ./artifacts/bin OrchardCore.Cli --add-source ./artifacts/tool --version 1.0.0
-./artifacts/bin/oc --version
+./artifacts/bin/pomi --version
 ```
 
 Replace the runtime identifier for your platform. The first pack command
@@ -156,7 +156,7 @@ for details.
 
 ## Create and set up a local site
 
-`oc install` creates a new CMS application and initializes its **Default**
+`pomi install` creates a new CMS application and initializes its **Default**
 tenant. It uses the `occms` template embedded in the CLI executable from the
 same source build, with matching Orchard package versions. No template package
 download, selected tenant context, or remote authentication is needed.
@@ -164,13 +164,13 @@ Other project templates remain available through `dotnet new`.
 
 1. Install the stable .NET SDK matching the template's target framework
    (currently **.NET 10**), and make `dotnet` available on your `PATH`.
-   `oc doctor` reports the selected SDK or a warning when it is unavailable.
+   `pomi doctor` reports the selected SDK or a warning when it is unavailable.
    This SDK requirement applies to local site creation; remote management
    commands still work without .NET installed.
 2. Choose a new or empty directory and create your site:
 
    ```bash
-   oc install ./MyOrchardSite \
+   pomi install ./MyOrchardSite \
      --site-name "My Orchard Site" \
      --user-name admin \
      --email admin@example.com \
@@ -198,7 +198,7 @@ single argument, following [ASP.NET Core's URL binding syntax](https://learn.mic
 For example, to listen on both HTTPS and HTTP:
 
 ```bash
-oc install ./MySite --site-name "My Site" --email admin@example.com \
+pomi install ./MySite --site-name "My Site" --email admin@example.com \
   --run --urls "https://localhost:5001;http://localhost:5000"
 ```
 
@@ -244,7 +244,7 @@ on Feedz, configure the feed in a parent/user NuGet configuration or pass it
 explicitly:
 
 ```bash
-oc install ./MyPreviewSite --site-name "My Preview Site" --email admin@example.com \
+pomi install ./MyPreviewSite --site-name "My Preview Site" --email admin@example.com \
   --source https://f.feedz.io/sebastienros/orchardcore/nuget/index.json
 ```
 
@@ -261,7 +261,7 @@ by Orchard's Noda Time database on every operating system. Examples are `UTC`
 Region IDs account for daylight saving time automatically. For example:
 
 ```bash
-oc install ./ParisSite --site-name "Paris Site" --email admin@example.com \
+pomi install ./ParisSite --site-name "Paris Site" --email admin@example.com \
   --site-time-zone Europe/Paris
 ```
 
@@ -274,9 +274,9 @@ name). For example, select `--recipe-name Blog` to initialize a blog.
 For automation, supply the administrator password using exactly one of:
 
 ```bash
-oc install ./MySite --site-name "My Site" --email admin@example.com --password-env OC_SITE_PASSWORD
-oc install ./MySite --site-name "My Site" --email admin@example.com --password-file /run/secrets/site-password
-printf '%s' "$OC_SITE_PASSWORD" | oc install ./MySite --site-name "My Site" --email admin@example.com --password-stdin
+pomi install ./MySite --site-name "My Site" --email admin@example.com --password-env OC_SITE_PASSWORD
+pomi install ./MySite --site-name "My Site" --email admin@example.com --password-file /run/secrets/site-password
+printf '%s' "$OC_SITE_PASSWORD" | pomi install ./MySite --site-name "My Site" --email admin@example.com --password-stdin
 ```
 
 These are alternative commands for separate installations. Inject the secret
@@ -289,7 +289,7 @@ Auto Setup credentials are passed through the temporary process environment.
 The administrator password is not written into generated settings, launch
 profiles, or CLI output. Orchard stores the resulting account normally; it
 also persists database connection settings needed to run the site. On macOS
-and Linux, `oc install` creates `App_Data` with owner-only directory permissions.
+and Linux, `pomi install` creates `App_Data` with owner-only directory permissions.
 If you deploy under another identity, grant that identity the access it needs.
 
 The command refuses to overwrite existing content. On failure or cancellation,
@@ -297,7 +297,7 @@ it stops its child processes and preserves the project for inspection; it does
 not silently retry a partially initialized database. Use a fresh directory for
 a new attempt, or repair the preserved project manually. Creating a site does
 not configure Remote Management automatically; follow the next section to
-manage it through `oc`.
+manage it through `pomi`.
 
 ## 2. Prepare the tenant
 
@@ -320,15 +320,15 @@ only the permissions its job requires.
 For a non-administrator identity, grant `AccessRemoteManagement` and the
 permissions for the resources it will manage. If OpenAPI document access is
 protected, also grant `ViewOpenApiContent` so the CLI can discover commands.
-A readable management manifest followed by a 403 during `oc api refresh` can
+A readable management manifest followed by a 403 during `pomi api refresh` can
 indicate that this document permission is missing; signing in again does not
 grant it.
 
 ## 3. Save the exact tenant URL
 
 ```bash
-oc context add tutorial https://cms.example.com/news --current
-oc context list
+pomi context add tutorial https://cms.example.com/news --current
+pomi context list
 ```
 
 Replace the URL with your tenant's public base URL, including its path prefix.
@@ -337,7 +337,7 @@ one tenant. Commands use it until you select another context.
 
 Both the context name and tenant URL are required. If either is omitted, the
 CLI identifies the missing argument and displays the command's usage. Use
-`oc context add --help` to view that help without creating a context.
+`pomi context add --help` to view that help without creating a context.
 
 Remote connections require HTTPS. HTTP is accepted for loopback development,
 for example `http://127.0.0.1:5000/news`. To switch to another tenant URL, create
@@ -346,7 +346,7 @@ a new context name; existing credentials cannot follow a changed tenant URL.
 ## 4. Sign in once
 
 ```bash
-oc login
+pomi login
 ```
 
 The CLI opens the tenant's login page in your browser. Sign in as the intended
@@ -355,7 +355,7 @@ that login completed.
 
 ![Tenant login form used for browser and device authorization](images/login.png)
 
-On the authorization page, verify that the application is **Orchard Core CLI**
+On the authorization page, verify that the application is **Pomi CLI**
 and select **Allow access**. The requested scopes include management access and
 `offline_access`, which allows later commands to refresh your login silently.
 Choose **Cancel** if you did not start this request. The page follows the
@@ -363,7 +363,7 @@ tenant's login theme; this example uses the default admin theme.
 See [customizing authorization pages](../../reference/modules/OpenId/README.md#customizing-authorization-pages)
 to apply your site's branding.
 
-![Browser authorization page asking for consent to Orchard Core CLI](images/consent.png)
+![Browser authorization page asking for consent to Pomi CLI](images/consent.png)
 
 With **The SaaS Theme** selected as the site theme and **Use site theme for
 login page** enabled, the same consent request uses green accents, softer
@@ -393,10 +393,10 @@ embedded in the executable and included in the page as a PNG data URL.
 
 | Where you run the CLI | Command | Where you sign in |
 | --- | --- | --- |
-| Your desktop or laptop with a browser | `oc login` | The browser opens on that computer; authorization code with PKCE is the default. |
-| The same computer, but you want to open the browser yourself | `oc login --no-browser` | Copy the printed URL into a browser on that same computer. |
-| An SSH session on a server without a desktop | `oc login --grant device` | Open the printed verification URL on your laptop or phone. |
-| An interactive shell in a container or remote development environment | `oc login --grant device` | Use a browser outside that environment that can reach the tenant. |
+| Your desktop or laptop with a browser | `pomi login` | The browser opens on that computer; authorization code with PKCE is the default. |
+| The same computer, but you want to open the browser yourself | `pomi login --no-browser` | Copy the printed URL into a browser on that same computer. |
+| An SSH session on a server without a desktop | `pomi login --grant device` | Open the printed verification URL on your laptop or phone. |
+| An interactive shell in a container or remote development environment | `pomi login --grant device` | Use a browser outside that environment that can reach the tenant. |
 
 Device authorization is still an interactive user login. For unattended CI
 or scheduled jobs, configure a dedicated application identity and use
@@ -408,7 +408,7 @@ The CLI defaults to browser login; select device flow explicitly when needed.
 On the computer running the CLI, use:
 
 ```bash
-oc login --grant device
+pomi login --grant device
 ```
 
 The CLI prints a verification URL and a user code without opening a browser.
@@ -421,9 +421,9 @@ encoded; otherwise you enter the displayed code after scanning.
 Control the terminal QR output with:
 
 ```bash
-oc login --grant device --qr auto    # Opt in: show in a compatible terminal
-oc login --grant device --qr always  # Force ANSI/Unicode QR output
-oc login --grant device --qr never   # Default: keep just the URL and user code
+pomi login --grant device --qr auto    # Opt in: show in a compatible terminal
+pomi login --grant device --qr always  # Force ANSI/Unicode QR output
+pomi login --grant device --qr never   # Default: keep just the URL and user code
 ```
 
 For terminal rendering, automatic mode skips QR output when standard error is redirected, the output
@@ -437,7 +437,7 @@ To receive an image for a script or application, combine an opt-in QR mode with
 JSON output:
 
 ```bash
-oc login --grant device --qr always --output json
+pomi login --grant device --qr always --output json
 ```
 
 Before waiting for approval, the CLI writes and flushes a JSON record to stdout:
@@ -483,7 +483,7 @@ Open https://cms.example.com/team/connect/verify?user_code=6738-0585-5256 and en
    opening it and cannot be used from your phone to reach the CLI computer.
 3. Sign in as the intended tenant user. If the URL already includes the code,
    it is filled in for you; otherwise enter the code printed by the CLI.
-4. Verify the tenant, **Orchard Core CLI** application name, requested access,
+4. Verify the tenant, **Pomi CLI** application name, requested access,
    and matching code, then select **Allow access**. Only approve a request
    you started.
 5. Return to the terminal. The CLI polls the tenant and completes login after
@@ -497,7 +497,7 @@ CLI; there is no token to copy from your phone. This is the
 
 ![Device authorization page showing the matching user code and requested permissions](images/device-consent.png)
 
-By comparison, `oc login` and `oc login --no-browser` use authorization code
+By comparison, `pomi login` and `pomi login --no-browser` use authorization code
 with PKCE and a callback on the CLI computer's loopback interface. Opening
 that flow's URL on your phone would direct the callback to the phone's own
 loopback interface. Use device flow for this cross-device scenario.
@@ -511,7 +511,7 @@ returns a single JSON result with `--output json`.
 1. Request authorization for the intended context:
 
     ```bash
-    oc --context production login device start --output json
+    pomi --context production login device start --output json
     ```
 
     This contacts the authorization server, saves a pending session locally, and
@@ -525,7 +525,7 @@ returns a single JSON result with `--output json`.
    optionally with a QR image, use the returned session ID:
 
     ```bash
-    oc login device show <session-id> --qr always --output json
+    pomi login device show <session-id> --qr always --output json
     ```
 
     `show` works offline and does not request a new code or extend its expiry.
@@ -537,7 +537,7 @@ returns a single JSON result with `--output json`.
 3. Wait for the user's decision and save the resulting login:
 
     ```bash
-    oc login device wait <session-id> --output json
+    pomi login device wait <session-id> --output json
     ```
 
     You can run `wait` before or after approval, as long as the session has not
@@ -558,7 +558,7 @@ Sessions belong to the same local CLI configuration (`OC_CONFIG_HOME` when set).
 `wait` selects the session's original context even if another context is now
 current. An explicit conflicting `--context`, or changes to the original tenant,
 authority, client ID, or scopes, cause rejection. A context named `device` can
-still use the combined login command via `oc --context device login`.
+still use the combined login command via `pomi --context device login`.
 
 Only one process may wait on a given session at a time; `show` remains available
 while it waits. After interrupting a wait or a transient connection failure,
@@ -567,7 +567,7 @@ restarts. Private session state is removed after token saving, denial, or expiry
 starting a new session also removes expired sessions that are not being used.
 Empty lock files may remain and contain no authorization data.
 
-`oc login --grant device` remains the combined flow for interactive use. Its
+`pomi login --grant device` remains the combined flow for interactive use. Its
 opt-in QR JSON output is a stream as described above; use `start`, `show`, and
 `wait` when each process should produce one JSON result.
 
@@ -583,7 +583,7 @@ Windows uses Windows Credential Manager.
 ## 5. Run your first command
 
 ```bash
-oc content items list --take 10
+pomi content items list --take 10
 ```
 
 In a terminal, the result is a table. An empty result means there are no items
@@ -591,19 +591,19 @@ matching the default published-content filter; it does not mean login failed.
 To see drafts:
 
 ```bash
-oc content items list --status draft --take 10
+pomi content items list --status draft --take 10
 ```
 
 `--skip` is a zero-based offset. For the next page, use `--skip 10 --take 10`.
 Capture a complete, stable response for scripts with explicit JSON output:
 
 ```bash
-oc content items list --status draft --output json > drafts.json
+pomi content items list --status draft --output json > drafts.json
 ```
 
 The default `--output auto` uses human output in a terminal and JSON when
 redirected to a pipe or file. Human output reports successful changes in plain language and
-shows useful details with complete URLs. For example, `oc tenants create`
+shows useful details with complete URLs. For example, `pomi tenants create`
 reports the created tenant and its full **Setup URL**, so you can open it to
 finish setup. Single-resource responses use readable labels. Lists and search
 results remain tables, and `schema` commands retain JSON Schema output.
@@ -615,8 +615,8 @@ redirecting output. Other explicit formats include `table`, `csv`, `tsv`,
 cells; HTTP and HTTPS URLs remain complete in both human and table output.
 
 ```bash
-oc tenants create --name Demo --request-url-prefix demo
-oc tenants create --name Demo --request-url-prefix demo --output json
+pomi tenants create --name Demo --request-url-prefix demo
+pomi tenants create --name Demo --request-url-prefix demo --output json
 ```
 
 Successful changes receive a completion message. An HTTP 202 response is
@@ -632,17 +632,17 @@ Human output also suggests the next step in tenant onboarding. Hints appear in
 cyan when standard output is a terminal. Redirected output stays plain, and
 `NO_COLOR=1` or `TERM=dumb` disables hint coloring.
 
-1. `oc tenants create` suggests `oc tenants setup` for an uninitialized tenant,
+1. `pomi tenants create` suggests `pomi tenants setup` for an uninitialized tenant,
    with its actual name and placeholders for details such as the administrator
    email and an unconfigured recipe. The password is prompted securely. The
    example uses SQLite if no database provider is configured; adjust it before
    running if needed.
-2. Successful setup suggests `oc tenants enable-remote-management`.
-3. Enabling remote management suggests `oc context add` with the exact tenant
+2. Successful setup suggests `pomi tenants enable-remote-management`.
+3. Enabling remote management suggests `pomi context add` with the exact tenant
    URL and `--current`. Existing contexts for the URL are reused; name collisions
    with other tenants receive a numbered suffix.
-4. Adding the context suggests `oc login` targeting that named context.
-5. Login suggests context-specific `oc --help` to explore available commands.
+4. Adding the context suggests `pomi login` targeting that named context.
+5. Login suggests context-specific `pomi --help` to explore available commands.
 
 The setup and enablement suggestions explicitly retain the parent context that
 manages tenants. Login targets the new tenant's context. Suggestions follow the
@@ -654,17 +654,17 @@ human output; `--output json` and other explicit data formats are unchanged.
 
 ## 6. Discover before writing
 
-Run `oc` or `oc --help` to see the same help: built-in commands and the selected
+Run `pomi` or `pomi --help` to see the same help: built-in commands and the selected
 context's tenant commands from the local OpenAPI cache. Neither form contacts
 the tenant or requires authentication. Expired cached commands remain visible
 with a stale-cache warning. If no cached metadata is available, only built-in
-commands appear; authenticate and run `oc api refresh` to populate the cache.
+commands appear; authenticate and run `pomi api refresh` to populate the cache.
 
 ```bash
-oc --help
-oc content items --help
-oc content types schema --output json
-oc content items schema Article --output json
+pomi --help
+pomi content items --help
+pomi content types schema --output json
+pomi content items schema Article --output json
 ```
 
 The last command requires an existing `Article` content type. If it is absent,
@@ -693,8 +693,8 @@ Save this as `article-type.json`:
 ```
 
 ```bash
-oc content types create --body-file article-type.json
-oc content items schema Article --output json
+pomi content types create --body-file article-type.json
+pomi content items schema Article --output json
 ```
 
 Definition DTOs use camelCase. Content-item parts and properties preserve their
@@ -712,17 +712,17 @@ Save this as `article.json`:
 ```
 
 ```bash
-oc content items validate --body-file article.json
-oc content items create-draft --body-file article.json --output json
+pomi content items validate --body-file article.json
+pomi content items create-draft --body-file article.json --output json
 ```
 
 Validation should return `isValid: true`. Copy the returned `ContentItemId`
 into the commands below:
 
 ```bash
-oc content items show <content-item-id> --version draft --output json
-oc content items render <content-item-id> --version draft
-oc content items validate-update <content-item-id> --body-file article.json
+pomi content items show <content-item-id> --version draft --output json
+pomi content items render <content-item-id> --version draft
+pomi content items validate-update <content-item-id> --body-file article.json
 ```
 
 The item remains unpublished. `validate-update` validates a detached candidate;
@@ -730,15 +730,15 @@ it does not save it or run update workflows. Reading `--version draft` never
 creates a draft; it returns `404` when no draft exists. To publish intentionally:
 
 ```bash
-oc content items publish <content-item-id>
+pomi content items publish <content-item-id>
 ```
 
 To inspect or recover an older version, use its version ID:
 
 ```bash
-oc content versions list <content-item-id>
-oc content versions show <content-item-version-id>
-oc content versions restore <content-item-version-id>
+pomi content versions list <content-item-id>
+pomi content versions show <content-item-version-id>
+pomi content versions restore <content-item-version-id>
 ```
 
 Restoration creates a new unpublished draft and preserves the published version.
@@ -753,7 +753,7 @@ updates, lifecycle operations, and deletes.
 
 ## 8. Use contexts and secrets deliberately
 
-Use `oc --context production <command>` to make the destination explicit.
+Use `pomi --context production <command>` to make the destination explicit.
 Destructive commands marked for confirmation ask in an interactive terminal;
 noninteractive callers must supply `--force`. This flag skips confirmation;
 it does not override server permissions or dependency checks. If a discovered
@@ -761,12 +761,12 @@ API itself has a `force` parameter, it is exposed separately as `--api-force`
 (with an explicit value such as `true`). For example:
 
 ```bash
-oc features disable OrchardCore.Media --force
+pomi features disable OrchardCore.Media --force
 # Also disable dependent features, when that broader change is intended:
-oc features disable OrchardCore.Media --force --api-force true
+pomi features disable OrchardCore.Media --force --api-force true
 ```
 
-`oc context clear --force` removes
+`pomi context clear --force` removes
 all saved contexts and their credentials, so use it only for an intentional reset.
 
 For a complete setup walkthrough, see [Client credentials for automation](../../reference/modules/RemoteManagement/README.md#client-credentials-for-automation).
@@ -777,7 +777,7 @@ roles. Inject `OC_CLIENT_ID` and `OC_CLIENT_SECRET` through your CI secret
 facility, then run ordinary commands:
 
 ```bash
-oc --context production content items list --output json
+pomi --context production content items list --output json
 ```
 
 Do not use the public `orchardcore-cli` application for this grant.
@@ -789,21 +789,21 @@ property options; alternatively supply the entire request in a protected
 ## Upload custom styles and other assets
 
 Use the Media library for custom assets so the CLI and Orchard admin UI share
-files and permissions. After signing in, inspect `oc media constraints show`
+files and permissions. After signing in, inspect `pomi media constraints show`
 and choose a folder convention for your project. For example, with local
 `site.css` ready to upload:
 
 ```bash
-oc media constraints show --output json
-oc media folders create --name assets
-oc media folders create --path assets --name styles
-oc media files upload site-v1.css --path assets/styles --file ./site.css
-oc media files show assets/styles/site-v1.css --output json
+pomi media constraints show --output json
+pomi media folders create --name assets
+pomi media folders create --path assets --name styles
+pomi media files upload site-v1.css --path assets/styles --file ./site.css
+pomi media files show assets/styles/site-v1.css --output json
 ```
 
 Media file results include both the store path (for later CLI commands) and a
-direct, absolute URL (for opening or embedding the file). `oc media items list`
-and `oc media files list` show both columns in a terminal. Upload, copy, and move
+direct, absolute URL (for opening or embedding the file). `pomi media items list`
+and `pomi media files list` show both columns in a terminal. Upload, copy, and move
 results also include the destination URL. Configured CDN mappings are preserved;
 the URL does not bypass any media access restrictions.
 
@@ -826,25 +826,25 @@ management API.
 
 | Symptom | Next step |
 | --- | --- |
-| Command missing from help | Check the selected context and enabled features; run `oc api refresh --force` |
+| Command missing from help | Check the selected context and enabled features; run `pomi api refresh --force` |
 | `401` | Verify the context and sign in again, or check injected client credentials |
 | `403` | Check both management access and the resource-specific tenant permissions |
-| Remote Management discovery not found (`404` during `oc context add`) | Check the exact tenant URL and path prefix. Enable `OrchardCore.RemoteManagement` in **Configuration → Features**, then configure it in **Settings → Remote Management**. If unavailable, use a server version containing the feature. The failed command does not save or select a context. |
+| Remote Management discovery not found (`404` during `pomi context add`) | Check the exact tenant URL and path prefix. Enable `OrchardCore.RemoteManagement` in **Configuration → Features**, then configure it in **Settings → Remote Management**. If unavailable, use a server version containing the feature. The failed command does not save or select a context. |
 | `404` for a draft | Verify the ID and whether a draft exists; inspect the latest version |
 | Validation failure | Correct the named property using the live schema and exact casing |
-| Local storage or cache problem | Run `oc doctor` to inspect paths and storage availability |
-| Protocol mismatch | Run `oc api compatibility` and use a compatible CLI version |
+| Local storage or cache problem | Run `pomi doctor` to inspect paths and storage availability |
+| Protocol mismatch | Run `pomi api compatibility` and use a compatible CLI version |
 
 Help and shell completion use cached metadata without contacting the server.
 After feature changes, successful mutations expire discovery caches so the next
-online command can refresh them. `oc --version` prints the CLI version number.
-`oc doctor` reports the CLI version, platform, and local
+online command can refresh them. `pomi --version` prints the CLI version number.
+`pomi doctor` reports the CLI version, platform, and local
 storage and cache state without contacting the tenant. Use
-`oc doctor --output json` for structured diagnostics in scripts.
-For Bash completion, run `oc completion --shell bash > oc-completion.bash` and
+`pomi doctor --output json` for structured diagnostics in scripts.
+For Bash completion, run `pomi completion --shell bash > pomi-completion.bash` and
 source the file. Other supported shells are `zsh`, `fish`, and `pwsh`.
 
-Sign out of the current context with `oc logout`. It attempts token revocation
+Sign out of the current context with `pomi logout`. It attempts token revocation
 and removes stored human credentials on success. Disconnecting a terminal or
 closing a shell does not log you out.
 
@@ -856,14 +856,14 @@ Agent skills and plugin packaging are documented in
 
 ## Query GraphQL directly
 
-The built-in `oc graphql` commands reuse your context and login while sending
+The built-in `pomi graphql` commands reuse your context and login while sending
 requests directly to the tenant's GraphQL endpoint. Enable
 `OrchardCore.Apis.GraphQL`; no OpenAPI refresh is needed for these commands.
 
 ```bash
-oc graphql execute --query '{ __typename }'
-oc graphql schema --output json > graphql-schema.json
-oc graphql execute --file query.graphql --variables-file variables.json
+pomi graphql execute --query '{ __typename }'
+pomi graphql schema --output json > graphql-schema.json
+pomi graphql execute --file query.graphql --variables-file variables.json
 ```
 
 GraphQL execution requires its own `ExecuteGraphQL` permission, and mutations

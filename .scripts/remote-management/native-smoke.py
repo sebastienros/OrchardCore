@@ -18,10 +18,10 @@ parser.add_argument('directory', type=Path)
 parser.add_argument('rid')
 args = parser.parse_args()
 directory = args.directory.resolve()
-exe = directory / ('oc.exe' if args.rid.startswith('win-') else 'oc')
+exe = directory / ('pomi.exe' if args.rid.startswith('win-') else 'pomi')
 assert exe.is_file(), exe
 assert exe.stat().st_size < 30 * 1024 * 1024, 'Native executable exceeds 30 MiB budget'
-with tempfile.TemporaryDirectory(prefix='oc-native-smoke-') as config:
+with tempfile.TemporaryDirectory(prefix='pomi-native-smoke-') as config:
     env = os.environ.copy()
     env['OC_CONFIG_HOME'] = config
     env.pop('OC_CLIENT_ID', None)
@@ -45,7 +45,7 @@ with tempfile.TemporaryDirectory(prefix='oc-native-smoke-') as config:
                 'contexts': [{'name': 'offline', 'tenantUrl': 'https://127.0.0.1:1/'}],
             }))
         result = subprocess.run([str(exe)], env=env, capture_output=True, text=True, check=True, timeout=5)
-        assert 'Orchard Core remote management CLI' in result.stdout, result.stdout
+        assert 'Pomi: Orchard Core command-line interface' in result.stdout, result.stdout
         assert 'login' in result.stdout and 'context' in result.stdout, result.stdout
         assert not result.stderr, result.stderr
         result = subprocess.run([str(exe), '--version'], env=env, capture_output=True, text=True, check=True, timeout=5)
@@ -73,7 +73,7 @@ with tempfile.TemporaryDirectory(prefix='oc-native-smoke-') as config:
         assert bare.stdout == help_result.stdout and 'tenants' in bare.stdout, (bare, help_result)
         assert bare.stderr == help_result.stderr, (bare, help_result)
         assert 'could not be refreshed' not in bare.stderr, bare.stderr
-    suggestions = subprocess.run([str(exe), '[suggest:5]', 'oc co'], env=env, capture_output=True, text=True, check=True).stdout
+    suggestions = subprocess.run([str(exe), '[suggest:7]', 'pomi co'], env=env, capture_output=True, text=True, check=True).stdout
     assert 'context' in suggestions.splitlines(), suggestions
     for shell in ('bash', 'zsh', 'fish', 'pwsh'):
         script = subprocess.run([str(exe), 'completion', '--shell', shell], env=env, capture_output=True, text=True, check=True).stdout
@@ -87,13 +87,13 @@ with tempfile.TemporaryDirectory(prefix='oc-native-smoke-') as config:
             completion_env['PATH'] = str(directory) + os.pathsep + env['PATH']
             subprocess.run(['pwsh', '-NoProfile', '-NonInteractive', '-Command',
                 "& ([scriptblock]::Create((Get-Content -Raw $env:OC_COMPLETION_SCRIPT))); "
-                "$matches = (TabExpansion2 'oc co' 5).CompletionMatches.CompletionText; "
+                "$matches = (TabExpansion2 'pomi co' 7).CompletionMatches.CompletionText; "
                 "if ('context' -notin $matches) { throw 'Native PowerShell completion did not suggest context' }"],
                 env=completion_env, check=True)
 report = {'rid':args.rid,'binaryBytes':exe.stat().st_size,'startupMilliseconds':samples,
           'medianStartupMilliseconds':statistics.median(samples),'sha256':hashlib.sha256(exe.read_bytes()).hexdigest()}
 (directory / 'verification.json').write_text(json.dumps(report,indent=2)+'\n')
-package = directory.parent / ('oc-' + args.rid)
+package = directory.parent / ('pomi-' + args.rid)
 files = [exe, directory/'verification.json', directory/'LICENSE.txt', directory/'QRCoder.LICENSE.txt', *directory.glob('completion.*')]
 if args.rid.startswith('win-'):
     archive = package.with_suffix('.zip')

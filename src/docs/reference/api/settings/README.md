@@ -56,7 +56,7 @@ Unknown properties are rejected. In particular, `siteSalt`, `superUser`, `homeRo
 This operation has no request body or query parameters.
 
 ```bash
-oc settings show
+pomi settings show
 ```
 
 `200 OK` returns the current safe core values:
@@ -88,7 +88,7 @@ property preserves its current value; an explicit `null` is applied only to null
 properties. Unknown properties and `null` for value types are rejected during JSON binding.
 
 ```bash
-oc settings update --json '{"siteName":"Acme","pageSize":25}'
+pomi settings update --json '{"siteName":"Acme","pageSize":25}'
 ```
 
 Equivalent HTTP request:
@@ -135,7 +135,7 @@ request a tenant reload:
 `GET /api/settings/schema`
 
 ```bash
-oc settings schema
+pomi settings schema
 ```
 
 `200 OK` returns:

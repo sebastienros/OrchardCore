@@ -141,11 +141,11 @@ The SaaS recipe provides a production-ready multi-tenant starting point.
 
 It configures the public site and authentication pages with TheSaaSTheme, enables
 Remote Management, and provisions the OpenID Connect and OpenAPI settings needed
-by the Orchard Core CLI. After setup, register the tenant and sign in directly:
+by the Pomi CLI. After setup, register the tenant and sign in directly:
 
 ```bash
-oc context add <name> <tenant-url> --current
-oc login
+pomi context add <name> <tenant-url> --current
+pomi login
 ```
 
 You can then create additional tenants using any available setup recipe.
@@ -155,7 +155,7 @@ You can then create additional tenants using any available setup recipe.
 - Multi-tenancy feature
 - Responsive SaaS site and authentication theme
 - Remote Management discovery and API documentation
-- Authorization code and device login flows for the Orchard Core CLI
+- Authorization code and device login flows for the Pomi CLI
 
 ## Creating your own recipe
 

@@ -70,7 +70,7 @@ tenant = f'http://127.0.0.1:{server.server_port}/blog/'
 verification_url = tenant + 'connect/verify?user_code=1234-5678'
 threading.Thread(target=server.serve_forever, daemon=True).start()
 try:
-    with tempfile.TemporaryDirectory(prefix='oc-device-qr-') as directory:
+    with tempfile.TemporaryDirectory(prefix='pomi-device-qr-') as directory:
         root = Path(directory)
         (root / 'contexts.json').write_text(json.dumps({'currentContext': 'test', 'contexts': [{
             'name': 'test', 'tenantUrl': tenant, 'authority': tenant, 'clientId': 'orchardcore-cli',

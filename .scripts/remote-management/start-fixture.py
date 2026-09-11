@@ -11,7 +11,7 @@ import time
 import urllib.request
 
 repo = Path(__file__).resolve().parents[2]
-root = Path(tempfile.mkdtemp(prefix="oc-cli-fixture-"))
+root = Path(tempfile.mkdtemp(prefix="pomi-cli-fixture-"))
 os.chmod(root, 0o700)
 (root / "Recipes").mkdir()
 (root / "wwwroot").mkdir()

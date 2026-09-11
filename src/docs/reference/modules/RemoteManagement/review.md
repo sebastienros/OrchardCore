@@ -201,7 +201,7 @@ Verification on September 9 after this change:
 
 The consent scope list was subsequently converted to the `OpenIdConsentScopes`
 shape. A clean Web/Razor build and live browser/device checks verified the
-default binding, a dynamic Liquid override created through `oc templates
+default binding, a dynamic Liquid override created through `pomi templates
 create`, and restoration of the default after deleting that override.
 The documented Liquid example rendered all five requested scope identifiers
 on both consent pages while using the admin theme. Browser approval with the

@@ -15,10 +15,10 @@ import urllib.request
 import xml.etree.ElementTree as ET
 
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument('oc', type=Path, help='Native CLI from the published build to test')
+parser.add_argument('pomi', type=Path, help='Native CLI from the published build to test')
 parser.add_argument('--source', help='Explicit NuGet feed for preview dependencies')
 args = parser.parse_args()
-oc = str(args.oc.resolve())
+pomi = str(args.pomi.resolve())
 if args.source and Path(args.source).is_dir():
     args.source = str(Path(args.source).resolve())
 source_args = ['--source', args.source] if args.source else []
@@ -38,7 +38,7 @@ def responds(url):
         return False
 
 
-with tempfile.TemporaryDirectory(prefix='oc-install-smoke-') as scratch:
+with tempfile.TemporaryDirectory(prefix='pomi-install-smoke-') as scratch:
     root = Path(scratch)
     # Preview packages may be supplied by an inherited config without --source.
     inherited = root / 'inherited-packages'
@@ -59,15 +59,15 @@ with tempfile.TemporaryDirectory(prefix='oc-install-smoke-') as scratch:
     env['OrchardCore__OrchardCore_AutoSetup__Tenants__1__ShellName'] = 'Unexpected'
     no_sdk = env.copy()
     no_sdk['PATH'] = str(root / 'empty-path')
-    diagnostics = subprocess.run([oc, 'doctor', '--output', 'json'], env=no_sdk, capture_output=True, text=True, check=True, timeout=15)
+    diagnostics = subprocess.run([pomi, 'doctor', '--output', 'json'], env=no_sdk, capture_output=True, text=True, check=True, timeout=15)
     assert json.loads(diagnostics.stdout)['localInstallWarning'], diagnostics.stdout
     assert not diagnostics.stderr, diagnostics.stderr
-    missing = subprocess.run([oc, 'install', str(root / 'missing-sdk'), '--site-name', 'Missing SDK', '--email', 'admin@example.com', '--password-env', 'OC_INSTALL_PASSWORD'], env=no_sdk, capture_output=True, text=True, timeout=15)
+    missing = subprocess.run([pomi, 'install', str(root / 'missing-sdk'), '--site-name', 'Missing SDK', '--email', 'admin@example.com', '--password-env', 'OC_INSTALL_PASSWORD'], env=no_sdk, capture_output=True, text=True, timeout=15)
     assert missing.returncode != 0 and '.NET' in missing.stderr, missing
     assert not (root / 'missing-sdk').exists()
 
     site = root / 'CMS with spaces'
-    base = [oc, 'install', str(site), '--site-name', 'Embedded CMS', '--email', 'admin@example.com', '--recipe-name', 'SaaS', '--output', 'json']
+    base = [pomi, 'install', str(site), '--site-name', 'Embedded CMS', '--email', 'admin@example.com', '--recipe-name', 'SaaS', '--output', 'json']
     completed = subprocess.run([*base, '--password-env', 'OC_INSTALL_PASSWORD'], env=env, capture_output=True, text=True, timeout=600)
     assert completed.returncode == 0, completed.stderr
     assert 'Now listening on:' not in completed.stderr, completed.stderr
@@ -98,7 +98,7 @@ with tempfile.TemporaryDirectory(prefix='oc-install-smoke-') as scratch:
     assert refused.returncode != 0 and 'overwrite' in refused.stderr, refused
 
     # A setup failure must be reported without claiming a ready site.
-    failure = subprocess.run([oc, 'install', str(root / 'bad-recipe'), '--site-name', 'Invalid recipe', '--email', 'admin@example.com', '--recipe-name', 'RecipeThatDoesNotExist', '--clear-sources', '--password-env', 'OC_INSTALL_PASSWORD', '--output', 'json', *source_args], env=env, capture_output=True, text=True, timeout=600)
+    failure = subprocess.run([pomi, 'install', str(root / 'bad-recipe'), '--site-name', 'Invalid recipe', '--email', 'admin@example.com', '--recipe-name', 'RecipeThatDoesNotExist', '--clear-sources', '--password-env', 'OC_INSTALL_PASSWORD', '--output', 'json', *source_args], env=env, capture_output=True, text=True, timeout=600)
     assert failure.returncode != 0 and not failure.stdout.strip(), failure
     assert password not in failure.stderr
     assert 'Installation diagnostics:' in failure.stderr, failure.stderr
@@ -121,7 +121,7 @@ with tempfile.TemporaryDirectory(prefix='oc-install-smoke-') as scratch:
     output_path = root / 'run.json'
     error_path = root / 'run.log'
     with output_path.open('w') as output, error_path.open('w') as errors:
-        process = subprocess.Popen([oc, 'install', str(root / 'running-site'), '--site-name', 'Running CMS', '--email', 'admin@example.com', '--recipe-name', 'SaaS', '--request-url-prefix', 'news', '--password-stdin', '--run', '--urls', run_url + ';' + second_url, '--output', 'json', *source_args], env=env, stdin=subprocess.PIPE, stdout=output, stderr=errors, text=True, start_new_session=os.name != 'nt', creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == 'nt' else 0)
+        process = subprocess.Popen([pomi, 'install', str(root / 'running-site'), '--site-name', 'Running CMS', '--email', 'admin@example.com', '--recipe-name', 'SaaS', '--request-url-prefix', 'news', '--password-stdin', '--run', '--urls', run_url + ';' + second_url, '--output', 'json', *source_args], env=env, stdin=subprocess.PIPE, stdout=output, stderr=errors, text=True, start_new_session=os.name != 'nt', creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == 'nt' else 0)
         try:
             process.stdin.write(password + '\n')
             process.stdin.close()

@@ -102,4 +102,4 @@ Before submitting a change, verify:
 - The owning module page and API reference navigation link to the canonical page.
 - `python -m mkdocs build --strict` succeeds.
 
-When an endpoint changes incompatibly, update the reference in the same pull request and consider the compatibility impact on OpenAPI clients and `oc` command metadata.
+When an endpoint changes incompatibly, update the reference in the same pull request and consider the compatibility impact on OpenAPI clients and `pomi` command metadata.

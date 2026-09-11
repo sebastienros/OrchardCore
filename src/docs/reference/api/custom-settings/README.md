@@ -92,7 +92,7 @@ features and content definition.
 | `take` | integer | `50` | Clamped to the inclusive range `1` through `200` |
 
 ```bash
-oc custom-settings list --search blog --skip 0 --take 50
+pomi custom-settings list --search blog --skip 0 --take 50
 ```
 
 Authorization filtering occurs before counting and paging. Results are ordered by display name
@@ -127,7 +127,7 @@ empty `items` array.
 | `name` | path | string | Yes | Exact custom settings content type name |
 
 ```bash
-oc custom-settings show BlogSettings
+pomi custom-settings show BlogSettings
 ```
 
 `200 OK` returns the safe content envelope. If the site document has no stored value yet, Orchard
@@ -143,7 +143,7 @@ envelope; omitted parts and nested properties are preserved, explicit `null` val
 and arrays are replaced rather than concatenated.
 
 ```bash
-oc custom-settings update BlogSettings --json '{
+pomi custom-settings update BlogSettings --json '{
   "BlogSettingsPart": {
     "PostsPerPage": 20,
     "FeaturedTags": ["news", "events"]
@@ -202,7 +202,7 @@ Details without updating the site settings document:
 `GET /api/custom-settings/{name}/schema`
 
 ```bash
-oc custom-settings schema BlogSettings
+pomi custom-settings schema BlogSettings
 ```
 
 The response is a draft 2020-12 JSON Schema generated from the current content type definition

@@ -50,7 +50,7 @@ public class CliApplicationSchemaTests
         var message = CliApplication.CreateRequiredBodyMessage(operation, includeInputOptions: true);
 
         Assert.Equal(
-            "A JSON request body is required. Provide --body, --body-file, or --stdin. Run 'oc widgets schema --operation create' to inspect its schema.",
+            "A JSON request body is required. Provide --body, --body-file, or --stdin. Run 'pomi widgets schema --operation create' to inspect its schema.",
             message);
     }
 

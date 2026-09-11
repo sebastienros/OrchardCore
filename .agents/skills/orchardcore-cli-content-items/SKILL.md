@@ -1,9 +1,9 @@
 ---
 name: orchardcore-cli-content-items
-description: Authors and manages Orchard Core content items through `oc`. Use for schema-driven JSON creation, drafts, updates, validation, publishing, unpublishing, rendering, deletion, version history, version restoration, ownership, and organizing tenant content by type, route, alias, taxonomy, and containment.
+description: Authors and manages Orchard Core content items through `pomi`. Use for schema-driven JSON creation, drafts, updates, validation, publishing, unpublishing, rendering, deletion, version history, version restoration, ownership, and organizing tenant content by type, route, alias, taxonomy, and containment.
 ---
 
-# Orchard Core CLI Content Items
+# Pomi CLI Content Items
 
 Author against the live content-type schema. Content item JSON uses Pascal-cased
 well-known properties and type-specific part/field members.
@@ -16,18 +16,18 @@ hierarchy during updates; do not flatten section and child fields onto the page.
 ## Authoring workflow
 
 ```bash
-oc --context site content items schema Article > article.schema.json
-oc --context site content items validate --body-file article.json
-oc --context site content items create-draft --body-file article.json
+pomi --context site content items schema Article > article.schema.json
+pomi --context site content items validate --body-file article.json
+pomi --context site content items create-draft --body-file article.json
 ```
 
 Read the returned `ContentItemId`, inspect and render the draft. Publish only
 when the user requested publication:
 
 ```bash
-oc content items show <id> --version draft
-oc content items render <id> --version draft --display-type Detail
-oc content items publish <id>
+pomi content items show <id> --version draft
+pomi content items render <id> --version draft --display-type Detail
+pomi content items publish <id>
 ```
 
 Do not derive payloads from examples alone. Regenerate the schema after changing
@@ -37,7 +37,7 @@ definitions or enabled features.
 transient editor command. Publish the intended item, then use:
 
 ```bash
-oc settings set-home-content <content-item-id>
+pomi settings set-home-content <content-item-id>
 ```
 
 This command requires the Home Route feature and its dedicated permission.
@@ -62,7 +62,7 @@ This command requires the Home Route feature and its dedicated permission.
 }
 ```
 
-Use the actual part attachment names from `oc content types show Article`, not
+Use the actual part attachment names from `pomi content types show Article`, not
 only CLR type names. Use the schema descriptions to select the correct field
 value property, such as `Text`, `Html`, `Markdown`, `Paths`, or referenced IDs.
 
@@ -74,35 +74,35 @@ draft or `--version latest` to inspect the newest version. A draft read returns
 ## Lifecycle commands
 
 ```bash
-oc content items list --content-type Article --status published --skip 0 --take 50
-oc content items show <id> --version latest
-oc content items save --body-file item.json
-oc content items create-draft --body-file item.json
-oc content items update <id> --body-file item.json
-oc content items update-draft <id> --body-file item.json
-oc content items draft <id>
-oc content items publish <id>
-oc content items unpublish <id>
-oc content items validate --body-file item.json
-oc content items validate-update <id> --body-file item.json
-oc content items render <id> --version draft --display-type Detail
-oc content items delete <id> --force
+pomi content items list --content-type Article --status published --skip 0 --take 50
+pomi content items show <id> --version latest
+pomi content items save --body-file item.json
+pomi content items create-draft --body-file item.json
+pomi content items update <id> --body-file item.json
+pomi content items update-draft <id> --body-file item.json
+pomi content items draft <id>
+pomi content items publish <id>
+pomi content items unpublish <id>
+pomi content items validate --body-file item.json
+pomi content items validate-update <id> --body-file item.json
+pomi content items render <id> --version draft --display-type Detail
+pomi content items delete <id> --force
 ```
 
-Run `oc content items --help` for installation-specific filters and options.
+Run `pomi content items --help` for installation-specific filters and options.
 
 ## Specific versions
 
-Refresh metadata after a server upgrade and check `oc content versions --help`.
+Refresh metadata after a server upgrade and check `pomi content versions --help`.
 `list` takes a logical `ContentItemId`; the other commands take a returned
 `ContentItemVersionId`. Never substitute one kind of ID for the other.
 
 ```bash
-oc content versions list <content-item-id> --take 50 --output json
-oc content versions show <version-id> --output json
-oc content versions render <version-id> --display-type Detail
-oc content versions restore <version-id>
-oc content versions delete <archived-version-id> --force
+pomi content versions list <content-item-id> --take 50 --output json
+pomi content versions show <version-id> --output json
+pomi content versions render <version-id> --display-type Detail
+pomi content versions restore <version-id>
+pomi content versions delete <archived-version-id> --force
 ```
 
 Restoration creates a new unpublished draft with a new version ID, preserving
@@ -141,7 +141,7 @@ Archived content requires preview permission even if it was once public.
   payload; there is no dedicated remote list-membership command.
 - Keep embedded Flow/Bag widgets inside the parent payload.
 - Reference uploaded media by the exact media path returned by
-  `oc media files upload`.
+  `pomi media files upload`.
 - Use `ContentPickerField` IDs for explicit related-content links.
 - Model page layout as typed section widgets in `FlowPart.Widgets`.
 - Put repeated embedded components in a named Bag on their owning section
@@ -160,9 +160,9 @@ media, menu, or parent items exist first.
 ## Verify
 
 ```bash
-oc content items show <id> --version latest
-oc content items render <id> --version latest --display-type Detail
-oc content items list --content-type Article --status published
+pomi content items show <id> --version latest
+pomi content items render <id> --version latest --display-type Detail
+pomi content items list --content-type Article --status published
 ```
 
 Inspect public URLs separately; a successful API save does not prove template,

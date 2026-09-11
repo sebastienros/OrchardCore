@@ -1,9 +1,9 @@
 ---
 name: orchardcore-cli-media
-description: Manages Orchard Core Media assets through `oc`. Use for image/file folders, uploads, metadata, moves, copies, deletion, CSS/JS/static assets, safe paths, public URLs, and preparing media referenced by content items and Liquid templates.
+description: Manages Orchard Core Media assets through `pomi`. Use for image/file folders, uploads, metadata, moves, copies, deletion, CSS/JS/static assets, safe paths, public URLs, and preparing media referenced by content items and Liquid templates.
 ---
 
-# Orchard Core CLI Media
+# Pomi CLI Media
 
 Use Media for runtime assets, including images, CSS, JavaScript, and SVG. They
 share the store and permissions used by the Orchard admin Media library. Tenant
@@ -11,13 +11,13 @@ static files are deployment files and have no management API.
 
 ## Prepare the tenant
 
-Refresh discovery with `oc api refresh`, then inspect `oc media --help`. If
+Refresh discovery with `pomi api refresh`, then inspect `pomi media --help`. If
 Media is absent after a successful refresh and feature changes are authorized,
-enable `OrchardCore.Media` and run `oc api refresh --force`.
+enable `OrchardCore.Media` and run `pomi api refresh --force`.
 The identity needs `ViewOpenApiContent` for protected OpenAPI discovery,
 `AccessRemoteManagement`, `ManageMediaContent`, and permission
 to manage the destination folder (`ManageMediaFolder`, or a Secure Media folder
-permission). Inspect `oc media constraints show --output json` before upload:
+permission). Inspect `pomi media constraints show --output json` before upload:
 `allowedFileExtensions` includes restricted extensions only when the caller has
 `UploadRestrictedMedia`. By default CSS, JavaScript, and SVG require that
 additional permission. Do not bypass this policy by switching stores, renaming
@@ -29,11 +29,11 @@ Inspect constraints, create a folder, upload, then capture the returned path and
 public versioned URL:
 
 ```bash
-oc media constraints show
-oc media folders create --name images
-oc media files upload hero.png --path images --file ./hero.png
-oc media files show images/hero.png
-oc media files list --path images --output table
+pomi media constraints show
+pomi media folders create --name images
+pomi media files upload hero.png --path images --file ./hero.png
+pomi media files show images/hero.png
+pomi media files list --path images --output table
 ```
 
 Use returned `filePath` values, such as `images/hero.png`, in `MediaField.Paths`.
@@ -43,13 +43,13 @@ Use the matching `MediaTexts` entries for alternative text. Do not invent
 Other operations are discoverable per tenant:
 
 ```bash
-oc media folders list --path ""
-oc media items list
-oc media files copy --body-file copy.json
-oc media files move --body-file move.json
-oc media files move-batch --body-file move-batch.json
-oc media files delete-batch --body-file delete.json --force
-oc media files delete images/obsolete.png --force
+pomi media folders list --path ""
+pomi media items list
+pomi media files copy --body-file copy.json
+pomi media files move --body-file move.json
+pomi media files move-batch --body-file move-batch.json
+pomi media files delete-batch --body-file delete.json --force
+pomi media files delete images/obsolete.png --force
 ```
 
 Run the corresponding `schema --operation <verb>` command before sending JSON.
@@ -63,12 +63,12 @@ Inspect existing folders before creating them. The upload argument is a base
 filename; `--path` selects the destination folder.
 
 ```bash
-oc media constraints show --output json
-oc media folders create --name assets
-oc media folders create --path assets --name styles
-oc media files upload site-v1.css --path assets/styles --file ./site.css
-oc media files show assets/styles/site-v1.css --output json
-oc media files list --path assets/styles --output table
+pomi media constraints show --output json
+pomi media folders create --name assets
+pomi media folders create --path assets --name styles
+pomi media files upload site-v1.css --path assets/styles --file ./site.css
+pomi media files show assets/styles/site-v1.css --output json
+pomi media files list --path assets/styles --output table
 ```
 
 Use the returned `url` for public access; resolve relative URLs against the
@@ -88,8 +88,8 @@ updates; uploads reject existing destinations. Only delete/replace an existing
 asset when authorized, after checking references. For authorized cleanup:
 
 ```bash
-oc media files delete assets/styles/site-v1.css --force
-oc media folders delete assets/styles --force
+pomi media files delete assets/styles/site-v1.css --force
+pomi media folders delete assets/styles --force
 ```
 
 Delete a folder only when its entire contents are authorized for removal.

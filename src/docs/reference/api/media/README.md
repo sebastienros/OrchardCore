@@ -518,9 +518,9 @@ applies to files only. Use `GET /api/media/folders` to list folders.
 The corresponding CLI commands are:
 
 ```bash
-oc media items list                        # Files recursively below the media root
-oc media files list --path assets          # Files directly inside assets
-oc media folders list --path assets        # Folders directly inside assets
+pomi media items list                        # Files recursively below the media root
+pomi media files list --path assets          # Files directly inside assets
+pomi media folders list --path assets        # Folders directly inside assets
 ```
 
 Other responses: `400` for invalid paging, `401`, `403`.

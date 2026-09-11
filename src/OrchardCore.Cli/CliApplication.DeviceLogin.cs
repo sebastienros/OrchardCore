@@ -35,7 +35,7 @@ internal sealed partial class CliApplication
             if (session.ExpiresAt <= DateTimeOffset.UtcNow)
             {
                 await store.PruneExpiredAsync(cancellationToken);
-                throw new CliException("The device login session has expired. Run 'oc login device start' again.");
+                throw new CliException("The device login session has expired. Run 'pomi login device start' again.");
             }
             _ = ValidateDeviceSessionContext(session, parseResult, contextArgument);
             return await WriteDeviceSessionAsync(parseResult, session, parseResult.GetValue(showQr), cancellationToken);
@@ -109,7 +109,7 @@ internal sealed partial class CliApplication
         if (CliPaths.NormalizeTenantUrl(context.TenantUrl) != CliPaths.NormalizeTenantUrl(session.TenantUrl) || context.ClientId != session.ClientId
             || !context.Scopes.Order(StringComparer.Ordinal).SequenceEqual(session.Scopes.Order(StringComparer.Ordinal), StringComparer.Ordinal))
         {
-            throw new CliException("The context's tenant, client, or scopes changed after device authorization started. Run 'oc login device start' again.");
+            throw new CliException("The context's tenant, client, or scopes changed after device authorization started. Run 'pomi login device start' again.");
         }
         CliUtilities.EnsureIssuerMatches(GetAuthority(context).AbsoluteUri, session.Issuer);
         CliUriPolicy.RequireSameOrigin(GetAuthority(context), session.TokenEndpoint);
@@ -125,7 +125,7 @@ internal sealed partial class CliApplication
         await WriteOutputAsync(parseResult, CliUtilities.ToJsonElement(output), cancellationToken);
         if (format == OutputFormat.Human)
         {
-            await Console.Out.WriteLineAsync($"\nTo complete sign-in: oc login device wait {session.SessionId}");
+            await Console.Out.WriteLineAsync($"\nTo complete sign-in: pomi login device wait {session.SessionId}");
             if (TerminalQrCode.Render(session.VerificationUri, TerminalQrCode.GetMaxWidth(qr)) is { } image)
             {
                 await Console.Error.WriteAsync(image);

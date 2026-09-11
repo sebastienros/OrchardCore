@@ -26,9 +26,9 @@ features are changed directly.
 
 | Method | Path | CLI | Purpose |
 | --- | --- | --- | --- |
-| `GET` | `/api/themes` | `oc themes list` | List manageable themes |
-| `POST` | `/api/themes/{themeId}:enable` | `oc themes enable <themeId>` | Enable a theme and its base themes |
-| `POST` | `/api/themes/{themeId}:set-current` | `oc themes set-current <themeId>` | Select and enable a site or admin theme |
+| `GET` | `/api/themes` | `pomi themes list` | List manageable themes |
+| `POST` | `/api/themes/{themeId}:enable` | `pomi themes enable <themeId>` | Enable a theme and its base themes |
+| `POST` | `/api/themes/{themeId}:set-current` | `pomi themes set-current <themeId>` | Select and enable a site or admin theme |
 
 ## Theme representation
 
@@ -67,7 +67,7 @@ Current themes sort first, followed by site before admin themes, then name and
 ID case-insensitively. Paging is applied last.
 
 ```bash
-oc themes list --admin false --enabled true --skip 0 --take 50
+pomi themes list --admin false --enabled true --skip 0 --take 50
 ```
 
 ```json
@@ -98,7 +98,7 @@ POST /api/themes/{themeId}:enable
 ```
 
 ```bash
-oc themes enable TheAgencyTheme
+pomi themes enable TheAgencyTheme
 ```
 
 The route accepts a case-insensitive theme ID and returns the canonical theme
@@ -115,7 +115,7 @@ POST /api/themes/{themeId}:set-current
 ```
 
 ```bash
-oc themes set-current TheAgencyTheme
+pomi themes set-current TheAgencyTheme
 ```
 
 The theme manifest determines the target:

@@ -140,6 +140,7 @@ internal sealed class UnsupportedCredentialStore : ICredentialStore
 
 internal sealed class MacOsCredentialStore : ICredentialStore
 {
+    // Keep the credential service identifier stable across the executable rename.
     private const string ServiceName = "OrchardCore.oc";
     private const int ItemNotFound = -25300;
     private const string SecurityFramework = "/System/Library/Frameworks/Security.framework/Security";
@@ -458,6 +459,7 @@ internal sealed class WindowsCredentialStore : ICredentialStore
 
 internal sealed class LinuxSecretServiceCredentialStore : ICredentialStore
 {
+    // Keep the credential service identifier stable across the executable rename.
     private const string ServiceName = "OrchardCore.oc";
 
     public string DisplayName => "linux-secret-service";
@@ -471,7 +473,7 @@ internal sealed class LinuxSecretServiceCredentialStore : ICredentialStore
 
         var payload = CliUtilities.SerializeToken(token);
         _ = await RunSecretToolAsync(
-            ["store", "--label=Orchard Core CLI", "service", ServiceName, "context", contextName],
+            ["store", "--label=Pomi CLI", "service", ServiceName, "context", contextName],
             payload,
             allowNotFound: false,
             cancellationToken);

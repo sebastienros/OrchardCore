@@ -223,7 +223,7 @@ internal sealed class OAuthClient
             });
         }
 
-        throw new DeviceAuthorizationException("The device authorization code expired before sign-in completed. Run 'oc login device start' again.");
+        throw new DeviceAuthorizationException("The device authorization code expired before sign-in completed. Run 'pomi login device start' again.");
     }
 
     public async Task<StoredToken> RefreshAsync(TenantContextRecord context, OidcDiscoveryDocument discovery, StoredToken storedToken, CancellationToken cancellationToken)
@@ -234,7 +234,7 @@ internal sealed class OAuthClient
 
         if (string.IsNullOrWhiteSpace(storedToken.RefreshToken))
         {
-            throw new CliException("The stored login does not contain a refresh token. Run 'oc login' again.");
+            throw new CliException("The stored login does not contain a refresh token. Run 'pomi login' again.");
         }
 
         using var request = new HttpRequestMessage(HttpMethod.Post, discovery.TokenEndpoint)
@@ -433,7 +433,7 @@ internal sealed class OAuthClient
             if (query["error"] is not null)
             {
                 await OAuthCallbackPage.WriteAsync(writer, authorizationReceived: false);
-                throw new CliException("The authorization request was denied or could not be completed. Run 'oc login' to retry.");
+                throw new CliException("The authorization request was denied or could not be completed. Run 'pomi login' to retry.");
             }
 
             var code = query["code"] ?? throw new CliException("The browser callback did not include an authorization code.");

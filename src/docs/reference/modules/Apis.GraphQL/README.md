@@ -156,7 +156,7 @@ For more information on MaxDepth, MaxComplexity, FieldImpact & protecting agains
 
 ## Use GraphQL from the CLI
 
-`oc graphql` sends GraphQL-over-HTTP requests directly to this module's endpoint.
+`pomi graphql` sends GraphQL-over-HTTP requests directly to this module's endpoint.
 It reuses the selected tenant context and its authentication. It does not wrap
 GraphQL in a management REST endpoint, generate commands from OpenAPI, or fetch
 OpenAPI metadata before executing a document. The GraphQL commands are built
@@ -170,10 +170,10 @@ the subsequent GraphQL request itself uses the existing GraphQL permissions.
 It does not require `ViewOpenApiContent` or `AccessRemoteManagement`.
 
 ```bash
-oc graphql --help
-oc graphql execute --query '{ __typename }'
-oc graphql schema --output json > graphql-schema.json
-oc graphql schema --type SiteCulture
+pomi graphql --help
+pomi graphql execute --query '{ __typename }'
+pomi graphql schema --output json > graphql-schema.json
+pomi graphql schema --type SiteCulture
 ```
 
 `schema` uses GraphQL introspection and returns the GraphQL JSON envelope, not
@@ -185,7 +185,7 @@ validation rules. `SiteCulture` is available when Localization contributes it.
 For example, with Localization enabled:
 
 ```bash
-oc graphql execute --query '{ siteCultures { culture default } }'
+pomi graphql execute --query '{ siteCultures { culture default } }'
 ```
 
 ### Documents, variables, and operation names
@@ -201,7 +201,7 @@ Use exactly one document source:
 
 Files and stdin contain **GraphQL text**, not the JSON HTTP request wrapper.
 Named queries must be registered by a server provider; this option does not
-refer to SQL/Lucene queries managed by `oc queries`.
+refer to SQL/Lucene queries managed by `pomi queries`.
 
 Create `inspect.graphql`:
 
@@ -223,12 +223,12 @@ Create `variables.json`:
 Run it:
 
 ```bash
-oc graphql execute --file inspect.graphql \
+pomi graphql execute --file inspect.graphql \
   --variables-file variables.json --operation-name InspectType
 ```
 
 Alternatively, use `--variables '{"name":"SiteCulture"}'` for a JSON object
-inline, or pipe the document with `cat inspect.graphql | oc graphql execute
+inline, or pipe the document with `cat inspect.graphql | pomi graphql execute
 --stdin --variables-file variables.json`. Only one variables source is allowed.
 `--operation-name` chooses an operation inside a document containing several
 operations. Single-quote inline documents in shells that expand `$variables`;
@@ -237,8 +237,8 @@ files avoid shell quoting issues. Use protected files for sensitive variables.
 ### Contexts, endpoints, and authorization
 
 ```bash
-oc --context production graphql execute --file query.graphql
-oc graphql execute --file query.graphql --endpoint custom/graphql
+pomi --context production graphql execute --file query.graphql
+pomi graphql execute --file query.graphql --endpoint custom/graphql
 ```
 
 The default endpoint is `api/graphql`, relative to the exact tenant URL. A
@@ -249,7 +249,7 @@ checks and does not follow HTTP redirects with the request's credentials.
 
 Queries and introspection require `ExecuteGraphQL`. Mutations additionally
 require `ExecuteGraphQLMutations`, and fields/resolvers can impose further
-permissions. The CLI sends the token from `oc login`, refreshing it when
+permissions. The CLI sends the token from `pomi login`, refreshing it when
 needed, or obtains a client-credentials token using `OC_CLIENT_ID` and
 `OC_CLIENT_SECRET`. It does not change roles, permissions, or schema visibility.
 
@@ -278,7 +278,7 @@ The CLI does not retry GraphQL requests automatically: a mutation might have
 committed before a connection failed or another field reported an error.
 Inspect the response and read back affected data before retrying. GraphQL
 execution does not refresh or invalidate the OpenAPI cache; if a custom
-mutation changes management commands, run `oc api refresh` separately.
+mutation changes management commands, run `pomi api refresh` separately.
 
 These commands support ordinary JSON HTTP requests. They do not implement
 subscription streams, multipart uploads, or persisted-query hash negotiation.

@@ -85,7 +85,7 @@ Liquid outline:
 </section>
 ```
 
-Confirm actual property paths with `oc content items schema Carousel`; field
+Confirm actual property paths with `pomi content items schema Carousel`; field
 JSON differs by field type and enabled version.
 
 For the parent item contract, Flow stores embedded widgets under
@@ -199,7 +199,7 @@ content only through the field/shape contract that already sanitizes it.
 Pair every model with:
 
 1. its stored content definition;
-2. `oc content items schema <type>`;
+2. `pomi content items schema <type>`;
 3. one valid draft fixture;
 4. one custom Liquid template;
 5. public-route verification.

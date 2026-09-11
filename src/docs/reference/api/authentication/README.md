@@ -17,7 +17,7 @@ The remote-management setup creates or repairs:
 - local token validation for the current tenant;
 - the fixed endpoint paths documented below.
 
-The `orchardcore-cli` application has no secret, requires PKCE, uses explicit consent, and is permitted to use authorization code, device code, refresh token, logout, and revocation. Its registered loopback redirect URI is `http://127.0.0.1/callback`, and its post-logout redirect URI is `http://127.0.0.1/`. Native loopback clients may select an ephemeral port, as the Orchard Core CLI does.
+The `orchardcore-cli` application has no secret, requires PKCE, uses explicit consent, and is permitted to use authorization code, device code, refresh token, logout, and revocation. Its registered loopback redirect URI is `http://127.0.0.1/callback`, and its post-logout redirect URI is `http://127.0.0.1/`. Native loopback clients may select an ephemeral port, as the Pomi CLI does.
 
 The application is permitted to request `email`, `openid`, `profile`, `roles`, and `orchardcore.management`. The remote-management manifest advertises `openid`, `profile`, `roles`, `orchardcore.management`, and, when refresh tokens are enabled, `offline_access`.
 
@@ -101,7 +101,7 @@ No authentication, query, header, or body parameter is required.
 curl 'https://cms.example.com/tenant-a/.well-known/openid-configuration'
 ```
 
-`200 OK` returns OpenIddict server metadata. Fields relevant to the Orchard Core CLI include:
+`200 OK` returns OpenIddict server metadata. Fields relevant to the Pomi CLI include:
 
 ```json
 {
@@ -334,7 +334,7 @@ curl -X POST -H 'Content-Type: application/x-www-form-urlencoded' \
 #### Client credentials
 
 Use a separately configured confidential client. For application registration,
-role and scope selection, and `oc` examples, follow
+role and scope selection, and `pomi` examples, follow
 [Client credentials for automation](../../modules/RemoteManagement/README.md#client-credentials-for-automation).
 
 | Form parameter | Type | Required | Constraint |

@@ -262,8 +262,8 @@ With Localization and Remote Management enabled, administrators can discover
 and inspect groups supplied by enabled modules:
 
 ```bash
-oc localization strings list
-oc localization strings show my-module --culture fr
+pomi localization strings list
+pomi localization strings show my-module --culture fr
 ```
 
 Use nonblank names of at most 200 characters. Discovery merges exact duplicates

@@ -19,7 +19,7 @@ parser.add_argument('rid', choices=sorted(RIDS))
 parser.add_argument('version')
 args = parser.parse_args()
 directory = args.directory.resolve()
-executable_name = 'oc.exe' if args.rid.startswith('win-') else 'oc'
+executable_name = 'pomi.exe' if args.rid.startswith('win-') else 'pomi'
 pointer = directory / f'{PACKAGE_ID}.{args.version}.nupkg'
 implementation = directory / f'{PACKAGE_ID}.{args.rid}.{args.version}.nupkg'
 
@@ -46,6 +46,7 @@ def has_clr_header(binary):
 def inspect_package(path, package_id, package_type):
     with zipfile.ZipFile(path) as package:
         names = package.namelist()
+        assert not any(Path(name).name in {'oc', 'oc.exe', 'oc.dll', 'oc.cmd'} for name in names), 'Package contains the retired CLI executable; clean stale build outputs before packing'
         nuspec = ET.fromstring(package.read(next(name for name in names if name.endswith('.nuspec'))))
         assert nuspec.find('.//{*}id').text == package_id
         assert nuspec.find('.//{*}version').text == args.version
@@ -55,13 +56,13 @@ def inspect_package(path, package_id, package_type):
         settings = ET.fromstring(package.read(settings_path))
         assert settings.get('Version') == '2'
         command = settings.find('./Commands/Command')
-        assert command.get('Name') == 'oc'
+        assert command.get('Name') == 'pomi'
         if package_type == 'DotnetTool':
             platforms = settings.findall('./RuntimeIdentifierPackages/RuntimeIdentifierPackage')
             assert {platform.get('RuntimeIdentifier') for platform in platforms} == RIDS
             for platform in platforms:
                 assert platform.get('Id') == f"{PACKAGE_ID}.{platform.get('RuntimeIdentifier')}"
-            assert not any(name.endswith(('/oc', '/oc.exe', '.dll')) for name in names)
+            assert not any(name.endswith(('/pomi', '/pomi.exe', '.dll')) for name in names)
             return None
 
         assert command.get('Runner') == 'executable', ET.tostring(settings)
@@ -82,7 +83,7 @@ def inspect_package(path, package_id, package_type):
 
 inspect_package(pointer, PACKAGE_ID, 'DotnetTool')
 binary_hash = inspect_package(implementation, f'{PACKAGE_ID}.{args.rid}', 'DotnetToolRidPackage')
-with tempfile.TemporaryDirectory(prefix='oc-tool-smoke-') as scratch:
+with tempfile.TemporaryDirectory(prefix='pomi-tool-smoke-') as scratch:
     scratch = Path(scratch)
     env = os.environ.copy()
     env['DOTNET_CLI_HOME'] = str(scratch / 'dotnet-home')
@@ -95,8 +96,8 @@ with tempfile.TemporaryDirectory(prefix='oc-tool-smoke-') as scratch:
                     '--source', str(directory), '--source', 'https://api.nuget.org/v3/index.json',
                     '--version', args.version],
                    env=env, check=True, timeout=120)
-    # The SDK links the executable on Unix and writes an oc.cmd launcher on Windows.
-    installed = tool_path / ('oc.cmd' if os.name == 'nt' else 'oc')
+    # The SDK links the executable on Unix and writes a pomi.cmd launcher on Windows.
+    installed = tool_path / ('pomi.cmd' if os.name == 'nt' else 'pomi')
     assert installed.is_file(), list(tool_path.iterdir())
     # Run the installed command without dotnet on PATH or an available DOTNET_ROOT.
     native_env = env.copy()
@@ -108,7 +109,7 @@ with tempfile.TemporaryDirectory(prefix='oc-tool-smoke-') as scratch:
                                 capture_output=True, text=True, check=True, timeout=10)
         assert not result.stderr, result.stderr
         if not command:
-            assert 'Orchard Core remote management CLI' in result.stdout
+            assert 'Pomi: Orchard Core command-line interface' in result.stdout
         elif command[0] == '--version':
             assert result.stdout.strip().split('+')[0] == args.version, result.stdout
         else:
@@ -123,11 +124,11 @@ report = {'rid': args.rid, 'version': args.version, 'nativeBinarySha256': binary
           'localSourceInstall': True, 'executionWithoutDotnetOnPath': True, 'uninstall': True}
 (directory / 'tool-verification.json').write_text(json.dumps(report, indent=2) + '\n')
 (directory / 'INSTALL.md').write_text(
-    f'# Install oc for {args.rid}\n\n'
+    f'# Install pomi for {args.rid}\n\n'
     'With .NET SDK 10 or later, open a terminal in this extracted directory.\n'
     'Keep both .nupkg files together, then run:\n\n'
     f'```sh\ndotnet tool install --global {PACKAGE_ID} --add-source . --version {args.version}\n'
-    'oc --version\noc\n```\n\n'
+    'pomi --version\noc\n```\n\n'
     'To upgrade an existing installation, replace `install` with `update`.\n'
     'The installed executable runs natively without a separate .NET runtime.\n')
 print(json.dumps(report, indent=2))

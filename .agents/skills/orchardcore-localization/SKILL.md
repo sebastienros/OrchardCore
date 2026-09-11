@@ -128,7 +128,7 @@ The Localization module reads these at startup and calls `app.UseRequestLocaliza
 
 ## Remote management
 
-Use `oc localization` when managing an existing tenant through Remote Management.
+Use `pomi localization` when managing an existing tenant through Remote Management.
 Read live help and schemas first. Prefer `cultures add fr` or
 `cultures remove fr --force` for a single culture change: they preserve the
 other cultures, default and fallback setting. Removing the default is rejected;

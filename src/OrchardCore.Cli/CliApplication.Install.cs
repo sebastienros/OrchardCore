@@ -62,7 +62,7 @@ internal sealed partial class CliApplication
             };
             LocalSiteInstaller.Validate(options);
             var sdk = await DotnetEnvironment.FindSdkAsync(cancellationToken, options.SecretEnvironmentVariables)
-                ?? throw new CliException($"Install the .NET {DotnetEnvironment.RequiredMajor} SDK and make 'dotnet' available on PATH to use 'oc install'. Remote commands do not require it.");
+                ?? throw new CliException($"Install the .NET {DotnetEnvironment.RequiredMajor} SDK and make 'dotnet' available on PATH to use 'pomi install'. Remote commands do not require it.");
             options.Password = await ResolveSecretValueAsync(parsed, password, cancellationToken) ?? ReadSecretFromConsole("password");
             options.ConnectionString = await ResolveSecretValueAsync(parsed, connection, cancellationToken);
             LocalSiteInstaller.ValidateSecrets(options);

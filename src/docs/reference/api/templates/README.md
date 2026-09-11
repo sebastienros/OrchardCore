@@ -38,7 +38,7 @@ Returns templates ordered by name using a case-insensitive comparison. Search is
 The CLI command is:
 
 ```bash
-oc templates list [--search <text>] [--skip <count>] [--take <count>]
+pomi templates list [--search <text>] [--skip <count>] [--take <count>]
 ```
 
 ### Parameters
@@ -91,7 +91,7 @@ Returns the complete stored definition. Template identity is case-insensitive, s
 The CLI command is:
 
 ```bash
-oc templates show Content__Article
+pomi templates show Content__Article
 ```
 
 ### Parameters
@@ -134,13 +134,13 @@ Each successful new create updates the single Templates document once and has no
 The CLI command reads JSON from `--body`, `--body-file`, or `--stdin`:
 
 ```bash
-oc templates create --body-file template.json
+pomi templates create --body-file template.json
 ```
 
 Inspect the discoverable JSON request schema with:
 
 ```bash
-oc templates schema --operation create
+pomi templates schema --operation create
 ```
 
 ### Parameters
@@ -195,13 +195,13 @@ Repeating the same update is safe. Each request stores the same complete definit
 The CLI command is:
 
 ```bash
-oc templates update Content__Article --body-file template.json
+pomi templates update Content__Article --body-file template.json
 ```
 
 Inspect its schema with:
 
 ```bash
-oc templates schema --operation update
+pomi templates schema --operation update
 ```
 
 ### Parameters
@@ -244,7 +244,7 @@ Deletion is convergent. The first request for an existing template removes it in
 The CLI marks this operation destructive and requires confirmation:
 
 ```bash
-oc templates delete Content__Article --force
+pomi templates delete Content__Article --force
 ```
 
 ### Parameters

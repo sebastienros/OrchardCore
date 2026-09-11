@@ -1,9 +1,9 @@
 ---
 name: orchardcore-cli-settings
-description: Reads and updates Orchard Core Site Settings, Custom Settings, cultures, and dynamic translations through `oc`. Use for tenant-wide configuration, schema-safe partial settings updates, custom-settings content types, feature-contributed settings, and validating settings without overwriting protected or unknown values.
+description: Reads and updates Orchard Core Site Settings, Custom Settings, cultures, and dynamic translations through `pomi`. Use for tenant-wide configuration, schema-safe partial settings updates, custom-settings content types, feature-contributed settings, and validating settings without overwriting protected or unknown values.
 ---
 
-# Orchard Core CLI Settings
+# Pomi CLI Settings
 
 Site Settings are one tenant document with a safe management projection. Custom
 Settings are named content-type-backed sections embedded in that document.
@@ -11,9 +11,9 @@ Settings are named content-type-backed sections embedded in that document.
 ## Site Settings
 
 ```bash
-oc settings show
-oc settings schema
-oc settings update --body-file settings.json
+pomi settings show
+pomi settings schema
+pomi settings update --body-file settings.json
 ```
 
 Example:
@@ -34,9 +34,9 @@ Read the current representation first, change only documented writable
 properties, update, then read it back:
 
 ```bash
-oc settings show > current-settings.json
-oc settings update --body-file desired-settings.json
-oc settings show
+pomi settings show > current-settings.json
+pomi settings update --body-file desired-settings.json
+pomi settings show
 ```
 
 ## Custom Settings
@@ -44,10 +44,10 @@ oc settings show
 Discover only sections the current identity is authorized to manage:
 
 ```bash
-oc custom-settings list --skip 0 --take 200
-oc custom-settings show BlogSettings
-oc custom-settings schema BlogSettings
-oc custom-settings update BlogSettings --body-file blog-settings.json
+pomi custom-settings list --skip 0 --take 200
+pomi custom-settings show BlogSettings
+pomi custom-settings schema BlogSettings
+pomi custom-settings update BlogSettings --body-file blog-settings.json
 ```
 
 Construct the payload from the named section's schema. Unknown and unauthorized
@@ -68,19 +68,19 @@ content. Do not use them for collections of independently managed content.
 
 ## Localization
 
-Discover `oc localization --help` after enabling `OrchardCore.Localization`
+Discover `pomi localization --help` after enabling `OrchardCore.Localization`
 and refreshing metadata. `OrchardCore.DataLocalization` adds translation editing.
 
 ```bash
-oc localization settings show --output json
-oc localization cultures list --include-available true --take 200
-oc localization settings schema --operation update
-oc localization settings update --body-file cultures.json
-oc localization strings show media-gallery --culture fr --take 200
-oc localization translations list --culture fr --output json
-oc localization translations schema --operation set
-oc localization translations set --body-file translation.json
-oc localization translations delete 'Content Types' Page --culture fr --force
+pomi localization settings show --output json
+pomi localization cultures list --include-available true --take 200
+pomi localization settings schema --operation update
+pomi localization settings update --body-file cultures.json
+pomi localization strings show media-gallery --culture fr --take 200
+pomi localization translations list --culture fr --output json
+pomi localization translations schema --operation set
+pomi localization translations set --body-file translation.json
+pomi localization translations delete 'Content Types' Page --culture fr --force
 ```
 
 Culture settings **replace** the supported-culture list. Preserve existing

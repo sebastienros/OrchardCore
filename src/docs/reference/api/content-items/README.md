@@ -222,8 +222,8 @@ identify the existing item with `validate-update <content-item-id>` or provide
 `ContentItemId` in the `validate` body. A nonexistent item still returns `404`.
 
 ```bash
-oc content items validate --body '{"ContentType":"BlogPost","TitlePart":{"Title":"Hello"}}'
-oc content items validate-update <content-item-id> --body '{"TitlePart":{"Title":"Revised title"}}'
+pomi content items validate --body '{"ContentType":"BlogPost","TitlePart":{"Title":"Hello"}}'
+pomi content items validate-update <content-item-id> --body '{"TitlePart":{"Title":"Revised title"}}'
 ```
 
 These commands validate without saving. Invalid data returns a nonzero CLI exit
@@ -812,29 +812,29 @@ Also returns `401`, `403`, or `404`.
 A `ContentItemId` identifies the logical item across its history. A
 `ContentItemVersionId` identifies one stored version. Use the latter for all
 `content versions` commands except `list`. These commands are discovered from
-the tenant's OpenAPI document; run `oc api refresh --force` after updating the server.
+the tenant's OpenAPI document; run `pomi api refresh --force` after updating the server.
 
 ```bash
-oc content versions list <content-item-id> --take 20
-oc content versions show <version-id> --output json > version.json
-oc content versions render <version-id> --display-type Detail
-oc content versions restore <version-id>
+pomi content versions list <content-item-id> --take 20
+pomi content versions show <version-id> --output json > version.json
+pomi content versions render <version-id> --display-type Detail
+pomi content versions restore <version-id>
 ```
 
 Restoration creates a new draft with a new version ID. Inspect it before publishing
-with `oc content items publish <content-item-id>`. It does not change the existing
+with `pomi content items publish <content-item-id>`. It does not change the existing
 published version. If a draft already exists, inspect that draft first; explicitly
 use `--replace-draft true` to archive it and create the restored draft.
 
 ```bash
-oc content items show <content-item-id> --version draft
-oc content versions restore <version-id> --replace-draft true
-oc content versions delete <archived-version-id> --force
+pomi content items show <content-item-id> --version draft
+pomi content versions restore <version-id> --replace-draft true
+pomi content versions delete <archived-version-id> --force
 ```
 
 Deletion is permanent and only accepts archived versions (`Latest=false` and
 `Published=false`). It does not delete the logical item, media, related content,
-or audit events. Use `oc content items delete` for the item's normal removal
+or audit events. Use `pomi content items delete` for the item's normal removal
 lifecycle. Published versions and current drafts cannot be purged by version ID.
 
 ### Version list

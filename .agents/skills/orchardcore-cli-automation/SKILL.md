@@ -1,9 +1,9 @@
 ---
 name: orchardcore-cli-automation
-description: Automates Orchard Core feature, recipe, query, workflow, user, and role management through `oc`. Use for enabling module capabilities, executing recipes, defining/executing SQL or other queries, managing workflow types and instances, and provisioning tenant-local security principals and permissions.
+description: Automates Orchard Core feature, recipe, query, workflow, user, and role management through `pomi`. Use for enabling module capabilities, executing recipes, defining/executing SQL or other queries, managing workflow types and instances, and provisioning tenant-local security principals and permissions.
 ---
 
-# Orchard Core CLI Automation
+# Pomi CLI Automation
 
 Use this skill after selecting the exact tenant context. Refresh OpenAPI after
 feature changes because commands and schemas are dynamic.
@@ -11,27 +11,27 @@ feature changes because commands and schemas are dynamic.
 ## Features
 
 ```bash
-oc features list --search Media --skip 0 --take 200
-oc features show OrchardCore.Media
-oc features enable OrchardCore.Media
-oc features disable OrchardCore.Media --force
-oc api refresh --force
+pomi features list --search Media --skip 0 --take 200
+pomi features show OrchardCore.Media
+pomi features enable OrchardCore.Media
+pomi features disable OrchardCore.Media --force
+pomi api refresh --force
 ```
 
 `--force` skips the CLI confirmation only. The feature API's separate
 `--api-force true` option includes missing dependencies (enable) or enabled
 dependents (disable); use it only when those additional changes are authorized.
-For example, `oc features disable OrchardCore.Media --force` keeps dependency
+For example, `pomi features disable OrchardCore.Media --force` keeps dependency
 checks enabled. Never add `--api-force true` merely to avoid a prompt.
 Re-read the feature state after mutation.
 
 ## Recipes
 
 ```bash
-oc recipes list --search setup --take 200
-oc recipes show <recipe-id>
-oc recipes schema --operation execute
-oc recipes execute <recipe-id> --body-file parameters.json --force
+pomi recipes list --search setup --take 200
+pomi recipes show <recipe-id>
+pomi recipes schema --operation execute
+pomi recipes execute <recipe-id> --body-file parameters.json --force
 ```
 
 Use the opaque case-sensitive ID returned by list/show. Recipe execution starts
@@ -41,14 +41,14 @@ repeat it after an ambiguous failure.
 ## Queries
 
 ```bash
-oc queries sources list --take 200
-oc queries schema --operation create
-oc queries validate --body-file query.json
-oc queries create --body-file query.json
-oc queries show RecentNews
-oc queries update RecentNews --body-file query.json
-oc queries execute RecentNews --body-file parameters.json
-oc queries delete RecentNews --force
+pomi queries sources list --take 200
+pomi queries schema --operation create
+pomi queries validate --body-file query.json
+pomi queries create --body-file query.json
+pomi queries show RecentNews
+pomi queries update RecentNews --body-file query.json
+pomi queries execute RecentNews --body-file parameters.json
+pomi queries delete RecentNews --force
 ```
 
 Read the selected source's schema before creating a query. Keep paging,
@@ -61,17 +61,17 @@ explicitly: omitting this non-nullable boolean changes it to `false`.
 ## Workflows
 
 ```bash
-oc workflow activity-types list --take 200
-oc workflow activity-types show <activity-name>
-oc workflow types schema --operation create
-oc workflow types validate --body-file workflow.json
-oc workflow types create --body-file workflow.json
-oc workflow types show <workflow-type-id>
-oc workflow types enable <workflow-type-id>
-oc workflow types execute <workflow-type-id> --body-file input.json
-oc workflow instances list --workflow-type-id <workflow-type-id>
-oc workflow instances show <workflow-id>
-oc workflow instances cancel <workflow-id> --force
+pomi workflow activity-types list --take 200
+pomi workflow activity-types show <activity-name>
+pomi workflow types schema --operation create
+pomi workflow types validate --body-file workflow.json
+pomi workflow types create --body-file workflow.json
+pomi workflow types show <workflow-type-id>
+pomi workflow types enable <workflow-type-id>
+pomi workflow types execute <workflow-type-id> --body-file input.json
+pomi workflow instances list --workflow-type-id <workflow-type-id>
+pomi workflow instances show <workflow-id>
+pomi workflow instances cancel <workflow-id> --force
 ```
 
 Use singular `workflow` in command groups. Discover activity schemas from the
@@ -84,20 +84,20 @@ not copy content-item casing into workflow payloads.
 ## Users and roles
 
 ```bash
-oc users schema --operation create
-oc users create --body-file user.json
-oc users list --search editor --role Editor --take 200
-oc users show <user-id>
-oc users update <user-id> --body-file user.json
-oc users disable <user-id> --force
-oc users delete <user-id> --force
+pomi users schema --operation create
+pomi users create --body-file user.json
+pomi users list --search editor --role Editor --take 200
+pomi users show <user-id>
+pomi users update <user-id> --body-file user.json
+pomi users disable <user-id> --force
+pomi users delete <user-id> --force
 
-oc roles schema --operation create
-oc roles create --body-file role.json
-oc roles list --search Content --take 200
-oc roles show <role-id>
-oc roles update <role-id> --body-file role.json
-oc roles delete <role-id> --force
+pomi roles schema --operation create
+pomi roles create --body-file role.json
+pomi roles list --search Content --take 200
+pomi roles show <role-id>
+pomi roles update <role-id> --body-file role.json
+pomi roles delete <role-id> --force
 ```
 
 Apply least privilege. Every API still requires `AccessRemoteManagement`; grant

@@ -10,10 +10,10 @@ import urllib.parse
 state_path = Path(sys.argv[1])
 state = json.loads(state_path.read_text())
 assert urllib.parse.urlparse(state['url']).hostname in ('127.0.0.1', 'localhost', '::1')
-wrapper = Path(__file__).with_name('oc-fixture.py')
+wrapper = Path(__file__).with_name('pomi-fixture.py')
 
 
-def oc(*args, body=None, error_path=None, output='json'):
+def pomi(*args, body=None, error_path=None, output='json'):
     command = [sys.executable, str(wrapper), str(state_path), *args, '--output', output]
     if body is not None:
         command += ['--stdin']
@@ -32,26 +32,26 @@ def oc(*args, body=None, error_path=None, output='json'):
     return json.loads(result.stdout) if result.stdout.strip() else None
 
 
-oc('context', 'add', 'content-validation-smoke', state['url'], '--current')
-oc('api', 'refresh', '--force')
+pomi('context', 'add', 'content-validation-smoke', state['url'], '--current')
+pomi('api', 'refresh', '--force')
 name = 'ValidationSmoke' + secrets.token_hex(4)
-oc('content', 'types', 'create', body={
+pomi('content', 'types', 'create', body={
     'name': name, 'displayName': name,
     'settings': {'ContentTypeSettings': {'draftable': True, 'versionable': True, 'creatable': True}},
     'parts': [{'name': 'TitlePart', 'partName': 'TitlePart', 'settings': {}}],
 })
-item = oc('content', 'items', 'save', body={'ContentType': name, 'TitlePart': {'Title': 'Original'}})
+item = pomi('content', 'items', 'save', body={'ContentType': name, 'TitlePart': {'Title': 'Original'}})
 item_id = item['ContentItemId']
 bad = {'TitlePart': {'Title': {'a': 'b'}}}
 for output in ('human', 'json'):
-    oc('content', 'items', 'validate-update', item_id, body=bad, error_path='TitlePart.Title', output=output)
-oc('content', 'items', 'update-draft', item_id, body=bad, error_path='TitlePart.Title')
-oc('content', 'items', 'update', item_id, body=bad, error_path='TitlePart.Title')
-oc('content', 'items', 'validate', body=bad, error_path='ContentType')
-oc('content', 'items', 'create-draft', body={**bad, 'ContentType': name}, error_path='TitlePart.Title')
-assert oc('content', 'items', 'validate-update', item_id, body={'TitlePart': {'Title': 'Valid revision'}})['isValid']
-assert oc('content', 'versions', 'list', item_id)['totalCount'] == 1
-assert oc('content', 'items', 'show', item_id) == item
-oc('content', 'items', 'delete', item_id, '--force')
-oc('content', 'types', 'delete', name, '--force')
+    pomi('content', 'items', 'validate-update', item_id, body=bad, error_path='TitlePart.Title', output=output)
+pomi('content', 'items', 'update-draft', item_id, body=bad, error_path='TitlePart.Title')
+pomi('content', 'items', 'update', item_id, body=bad, error_path='TitlePart.Title')
+pomi('content', 'items', 'validate', body=bad, error_path='ContentType')
+pomi('content', 'items', 'create-draft', body={**bad, 'ContentType': name}, error_path='TitlePart.Title')
+assert pomi('content', 'items', 'validate-update', item_id, body={'TitlePart': {'Title': 'Valid revision'}})['isValid']
+assert pomi('content', 'versions', 'list', item_id)['totalCount'] == 1
+assert pomi('content', 'items', 'show', item_id) == item
+pomi('content', 'items', 'delete', item_id, '--force')
+pomi('content', 'types', 'delete', name, '--force')
 print('Content validation CLI smoke passed: field-specific HTTP 400, human/JSON errors, nonzero exit, missing type, unchanged published item and history, valid partial update.')

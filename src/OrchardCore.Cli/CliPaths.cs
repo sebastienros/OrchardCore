@@ -120,6 +120,7 @@ internal sealed class CliPaths
         }
     }
 
+    // Retain the original storage location so Pomi reuses existing contexts and caches.
     private static string GetDefaultRootDirectory()
     {
         string baseDirectory;

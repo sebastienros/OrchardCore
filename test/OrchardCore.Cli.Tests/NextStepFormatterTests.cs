@@ -25,7 +25,7 @@ public class NextStepFormatterTests
             {
                 Json = data.RootElement, CommandPath = path, ContextName = "parent", CurrentContextName = currentContext,
             });
-            Assert.Contains(expectedQualifier ? $"oc --context=parent {command}" : $"oc {command}", text);
+            Assert.Contains(expectedQualifier ? $"pomi --context=parent {command}" : $"pomi {command}", text);
             if (!expectedQualifier)
             {
                 Assert.DoesNotContain("--context", text);
@@ -37,7 +37,7 @@ public class NextStepFormatterTests
     public void CreatedTenant_SuggestsSetupInParentContextWithoutInlinePassword()
     {
         var text = Format(["tenants", "create"], """{"name":"Demo","state":"Uninitialized"}""");
-        Assert.Contains("oc --context=parent tenants setup Demo", text);
+        Assert.Contains("pomi --context=parent tenants setup Demo", text);
         Assert.Contains("--site-name Demo --user-name admin --email '<admin-email>'", text);
         Assert.Contains("--recipe-name '<recipe-name>' --database-provider Sqlite", text);
         Assert.DoesNotContain("--password", text);
@@ -59,7 +59,7 @@ public class NextStepFormatterTests
     [InlineData("start")]
     public void RunningTenant_SuggestsRemoteManagementInParentContext(string verb)
     {
-        Assert.Contains("oc --context=parent tenants enable-remote-management Demo",
+        Assert.Contains("pomi --context=parent tenants enable-remote-management Demo",
             Format(["tenants", verb], """{"name":"Demo","state":"Running"}"""));
     }
 
@@ -72,7 +72,7 @@ public class NextStepFormatterTests
             Json = data.RootElement, CommandPath = ["tenants", "enable-remote-management"], ContextName = "parent",
             KnownContexts = [new TenantContextRecord { Name = "demo", TenantUrl = "https://another.example.com/" }],
         });
-        Assert.Contains("oc context add Demo-2 https://cms.example.com/nested/demo/ --current", text);
+        Assert.Contains("pomi context add Demo-2 https://cms.example.com/nested/demo/ --current", text);
     }
 
     [Fact]
@@ -84,7 +84,7 @@ public class NextStepFormatterTests
             Json = data.RootElement, CommandPath = ["tenants", "enable-remote-management"],
             KnownContexts = [new TenantContextRecord { Name = "existing", TenantUrl = "https://cms.example.com/demo/" }],
         });
-        Assert.Contains("oc context add existing https://cms.example.com/demo --current", text);
+        Assert.Contains("pomi context add existing https://cms.example.com/demo --current", text);
     }
 
     [Theory]
@@ -94,15 +94,15 @@ public class NextStepFormatterTests
     public void EnabledTenant_UnknownOrUnsuitableUrlUsesPlaceholder(string url)
     {
         var text = Format(["tenants", "enable-remote-management"], $$"""{"name":"Demo","state":"Running","url":{{url}}}""");
-        Assert.Contains("oc context add Demo '<tenant-url>' --current", text);
+        Assert.Contains("pomi context add Demo '<tenant-url>' --current", text);
         Assert.DoesNotContain("secret", text);
     }
 
     [Fact]
     public void ContextAdded_LoginTargetsNewContextRatherThanParent()
     {
-        Assert.Contains("oc --context=Demo login", Format(["context", "add"], """{"name":"Demo"}"""));
-        Assert.Contains("oc --context=Demo --help", Format(["login"], """{"context":"Demo"}"""));
+        Assert.Contains("pomi --context=Demo login", Format(["context", "add"], """{"name":"Demo"}"""));
+        Assert.Contains("pomi --context=Demo --help", Format(["login"], """{"context":"Demo"}"""));
     }
 
     [Theory]

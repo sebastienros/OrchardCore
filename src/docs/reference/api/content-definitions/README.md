@@ -151,8 +151,8 @@ object.
 Discover contracts contributed by enabled modules:
 
 ```bash
-oc content settings list --take 200
-oc content settings show AutoroutePartSettings
+pomi content settings list --take 200
+pomi content settings show AutoroutePartSettings
 ```
 
 Each result contains `name`, `scope` (`ContentType`, `ContentTypePart`,

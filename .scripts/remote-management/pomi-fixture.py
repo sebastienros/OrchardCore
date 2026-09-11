@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run oc against credentials from start-fixture.py without displaying them."""
+"""Run pomi against credentials from start-fixture.py without displaying them."""
 import json
 import os
 from pathlib import Path
@@ -16,6 +16,6 @@ if os.environ.get('OC_FIXTURE_HUMAN') == '1':
     env.pop('OC_CLIENT_SECRET', None)
 repo = Path(__file__).resolve().parents[2]
 binary = os.environ.get('OC_FIXTURE_BINARY')
-command = [binary] if binary else ['dotnet', str(repo / 'src/OrchardCore.Cli/bin/Debug/net10.0/oc.dll')]
+command = [binary] if binary else ['dotnet', str(repo / 'src/OrchardCore.Cli/bin/Debug/net10.0/pomi.dll')]
 result = subprocess.run(command + sys.argv[2:], env=env)
 raise SystemExit(result.returncode)

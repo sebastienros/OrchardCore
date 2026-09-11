@@ -48,7 +48,7 @@ internal sealed class DeviceLoginSessionStore
             if (session is null || session.SessionId != sessionId || string.IsNullOrEmpty(session.DeviceCode)
                 || session.IntervalSeconds <= 0)
             {
-                throw new CliException("Invalid device login session. Run 'oc login device start' again.");
+                throw new CliException("Invalid device login session. Run 'pomi login device start' again.");
             }
             return session;
         }
@@ -112,7 +112,7 @@ internal sealed class DeviceLoginSessionStore
     {
         if (!Guid.TryParseExact(sessionId, "N", out var id) || id.ToString("n") != sessionId)
         {
-            throw new CliException("Invalid device login session ID. Use the sessionId returned by 'oc login device start', not the user code.");
+            throw new CliException("Invalid device login session ID. Use the sessionId returned by 'pomi login device start', not the user code.");
         }
         return Path.Combine(_directory, sessionId + ".json");
     }
@@ -156,5 +156,5 @@ internal sealed class DeviceLoginSessionStore
         }
     }
 
-    private static CliException MissingSession() => new("Device login session not found or already completed. Run 'oc login device start' to create a new one.");
+    private static CliException MissingSession() => new("Device login session not found or already completed. Run 'pomi login device start' to create a new one.");
 }

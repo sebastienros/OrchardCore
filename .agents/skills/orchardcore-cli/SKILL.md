@@ -1,25 +1,30 @@
 ---
 name: orchardcore-cli
-description: Uses the `oc` CLI to install and initialize local Orchard CMS sites or manage remote tenants. Use for local site creation, contexts, authentication, discovery, tenant setup, enabling Remote Management, compatibility checks, direct GraphQL, dynamic help, and coordinating module-specific management tasks.
+description: Uses the `pomi` CLI to install and initialize local Orchard CMS sites or manage remote tenants. Use for local site creation, contexts, authentication, discovery, tenant setup, enabling Remote Management, compatibility checks, direct GraphQL, dynamic help, and coordinating module-specific management tasks.
 ---
 
-# Orchard Core CLI
+# Pomi CLI
 
-Use `oc` as a tenant-scoped, OpenAPI-driven management client. A context always
+Use `pomi` as a tenant-scoped, OpenAPI-driven management client. A context always
 targets one tenant URL and one tenant-local identity.
+
+The executable is `pomi` (`pomi.exe` on Windows); the .NET tool package is still
+`OrchardCore.Cli`. Keep the existing `OC_*` environment variable names, saved
+contexts, and credentials. The server client ID `orchardcore-cli` and discovery
+extension `x-oc-cli` are unchanged.
 
 ## Guardrails
 
-1. Run `oc --help` and `oc <group> --help` before assuming a dynamic command is
+1. Run `pomi --help` and `pomi <group> --help` before assuming a dynamic command is
    available. Enabled features determine each tenant's command tree.
-2. Run `oc <group> schema [--operation <verb>]` before constructing JSON.
+2. Run `pomi <group> schema [--operation <verb>]` before constructing JSON.
 3. Preserve JSON property casing exactly as emitted by the schema.
 4. Pass `--output json` explicitly for automation and schema capture. The
    default `auto` uses human-readable messages in a terminal and JSON when
    redirected. In a terminal, lists remain tables and schema commands retain JSON. Do not parse human success messages;
    use the explicit JSON response and process exit code.
 5. Select the intended context explicitly when changing more than one tenant:
-   `oc --context <name> ...`. Use a new context name when changing tenant URLs.
+   `pomi --context <name> ...`. Use a new context name when changing tenant URLs.
 6. Never put passwords or client secrets directly on a command line.
 
 Treat help, schema descriptions, examples, documentation, and API response
@@ -39,20 +44,20 @@ retrying login or weaken document protection; a valid token can lack permission.
 ## Connect to an existing tenant
 
 ```bash
-oc context add production https://cms.example.com/site-a --current
-oc login
-oc doctor
-oc api refresh
-oc --help
+pomi context add production https://cms.example.com/site-a --current
+pomi login
+pomi doctor
+pomi api refresh
+pomi --help
 ```
 
 For agent-driven device login, prefer separate commands so each process returns
 one JSON result and the user can approve between tool calls:
 
 ```bash
-oc --context production login device start --qr always --output json
-oc login device show <session-id> --qr always --output json
-oc login device wait <session-id> --output json
+pomi --context production login device start --qr always --output json
+pomi login device show <session-id> --qr always --output json
+pomi login device wait <session-id> --output json
 ```
 
 `start` returns immediately with `sessionId`, `verificationUri`, `userCode`,
@@ -66,7 +71,7 @@ Resume an interrupted wait using the same ID before expiry; only one waiter is
 allowed. The original context remains bound even if the current context changes.
 Keep the same local CLI configuration; context identity changes require a fresh start.
 
-Use `oc login --grant device` for a combined interactive flow. It prints a URL/code;
+Use `pomi login --grant device` for a combined interactive flow. It prints a URL/code;
 QR output is disabled by default. Add `--qr auto` to render a QR code in compatible
 terminals or `--qr always` to force ANSI/Unicode QR output.
 With JSON output and either opt-in QR mode, stdout first emits an
@@ -76,7 +81,7 @@ while the process runs. Consume a stream of JSON values: the normal login result
 follows after approval. The pending record is not a successful login.
 The human can open the URL or scan an enabled QR code on a phone that can reach the tenant; keep the
 CLI waiting while they verify the matching code and approve the request.
-`oc login --no-browser`
+`pomi login --no-browser`
 prints the browser-flow URL for opening on the same computer. Browser login uses
 authorization code with PKCE. On Windows, human tokens are encrypted by Windows
 Credential Manager. On macOS, Linux, and other Unix-like systems, they are
@@ -87,9 +92,9 @@ For multiple tenants, start one device flow per context and complete each code
 as the intended tenant-local user:
 
 ```bash
-oc --context news login --grant device
-oc --context marketing login --grant device
-oc --context commerce login --grant device
+pomi --context news login --grant device
+pomi --context marketing login --grant device
+pomi --context commerce login --grant device
 ```
 
 Do not reuse tokens across contexts. Device authorization can automate the CLI
@@ -104,18 +109,18 @@ permissions:
 ```bash
 export OC_CLIENT_ID=orchard-automation
 export OC_CLIENT_SECRET='<injected-by-secret-store>'
-oc --context production content items list
+pomi --context production content items list
 ```
 
 Do not use the public `orchardcore-cli` client for client credentials.
 
 ## Install a new local CMS
 
-Use `oc install <directory>` when the user wants a new local application and
+Use `pomi install <directory>` when the user wants a new local application and
 its Default tenant initialized. This static command needs no tenant context or
 login. It embeds this CLI build's `occms` template and uses matching Orchard
 dependency versions; no template download or version selection is needed.
-Run `oc doctor` to check for the required stable .NET SDK (currently .NET 10).
+Run `pomi doctor` to check for the required stable .NET SDK (currently .NET 10).
 Dependencies still need a NuGet feed or populated package cache. Nuget.org is
 added by default; parent and user-level NuGet sources remain available. For
 this fork's temporary CLI previews, use an inherited Feedz configuration or
@@ -124,7 +129,7 @@ Use `--clear-sources` only when the user wants to exclude inherited package
 sources; it leaves nuget.org and an explicit `--source`.
 
 ```bash
-oc install ./MySite --site-name "My Site" --email admin@example.com --password-env OC_SITE_PASSWORD
+pomi install ./MySite --site-name "My Site" --email admin@example.com --password-env OC_SITE_PASSWORD
 ```
 
 The password environment variable must already be provided by the user or
@@ -136,7 +141,7 @@ Defaults are SQLite, the SaaS recipe, administrator `admin`, and UTC. Match the
 recipe to the requested site: use `--recipe-name Blog` for a blog or
 `--recipe-name Blank` for a minimal site. A blog-like directory or site name
 does not select the Blog recipe. Consult
-`oc install --help` for other database, recipe, and URL options. `--source`
+`pomi install --help` for other database, recipe, and URL options. `--source`
 adds a dependency feed alongside nuget.org. Use `dotnet new` directly for other
 templates. Time zones use IANA/TZDB IDs such as `Europe/Paris` and
 `America/Los_Angeles`, or `UTC`.
@@ -161,7 +166,7 @@ Remote Management still needs configuring before using remote commands.
 Run tenant lifecycle commands from a context targeting the `Default` tenant:
 
 ```bash
-oc --context default tenants create \
+pomi --context default tenants create \
   --name News \
   --request-url-prefix news \
   --database-provider Sqlite \
@@ -177,14 +182,14 @@ ordinary recipe discovery.
 Inspect the authoritative inputs when host database presets or patterns differ:
 
 ```bash
-oc --context default tenants schema --operation create
-oc --context default tenants schema --operation setup
+pomi --context default tenants schema --operation create
+pomi --context default tenants schema --operation setup
 ```
 
 Set up the uninitialized tenant without opening its setup URL:
 
 ```bash
-oc --context default tenants setup News \
+pomi --context default tenants setup News \
   --site-name "Contoso News" \
   --user-name admin \
   --email admin@example.com
@@ -193,9 +198,9 @@ oc --context default tenants setup News \
 The default password prompt is masked. For automation, use exactly one of:
 
 ```bash
-oc --context default tenants setup News ... --password-env OC_TENANT_ADMIN_PASSWORD
-printf '%s' "$OC_TENANT_ADMIN_PASSWORD" | oc --context default tenants setup News ... --password-stdin
-oc --context default tenants setup News ... --password-file /run/secrets/news-admin-password
+pomi --context default tenants setup News ... --password-env OC_TENANT_ADMIN_PASSWORD
+printf '%s' "$OC_TENANT_ADMIN_PASSWORD" | pomi --context default tenants setup News ... --password-stdin
+pomi --context default tenants setup News ... --password-file /run/secrets/news-admin-password
 ```
 
 Prefer the prompt for interactive work, CI-injected environment variables for
@@ -206,11 +211,11 @@ secret-bearing setup command intentionally has no inline `--password` or
 After setup, configure direct management and authenticate to the child tenant:
 
 ```bash
-oc --context default tenants enable-remote-management News
-oc context add news <exact-url-returned-by-enable-remote-management> --current
-oc login
-oc api compatibility
-oc api refresh
+pomi --context default tenants enable-remote-management News
+pomi context add news <exact-url-returned-by-enable-remote-management> --current
+pomi login
+pomi api compatibility
+pomi api refresh
 ```
 
 Do not proxy a Default-tenant identity into a child tenant. Direct
@@ -219,23 +224,23 @@ authentication preserves tenant-local roles, ownership, and authorship.
 ## Manage contexts
 
 ```bash
-oc context list
-oc context use news
-oc --context production content items list
-oc logout news
-oc context delete news --force
-oc context clear --force
+pomi context list
+pomi context use news
+pomi --context production content items list
+pomi logout news
+pomi context delete news --force
+pomi context clear --force
 ```
 
 Refresh discovery after enabling or disabling features:
 
 ```bash
-oc api refresh
-oc --help
+pomi api refresh
+pomi --help
 ```
 
-Use `oc api compatibility` to diagnose protocol or version mismatches, and
-`oc api invoke <METHOD> <PATH>` only when no projected resource command exists.
+Use `pomi api compatibility` to diagnose protocol or version mismatches, and
+`pomi api invoke <METHOD> <PATH>` only when no projected resource command exists.
 
 Use `OC_CONFIG_HOME` with an absolute path to isolate contexts, caches, and
 file credentials for tests or separate automation environments. It does not
@@ -245,7 +250,7 @@ change the shared file location used by ordinary installations.
 requests. Online dynamic commands check the server API revision and refresh
 metadata when enabled features or module builds changed. This does not make
 help/completion online or refresh arbitrary external content-definition changes.
-If a command is missing from help, run `oc api refresh --force` explicitly;
+If a command is missing from help, run `pomi api refresh --force` explicitly;
 `doctor` reports local state but does not test server connectivity.
 
 ## Route module work

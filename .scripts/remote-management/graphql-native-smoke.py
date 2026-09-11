@@ -37,7 +37,7 @@ class Handler(BaseHTTPRequestHandler):
 server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
 threading.Thread(target=server.serve_forever, daemon=True).start()
 try:
-    with tempfile.TemporaryDirectory(prefix='oc-graphql-') as directory:
+    with tempfile.TemporaryDirectory(prefix='pomi-graphql-') as directory:
         root = Path(directory)
         tenant = f'http://127.0.0.1:{server.server_port}/blog/'
         (root / 'contexts.json').write_text(json.dumps({'currentContext': 'test', 'contexts': [{'name': 'test', 'tenantUrl': tenant}]}))

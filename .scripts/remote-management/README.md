@@ -70,22 +70,22 @@ without an explicit refresh. Run it with the current CLI build.
 
 `graphql-smoke.py` verifies direct queries, full and single-type introspection,
 variables/stdin, errors, and permissions against Orchard without refreshing
-OpenAPI. `graphql-native-smoke.py <native-oc-path>` additionally tests partial
+OpenAPI. `graphql-native-smoke.py <native-pomi-path>` additionally tests partial
 results on HTTP 200/400/401, JSON and human output, redirects, and input handling
 against an isolated loopback server; it runs in every native CI build.
 
 The wrapper supplies credentials only through the child process environment:
 
 ```bash
-python3 .scripts/remote-management/oc-fixture.py <fixture.json> --help
+python3 .scripts/remote-management/pomi-fixture.py <fixture.json> --help
 ```
 
-Set `OC_FIXTURE_BINARY` to the absolute native `oc` path to test that executable.
+Set `OC_FIXTURE_BINARY` to the absolute native `pomi` path to test that executable.
 Set `OC_FIXTURE_CONFIG_HOME` to isolate another evaluator's context/cache, or
 `OC_FIXTURE_HUMAN=1` to suppress the wrapper's client credentials.
 
 To verify human authentication, add a context using the wrapper, then run
-`OC_FIXTURE_HUMAN=1 .../oc-fixture.py <fixture.json> login --grant device`
+`OC_FIXTURE_HUMAN=1 .../pomi-fixture.py <fixture.json> login --grant device`
 (with `python3` before the script). Approve the code on the fixture's login
 page. The fixture's generated administrator password is in its protected
 state file; never copy it into reports, command arguments, or screenshots.
@@ -111,8 +111,8 @@ is retained for diagnosis; remove that one printed directory when finished.
 dotnet test --project test/OrchardCore.Cli.Tests
 dotnet test --project test/OrchardCore.Tests -- --filter-class '*Management*' '*ContentApi*' '*Schema*' '*RemoteManagement*'
 python3 -m mkdocs build --strict
-dotnet publish src/OrchardCore.Cli -c Release -r osx-arm64 -o /tmp/oc-native
-python3 .scripts/remote-management/native-smoke.py /tmp/oc-native osx-arm64
+dotnet publish src/OrchardCore.Cli -c Release -r osx-arm64 -o /tmp/pomi-native
+python3 .scripts/remote-management/native-smoke.py /tmp/pomi-native osx-arm64
 ```
 
 Install documentation dependencies from `src/docs/requirements.txt` first.
@@ -129,7 +129,7 @@ a build, including documentation-only commits. PR creation and updates in the
 fork also trigger builds; a newer event cancels an unfinished run for the same
 source branch. Each successful platform job uploads an artifact retained for
 30 days and adds a direct download link and built commit SHA to its summary.
-It also uploads `oc-tool-<rid>` with the installer and native implementation
+It also uploads `pomi-tool-<rid>` with the installer and native implementation
 NuGet packages, an exact installation command, and a verification record.
 Both standalone and tool binaries use the run's `1.0.0-ci.<run>.<attempt>`
 version. The workflow does not push packages to a NuGet feed.
@@ -171,13 +171,13 @@ The canonical skills live under `.agents/skills/orchardcore-cli*`.
 Build a portable plugin directory and ZIP into a **new** output directory:
 
 ```bash
-python3 .scripts/remote-management/build-plugin.py /tmp/oc-plugin
+python3 .scripts/remote-management/build-plugin.py /tmp/pomi-plugin
 ```
 
 The result contains `.codex-plugin/plugin.json`, the skills and their
 references, a README, and the repository license. There is only one source
 copy of the skills; rebuild the archive after editing them. The plugin needs
-a separately installed `oc` executable and an authorized context. It contains
+a separately installed `pomi` executable and an authorized context. It contains
 no credentials, MCP server, hooks, or background processes. Packaging does not
 install it into the current agent or change a personal marketplace.
 
@@ -196,7 +196,7 @@ in `src/docs/reference/modules/RemoteManagement/review.md`.
 With the disposable fixture running, verify the Media upload policy:
 
 ```bash
-python3 .scripts/remote-management/verify-media-assets.py /tmp/oc-cli-fixture-.../fixture.json
+python3 .scripts/remote-management/verify-media-assets.py /tmp/pomi-cli-fixture-.../fixture.json
 ```
 
 This checks OpenAPI discovery and separate identities with Media access, restricted-extension access,
@@ -204,7 +204,7 @@ and own-media permission without a user-folder identifier. It covers CSS/JavaScr
 ordinary image upload, unknown extensions, no overwrite, copy/move extension
 checks, protected user-folder denial, public asset reads, and cleanup. It also verifies that all retired
 static-file management routes return 404 while tenant static serving is enabled.
-The smoke fixture exercises the custom asset lifecycle through `oc` itself.
+The smoke fixture exercises the custom asset lifecycle through `pomi` itself.
 This is a local-store check; it does not claim Azure/S3 or multi-node coverage.
 
 ## Feedz publishing
@@ -226,7 +226,7 @@ inconsistent dependencies, or templates stamped with a different version.
 Separately published translation packs retain the version pinned in
 `Directory.Packages.props`; they are restored, not republished.
 
-After publishing, `install-smoke.py <native-oc>` tests the embedded CMS template
+After publishing, `install-smoke.py <native-pomi>` tests the embedded CMS template
 against the matching published packages: Auto Setup, a directory with spaces,
 environment/stdin password input, missing SDK diagnostics, overwrite refusal,
 failed setup, and foreground `--run` cancellation. It uses disposable local
@@ -257,7 +257,7 @@ summary for the exact version and install commands.
 
 ## Confirmation flags
 
-Run `python3 .scripts/remote-management/force-confirmation-smoke.py <oc-path>`
+Run `python3 .scripts/remote-management/force-confirmation-smoke.py <pomi-path>`
 to check that `--force` confirms destructive commands without prompting, that
 API `force` values use `--api-force` independently, and that context deletion
 uses the same flag. The test uses a synthetic loopback API and isolated context

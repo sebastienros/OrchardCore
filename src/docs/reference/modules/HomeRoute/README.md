@@ -13,7 +13,7 @@ Remote clients should not submit the transient
 `AutoroutePart.SetHomepage` property. Use the permission-gated command instead:
 
 ```bash
-oc settings set-home-content <published-content-item-id>
+pomi settings set-home-content <published-content-item-id>
 ```
 
 See the [Home Route management API](../../api/home-route/README.md).

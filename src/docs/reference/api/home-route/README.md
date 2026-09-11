@@ -15,7 +15,7 @@ PUT /api/home-route/content/{contentItemId}
 ```
 
 ```bash
-oc settings set-home-content 4abc123
+pomi settings set-home-content 4abc123
 ```
 
 The target must resolve to a published content item. The operation writes this

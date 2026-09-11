@@ -1,6 +1,6 @@
 # Management API reference
 
-The Orchard Core management APIs expose tenant administration operations through a tenant-specific OpenAPI document. The [`OrchardCore.RemoteManagement`](../modules/RemoteManagement/README.md) feature publishes discovery metadata and adds command-line projection metadata for the `oc` CLI.
+The Orchard Core management APIs expose tenant administration operations through a tenant-specific OpenAPI document. The [`OrchardCore.RemoteManagement`](../modules/RemoteManagement/README.md) feature publishes discovery metadata and adds command-line projection metadata for the `pomi` CLI.
 
 Each API belongs to the feature that owns the underlying resource. Consequently, the operations available to a tenant depend on its enabled features.
 
@@ -85,10 +85,10 @@ Some operations are intentionally not idempotent. In particular, a create operat
 
 ## OpenAPI and CLI projection
 
-The tenant OpenAPI document is available at the URL returned as `openApiUrl` by the authenticated manifest. Standard OpenAPI operation metadata defines the HTTP contract. The `x-oc-cli` extension projects selected operations into `oc <resource> <verb>` commands; it does not change endpoint authorization or HTTP behavior.
+The tenant OpenAPI document is available at the URL returned as `openApiUrl` by the authenticated manifest. Standard OpenAPI operation metadata defines the HTTP contract. The `x-oc-cli` extension projects selected operations into `pomi <resource> <verb>` commands; it does not change endpoint authorization or HTTP behavior.
 
 API clients should use OpenAPI operation IDs and routes rather than deriving HTTP behavior from CLI command names.
 
-GraphQL uses the built-in [`oc graphql` commands](../modules/Apis.GraphQL/README.md#use-graphql-from-the-cli),
+GraphQL uses the built-in [`pomi graphql` commands](../modules/Apis.GraphQL/README.md#use-graphql-from-the-cli),
 which send documents and introspection queries directly to the GraphQL endpoint.
 They do not project GraphQL operations through OpenAPI.

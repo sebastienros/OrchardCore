@@ -172,7 +172,7 @@ public sealed class RemoteManagementConfigurationService
         }
 
         descriptor.ClientId = ClientId;
-        descriptor.DisplayName = "Orchard Core CLI";
+        descriptor.DisplayName = "Pomi CLI";
         descriptor.ApplicationType = OpenIddictConstants.ApplicationTypes.Native;
         descriptor.ClientType = OpenIddictConstants.ClientTypes.Public;
         descriptor.ConsentType = OpenIddictConstants.ConsentTypes.Explicit;

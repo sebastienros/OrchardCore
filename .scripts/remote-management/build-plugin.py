@@ -22,11 +22,11 @@ for skill in skills:
         raise SystemExit(f'Missing SKILL.md: {skill.name}')
     shutil.copytree(skill, plugin / 'skills' / skill.name)
 shutil.copy2(repo / 'LICENSE', plugin / 'LICENSE')
-(plugin / 'README.md').write_text('''# Orchard Core CLI plugin
+(plugin / 'README.md').write_text('''# Pomi CLI plugin
 
-Install `oc` and start with `orchardcore-cli` to create a local CMS or connect
+Install `pomi` and start with `orchardcore-cli` to create a local CMS or connect
 to an existing tenant. Remote operations require an exact tenant context and
-authentication; local `oc install` requires the matching .NET SDK instead.
+authentication; local `pomi install` requires the matching .NET SDK instead.
 The main skill routes to the relevant resource skill.
 The plugin contains instructions only: it installs no binary, MCP server,
 credentials, or background process. It uses the CLI's existing authentication.

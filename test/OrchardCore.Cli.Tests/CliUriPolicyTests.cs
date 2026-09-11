@@ -38,7 +38,7 @@ public class CliUriPolicyTests
     [Fact]
     public void GetCredentialKey_SameNameDifferentTenantOrClient_DoesNotShareTokens()
     {
-        var context = new TenantContextRecord { Name = "production", TenantUrl = "https://cms.example.com/a/", Authority = "https://cms.example.com/a/", ClientId = "oc" };
+        var context = new TenantContextRecord { Name = "production", TenantUrl = "https://cms.example.com/a/", Authority = "https://cms.example.com/a/", ClientId = "pomi" };
         var original = CliApplication.GetCredentialKey(context);
         context.Name = "PRODUCTION";
         Assert.Equal(original, CliApplication.GetCredentialKey(context));
