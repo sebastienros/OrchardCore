@@ -43,10 +43,11 @@ export OC_SITE_PASSWORD
 ```
 
 Use it in the same shell session with `--password-env OC_SITE_PASSWORD`, for
-example:
+example, with `HOST_CONTEXT` set to the existing host context selected from
+`pomi context list --output json`:
 
 ```bash
-pomi --context default tenants install Blog \
+pomi --context "$HOST_CONTEXT" tenants install Blog \
   --request-url-prefix blog --recipe-name Blog --site-name "My Blog" \
   --email admin@example.com --user-name admin --password-env OC_SITE_PASSWORD
 ```

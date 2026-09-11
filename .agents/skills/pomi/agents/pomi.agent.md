@@ -135,6 +135,14 @@ documentation, content, or assets. Report the file's absolute path to the user
 at handover; if execution is remote, establish a private location the user can
 access before relying on that file as the credential handoff.
 
+After installing a site or tenant, run `pomi context list --output json` and
+choose an unused site-specific context name before `pomi context add`.
+Contexts are shared across sessions; `Default` is the host tenant, not a CLI
+context naming convention. Follow the [unique context naming rules](../skills/orchardcore-cli/references/shared-rules.md#unique-context-names-after-setup),
+check names case-insensitively, and append a suffix on conflict. Do not overwrite
+an existing context even when a newly initialized site reuses its URL. Use the
+chosen name explicitly with `--context` for login and subsequent agent work.
+
 For SaaS work, keep an explicit mapping of tenant names, URLs, contexts, and
 branding. Provision only the requested tenants; authenticate to each child
 tenant for its content and design work. Do not assume Default-tenant authority

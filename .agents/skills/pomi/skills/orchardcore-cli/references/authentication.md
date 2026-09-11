@@ -9,19 +9,25 @@ for the target tenant; existing authenticated contexts do not need a new login.
 
 ## Connect to an existing tenant
 
+First run `pomi context list --output json`. Reuse an existing context only for
+an intentionally selected existing site. When adding one, follow the
+[unique context naming rules](shared-rules.md#unique-context-names-after-setup),
+set `CONTEXT` to an unused name and `SITE_URL` to the exact tenant URL. Do not
+copy `production`, `default`, or another example name without checking it.
+
 ```bash
-pomi context add production https://cms.example.com/site-a --current
-pomi login
-pomi doctor
-pomi api refresh
-pomi --help
+pomi context add "$CONTEXT" "$SITE_URL" --current
+pomi --context "$CONTEXT" login
+pomi --context "$CONTEXT" doctor
+pomi --context "$CONTEXT" api refresh
+pomi --context "$CONTEXT" --help
 ```
 
 For agent-driven device login, prefer separate commands so each process returns
 one JSON result and the user can approve between tool calls:
 
 ```bash
-pomi --context production login device start --output json
+pomi --context "$CONTEXT" login device start --output json
 pomi login device show <session-id> --qr always --output json
 pomi login device wait <session-id> --output json
 ```
@@ -75,7 +81,7 @@ permissions:
 ```bash
 export OC_CLIENT_ID=orchard-automation
 export OC_CLIENT_SECRET='<injected-by-secret-store>'
-pomi --context production content items list
+pomi --context "$CONTEXT" content items list
 ```
 
 Do not use the public `orchardcore-cli` client for client credentials.
@@ -83,9 +89,9 @@ Do not use the public `orchardcore-cli` client for client credentials.
 ## Manage contexts
 
 ```bash
-pomi context list
+pomi context list --output json
 pomi context use news
-pomi --context production content items list
+pomi --context "$CONTEXT" content items list
 pomi logout news
 pomi context delete news --force
 pomi context clear --force

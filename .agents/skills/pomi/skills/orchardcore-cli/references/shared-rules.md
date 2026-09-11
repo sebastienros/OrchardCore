@@ -26,19 +26,43 @@ Do not scaffold the host manually to work around missing Pomi: follow
 ## Context and authentication
 
 Confirm the target tenant and selected context before remote work. Use
-`pomi context list` to inspect saved targets and `--context <name>` to select one.
+`pomi context list --output json` to inspect saved targets and `--context <name>` to select one.
 A parent tenant's identity cannot manage content as a child-tenant user.
 Local `pomi install` needs neither a context nor authentication. Before creating
 or setting up a site or tenant, follow the [setup password policy](setup-password.md)
 and its compliant generator when password generation is authorized.
 
-Reuse an authenticated context when available. Human access uses `pomi login`
+Reuse an authenticated context when intentionally managing that existing site.
+For a newly initialized site or tenant, follow the unique naming rules below. Human access uses `pomi login`
 (browser with PKCE, or device authorization); unattended access uses a dedicated
 confidential client with injected `OC_CLIENT_ID` and `OC_CLIENT_SECRET`.
 Never use the public `orchardcore-cli` client for client credentials. Read
 [authentication and contexts](authentication.md) when onboarding, changing
 identities, handling device approval, or diagnosing authentication. Never print
 tokens, client secrets, passwords, or unredacted connection strings.
+
+## Unique context names after setup
+
+Context names are shared across sessions and working directories. The Orchard
+`Default` tenant is not a requirement to name its CLI context `default`.
+After `pomi install` or `pomi tenants install` and any required Remote Management
+configuration:
+
+1. Run `pomi context list --output json` and inspect `contexts[].name` and
+   `contexts[].tenantUrl` before choosing a name.
+2. Choose a descriptive, unused name such as `my-saas-host` or `my-saas-news`.
+   Compare names case-insensitively. On a conflict, append `-2`, `-3`, or a fresh
+   suffix and check that candidate too. Never assume an example name is free.
+3. Use `pomi context add "$CONTEXT" "$SITE_URL" --current` with the chosen name
+   and exact returned URL. `context add` can update an existing record, so do not
+   reuse or overwrite a context for a newly initialized site, even if its URL
+   matches an older site. If other work intervened, refresh the list before saving.
+4. Keep this name in the site's handoff and use `pomi --context "$CONTEXT" ...`
+   for login and subsequent agent commands: another session may change the
+   globally current context. Keep the host and child context names separate.
+
+Do not delete or rename another session's contexts to make a preferred name
+available. These checks apply to both standalone sites and SaaS hosts/tenants.
 
 ## Database choice for new sites and tenants
 

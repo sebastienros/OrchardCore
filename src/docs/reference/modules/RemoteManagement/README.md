@@ -67,11 +67,20 @@ For example, use `osx-arm64`, `osx-x64`, `linux-arm64`, `linux-x64`, `win-arm64`
 
 ## Contexts and login
 
-A context identifies one exact tenant URL. Add and select a context before logging in:
+A context identifies one exact tenant URL. Names are shared across sessions,
+not scoped to a project directory. After installing a site or tenant, run
+`pomi context list --output json` and choose a site-specific name absent from
+`contexts[].name` (case-insensitive). Append a suffix if necessary; do not
+assume `default` is available or required for the `Default` tenant. `context add`
+can update existing records, so use a fresh name for a newly initialized site,
+even when it reuses an old URL. Recheck names before saving if other work intervened.
+
+Set `CONTEXT` to that unused name and `SITE_URL` to the exact tenant URL,
+including any path prefix:
 
 ```bash
-pomi context add production https://cms.example.com/tenant-a --current
-pomi login
+pomi context add "$CONTEXT" "$SITE_URL" --current
+pomi --context "$CONTEXT" login
 ```
 
 Browser login uses OAuth authorization code with PKCE and a temporary loopback listener. Credentials are renewed silently with refresh tokens stored in Windows Credential Manager on Windows. On macOS, Linux, and other Unix-like systems, tokens are stored as plaintext owner-only files under `~/.orchardcore/credentials`.

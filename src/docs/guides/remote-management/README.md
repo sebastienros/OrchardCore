@@ -375,14 +375,28 @@ grant it.
 
 ## 3. Save the exact tenant URL
 
+Context names are shared across sessions and working directories. After either
+`pomi install` or `pomi tenants install`, inspect the saved names first:
+
 ```bash
-pomi context add tutorial https://cms.example.com/news --current
-pomi context list
+pomi context list --output json
 ```
 
-Replace the URL with your tenant's public base URL, including its path prefix.
-Do not use the admin or login URL. A context named `tutorial` now selects that
-one tenant. Commands use it until you select another context.
+Choose an unused site-specific name, checking `contexts[].name` without regard
+to case. Append a suffix if needed. The `Default` tenant does not require a
+context named `default`. Set `CONTEXT` to your chosen unused name and `SITE_URL`
+to the exact URL returned for the site or tenant, then run:
+
+```bash
+pomi context add "$CONTEXT" "$SITE_URL" --current
+```
+
+Include the tenant path prefix; do not use the admin or login URL. `context add`
+can update an existing record, so never reuse another site's name or overwrite
+an older context when a newly initialized site happens to use the same URL.
+Recheck the list before saving if other work intervened. For agent sessions,
+use `--context "$CONTEXT"` explicitly afterward, because another session can
+change the globally current context.
 
 Both the context name and tenant URL are required. If either is omitted, the
 CLI identifies the missing argument and displays the command's usage. Use
@@ -395,7 +409,7 @@ a new context name; existing credentials cannot follow a changed tenant URL.
 ## 4. Sign in once
 
 ```bash
-pomi login
+pomi --context "$CONTEXT" login
 ```
 
 The CLI opens the tenant's login page in your browser. Sign in as the intended

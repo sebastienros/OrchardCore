@@ -8,6 +8,10 @@ internal static class NextStepFormatter
     {
         var path = string.Join(' ', output.CommandPath);
         var name = Read(output.Json, "name");
+        if (path == "install" && Read(output.Json, "directory") is { } directory)
+        {
+            name = Path.GetFileName(Path.TrimEndingDirectorySeparator(directory));
+        }
         var state = Read(output.Json, "state");
         var context = output.ContextName;
         if (context is not null && !CanQuote(context))
@@ -45,13 +49,14 @@ internal static class NextStepFormatter
                 return $"Next: start this tenant.\n  {parentCommand} tenants start {tenant}";
             }
 
-            if (path == "tenants enable-remote-management" && state == "Running")
+            if (path == "install" || path == "tenants enable-remote-management" && state == "Running")
             {
                 var url = GetTenantUrl(output.Json);
-                var contextName = ChooseContextName(name, url, output.KnownContexts);
+                var contextName = ChooseContextName(name, output.KnownContexts);
                 var destination = url ?? "<tenant-url>";
                 var note = url is null ? " Replace <tenant-url> with the exact tenant URL, including its path prefix." : string.Empty;
-                return $"Next: save a context for this tenant.{note}\n  pomi context add {QuoteArgument(contextName)} {QuoteArgument(destination)} --current";
+                var readiness = path == "install" ? " Once the site is running and Remote Management is configured," : string.Empty;
+                return $"Next:{readiness} save a context with an unused name.{note} Contexts are shared across sessions; check the list and adjust the suggested name if needed.\n  pomi context list --output json\n  pomi context add {QuoteArgument(contextName)} {QuoteArgument(destination)} --current";
             }
 
             if (path == "context add")
@@ -72,16 +77,8 @@ internal static class NextStepFormatter
         || string.Equals(context, currentContext, StringComparison.OrdinalIgnoreCase)
         ? "pomi" : $"pomi --context={QuoteArgument(context)}";
 
-    private static string ChooseContextName(string name, string? url, IReadOnlyList<TenantContextRecord> contexts)
+    private static string ChooseContextName(string name, IReadOnlyList<TenantContextRecord> contexts)
     {
-        var existing = url is null ? null : contexts.FirstOrDefault(context =>
-            string.Equals(context.TenantUrl.TrimEnd('/'), url.TrimEnd('/'), StringComparison.Ordinal)
-            && CanQuote(context.Name) && !context.Name.StartsWith('-'));
-        if (existing is not null)
-        {
-            return existing.Name;
-        }
-
         var candidate = name;
         var suffix = 2;
         while (contexts.Any(context => string.Equals(context.Name, candidate, StringComparison.OrdinalIgnoreCase)))

@@ -72,19 +72,38 @@ public class NextStepFormatterTests
             Json = data.RootElement, CommandPath = ["tenants", "enable-remote-management"], ContextName = "parent",
             KnownContexts = [new TenantContextRecord { Name = "demo", TenantUrl = "https://another.example.com/" }],
         });
+        Assert.Contains("pomi context list --output json", text);
         Assert.Contains("pomi context add Demo-2 https://cms.example.com/nested/demo/ --current", text);
     }
 
     [Fact]
-    public void EnabledTenant_ReusesExistingContextForSameUrl()
+    public void EnabledTenant_UsesNewContextEvenWhenAnExistingContextHasTheSameUrl()
     {
         using var data = JsonDocument.Parse("""{"name":"Demo","state":"Running","url":"https://cms.example.com/demo"}""");
         var text = NextStepFormatter.Format(new CommandOutput
         {
             Json = data.RootElement, CommandPath = ["tenants", "enable-remote-management"],
-            KnownContexts = [new TenantContextRecord { Name = "existing", TenantUrl = "https://cms.example.com/demo/" }],
+            KnownContexts = [new TenantContextRecord { Name = "Demo", TenantUrl = "https://cms.example.com/demo/" }],
         });
-        Assert.Contains("pomi context add existing https://cms.example.com/demo --current", text);
+        Assert.Contains("pomi context add Demo-2 https://cms.example.com/demo --current", text);
+    }
+
+    [Fact]
+    public void InstalledSite_UsesDirectoryNameAndSkipsAllOccupiedNames()
+    {
+        using var data = JsonDocument.Parse("""{"directory":"MySite/","url":"https://localhost:53127/"}""");
+        var text = NextStepFormatter.Format(new CommandOutput
+        {
+            Json = data.RootElement, CommandPath = ["install"],
+            KnownContexts = [
+                new TenantContextRecord { Name = "mysite", TenantUrl = "https://localhost:53127/" },
+                new TenantContextRecord { Name = "MYSITE-2", TenantUrl = "https://localhost:53128/" },
+            ],
+        });
+        Assert.Contains("Once the site is running", text);
+        Assert.Contains("pomi context list --output json", text);
+        Assert.Contains("pomi context add MySite-3 https://localhost:53127/ --current", text);
+        Assert.DoesNotContain("context add default", text);
     }
 
     [Theory]

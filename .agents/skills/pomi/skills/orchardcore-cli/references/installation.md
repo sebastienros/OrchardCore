@@ -43,14 +43,19 @@ SaaS is the setup recipe, not a different .NET project template. The SaaS
 recipe enables tenant management; it does not create the requested child tenants.
 The bundled SaaS recipe also enables and configures Pomi Remote Management.
 After starting the host, add a context for its root URL and authenticate, then
-use [tenant installation](tenants.md) for each requested child:
+use [tenant installation](tenants.md) for each requested child. Follow the
+[unique context naming rules](shared-rules.md#unique-context-names-after-setup):
+inspect the list, then set `CONTEXT` to an unused site-specific name (`my-saas-host`
+only if available). Do not use a generic `default` context name:
 
 ```bash
 SITE_URL="$(python3 -c 'import json; print(json.load(open("MySaaS.install.json"))["url"])')"
-pomi context add default "$SITE_URL" --current
-pomi login
-pomi api refresh
-pomi tenants install --help
+pomi context list --output json
+# Set CONTEXT to the unused name chosen from the result before continuing.
+pomi context add "$CONTEXT" "$SITE_URL" --current
+pomi --context "$CONTEXT" login
+pomi --context "$CONTEXT" api refresh
+pomi --context "$CONTEXT" tenants install --help
 ```
 
 Use the actual host URL. This login is interactive; follow

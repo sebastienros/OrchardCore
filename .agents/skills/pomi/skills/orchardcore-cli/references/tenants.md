@@ -8,10 +8,13 @@ use `pomi install <directory> --recipe-name SaaS`.
 
 Use `pomi tenants install <name>` to create and set up a tenant in an existing
 Orchard application. Run it from an authenticated context targeting the
-`Default` tenant; it requires tenant-management permissions and no local SDK:
+`Default` tenant; it requires tenant-management permissions and no local SDK.
+Run `pomi context list --output json` and set `HOST_CONTEXT` to the existing
+context for the intended host's Default tenant. Its name need not be `default`.
+Keep this host name separate from the new child's context name:
 
 ```bash
-pomi --context default tenants install News \
+pomi --context "$HOST_CONTEXT" tenants install News \
   --request-url-prefix news \
   --recipe-name Blank \
   --site-name "Contoso News" \
@@ -36,7 +39,7 @@ For separate creation and setup (for example, to hand off an uninitialized
 tenant), use:
 
 ```bash
-pomi --context default tenants create \
+pomi --context "$HOST_CONTEXT" tenants create \
   --name News \
   --request-url-prefix news \
   --database-provider Sqlite \
@@ -51,20 +54,20 @@ ordinary recipe discovery.
 Inspect the authoritative inputs when host database presets or patterns differ:
 
 ```bash
-pomi --context default tenants schema --operation install
-pomi --context default tenants schema --operation create
-pomi --context default tenants schema --operation setup
+pomi --context "$HOST_CONTEXT" tenants schema --operation install
+pomi --context "$HOST_CONTEXT" tenants schema --operation create
+pomi --context "$HOST_CONTEXT" tenants schema --operation setup
 ```
 
 The schema lists JSON properties, not CLI switches. Always check
-`pomi --context default tenants install --help` or the corresponding operation's
+`pomi --context "$HOST_CONTEXT" tenants install --help` or the corresponding operation's
 help before constructing its command. See the mapping and connection-string
 examples below.
 
 Set up the uninitialized tenant without opening its setup URL:
 
 ```bash
-pomi --context default tenants setup News \
+pomi --context "$HOST_CONTEXT" tenants setup News \
   --site-name "Contoso News" \
   --user-name admin \
   --email admin@example.com
@@ -77,9 +80,9 @@ Both `tenants install` and `tenants setup` use a masked password prompt by
 default. For automation, use exactly one of:
 
 ```bash
-pomi --context default tenants setup News ... --password-env OC_TENANT_ADMIN_PASSWORD
-printf '%s' "$OC_TENANT_ADMIN_PASSWORD" | pomi --context default tenants setup News ... --password-stdin
-pomi --context default tenants setup News ... --password-file /run/secrets/news-admin-password
+pomi --context "$HOST_CONTEXT" tenants setup News ... --password-env OC_TENANT_ADMIN_PASSWORD
+printf '%s' "$OC_TENANT_ADMIN_PASSWORD" | pomi --context "$HOST_CONTEXT" tenants setup News ... --password-stdin
+pomi --context "$HOST_CONTEXT" tenants setup News ... --password-file /run/secrets/news-admin-password
 ```
 
 Prefer the prompt for interactive work, CI-injected environment variables for
@@ -120,7 +123,7 @@ agent output.
 `OC_TENANT_ADMIN_PASSWORD` contains the administrator password.
 
 ```bash
-pomi --context default tenants install News \
+pomi --context "$HOST_CONTEXT" tenants install News \
   --request-url-prefix news --recipe-name Blank --site-name "Contoso News" \
   --user-name admin --email admin@example.com --database-provider Postgres \
   --table-prefix "${POMI_TABLE_PREFIX:?Set a unique table prefix first}" \
@@ -134,7 +137,7 @@ Each file contains just its raw secret value, not a JSON object or a shell
 assignment. Replace the paths with the actual mounted secret files.
 
 ```bash
-pomi --context default tenants install News \
+pomi --context "$HOST_CONTEXT" tenants install News \
   --request-url-prefix news --recipe-name Blank --site-name "Contoso News" \
   --user-name admin --email admin@example.com --database-provider Postgres \
   --table-prefix "${POMI_TABLE_PREFIX:?Set a unique table prefix first}" \
@@ -145,7 +148,7 @@ pomi --context default tenants install News \
 ### Set up an existing uninitialized tenant with connection-string stdin
 
 ```bash
-pomi --context default tenants setup News \
+pomi --context "$HOST_CONTEXT" tenants setup News \
   --site-name "Contoso News" --user-name admin --email admin@example.com \
   --database-provider Postgres \
   --table-prefix "${POMI_TABLE_PREFIX:?Set the original unique table prefix}" \
@@ -164,14 +167,19 @@ host database presets and values saved during tenant creation take precedence.
 
 ## Enable management after setup
 
-After setup, configure direct management and authenticate to the child tenant:
+After setup, configure direct management and authenticate to the child tenant.
+Follow the [unique context naming rules](shared-rules.md#unique-context-names-after-setup)
+and set `TENANT_CONTEXT` to a fresh name, for example `my-saas-news` if unused.
+Set `TENANT_URL` to the exact URL returned by enable-remote-management:
 
 ```bash
-pomi --context default tenants enable-remote-management News
-pomi context add news <exact-url-returned-by-enable-remote-management> --current
-pomi login
-pomi api compatibility
-pomi api refresh
+pomi --context "$HOST_CONTEXT" tenants enable-remote-management News
+pomi context list --output json
+# Choose TENANT_CONTEXT from this fresh list; do not overwrite an existing name.
+pomi context add "$TENANT_CONTEXT" "$TENANT_URL" --current
+pomi --context "$TENANT_CONTEXT" login
+pomi --context "$TENANT_CONTEXT" api compatibility
+pomi --context "$TENANT_CONTEXT" api refresh
 ```
 
 Do not proxy a Default-tenant identity into a child tenant. Direct
