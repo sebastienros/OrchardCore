@@ -53,6 +53,9 @@ for login page** in the user login settings. This sets
 `LoginSettings.UseSiteTheme` to `true`. The admin theme remains the fallback
 when no site theme is selected.
 
+The SaaS theme focuses **Allow access** when the browser consent page opens,
+so pressing Enter approves the request. Tab moves focus to **Deny**.
+
 You can also select an installed site theme through the
 [theme management CLI/API](../../api/themes/README.md#set-the-current-theme):
 
