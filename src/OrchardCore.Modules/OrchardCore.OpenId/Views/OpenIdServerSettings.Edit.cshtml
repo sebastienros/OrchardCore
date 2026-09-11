@@ -603,21 +603,21 @@
             if (getElement("@Html.IdFor(m => m.EnableTokenEndpoint)").checked && getElement("@Html.IdFor(m => m.EnableAuthorizationEndpoint)").checked) {
                 setCollapse(allowAuthorizationCodeFlow.closest('.collapse'), "show");
             }
-            function refreshAllowDeviceAuthorizationFlowVisibility() {
-                var allowDeviceAuthorizationFlow = getElement("@Html.IdFor(m => m.AllowDeviceAuthorizationFlow)");
-                if (getElement("@Html.IdFor(m => m.EnableTokenEndpoint)").checked
-                    && getElement("@Html.IdFor(m => m.EnableDeviceAuthorizationEndpoint)").checked
-                    && getElement("@Html.IdFor(m => m.EnableEndUserVerificationEndpoint)").checked) {
-                    setCollapse(allowDeviceAuthorizationFlow.closest('.collapse'), "show");
-                }
-                else {
-                    allowDeviceAuthorizationFlow.checked = false;
-                    setCollapse(allowDeviceAuthorizationFlow.closest('.collapse'), "hide");
-                }
-            }
             else {
                 allowAuthorizationCodeFlow.checked = false;
                 setCollapse(allowAuthorizationCodeFlow.closest('.collapse'), "hide");
+            }
+        }
+        function refreshAllowDeviceAuthorizationFlowVisibility() {
+            var allowDeviceAuthorizationFlow = getElement("@Html.IdFor(m => m.AllowDeviceAuthorizationFlow)");
+            if (getElement("@Html.IdFor(m => m.EnableTokenEndpoint)").checked
+                && getElement("@Html.IdFor(m => m.EnableDeviceAuthorizationEndpoint)").checked
+                && getElement("@Html.IdFor(m => m.EnableEndUserVerificationEndpoint)").checked) {
+                setCollapse(allowDeviceAuthorizationFlow.closest('.collapse'), "show");
+            }
+            else {
+                allowDeviceAuthorizationFlow.checked = false;
+                setCollapse(allowDeviceAuthorizationFlow.closest('.collapse'), "hide");
             }
         }
         function refreshAllowHybridFlowVisibility() {
