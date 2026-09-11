@@ -1,5 +1,7 @@
 # Remote Management (`OrchardCore.RemoteManagement`)
 
+<img src="../../branding/assets/logo/pomi/pomi-logo.png" alt="Pomi — Orchard Core CLI" width="160" />
+
 The Remote Management module exposes a versioned management protocol and tenant-specific OpenAPI document for the Orchard Core command-line interface (`oc`). Enabled Orchard Core features contribute resource commands and JSON Schemas, so the commands available for one tenant may differ from another tenant.
 
 The CLI uses OpenAPI as its management protocol. GraphQL remains available for application queries but is not required by `oc`.

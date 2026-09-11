@@ -84,6 +84,16 @@ A printable 3D model of the Orchard Core symbol logo is available below.
 - [STL](assets/stl/OrchardCoreLogo3D.stl)
 - [Orca Slicer project file](assets/stl/OrchardCoreLogo3D.3mf) that contains the model with colored surfaces.
 
+# Pomi CLI logo
+
+Use the Pomi terminal-and-leaf symbol and wordmark for the Orchard Core CLI (`oc`).
+
+<img src="assets/logo/pomi/pomi-logo.png" alt="Pomi — Orchard Core CLI" width="200" />
+
+[Download the Pomi logo (PNG)](assets/logo/pomi/pomi-logo.png).
+Preserve its colors and proportions, including the white background.
+See the [CLI walkthrough](../../guides/remote-management/README.md) for usage.
+
 # Fonts
 
 We use the [Open Sans font family](https://fonts.google.com/specimen/Open+Sans). You can find all the font files in [the `assets/fonts` folder](https://github.com/OrchardCMS/OrchardCore/tree/main/src/docs/reference/branding/assets/fonts) of this documentation page. Be sure to adhere to [the font's license](assets/fonts/LICENSE.txt).
