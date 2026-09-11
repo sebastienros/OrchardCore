@@ -244,7 +244,6 @@ public sealed class Startup : StartupBase
             .AddGetMediaItemEndpoint()
             .AddGetMediaFieldItemsEndpoint()
             .AddGetAllMediaItemsEndpoint()
-            .AddGetTusFileInfoEndpoint()
             .AddCopyMediaEndpoint()
             .AddDeleteFolderEndpoint()
             .AddDeleteMediaEndpoint()

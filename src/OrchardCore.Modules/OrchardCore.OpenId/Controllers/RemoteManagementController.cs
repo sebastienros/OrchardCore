@@ -5,10 +5,11 @@ using OrchardCore.Admin;
 using OrchardCore.DisplayManagement.Notify;
 using OrchardCore.Environment.Shell;
 using OrchardCore.RemoteManagement;
+using OrchardCore.Modules;
 
 namespace OrchardCore.OpenId.Controllers;
 
-[Admin]
+[Admin, Feature("OrchardCore.OpenId.RemoteManagement")]
 public sealed class RemoteManagementController : Controller
 {
     private readonly IAuthorizationService _authorizationService;

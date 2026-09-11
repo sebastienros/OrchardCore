@@ -137,7 +137,7 @@ internal sealed class ContentDefinitionApiService
             return existingDto;
         }
 
-        await ValidateTypeAsync(model, modelState, isCreate: true);
+        await ValidateTypeAsync(model, modelState);
 
         if (!modelState.IsValid)
         {
@@ -174,7 +174,7 @@ internal sealed class ContentDefinitionApiService
             return ToDto(existing);
         }
 
-        await ValidateTypeAsync(model, modelState, isCreate: false, existingName: name);
+        await ValidateTypeAsync(model, modelState, existingName: name);
         if (!modelState.IsValid)
         {
             return ToDto(existing);
@@ -220,7 +220,7 @@ internal sealed class ContentDefinitionApiService
             return existingDto;
         }
 
-        await ValidatePartAsync(model, modelState, isCreate: true);
+        await ValidatePartAsync(model, modelState);
 
         if (!modelState.IsValid)
         {
@@ -257,7 +257,7 @@ internal sealed class ContentDefinitionApiService
             return ToDto(existing);
         }
 
-        await ValidatePartAsync(model, modelState, isCreate: false, existingName: name);
+        await ValidatePartAsync(model, modelState, existingName: name);
         if (!modelState.IsValid)
         {
             return ToDto(existing);
@@ -394,7 +394,7 @@ internal sealed class ContentDefinitionApiService
             .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
-    private async Task ValidateTypeAsync(ContentTypeDefinitionDto model, ModelStateDictionary modelState, bool isCreate, string existingName = null)
+    private async Task ValidateTypeAsync(ContentTypeDefinitionDto model, ModelStateDictionary modelState, string existingName = null)
     {
         ValidateTechnicalName(modelState, nameof(ContentTypeDefinitionDto.Name), model.Name, allowReservedNames: false);
 
@@ -452,7 +452,7 @@ internal sealed class ContentDefinitionApiService
         }
     }
 
-    private async Task ValidatePartAsync(ContentPartDefinitionDto model, ModelStateDictionary modelState, bool isCreate, string existingName = null)
+    private async Task ValidatePartAsync(ContentPartDefinitionDto model, ModelStateDictionary modelState, string existingName = null)
     {
         ValidateTechnicalName(modelState, nameof(ContentPartDefinitionDto.Name), model.Name, allowReservedNames: true);
 

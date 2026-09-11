@@ -978,7 +978,7 @@ POST /api/tenants/{tenantName}:enable-remote-management
 ```
 
 The target tenant must be `Running`. The operation enables
-`OrchardCore.RemoteManagement` with dependencies, verifies that the feature
+`OrchardCore.RemoteManagement.Cli` with dependencies, verifies that the feature
 was enabled, configures the tenant's OpenID Connect server and local token
 validation, creates or updates the `orchardcore.management` scope and
 `orchardcore-cli` public native application, grants **Access remote management

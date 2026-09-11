@@ -5,7 +5,7 @@
     <Title>OrchardCore Remote Management</Title>
     <Description>$(OCCMSDescription)
 
-    Provides remote management discovery and CLI metadata for Orchard Core tenants.</Description>
+    Provides remote management discovery, CLI metadata, and MCP tools for Orchard Core tenants.</Description>
     <PackageTags>$(PackageTags) OrchardCoreCMS Api RemoteManagement</PackageTags>
   </PropertyGroup>
 
@@ -16,6 +16,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
     <PackageReference Include="Microsoft.OpenApi" />
+    <PackageReference Include="ModelContextProtocol.AspNetCore" />
     <PackageReference Include="OpenIddict.Server.AspNetCore" />
   </ItemGroup>
 

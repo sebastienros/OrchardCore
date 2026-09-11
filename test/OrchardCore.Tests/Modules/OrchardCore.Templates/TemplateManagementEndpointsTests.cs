@@ -178,7 +178,7 @@ public class TemplateManagementEndpointsTests
         Assert.Equal(1, response.TotalCount);
         Assert.Equal("Content__Article", Assert.Single(response.Items).Name);
 
-        var json = JsonSerializer.Serialize(response, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var json = JsonSerializer.Serialize(response, JsonSerializerOptions.Web);
         using var parsed = JsonDocument.Parse(json);
         Assert.True(parsed.RootElement.TryGetProperty("skip", out _));
         Assert.True(parsed.RootElement.TryGetProperty("take", out _));
@@ -250,7 +250,7 @@ public class TemplateManagementEndpointsTests
         return authorizationService.Object;
     }
 
-    private static HttpContext CreateHttpContext() =>
+    private static DefaultHttpContext CreateHttpContext() =>
         new DefaultHttpContext
         {
             RequestServices = new ServiceCollection()

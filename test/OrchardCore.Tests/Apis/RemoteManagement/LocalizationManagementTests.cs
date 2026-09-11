@@ -271,7 +271,7 @@ public class LocalizationManagementTests
         Assert.Equal(11, endpoints.Length);
         var commands = endpoints.Select(endpoint => endpoint.Metadata.GetMetadata<CliOperationMetadata>()).OfType<CliOperationMetadata>().ToArray();
         Assert.Equal(6, commands.Length);
-        Assert.All(commands, command => Assert.Contains(command.CommandGroup.Last(), new[] { "cultures", "settings" }));
+        Assert.All(commands, command => Assert.Contains(command.CommandGroup[^1], new[] { "cultures", "settings" }));
         Assert.True(Assert.Single(commands, command => command.Verb == "remove").RequiresConfirmation);
         Assert.False(Assert.Single(commands, command => command.Verb == "add").RequiresConfirmation);
         Assert.All(endpoints, endpoint =>

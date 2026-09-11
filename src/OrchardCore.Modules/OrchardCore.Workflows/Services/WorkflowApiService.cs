@@ -78,8 +78,8 @@ internal sealed class WorkflowApiService
             }
         }
 
-        var workflowType = ToModel(model, new WorkflowType(), modelState);
-        await ValidateWorkflowTypeAsync(workflowType, modelState, isCreate: true);
+        var workflowType = ToModel(model, new WorkflowType());
+        await ValidateWorkflowTypeAsync(workflowType, modelState);
 
         if (!modelState.IsValid)
         {
@@ -100,8 +100,8 @@ internal sealed class WorkflowApiService
             return null;
         }
 
-        var workflowType = ToModel(model, existing, modelState);
-        await ValidateWorkflowTypeAsync(workflowType, modelState, isCreate: false, existingWorkflowTypeId: workflowTypeId);
+        var workflowType = ToModel(model, existing);
+        await ValidateWorkflowTypeAsync(workflowType, modelState, existingWorkflowTypeId: workflowTypeId);
 
         if (!modelState.IsValid)
         {
@@ -128,8 +128,8 @@ internal sealed class WorkflowApiService
     {
         Normalize(model);
         var modelState = new ModelStateDictionary();
-        var workflowType = ToModel(model, new WorkflowType(), modelState);
-        await ValidateWorkflowTypeAsync(workflowType, modelState, isCreate: false);
+        var workflowType = ToModel(model, new WorkflowType());
+        await ValidateWorkflowTypeAsync(workflowType, modelState);
 
         return new WorkflowGraphValidationResponse
         {
@@ -233,7 +233,7 @@ internal sealed class WorkflowApiService
         return true;
     }
 
-    private async Task ValidateWorkflowTypeAsync(WorkflowType workflowType, ModelStateDictionary modelState, bool isCreate, string existingWorkflowTypeId = null)
+    private async Task ValidateWorkflowTypeAsync(WorkflowType workflowType, ModelStateDictionary modelState, string existingWorkflowTypeId = null)
     {
         if (string.IsNullOrWhiteSpace(workflowType.Name))
         {
@@ -346,7 +346,7 @@ internal sealed class WorkflowApiService
         };
     }
 
-    private static WorkflowType ToModel(WorkflowTypeDto model, WorkflowType workflowType, ModelStateDictionary modelState)
+    private static WorkflowType ToModel(WorkflowTypeDto model, WorkflowType workflowType)
     {
         workflowType.WorkflowTypeId = model.WorkflowTypeId;
         workflowType.Name = model.Name?.Trim();
@@ -444,7 +444,7 @@ internal sealed class WorkflowApiService
     private static JsonObject Clone(JsonObject value)
         => value?.DeepClone() as JsonObject ?? [];
 
-    private static IDictionary<string, object> ToDictionary(JsonObject input)
+    private static Dictionary<string, object> ToDictionary(JsonObject input)
         => input is null
             ? new Dictionary<string, object>()
             : JsonSerializer.Deserialize<Dictionary<string, object>>(input.ToJsonString()) ?? new Dictionary<string, object>();

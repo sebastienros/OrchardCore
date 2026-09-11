@@ -338,3 +338,23 @@ internal static class OpenIdServiceCollectionExtensions
         where TImplementation : TService
         => services.RemoveAll(typeof(TService), typeof(TImplementation));
 }
+
+[Feature("OrchardCore.OpenId.RemoteManagement.Cli")]
+public sealed class RemoteManagementCliStartup : StartupBase
+{
+    public override void ConfigureServices(IServiceCollection services)
+    {
+        services.AddScoped<IRemoteManagementCliConfigurationService, RemoteManagementCliConfigurationService>();
+        services.AddRecipeExecutionStep<RemoteManagementCliConfigurationStep>();
+    }
+}
+
+[Feature("OrchardCore.OpenId.RemoteManagement.Mcp")]
+public sealed class RemoteManagementMcpStartup : StartupBase
+{
+    public override void ConfigureServices(IServiceCollection services)
+    {
+        services.AddScoped<RemoteManagementMcpConfigurationService>();
+        services.AddRecipeExecutionStep<RemoteManagementMcpConfigurationStep>();
+    }
+}

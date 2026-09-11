@@ -17,18 +17,33 @@ Start with the illustrated [first-tenant walkthrough](../../../guides/remote-man
 
 ## Enable and configure
 
-Enable **Remote Management** from **Configuration → Features**. This also enables the OpenAPI, OpenID authorization server, OpenID management, and OpenID token validation dependencies.
+The shared **Remote Management** feature (`OrchardCore.RemoteManagement`) enables
+OpenAPI, permissions, discovery, and OpenID authentication services. It does not
+register client applications. Choose the client feature for your workflow:
 
-After enabling the feature, open **Settings → Remote Management**. The page checks every required authentication setting and identifies anything that is missing. Select **Configure Remote Management** (or **Repair configuration**) to configure:
+| Feature | Responsibility |
+| --- | --- |
+| `OrchardCore.RemoteManagement` | Shared server configuration, validation, and management scope |
+| `OrchardCore.RemoteManagement.Cli` | Pomi discovery metadata, CLI application, and device authorization |
+| `OrchardCore.RemoteManagement.Mcp` | Tenant MCP endpoint and MCP application registration |
 
-- authorization code with PKCE, device authorization, refresh token, and client credentials grants;
-- the `orchardcore.management` scope;
-- a public native application with client ID `orchardcore-cli`;
-- local API token validation for the current tenant.
+For Pomi, enable **Remote Management CLI** under **Configuration → Features**.
+Open **Settings → Remote Management**, then **Configure Pomi CLI**. The CLI action
+configures shared authentication and the `orchardcore-cli` public native application,
+its loopback callback, and device authorization. Existing applications and unrelated
+OpenID settings are preserved. Existing tenants using Pomi should explicitly enable
+this feature to retain CLI discovery after upgrading.
 
-The operation uses the current tenant name automatically, can be run repeatedly, and preserves unrelated OpenID Connect endpoints, grants, scopes, applications, roles, and redirect URIs. When the feature is enabled interactively, a one-time notification links administrators to this page.
+The shared **Configure Remote Management** action checks and repairs authorization
+code with PKCE, refresh tokens, client credentials, local token validation, and the
+`orchardcore.management` scope. It creates neither a CLI nor an MCP application.
+Each client action configures these shared requirements as well, so it can be used
+on a freshly enabled tenant.
 
-For automated deployments, the **Orchard Core Remote Management** recipe configures the same requirements. Its `RemoteManagementConfiguration` step resolves the current tenant automatically.
+For automated deployments, the **Orchard Core Remote Management** recipe configures
+only shared authentication. Use **Orchard Core Remote Management CLI**
+(`RemoteManagementCli`) for Pomi; its `RemoteManagementCliConfiguration` step creates
+or repairs the CLI application. Both resolve the current tenant automatically.
 
 The public bootstrap document is available at `/.well-known/orchardcore-management`. It contains only the protocol version, authentication authority, client ID, and supported grants. The authenticated `/api/management/manifest` endpoint additionally returns tenant identity, compatibility ranges, capabilities, OpenAPI coordinates, and documentation index information.
 
@@ -519,3 +534,106 @@ when two local configuration directories use the same context name. Older
 name-only credential entries are not reused; sign in once after upgrading.
 Unix credentials remain shared owner-only files under `~/.orchardcore/credentials`,
 so ordinary CLI commands do not prompt for operating-system keychain access.
+
+## MCP server
+
+Enable **Remote Management MCP** (`OrchardCore.RemoteManagement.Mcp`) on each tenant
+that should accept Model Context Protocol clients. This feature depends on Remote
+Management and uses its OpenID Connect configuration. Enabling Remote Management
+alone does not expose an MCP endpoint.
+
+Connect a Streamable HTTP MCP client to `https://your-site/mcp`, or
+`https://your-site/tenant-prefix/mcp` for a tenant with a URL prefix. The server uses
+the official C# MCP SDK in stateless mode; requests do not retain a tenant session
+or caller identity between HTTP requests.
+
+### Authentication and permissions
+
+Supply an OAuth access token in `Authorization: Bearer <access-token>` on every
+request. Tokens use the same tenant OpenID validation and API authentication scheme
+as Pomi. The authenticated user or application role needs **Access remote management
+APIs**, and each tool call additionally enforces the original operation's permissions.
+An administrator browser cookie does not authorize MCP requests.
+
+The tenant publishes OAuth protected resource metadata at
+`/.well-known/oauth-protected-resource/mcp`, relative to its URL prefix. Unauthorized
+MCP requests include this URL in the `WWW-Authenticate` challenge. The metadata
+identifies the MCP URL, the tenant's configured authorization server, and the
+`orchardcore.management` scope.
+
+Open **Settings → Remote Management → Configure MCP client**. Enter a client
+identifier (default `orchardcore-mcp`) and the exact callback URLs supplied by your
+MCP client, one per line. Select **Configure MCP authentication**. The action:
+
+- configures the shared tenant authentication and management scope;
+- registers a public application with authorization code and refresh token grants;
+- requires PKCE and explicit user consent;
+- permits `openid`, `profile`, `roles`, and `orchardcore.management`;
+- preserves existing roles and unrelated permissions when updating an application
+  previously created by this action.
+
+Callbacks must use HTTPS, except that loopback HTTP callbacks are accepted for
+native clients. Saving an existing MCP client replaces its callback list with the
+entered URLs. The action rejects identifiers owned by other OpenID applications,
+including Pomi, and never creates or modifies the Pomi client. Use a separate
+identifier for each MCP client; revisit an existing registration using the page's
+`clientId` query parameter.
+
+The same setup is available in recipes after enabling the MCP feature:
+
+```json
+{
+  "name": "RemoteManagementMcpConfiguration",
+  "clientId": "orchardcore-mcp",
+  "redirectUris": "https://your-mcp-client.example/oauth/callback"
+}
+```
+
+Replace the callback with the exact URL supplied by your client, and follow the
+step with `ReloadTenant` to apply shared server settings. The recipe uses the same
+validation and application ownership checks as the admin action.
+
+The signed-in user still needs remote management and operation permissions. For
+machine-to-machine clients, configure a confidential OpenID application through
+OpenID application management and assign the required roles. Dynamic client
+registration is not implemented; clients must accept a preconfigured client ID or
+an externally obtained bearer token. Existing token audiences are preserved.
+Requests carrying an `Origin` header must match the tenant URL's scheme and host.
+
+### Tools
+
+Tools are projected from the active tenant's management endpoints and generated
+OpenAPI document. Tool names join the CLI command group and verb with underscores:
+for example, `features_list`, `features_show`, and `features_disable`. After changing
+enabled features, clients should refresh `tools/list`; stateless servers do not send
+unsolicited tool-list change notifications.
+
+Inputs group OpenAPI parameters by location to avoid naming collisions:
+
+```json
+{
+  "name": "features_show",
+  "arguments": {
+    "path": { "featureId": "OrchardCore.Contents" }
+  }
+}
+```
+
+Use `query` for query parameters and `body` for a JSON request body. The schemas in
+`tools/list` specify required values and contain the referenced JSON Schema definitions.
+Query arrays are passed as repeated query parameters. Existing default JSON bodies
+from CLI metadata also apply when the client omits `body`.
+
+Calls execute the existing endpoint with the caller's tenant services, bearer token,
+authorization policies, endpoint filters, and API validation. A tool result contains
+text with a JSON object containing the HTTP `statusCode` and response `body` string.
+HTTP errors set MCP `isError` to `true`. Operation permissions are evaluated at call
+time; discovery does not promise that a caller can invoke every listed tool.
+
+Only named endpoints carrying `CliOperationMetadata` are exposed. Hidden CLI
+operations, stream inputs, binary responses, multipart bodies, and header/cookie parameters are excluded.
+Duplicate tool names are excluded to prevent ambiguous dispatch. Write operations
+are marked as potentially destructive using MCP tool annotations; clients should
+obtain user confirmation before invoking them. Annotations are advisory and do not
+add an interactive confirmation step on the server. Use Pomi or the HTTP APIs for
+file transfers.

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Routing;
@@ -539,7 +540,7 @@ internal static class ContentDefinitionApiEndpoints
         return metadata;
     }
 
-    private static IResult ValidationProblem(ModelStateDictionary modelState)
+    private static ValidationProblem ValidationProblem(ModelStateDictionary modelState)
         => TypedResults.ValidationProblem(modelState.ToDictionary(
             entry => entry.Key,
             entry => entry.Value?.Errors.Select(error => error.ErrorMessage).ToArray() ?? []),

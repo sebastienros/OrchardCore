@@ -25,7 +25,7 @@
         "OrchardCore.OpenId.Server",
         "OrchardCore.OpenId.Validation",
         "OrchardCore.Recipes",
-        "OrchardCore.RemoteManagement",
+        "OrchardCore.RemoteManagement.Cli",
         "OrchardCore.Resources",
         "OrchardCore.Roles",
         "OrchardCore.Security",
@@ -47,7 +47,7 @@
       "site": "TheSaaSTheme"
     },
     {
-      "name": "RemoteManagementConfiguration"
+      "name": "RemoteManagementCliConfiguration"
     },
     {
       "name": "settings",
