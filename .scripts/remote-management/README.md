@@ -512,3 +512,14 @@ disposable tenant. Culture-picker verification uses this same homepage command.
 `openid-scopes-smoke.py` verifies scope mutations, semantic retries, conflicts,
 invalid/denied writes, full field replacement, HTTP/Pomi/MCP readback and MCP
 with CLI disabled. It deletes the synthetic scope after checking repeated deletion.
+
+
+`openid-applications-smoke.py` checks application CRUD, private secret inputs,
+configuration replacement, permission enforcement and actual client authentication.
+It also checks equivalent retries and MCP with the CLI feature disabled.
+
+Run `python3 .scripts/remote-management/openid-credentials-smoke.py <fixture.json>`
+to verify private one-time Pomi output, rejected destinations before mutation,
+rotation/revocation and actual rejection of retired secrets. It exercises HTTP,
+Pomi and MCP, preserves application settings, checks restricted principals and MCP
+with CLI disabled, and removes its synthetic application on completion.

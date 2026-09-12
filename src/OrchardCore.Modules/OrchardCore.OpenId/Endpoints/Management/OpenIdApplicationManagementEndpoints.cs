@@ -146,7 +146,7 @@ internal static class OpenIdApplicationManagementEndpoints
             return TypedResults.Problem("The body clientId must match the query identifier. Renames are not supported.", statusCode: 400);
         }
         var ct = context.RequestAborted;
-        var application = await FindForUpdateAsync(manager, clientId, ct);
+        var application = await manager.FindByClientIdForUpdateAsync(clientId, ct);
         if (application is null) { return context.ApiNotFoundProblem(); }
         if (await ValidateReferencesAsync(context, scopes, request) is { } references) { return references; }
         if (await ValidateClientAsync(context, manager, request, application, isNew: false, ct) is { } client) { return client; }
@@ -170,18 +170,9 @@ internal static class OpenIdApplicationManagementEndpoints
     {
         if (!await AuthorizedAsync(context, authorization)) { return context.ApiForbidProblem(); }
         if (string.IsNullOrWhiteSpace(clientId)) { return TypedResults.Problem("The client identifier is required.", statusCode: 400); }
-        var application = await FindForUpdateAsync(manager, clientId, context.RequestAborted);
+        var application = await manager.FindByClientIdForUpdateAsync(clientId, context.RequestAborted);
         if (application is not null) { await manager.DeleteAsync(application, context.RequestAborted); }
         return TypedResults.NoContent();
-    }
-
-    private static async Task<object> FindForUpdateAsync(IOpenIdApplicationManager manager, string clientId, CancellationToken cancellationToken)
-    {
-        var application = await manager.FindByClientIdAsync(clientId, cancellationToken);
-        // Natural-key lookup can return a cached object. Like the admin editor,
-        // load the store's tracked instance before mutating or deleting it.
-        return application is null ? null : await manager.FindByPhysicalIdAsync(
-            await manager.GetPhysicalIdAsync(application, cancellationToken), cancellationToken);
     }
 
     private static async Task<bool> MatchesAsync(IOpenIdApplicationManager manager, object application,

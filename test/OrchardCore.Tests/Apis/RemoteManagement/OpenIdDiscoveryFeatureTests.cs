@@ -35,18 +35,24 @@ public class OpenIdDiscoveryFeatureTests
             {
                 var endpoints = scope.ServiceProvider.GetRequiredService<EndpointDataSource>().Endpoints.OfType<RouteEndpoint>()
                     .Where(endpoint => endpoint.Metadata.GetMetadata<CliOperationMetadata>()?.Capability == "openid-management").ToArray();
-                Assert.Equal(enabled ? 10 : 0, endpoints.Length);
+                Assert.Equal(enabled ? 12 : 0, endpoints.Length);
                 foreach (var endpoint in endpoints)
                 {
                     var cli = endpoint.Metadata.GetRequiredMetadata<CliOperationMetadata>();
                     Assert.Equal("openid", cli.CommandGroup[0]);
+                    Assert.Equal(cli.Verb == "rotate", cli.SecretResponse);
+                    if (cli.Verb is "rotate" or "revoke")
+                    {
+                        Assert.Equal(["openid", "applications", "credentials"], cli.CommandGroup);
+                        Assert.True(cli.RequiresConfirmation);
+                    }
                     Assert.Equal(cli.CommandGroup[1] == "applications" && cli.Verb is "create" or "update" ? ["clientSecret"] : [], cli.SecretProperties);
                     var method = cli.Verb switch
                     {
-                        "create" => "POST", "update" => "PUT", "delete" => "DELETE", _ => "GET",
+                        "create" or "rotate" or "revoke" => "POST", "update" => "PUT", "delete" => "DELETE", _ => "GET",
                     };
                     Assert.Equal(method, Assert.Single(endpoint.Metadata.GetRequiredMetadata<IHttpMethodMetadata>().HttpMethods));
-                    Assert.Contains(cli.Verb, new[] { "list", "show", "create", "update", "delete" });
+                    Assert.Contains(cli.Verb, new[] { "list", "show", "create", "update", "delete", "rotate", "revoke" });
                 }
                 var capabilities = new List<RemoteManagementCapability>();
                 foreach (var provider in scope.ServiceProvider.GetServices<IRemoteManagementCapabilityProvider>())
