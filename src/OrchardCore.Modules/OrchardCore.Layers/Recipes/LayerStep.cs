@@ -59,7 +59,10 @@ public sealed class LayerStep : NamedRecipeStepHandler
 
             var existing = prepared.GetValueOrDefault(layerStep.Name)
                 ?? allLayers.Layers.FirstOrDefault(x => string.Equals(x.Name, layerStep.Name, StringComparison.OrdinalIgnoreCase));
-            var rule = existing?.LayerRule;
+            // Keep the immutable document untouched when a missing root identity is initialized.
+            var rule = existing?.LayerRule is { } originalRule
+                ? new Rule { Name = originalRule.Name, ConditionId = originalRule.ConditionId, Conditions = [.. originalRule.Conditions] }
+                : null;
             if (layerStep.LayerRule is not null)
             {
                 rule = new Rule
