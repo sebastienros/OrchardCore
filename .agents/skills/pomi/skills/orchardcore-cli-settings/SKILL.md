@@ -1,6 +1,6 @@
 ---
 name: orchardcore-cli-settings
-description: Reads and updates Orchard Core Site Settings, typed module sections, Custom Settings, and cultures through `pomi`. Use for tenant-wide configuration, schema-safe partial settings updates, custom-settings content types, feature-contributed settings, and validating settings without overwriting protected or unknown values.
+description: Reads and updates Orchard Core Site Settings, typed module sections, Custom Settings, cultures, and URL rewrite rules through `pomi`. Use for tenant-wide configuration, schema-safe partial settings updates, custom-settings content types, feature-contributed settings, and validating settings without overwriting protected or unknown values.
 ---
 
 # Pomi CLI Settings
@@ -13,6 +13,39 @@ Site Settings are one tenant document with a safe management projection. Custom
 Settings are named content-type-backed sections embedded in that document.
 Typed module sections have explicit providers and their own permissions; they are
 not arbitrary site properties or Custom Settings content types.
+
+## URL rewrite rules
+
+Enable `OrchardCore.UrlRewriting` and use an application with
+`ManageUrlRewritingRules` to manage `url-rewriting rules`. These are ordered
+resources, separate from the site settings document.
+
+```bash
+pomi url-rewriting rules sources
+pomi url-rewriting rules list --take 200
+pomi url-rewriting rules show redirect-about
+pomi url-rewriting rules validate --body-file rule.json
+pomi url-rewriting rules create --body-file rule.json
+```
+
+Use the built-in `Rewrite` or `Redirect` source. The complete definition includes
+`name`, `source`, `pattern` and `substitutionPattern`, plus the source's options.
+Use a stable explicit `id` when automating creation: identical retries return the
+stored rule; reusing an ID for different data returns 409. Without an ID, each
+creation generates a new rule. Display names need not be unique.
+
+Read `definition` from `show` before `update <id>`. Updates replace the complete
+definition and preserve source/order. Omitted options reset to case-sensitive
+matching, `Append`, `Found` (Redirect) and false `skipFurtherRules` (Rewrite).
+Query and redirect enums use names. Null does not clear a required field. Extension
+sources without an API definition remain opaque; do not send arbitrary metadata.
+
+Use `move <id> --body '{"position":0}'` to move a rule to the beginning of the
+complete list. Verify persisted order and actual HTTP behavior, including status,
+capture substitution and query-string handling. Rewrites retain the target
+endpoint's authorization. The configured admin prefix is excluded from matching.
+Delete with `delete <id> --force`; missing deletes and unchanged updates are no-ops.
+Use narrow test paths so a rule does not unintentionally intercept management URLs.
 
 ## Site Settings
 
@@ -221,6 +254,7 @@ Versioned references (live tenant schemas take precedence):
 [settings API](https://github.com/sebastienros/OrchardCore/blob/5bb6c301c6fa9b795717d6a7906d7cb8626fe33c/src/docs/reference/api/settings/README.md),
 [custom-settings API](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/api/custom-settings/README.md),
 [CORS module](https://github.com/sebastienros/OrchardCore/blob/4020c67d5b920d7a26ca175420683793b033fb08/src/docs/reference/modules/Cors/README.md),
+[URL Rewriting module](https://github.com/sebastienros/OrchardCore/blob/92ac82a188ce0525e2b9072543451757d39f3032/src/docs/reference/modules/UrlRewriting/README.md),
 [Security module](https://github.com/sebastienros/OrchardCore/blob/5bb6c301c6fa9b795717d6a7906d7cb8626fe33c/src/docs/reference/modules/Security/README.md),
 [Settings module](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/modules/Settings/README.md), and
 [CustomSettings module](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/modules/CustomSettings/README.md).

@@ -25,6 +25,32 @@ public class UrlRewriteEndpointTests : IDisposable
 
     public void Dispose() => _services.Dispose();
 
+    [Fact]
+    public async Task RuntimeRewrite_KeepsTheTenantPrefixAndTargetAuthorization()
+    {
+        using var site = new SiteContext();
+        await site.InitializeAsync();
+        await FeatureAsync(site, true);
+        await site.UsingTenantScopeAsync(async scope =>
+        {
+            var manager = scope.ServiceProvider.GetRequiredService<IRewriteRulesManager>();
+            await RewriteManagementEndpoints.CreateAsync(Http(), Authorized(), manager, new RewriteDefinition
+            {
+                Id = "tenant-route", Name = "Tenant route", Source = "Rewrite", Pattern = "^/prefix-probe$",
+                SubstitutionPattern = "/api/url-rewriting/rules", SkipFurtherRules = true,
+            });
+        });
+        using var direct = await site.Client.GetAsync("api/url-rewriting/rules", TestContext.Current.CancellationToken);
+        using var rewritten = await site.Client.GetAsync("prefix-probe", TestContext.Current.CancellationToken);
+        Assert.NotEqual(System.Net.HttpStatusCode.NotFound, direct.StatusCode);
+        Assert.Equal(direct.StatusCode, rewritten.StatusCode);
+        if (direct.IsSuccessStatusCode)
+        {
+            Assert.Equal(await direct.Content.ReadAsStringAsync(TestContext.Current.CancellationToken),
+                await rewritten.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        }
+    }
+
     [Theory]
     [InlineData("^changed$", true)]
     [InlineData("(", false)]
