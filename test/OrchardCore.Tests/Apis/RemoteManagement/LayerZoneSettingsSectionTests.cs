@@ -60,6 +60,15 @@ public class LayerZoneSettingsSectionTests
         fixture.Site.Verify(service => service.UpdateSiteSettingsAsync(site), Times.Once);
     }
 
+    [Fact]
+    public void ExistingNullList_ExplicitEmptyEdit_RestoresAnEmptyArray()
+    {
+        var settings = new LayerSettings { Zones = null };
+        Assert.True(LayerSettingsEditor.Apply(settings, [string.Empty]));
+        Assert.Empty(settings.Zones);
+        Assert.False(LayerSettingsEditor.Apply(settings, []));
+    }
+
     [Theory]
     [InlineData("null")]
     [InlineData("{\"zones\":null}")]

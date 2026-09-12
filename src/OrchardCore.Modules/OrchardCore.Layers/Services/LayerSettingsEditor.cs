@@ -12,7 +12,7 @@ internal static class LayerSettingsEditor
     internal static bool Apply(LayerSettings settings, IEnumerable<string> zones)
     {
         var normalized = zones.SelectMany(Parse).ToArray();
-        if ((settings.Zones ?? []).SequenceEqual(normalized, StringComparer.Ordinal))
+        if (settings.Zones is not null && settings.Zones.SequenceEqual(normalized, StringComparer.Ordinal))
         {
             return false;
         }
