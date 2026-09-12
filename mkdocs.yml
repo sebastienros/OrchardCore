@@ -228,6 +228,7 @@ nav:
               - Custom settings: reference/api/custom-settings/README.md
               - Features: reference/api/features/README.md
               - Home Route: reference/api/home-route/README.md
+              - OpenID management: reference/api/openid/README.md
               - Localization: reference/api/localization/README.md
               - Recipes: reference/api/recipes/README.md
               - Roles: reference/api/roles/README.md

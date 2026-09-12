@@ -26,6 +26,7 @@ using OrchardCore.Navigation;
 using OrchardCore.OpenId.Configuration;
 using OrchardCore.OpenId.Deployment;
 using OrchardCore.OpenId.Drivers;
+using OrchardCore.OpenId.Endpoints.Management;
 using OrchardCore.OpenId.Handlers;
 using OrchardCore.OpenId.Migrations;
 using OrchardCore.OpenId.Recipes;
@@ -290,6 +291,12 @@ public sealed class ManagementStartup : StartupBase
     public override void ConfigureServices(IServiceCollection services)
     {
         services.AddNavigationProvider<ManagementAdminMenu>();
+        services.AddSingleton<IRemoteManagementCapabilityProvider, OpenIdManagementCapabilityProvider>();
+    }
+
+    public override void Configure(IApplicationBuilder app, IEndpointRouteBuilder routes, IServiceProvider serviceProvider)
+    {
+        routes.AddOpenIdDiscoveryEndpoints();
     }
 }
 

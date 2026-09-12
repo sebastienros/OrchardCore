@@ -4,7 +4,7 @@ The Orchard Core management APIs expose tenant administration operations through
 
 Each API belongs to the feature that owns the underlying resource. Consequently, the operations available to a tenant depend on its enabled features.
 
-This reference currently covers 20 feature-owned management resource groups and two protocol groups. A tenant exposes only the groups contributed by its enabled features.
+This reference currently covers 21 feature-owned management resource groups and two protocol groups. A tenant exposes only the groups contributed by its enabled features.
 
 ## Before you begin
 
@@ -54,6 +54,7 @@ See [Authentication](authentication/README.md) for the OpenID Connect endpoints 
 - [Custom settings](custom-settings/README.md)
 - [Features](features/README.md)
 - [Home Route](home-route/README.md)
+- [OpenID applications and scopes](openid/README.md)
 - [Localization and dynamic translations](localization/README.md)
 - [Recipes](recipes/README.md)
 - [Roles](roles/README.md)

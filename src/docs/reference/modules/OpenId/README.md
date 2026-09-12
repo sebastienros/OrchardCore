@@ -587,3 +587,11 @@ All OpenID Connect settings can be configured using the generic `Settings` recip
 | `DisableTokenTypeValidation` | Boolean | Whether to disable access token type validation.                      |
 | `Tenant`                     | String  | The Orchard tenant for local server validation.                       |
 | `MetadataAddress`            | String  | Override the metadata discovery address (for non-standard providers). |
+
+## Remote application and scope discovery
+
+With `OrchardCore.OpenId.Management` enabled, authorized clients can list and inspect
+applications and scopes through `pomi openid applications` and `pomi openid scopes`.
+These reads use the same managers as the admin UI and omit credentials, keys and
+private properties. See the [OpenID management API](../../api/openid/README.md)
+for paging, permissions and response fields.
