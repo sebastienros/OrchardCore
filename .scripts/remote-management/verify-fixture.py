@@ -52,6 +52,7 @@ missing_resource_status = {
     'settings sections list': 200,  # Filters providers by their read permission.
     'settings sections show': 404, 'settings sections update': 404,
     'settings sections schema': 404,
+    'content localizations list': 404, 'content localizations create': 404,
 }
 ids = set()
 capabilities = {capability['id'] for capability in manifest['capabilities']}
@@ -72,6 +73,8 @@ for path, item in schema['paths'].items():
         ids.add(operation.get('operationId'))
         target = re.sub(r'\{[^}]+\}', 'MissingReviewResource', path)
         body = b'{}' if method.upper() in ('POST','PUT','PATCH') else None
+        if command == 'content localizations create':
+            body = b'{"culture":"en"}'  # Reach the missing-resource check with a valid-shaped request.
         for identity, bearer, expected in [('anonymous',None,401),('denied',denied,403),('discovery',discovery,403)]:
             content_type = next(iter(operation.get('requestBody', {}).get('content', {'application/json':{}})))
             status, _ = request(target, method.upper(), bearer, body, content_type)

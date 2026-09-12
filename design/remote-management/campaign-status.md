@@ -34,10 +34,10 @@ The [schedule](pr-schedule.md) and [plan](coverage-plan.md) define the work and 
 | P04 Shape placements | Merged | [PR #9](https://github.com/sebastienros/OrchardCore/pull/9), merge `541f23b0d`; all CI checks passed. Shared admin validation, seven operations/commands/tools, database/file storage and rendered matching/order verified. |
 | P05 Widget placement | Merged | [PR #10](https://github.com/sebastienros/OrchardCore/pull/10), merge `19b7b75e6`; all CI checks passed. Shared admin/editor service, four operations, rendered ordering/moves and content permission/version checks. |
 | Website composition gate | Verified locally | `website-composition-smoke.py`: `tenants install --enable-remote-management`, stored application context without login, private administrator files, content/widget/layer/placement/shortcode rendering and setup-only context preservation on the merged presentation baseline. |
-| P06 Typed settings + HTTPS | In verification | Independent `codex/remote-typed-settings` from merged target `19b7b75e6`; explicit section contracts, shared HTTPS editor validation, trusted HTTPS/Pomi/MCP checks. Layers zone-settings editing remains a follow-up adapter. |
+| P06 Typed settings + HTTPS | Merged | [PR #11](https://github.com/sebastienros/OrchardCore/pull/11), merge `60236178c`; all CI checks passed. Explicit section contracts, shared HTTPS editor validation, trusted HTTPS/Pomi/MCP checks. Layers zone-settings editing remains a follow-up adapter. |
 | P07 CORS | Planned | After P06 merges. |
 | P08 Security headers | Planned | After P06 merges. |
-| P09 Content localization | Planned | B04. |
+| P09 Content localization | In verification | B04; independent `codex/remote-content-localization`, rebased onto merged target `60236178c`. Shared admin/API service delegates cloning and localization handlers to the existing manager. |
 | P10 URL rewriting | Planned | B10. |
 | Application/scope discovery and administration | Planned | Separate B06 resource PRs. |
 | Application credential lifecycle | Planned | After application administration merges. |
