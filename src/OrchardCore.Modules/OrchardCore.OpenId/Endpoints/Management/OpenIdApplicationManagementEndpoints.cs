@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using OpenIddict.Abstractions;
 using OrchardCore.OpenId.Abstractions.Descriptors;
 using OrchardCore.OpenId.Abstractions.Managers;
@@ -39,7 +40,11 @@ internal static class OpenIdApplicationManagementEndpoints
             RequiresConfirmation = verb == "delete",
         };
         if (argument) { metadata.Arguments.Add(new CliArgumentMetadata("clientId", 0)); }
-        if (input) { builder.Accepts<OpenIdApplicationMutationRequest>("application/json"); }
+        if (input)
+        {
+            builder.Accepts<OpenIdApplicationMutationRequest>("application/json");
+            metadata.SecretProperties.Add("clientSecret");
+        }
         return builder.WithName(id).WithTags("OpenID Management").WithSummary(summary).WithCliCommand(metadata)
             .DisableAntiforgery().RequireAuthorization(policy => policy
                 .AddAuthenticationSchemes(OrchardCoreConstants.AuthenticationSchemes.Api).RequireAuthenticatedUser()
@@ -90,11 +95,11 @@ internal static class OpenIdApplicationManagementEndpoints
         return errors.Count == 0 ? null : TypedResults.ValidationProblem(errors);
     }
 
-    private static async Task<ValidationProblem> ValidateClientAsync(IOpenIdApplicationManager manager,
+    private static async Task<ValidationProblem> ValidateClientAsync(HttpContext context, IOpenIdApplicationManager manager,
         OpenIdApplicationMutationRequest request, object application, bool isNew, CancellationToken cancellationToken)
     {
         var errors = OpenIdApplicationExtensions.ValidateClientSettings(request.ClientType, request.ApplicationType,
-            request.ClientSecret, isNew, application is not null && await manager.HasClientTypeAsync(application, OpenIddictConstants.ClientTypes.Public, cancellationToken))
+            request.ClientSecret, context.RequestServices.GetRequiredService<IStringLocalizer<OpenIdApplicationSettings>>(), isNew, application is not null && await manager.HasClientTypeAsync(application, OpenIddictConstants.ClientTypes.Public, cancellationToken))
             .ToDictionary(error => error.MemberNames.Single() == nameof(OpenIdApplicationSettings.Type) ? "clientType" : "clientSecret",
                 error => new[] { error.ErrorMessage });
         return errors.Count == 0 ? null : TypedResults.ValidationProblem(errors);
@@ -109,7 +114,7 @@ internal static class OpenIdApplicationManagementEndpoints
         if (await ValidateReferencesAsync(context, scopes, request) is { } references) { return references; }
         var ct = context.RequestAborted;
         var existing = await manager.FindByClientIdAsync(request.ClientId, ct);
-        if (await ValidateClientAsync(manager, request, existing, isNew: true, ct) is { } client) { return client; }
+        if (await ValidateClientAsync(context, manager, request, existing, isNew: true, ct) is { } client) { return client; }
         try
         {
             var settings = request.ToSettings();
@@ -141,10 +146,10 @@ internal static class OpenIdApplicationManagementEndpoints
             return TypedResults.Problem("The body clientId must match the query identifier. Renames are not supported.", statusCode: 400);
         }
         var ct = context.RequestAborted;
-        var application = await manager.FindByClientIdAsync(clientId, ct);
+        var application = await FindForUpdateAsync(manager, clientId, ct);
         if (application is null) { return context.ApiNotFoundProblem(); }
         if (await ValidateReferencesAsync(context, scopes, request) is { } references) { return references; }
-        if (await ValidateClientAsync(manager, request, application, isNew: false, ct) is { } client) { return client; }
+        if (await ValidateClientAsync(context, manager, request, application, isNew: false, ct) is { } client) { return client; }
         try
         {
             var settings = request.ToSettings();
@@ -165,9 +170,18 @@ internal static class OpenIdApplicationManagementEndpoints
     {
         if (!await AuthorizedAsync(context, authorization)) { return context.ApiForbidProblem(); }
         if (string.IsNullOrWhiteSpace(clientId)) { return TypedResults.Problem("The client identifier is required.", statusCode: 400); }
-        var application = await manager.FindByClientIdAsync(clientId, context.RequestAborted);
+        var application = await FindForUpdateAsync(manager, clientId, context.RequestAborted);
         if (application is not null) { await manager.DeleteAsync(application, context.RequestAborted); }
         return TypedResults.NoContent();
+    }
+
+    private static async Task<object> FindForUpdateAsync(IOpenIdApplicationManager manager, string clientId, CancellationToken cancellationToken)
+    {
+        var application = await manager.FindByClientIdAsync(clientId, cancellationToken);
+        // Natural-key lookup can return a cached object. Like the admin editor,
+        // load the store's tracked instance before mutating or deleting it.
+        return application is null ? null : await manager.FindByPhysicalIdAsync(
+            await manager.GetPhysicalIdAsync(application, cancellationToken), cancellationToken);
     }
 
     private static async Task<bool> MatchesAsync(IOpenIdApplicationManager manager, object application,

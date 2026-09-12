@@ -137,9 +137,9 @@ public sealed class ApplicationController : Controller
             return Forbid();
         }
 
-        foreach (var error in OpenIdApplicationExtensions.ValidateClientSettings(model.Type, model.ApplicationType, model.ClientSecret, isNew: true))
+        foreach (var error in OpenIdApplicationExtensions.ValidateClientSettings(model.Type, model.ApplicationType, model.ClientSecret, S, isNew: true))
         {
-            ModelState.AddModelError(error.MemberNames.Single(), S[error.ErrorMessage]);
+            ModelState.AddModelError(error.MemberNames.Single(), error.ErrorMessage);
         }
 
         if (!string.IsNullOrEmpty(model.ClientId) && await _applicationManager.FindByClientIdAsync(model.ClientId) != null)
@@ -297,10 +297,10 @@ public sealed class ApplicationController : Controller
             return NotFound();
         }
 
-        foreach (var error in OpenIdApplicationExtensions.ValidateClientSettings(model.Type, model.ApplicationType, model.ClientSecret,
+        foreach (var error in OpenIdApplicationExtensions.ValidateClientSettings(model.Type, model.ApplicationType, model.ClientSecret, S,
             isNew: false, wasPublic: await _applicationManager.HasClientTypeAsync(application, OpenIddictConstants.ClientTypes.Public)))
         {
-            ModelState.AddModelError(error.MemberNames.Single(), S[error.ErrorMessage]);
+            ModelState.AddModelError(error.MemberNames.Single(), error.ErrorMessage);
         }
 
         if (ModelState.IsValid)

@@ -121,10 +121,12 @@ public class OpenIdApplicationManagementTests
             var publicRequest = Request(clientType: "public", roles: [], scopes: [], allowClientCredentials: false);
             Assert.IsType<Ok<OpenIdApplicationResponse>>(await OpenIdApplicationManagementEndpoints.UpdateAsync(http, Authorize(), manager, scopes, "managed-client", publicRequest));
             var application = await manager.FindByClientIdAsync("managed-client");
-            Assert.True(string.IsNullOrEmpty(await manager.GetClientSecretAsync(application)));
+            var descriptor = new OpenIdApplicationDescriptor();
+            await manager.PopulateAsync(descriptor, application);
+            Assert.True(string.IsNullOrEmpty(descriptor.ClientSecret));
             Assert.Equal(400, Status(await OpenIdApplicationManagementEndpoints.UpdateAsync(http, Authorize(), manager, scopes, "managed-client", Request())));
             Assert.IsType<Ok<OpenIdApplicationResponse>>(await OpenIdApplicationManagementEndpoints.UpdateAsync(http, Authorize(), manager, scopes, "managed-client", Request(secret)));
-            Assert.True(await manager.ValidateClientSecretAsync(application, secret));
+            Assert.True(await manager.ValidateClientSecretAsync(await manager.FindByClientIdAsync("managed-client"), secret));
             Assert.IsType<NoContent>(await OpenIdApplicationManagementEndpoints.DeleteAsync(http, Authorize(), manager, "managed-client"));
         });
         await context.UsingTenantScopeAsync(async scope =>

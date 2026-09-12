@@ -1,7 +1,7 @@
 # OpenID application administration slice
 
-This B06 slice starts from merged discovery commit `f28af3782`. It must incorporate the
-merged scope slice before final integration checks, without depending on an open PR.
+This B06 slice starts from merged discovery commit `f28af3782`. It incorporates merged scope PR #20 (`1e1774933`) for integration checks, without
+depending on an open PR.
 
 ## Existing behavior to retain
 
@@ -55,3 +55,14 @@ PR after this application resource contract merges, as required by the schedule.
   and no cross-tenant application access.
 - Strict solution build, affected/full test suites, live integration, canonical docs and
   packaged skills; green required CI and reviewed exact head before merging.
+
+## Current verification
+
+Strict solution build and local full suites pass on the combined scope/application
+implementation: 3,264 server tests (one CI-only skip), 291 CLI tests and 78
+authentication/MCP tests. The live application smoke script proves generated
+Pomi/MCP CRUD, restricted-client authentication, secret preservation, runtime
+role/grant replacement and rejection of client authentication after deletion.
+Strict documentation, plugin links and skill distribution pass. Required PR CI
+and final merge remain pending; dedicated credential lifecycle is still the next
+independent B06 slice.

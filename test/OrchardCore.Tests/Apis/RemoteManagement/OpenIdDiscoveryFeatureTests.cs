@@ -40,6 +40,7 @@ public class OpenIdDiscoveryFeatureTests
                 {
                     var cli = endpoint.Metadata.GetRequiredMetadata<CliOperationMetadata>();
                     Assert.Equal("openid", cli.CommandGroup[0]);
+                    Assert.Equal(cli.CommandGroup[1] == "applications" && cli.Verb is "create" or "update" ? ["clientSecret"] : [], cli.SecretProperties);
                     var method = cli.Verb switch
                     {
                         "create" => "POST", "update" => "PUT", "delete" => "DELETE", _ => "GET",

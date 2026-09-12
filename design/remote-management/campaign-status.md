@@ -43,7 +43,7 @@ The [schedule](pr-schedule.md) and [plan](coverage-plan.md) define the work and 
 | Content culture picker settings | Merged | [PR #17](https://github.com/sebastienros/OrchardCore/pull/17), merge `6e9f1f64f`; all CI checks passed. Shared admin mutations, typed section and runtime cookie/redirect checks. |
 | Application/scope discovery | Merged | [PR #19](https://github.com/sebastienros/OrchardCore/pull/19), merge `f28af3782`; all CI checks passed. |
 | Scope administration | Merged | [PR #20](https://github.com/sebastienros/OrchardCore/pull/20), merge `1e1774933`; all CI checks passed. Shared admin/recipe editing and scope CRUD verified. |
-| Application administration | In development | Independent `codex/remote-openid-applications` from merged `f28af3782`; [contract and existing-path audit](openid-applications.md). Shared editor tracked-state regression reproduced before changes. |
+| Application administration | In verification | Independent `codex/remote-openid-applications`, integrated with merged scope commit `1e1774933`; [contract and existing-path audit](openid-applications.md). Local server/CLI/MCP and live checks passed. |
 | Application credential lifecycle | Planned | After application administration merges. |
 | Tenant feature-profile definitions | Planned | Independent B06 slice. |
 | Common index definitions and lifecycle | Planned | B07 with local Lucene verification. |
@@ -104,3 +104,15 @@ agreed slices are delivered and any remaining gaps have an explicit disposition.
   and MCP without CLI passed. Resources omission is optional in OpenAPI and clears
   the list; explicit null is rejected. Localized scope dictionary persistence remains
   the separate pre-existing finding recorded in the baseline, not a claimed fix.
+
+- Application administration: shared editor rejected-state regression failed on
+  `f28af3782` and passes after restoration. Admin and API client-type rules share
+  localized validation. API writes load the tracked store instance, matching the
+  admin editor and avoiding cached-instance identity conflicts across repeated edits.
+  Integrated with merged scope PR #20 (`1e1774933`): strict solution build zero
+  warnings/errors; server 3,264 passed with one CI-only skip; CLI 291 and
+  authentication/MCP 78 passed. Live Pomi/HTTP/MCP checks passed for create/update/
+  delete, equivalent retries, redaction, invalid/conflicting/denied requests, new
+  least-privilege client authentication, omitted-secret preservation, role/grant
+  replacement on new authentication, deletion and MCP without CLI. Strict docs,
+  plugin links and reproducible skill distribution passed; Pomi skills are 0.10.21.
