@@ -41,7 +41,8 @@ The [schedule](pr-schedule.md) and [plan](coverage-plan.md) define the work and 
 | P09 Content localization | Merged | [PR #12](https://github.com/sebastienros/OrchardCore/pull/12), merge `9d990f99d`; all CI checks passed. Shared admin/API workflow, existing localization handlers, draft retries and version-aware permission checks verified. |
 | P10 URL rewriting | Merged | [PR #15](https://github.com/sebastienros/OrchardCore/pull/15), merge `e8e6fda18`; all CI checks passed. Shared admin/recipe validation, lifecycle and native runtime rerouting verified. |
 | Content culture picker settings | Merged | [PR #17](https://github.com/sebastienros/OrchardCore/pull/17), merge `6e9f1f64f`; all CI checks passed. Shared admin mutations, typed section and runtime cookie/redirect checks. |
-| Application/scope discovery and administration | Planned | Separate B06 resource PRs. |
+| Application/scope discovery | In verification | Independent `codex/remote-openid-discovery`; existing managers, four redacted reads and separate permissions. |
+| Application/scope administration | Planned | Separate B06 mutation PRs after discovery. |
 | Application credential lifecycle | Planned | After application administration merges. |
 | Tenant feature-profile definitions | Planned | Independent B06 slice. |
 | Common index definitions and lifecycle | Planned | B07 with local Lucene verification. |
@@ -52,7 +53,7 @@ The [schedule](pr-schedule.md) and [plan](coverage-plan.md) define the work and 
 | SMTP configuration/test | Planned | B12 following settings conventions. |
 | Admin menus and dashboard layout | Planned | B13 after shared-content audit. |
 | Admin templates | Planned | Remaining B02 slice. |
-| Homepage assignment | In verification | `settings set-home-content` already provides assignment. Share route persistence with the Autoroute editor and clear stale contained paths; see baseline correction. |
+| Homepage assignment | Merged | [PR #18](https://github.com/sebastienros/OrchardCore/pull/18), merge `4d48d0e6b`; all CI checks passed. Existing command and Autoroute editor share persistence; selecting a container clears stale contained paths. |
 | Remaining tenant policy/settings gaps | Refine after baseline | Size demonstrated gaps individually; retain deliberate exclusions. |
 
 Provider-specific integrations, notification principal semantics, user MFA/recovery policy,
@@ -77,6 +78,14 @@ agreed slices are delivered and any remaining gaps have an explicit disposition.
 - Shared-service requirement: API service extractions must also replace equivalent logic in
   existing callers. P02 migrates layer admin mutations and JavaScript editor syntax validation;
   regression checks cover metadata edits preserving rule identities and editor evaluation.
+
+- OpenID discovery baseline: the existing tenant catalog has no application/scope
+  reads. New list/show operations reuse the configured OpenID managers and allowlist
+  response fields. Integrated with merged target `4d48d0e6b`: strict build zero
+  warnings/errors; 3,255 server tests passed with one CI-only skip, 291 CLI and 78 authentication/MCP
+  tests passed. Live paging, separate permissions, redaction, MCP without CLI
+  and the existing homepage workflow passed together. Explicit lowercase query parameter names keep HTTP/OpenAPI/MCP aligned.
+  Strict docs, 45 pinned manual link formats and reproducible skill distribution passed.
 
 - Home route shared-service refactor: two stale-route regression cases fail on merged
   base `6e9f1f64f` and pass after the fix. Strict solution build: zero warnings/errors;
