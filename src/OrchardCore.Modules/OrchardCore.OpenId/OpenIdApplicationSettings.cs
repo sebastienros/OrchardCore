@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using OpenIddict.Abstractions;
 using OrchardCore.OpenId.Abstractions.Descriptors;
 using OrchardCore.OpenId.Abstractions.Managers;
@@ -33,6 +34,32 @@ public class OpenIdApplicationSettings
 internal static class OpenIdApplicationExtensions
 {
     internal static readonly string[] s_separator = [" ", ","];
+
+    internal static IEnumerable<ValidationResult> ValidateClientSettings(string clientType, string applicationType,
+        string clientSecret, bool isNew, bool wasPublic = false)
+    {
+        var isPublic = string.Equals(clientType, OpenIddictConstants.ClientTypes.Public, StringComparison.OrdinalIgnoreCase);
+        if (!string.IsNullOrEmpty(clientSecret) && isPublic)
+        {
+            yield return new ValidationResult("No client secret can be set for public applications.", [nameof(OpenIdApplicationSettings.ClientSecret)]);
+        }
+        else if (string.IsNullOrEmpty(clientSecret))
+        {
+            if (isNew && string.Equals(clientType, OpenIddictConstants.ClientTypes.Confidential, StringComparison.OrdinalIgnoreCase))
+            {
+                yield return new ValidationResult("The client secret is required for confidential applications.", [nameof(OpenIdApplicationSettings.ClientSecret)]);
+            }
+            else if (!isNew && wasPublic && !isPublic)
+            {
+                yield return new ValidationResult("Setting a new client secret is required.", [nameof(OpenIdApplicationSettings.ClientSecret)]);
+            }
+        }
+
+        if (string.Equals(applicationType, OpenIddictConstants.ApplicationTypes.Native, StringComparison.OrdinalIgnoreCase) && !isPublic)
+        {
+            yield return new ValidationResult("Native applications must be public clients.", [nameof(OpenIdApplicationSettings.Type)]);
+        }
+    }
 
     public static async Task UpdateDescriptorFromSettings(this IOpenIdApplicationManager manager, OpenIdApplicationSettings model,
         object application = null, CancellationToken cancellationToken = default)
