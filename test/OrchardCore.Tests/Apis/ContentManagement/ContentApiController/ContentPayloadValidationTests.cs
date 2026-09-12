@@ -8,6 +8,44 @@ namespace OrchardCore.Tests.Apis.ContentManagement.ContentApiController;
 public class ContentPayloadValidationTests
 {
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Update_ExplicitNull_ClearsValueAndPreservesOmittedProperties(bool draft)
+    {
+        using var context = new BlogPostApiControllerContext();
+        await context.InitializeAsync();
+        var id = context.BlogPost.ContentItemId;
+        var original = JsonNode.Parse(await context.Client.GetStringAsync($"api/content/{id}", TestContext.Current.CancellationToken));
+        Assert.NotNull(original["MarkdownBodyPart"]?["Markdown"]);
+        const string payload = "{\"MarkdownBodyPart\":{\"Markdown\":null}}";
+
+        // Validation must accept the same merged payload without changing the stored item.
+        using var validationBody = new StringContent(payload, Encoding.UTF8, "application/json");
+        using var validation = await context.Client.PostAsync($"api/content/{id}/validate", validationBody, TestContext.Current.CancellationToken);
+        validation.EnsureSuccessStatusCode();
+        var validated = JsonNode.Parse(await validation.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        Assert.True(validated["isValid"].GetValue<bool>());
+        var unchanged = JsonNode.Parse(await context.Client.GetStringAsync($"api/content/{id}", TestContext.Current.CancellationToken));
+        Assert.Equal(original["MarkdownBodyPart"]?["Markdown"]?.ToJsonString(), unchanged["MarkdownBodyPart"]?["Markdown"]?.ToJsonString());
+
+        var route = $"api/content/{id}" + (draft ? "/draft" : string.Empty);
+        for (var attempt = 0; attempt < 2; attempt++)
+        {
+            using var updateBody = new StringContent(payload, Encoding.UTF8, "application/json");
+            using var response = await context.Client.PutAsync(route, updateBody, TestContext.Current.CancellationToken);
+            response.EnsureSuccessStatusCode();
+            var result = JsonNode.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+            Assert.Null(result["MarkdownBodyPart"]?["Markdown"]);
+            Assert.Equal(original["TitlePart"]?.ToJsonString(), result["TitlePart"]?.ToJsonString());
+            Assert.Equal(original["Owner"]?.ToJsonString(), result["Owner"]?.ToJsonString());
+        }
+
+        var saved = JsonNode.Parse(await context.Client.GetStringAsync($"api/content/{id}?version=latest", TestContext.Current.CancellationToken));
+        Assert.Null(saved["MarkdownBodyPart"]?["Markdown"]);
+        Assert.Equal(original["TitlePart"]?.ToJsonString(), saved["TitlePart"]?.ToJsonString());
+    }
+
+    [Theory]
     [InlineData("{\"TitlePart\":{\"Title\":{\"a\":\"b\"}}}", "TitlePart.Title")]
     [InlineData("{\"TitlePart\":{\"Title\":[\"wrong\"]}}", "TitlePart.Title")]
     [InlineData("{\"TitlePart\":{\"Title\":42}}", "TitlePart.Title")]

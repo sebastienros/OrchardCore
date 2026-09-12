@@ -79,6 +79,12 @@ the server resolves its content type. It does not persist changes or run update
 workflows. Typed values must match the schema: `TitlePart.Title` is a string,
 not an object. Do not interpret a type-validation error as a missing feature.
 
+Updates merge supplied part/field properties. Omitted properties retain their
+values; explicit JSON `null` clears nullable values, including publish/archive
+schedules. Arrays replace the complete array, so preserve embedded IDs/items
+that should remain. Validate the candidate and read it back after saving; use
+the live schema to determine which properties allow null.
+
 ## Lifecycle commands
 
 ```bash

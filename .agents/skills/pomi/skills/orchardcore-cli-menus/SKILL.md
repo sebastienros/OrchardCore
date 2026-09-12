@@ -128,7 +128,7 @@ requirement.
 
 ## Update safely
 
-Menu updates replace the complete content payload:
+Menu updates merge supplied properties, but replace each supplied menu-item array:
 
 ```bash
 pomi content items show <menu-id> --version draft > main-menu-current.json

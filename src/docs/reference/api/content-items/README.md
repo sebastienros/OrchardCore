@@ -137,6 +137,16 @@ Representative `Article` document:
 }
 ```
 
+### Partial content updates
+
+For existing items, save, update and update-draft merge the supplied part and field properties.
+Omitted properties keep their current values. An explicit JSON `null` clears a nullable value;
+for example, `{"PublishLaterPart":{"ScheduledPublishUtc":null}}` clears a publication schedule.
+Arrays replace the existing array in full, so preserve any embedded items that should remain.
+Validation uses the same merge rules without persisting the candidate. A null value must still
+satisfy the live schema and content validation rules. Server-managed identity/state properties
+and the ownership restrictions above remain in effect.
+
 ### Version selection
 
 Endpoints with a `version` query parameter accept:
