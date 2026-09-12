@@ -46,3 +46,18 @@ Source audit complete. Implementation, tests, live verification, Pomi documentat
 package update and independent PR/CI remain. The module's existing settings editor
 and frontend controller are the authoritative behavior, not the deprecated
 `SearchSettings.ProviderName` property's stale replacement hint.
+
+## Initial implementation verification
+
+The section provider and existing admin driver now share index selection validation
+and settings assignment. The editor renders PageTitle and initializes its bound
+model from existing values, preserving fields absent from a partial submission.
+The module explicitly references Settings.Core and exposes internals only to the
+existing test assembly, following the other settings adapters.
+
+The strict build passes with zero warnings/errors. All nine initial tests pass:
+admin/API selection and text equivalence, null clearing, canonical names, no-op
+writes, unknown/type-invalid/missing-index rejection without partial mutation,
+preservation of stale/empty omitted defaults, and partial admin submissions.
+Permission/feature/persistence coverage, real frontend verification, Pomi package
+updates, integrated validation and independent PR/CI remain.
