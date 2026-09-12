@@ -964,6 +964,13 @@ internal sealed partial class CliApplication
         var bodyFileOption = new Option<FileInfo?>("--body-file") { Description = "Read the JSON request body from a file" };
         var stdinOption = new Option<bool>("--stdin") { Description = "Read the request body from standard input" };
         var fileOption = new Option<FileInfo?>("--file") { Description = "Read the binary request body from a file" };
+        var secretOutputOption = operation.CliMetadata.SecretResponse
+            ? new Option<FileInfo?>("--secret-output-file") { Description = "Save the one-time JSON response to a new private file", Required = true }
+            : null;
+        if (secretOutputOption is not null)
+        {
+            command.Options.Add(secretOutputOption);
+        }
 
         if (operation.CliMetadata.RequiresConfirmation)
         {
@@ -1105,10 +1112,13 @@ internal sealed partial class CliApplication
                 }
             }
 
+            await using var secretOutput = secretOutputOption is null ? null : SecretOutputFile.Create(
+                parseResult.GetValue(secretOutputOption) ?? throw new CliException("A secret output file is required."));
             var accessToken = await ResolveAccessTokenAsync(context, null, null, false, cancellationToken);
             var response = await SendApiRequestAsync(context, operation.Method, routePath, query, headers, body, accessToken, cancellationToken);
-            var outputJson = provisioningSupported ? await CaptureProvisionedContextAsync(response.Json, cancellationToken) : response.Json;
-            IReadOnlyList<CliTableColumnMetadata>? tableColumns = operation.CliMetadata.TableColumns.Count > 0 ? [.. operation.CliMetadata.TableColumns] : null;
+            var outputJson = secretOutput is not null ? await secretOutput.WriteAsync(response.Json, cancellationToken)
+                : provisioningSupported ? await CaptureProvisionedContextAsync(response.Json, cancellationToken) : response.Json;
+            IReadOnlyList<CliTableColumnMetadata>? tableColumns = secretOutput is null && operation.CliMetadata.TableColumns.Count > 0 ? [.. operation.CliMetadata.TableColumns] : null;
             return await WriteOutputAsync(parseResult, outputJson, cancellationToken, tableColumns, response.HttpMethod, response.StatusCode);
         });
     }

@@ -93,6 +93,7 @@ internal static class OpenApiCliParser
         {
             Capability = CliUtilities.ReadString(extensionElement, "capability"),
             RequiresConfirmation = extensionElement.TryGetProperty("requiresConfirmation", out var requiresConfirmationElement) && requiresConfirmationElement.ValueKind == JsonValueKind.True,
+            SecretResponse = extensionElement.TryGetProperty("secretResponse", out var secretResponse) && secretResponse.ValueKind == JsonValueKind.True,
             Hidden = extensionElement.TryGetProperty("hidden", out var hiddenElement) && hiddenElement.ValueKind == JsonValueKind.True,
             InputMode = ParseInputMode(CliUtilities.ReadString(extensionElement, "inputMode")),
             DefaultJsonBody = CliUtilities.ReadString(extensionElement, "defaultJsonBody"),
