@@ -107,8 +107,44 @@ Deletion returns `204`, including when the application is already absent. A dele
 application can no longer authenticate to obtain new tokens. Application settings and
 credential changes govern subsequent authentication; they do not promise immediate
 invalidation of all previously issued access tokens. Existing token lifetime and
-validation configuration continue to apply. Dedicated credential rotation/revocation
-is a separate lifecycle workflow.
+validation configuration continue to apply.
+
+## Rotate or revoke an application shared secret
+
+Both operations require `AccessRemoteManagement` and `ManageApplications` and apply
+only to confidential applications. They preserve the application's identity, roles,
+permissions, redirects and other settings, using the existing OpenID application manager.
+
+```bash
+pomi openid applications credentials rotate reporting-client --secret-output-file /private/path/new-credentials.json --force
+pomi openid applications credentials revoke reporting-client --force
+```
+
+Rotation requires a new `--secret-output-file`, including with `--output none`.
+Pomi creates an owner-only file before sending the request and refuses an existing
+file or unavailable directory before changing the credential. It saves the complete
+JSON response (`clientId` and `clientSecret`) there and prints only `secretOutputFile`.
+Keep this file outside source control. Update the application's existing credential
+source from the file; rotation does not replace credentials saved in other Pomi contexts.
+The independent administrator account and its private handoff file are unchanged.
+
+HTTP clients call `POST api/openid/applications/credentials:rotate?clientId=...`.
+A successful response returns the new secret once with `Cache-Control: no-store`.
+The previous secret becomes invalid immediately: there is no overlap period. Repeating
+rotation creates another replacement, so do not automatically retry an uncertain
+response. If the response is lost, explicitly rotate again using another authorized
+identity or a still-valid token. Previously issued secrets cannot be recovered.
+
+`POST api/openid/applications/credentials:revoke?clientId=...` returns `204` and replaces
+the secret with an undisclosed random value. Repeated revocation succeeds. The client
+remains confidential; a later rotation or an editor-supplied secret can restore shared
+secret authentication. Revocation does not disable independent key or assertion
+authentication. Neither operation promises immediate invalidation of issued tokens;
+the tenant's token lifetime and validation settings still apply.
+
+Public clients and empty client identifiers return `400`. A missing rotation target
+returns `404`; revoking a missing target returns `204`. Rejected manager validation
+restores the prior tracked application settings and returns `400`.
 
 ## Create or update a scope
 
@@ -149,6 +185,9 @@ With the tenant MCP feature enabled, the same reads are available as
 `openid_scopes_show`. Scope mutations add `openid_scopes_create`,
 `openid_scopes_update` and `openid_scopes_delete`. Application mutations add
 `openid_applications_create`, `openid_applications_update` and
-`openid_applications_delete`. All use the same permission
+`openid_applications_delete`. Credential operations add
+`openid_applications_credentials_rotate` and `openid_applications_credentials_revoke`.
+MCP rotation returns the secret directly to the caller, which must store it securely
+and keep it out of transcripts and logs. All use the same permission
 checks and response contracts,
 including when the Pomi CLI feature is disabled.
