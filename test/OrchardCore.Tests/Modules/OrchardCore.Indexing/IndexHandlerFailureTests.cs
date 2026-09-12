@@ -77,6 +77,15 @@ public class IndexHandlerFailureTests
         else { store.Verify(value => value.DeleteAsync(profile), Times.Once); }
     }
 
+    [Fact]
+    public async Task Reset_HandlerFailure_Propagates()
+    {
+        var store = new Mock<IIndexProfileStore>(MockBehavior.Strict);
+        var manager = new DefaultIndexProfileManager(store.Object, [new FailingHandler("reset")], NullLogger<DefaultIndexProfileManager>.Instance);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => manager.ResetAsync(new IndexProfile()).AsTask());
+        store.VerifyNoOtherCalls();
+    }
+
     private sealed class FailingHandler : IndexProfileHandlerBase
     {
         private readonly string _phase;
@@ -87,6 +96,7 @@ public class IndexHandlerFailureTests
         }
 
         public override Task InitializingAsync(InitializingContext<IndexProfile> context) => Fail("initialize");
+        public override Task ResetAsync(IndexProfileResetContext context) => Fail("reset");
         public override Task CreatingAsync(CreatingContext<IndexProfile> context) => Fail("create");
         public override Task CreatedAsync(CreatedContext<IndexProfile> context) => Fail("created");
         public override Task UpdatedAsync(UpdatedContext<IndexProfile> context) => Fail("updated");

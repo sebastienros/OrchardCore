@@ -147,12 +147,34 @@ updating a definition does not automatically rebuild existing documents. Enable
 `OrchardCore.Indexing.Worker` for ongoing content updates. Verify results through an
 existing named Lucene query before claiming the index is ready; when testing content
 updates, verify changed indexed terms, not merely freshly loaded database content.
-Observable reset/rebuild/synchronize commands remain a later slice; inspect live
-help and do not invent those commands. Other providers' typed definitions are not
-yet covered by the Lucene command group.
+Discover `lifecycleActions` on each provider/source before requesting lifecycle
+work. Lucene content indexes support:
 
-See the [Lucene definition contract](https://github.com/sebastienros/OrchardCore/blob/ff9239fac0d0a97bc38064c020979afbe5325513/src/docs/reference/modules/Lucene/README.md#remote-content-index-definitions)
-and [shared index coordination](https://github.com/sebastienros/OrchardCore/blob/ff9239fac0d0a97bc38064c020979afbe5325513/src/docs/reference/modules/Indexing/README.md#coordinating-profiles-and-provider-resources).
+```bash
+pomi indexes synchronize <index-id>
+pomi indexes reset <index-id> --force
+pomi indexes rebuild <index-id> --force
+pomi indexes operations show <operation-id>
+```
+
+Capture the returned operation ID and poll `operations show` with a bounded wait.
+`Pending` and `Running` are not completion. `Completed` confirms that no further
+queued tasks were observed after successful processing; subsequent content changes
+can require another synchronization. Inspect `outcome` on `Failed` before deciding
+whether to retry. `Uncertain` means the server cannot confirm progress, not that
+work was cancelled: never automatically repeat it. `LockExpired` means a provider
+call may have outlived the lock lease; inspect the index before requesting more work. Repeated requests create new
+operations. No token refresh or successful HTTP 202 proves the index is ready.
+
+Reset reprocesses the queue without recreating the index. Rebuild recreates it;
+use rebuild when changing selected content types must remove old indexed documents.
+These operations use the same coordinator as admin and recipe actions. Ongoing
+scheduled updates still require the worker feature. Other providers' typed
+definitions and lifecycle adapters are not covered by the Lucene contract.
+
+See the [Lucene definition contract](https://github.com/sebastienros/OrchardCore/blob/738a7c14b4e1ac8a0418fc11967c681b6ac444cd/src/docs/reference/modules/Lucene/README.md#remote-content-index-definitions)
+and [shared index coordination](https://github.com/sebastienros/OrchardCore/blob/738a7c14b4e1ac8a0418fc11967c681b6ac444cd/src/docs/reference/modules/Indexing/README.md#coordinating-profiles-and-provider-resources).
+See also the [operation status contract](https://github.com/sebastienros/OrchardCore/blob/738a7c14b4e1ac8a0418fc11967c681b6ac444cd/src/docs/reference/modules/Indexing/README.md#remote-lifecycle-requests).
 
 ## Workflows
 

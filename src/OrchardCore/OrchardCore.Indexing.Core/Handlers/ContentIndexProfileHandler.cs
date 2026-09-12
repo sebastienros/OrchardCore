@@ -57,7 +57,7 @@ public sealed class ContentIndexProfileHandler : IndexProfileHandlerBase
 
     public override Task SynchronizedAsync(IndexProfileSynchronizedContext context)
     {
-        if (context.IndexProfile.Type != IndexingConstants.ContentsIndexSource)
+        if (context.IsIndexingCompleted || context.IndexProfile.Type != IndexingConstants.ContentsIndexSource)
         {
             return Task.CompletedTask;
         }

@@ -91,6 +91,7 @@ public sealed class ContentsStartup : StartupBase
     public override void ConfigureServices(IServiceCollection services)
     {
         services.AddSingleton<IRemoteManagementCapabilityProvider, LuceneIndexCapabilityProvider>();
+        services.Configure<IndexLifecycleOptions>(options => options.RemoteProviders.Add(LuceneConstants.ProviderName));
         services.AddDataMigration<IndexingMigrations>();
 
         // Register after IndexingMigrations so its deferred task, which rewrites obsolete per-index role

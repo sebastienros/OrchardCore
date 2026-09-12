@@ -262,7 +262,7 @@ public sealed class DefaultIndexProfileManager : IIndexProfileManager
         ArgumentNullException.ThrowIfNull(index);
 
         var validatingContext = new IndexProfileResetContext(index);
-        await _handlers.InvokeAsync((handler, ctx) => handler.ResetAsync(ctx), validatingContext, _logger);
+        await InvokeRequiredAsync(validatingContext, (handler, ctx) => handler.ResetAsync(ctx));
     }
 
     private async ValueTask LoadAsync(IndexProfile index)

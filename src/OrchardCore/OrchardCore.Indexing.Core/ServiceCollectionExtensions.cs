@@ -15,6 +15,10 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<IIndexingTaskManager, IndexingTaskManager>();
         services.TryAddScoped<IIndexProfileManager, DefaultIndexProfileManager>();
         services.TryAddScoped<IIndexProfileManagementService, IndexProfileManagementService>();
+        services.TryAddScoped<IIndexLifecycleService, IndexLifecycleService>();
+        services.TryAddScoped<Operations.IndexOperationStore>();
+        services.TryAddScoped<Operations.IndexOperationRunner>();
+        services.TryAddScoped<Operations.IIndexOperationExecutor, Operations.IndexOperationExecutor>();
         services.TryAddScoped<IIndexProfileStore, DefaultIndexProfileStore>();
         services.TryAddScoped<IndexProfileIdentityValidator>();
         services.AddIndexProfileHandler<DefaultIndexProfileHandler>();

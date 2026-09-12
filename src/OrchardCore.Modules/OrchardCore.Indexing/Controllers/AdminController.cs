@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Localization;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Routing;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
 using OrchardCore.Admin;
@@ -11,6 +10,7 @@ using OrchardCore.DisplayManagement;
 using OrchardCore.DisplayManagement.ModelBinding;
 using OrchardCore.DisplayManagement.Notify;
 using OrchardCore.Indexing.Core;
+using OrchardCore.Indexing.Core.Operations;
 using OrchardCore.Indexing.Models;
 using OrchardCore.Indexing.ViewModels;
 using OrchardCore.Infrastructure.Entities;
@@ -27,9 +27,9 @@ public sealed class AdminController : Controller
     private readonly IUpdateModelAccessor _updateModelAccessor;
     private readonly IIndexProfileManager _indexProfileManager;
     private readonly IIndexProfileManagementService _management;
+    private readonly IndexOperationRunner _operations;
     private readonly IndexingOptions _indexingOptions;
     private readonly IDisplayManager<IndexProfile> _displayManager;
-    private readonly IServiceProvider _serviceProvider;
     private readonly INotifier _notifier;
 
     internal readonly IHtmlLocalizer H;
@@ -40,9 +40,9 @@ public sealed class AdminController : Controller
         IUpdateModelAccessor updateModelAccessor,
         IIndexProfileManager indexProfileManager,
         IIndexProfileManagementService management,
+        IndexOperationRunner operations,
         IDisplayManager<IndexProfile> displayManager,
         IOptions<IndexingOptions> indexingOptions,
-        IServiceProvider serviceProvider,
         INotifier notifier,
         IHtmlLocalizer<AdminController> htmlLocalizer,
         IStringLocalizer<AdminController> stringLocalizer)
@@ -51,8 +51,8 @@ public sealed class AdminController : Controller
         _updateModelAccessor = updateModelAccessor;
         _indexProfileManager = indexProfileManager;
         _management = management;
+        _operations = operations;
         _displayManager = displayManager;
-        _serviceProvider = serviceProvider;
         _indexingOptions = indexingOptions.Value;
         _notifier = notifier;
         H = htmlLocalizer;
@@ -388,93 +388,15 @@ public sealed class AdminController : Controller
 
     [HttpPost]
     [Admin("indexing/reset/{id}", "IndexingReset")]
-    public async Task<IActionResult> Reset(string id)
-    {
-        if (!await _authorizationService.AuthorizeAsync(User, IndexingPermissions.ManageIndexes))
-        {
-            return Forbid();
-        }
-
-        var indexProfile = await _indexProfileManager.FindByIdAsync(id);
-
-        if (indexProfile == null)
-        {
-            return NotFound();
-        }
-
-        await _indexProfileManager.ResetAsync(indexProfile);
-        await _indexProfileManager.UpdateAsync(indexProfile);
-        await _indexProfileManager.SynchronizeAsync(indexProfile);
-
-        await _notifier.SuccessAsync(H["An index has been reset successfully. The synchronizing process was triggered in the background."]);
-
-        return RedirectToAction(nameof(Index));
-    }
+    public Task<IActionResult> Reset(string id) => QueueLifecycleAsync(id, IndexLifecycleAction.Reset);
 
     [HttpPost]
     [Admin("indexing/synchronize/{id}", "IndexingSynchronize")]
-    public async Task<IActionResult> Synchronize(string id)
-    {
-        if (!await _authorizationService.AuthorizeAsync(User, IndexingPermissions.ManageIndexes))
-        {
-            return Forbid();
-        }
-
-        var indexProfile = await _indexProfileManager.FindByIdAsync(id);
-
-        if (indexProfile == null)
-        {
-            return NotFound();
-        }
-
-        await _indexProfileManager.SynchronizeAsync(indexProfile);
-
-        await _notifier.SuccessAsync(H["The synchronizing process was triggered in the background."]);
-
-        return RedirectToAction(nameof(Index));
-    }
+    public Task<IActionResult> Synchronize(string id) => QueueLifecycleAsync(id, IndexLifecycleAction.Synchronize);
 
     [HttpPost]
     [Admin("indexing/rebuild/{id}", "IndexingRebuild")]
-    public async Task<IActionResult> Rebuild(string id)
-    {
-        if (!await _authorizationService.AuthorizeAsync(User, IndexingPermissions.ManageIndexes))
-        {
-            return Forbid();
-        }
-
-        var indexProfile = await _indexProfileManager.FindByIdAsync(id);
-
-        if (indexProfile == null)
-        {
-            return NotFound();
-        }
-
-        var indexManager = _serviceProvider.GetKeyedService<IIndexManager>(indexProfile.ProviderName);
-
-        if (indexManager is null)
-        {
-            await _notifier.ErrorAsync(H["No index manager found to rebuild index for provider '{0}'.", indexProfile.ProviderName]);
-
-            return RedirectToAction(nameof(Index));
-        }
-
-        await _indexProfileManager.ResetAsync(indexProfile);
-        await _indexProfileManager.UpdateAsync(indexProfile);
-
-        if (await indexManager.RebuildAsync(indexProfile))
-        {
-            await _indexProfileManager.SynchronizeAsync(indexProfile);
-
-            await _notifier.SuccessAsync(H["An index has been rebuilt successfully. The synchronizing process was triggered in the background."]);
-        }
-        else
-        {
-            await _notifier.ErrorAsync(H["An error occurred while rebuilding the index."]);
-        }
-
-        return RedirectToAction(nameof(Index));
-    }
+    public Task<IActionResult> Rebuild(string id) => QueueLifecycleAsync(id, IndexLifecycleAction.Rebuild);
 
     [HttpPost]
     [ActionName(nameof(Index))]
@@ -489,8 +411,6 @@ public sealed class AdminController : Controller
 
         if (itemIds?.Any() == true)
         {
-            var indexManagers = new Dictionary<string, IIndexManager>();
-
             switch (options.BulkAction)
             {
                 case IndexingEntityAction.None:
@@ -523,108 +443,36 @@ public sealed class AdminController : Controller
                     break;
 
                 case IndexingEntityAction.Reset:
-                    var resetCounter = 0;
-
-                    foreach (var id in itemIds)
-                    {
-                        var indexProfile = await _indexProfileManager.FindByIdAsync(id);
-
-                        if (indexProfile == null)
-                        {
-                            continue;
-                        }
-
-                        await _indexProfileManager.ResetAsync(indexProfile);
-                        await _indexProfileManager.UpdateAsync(indexProfile);
-                        await _indexProfileManager.SynchronizeAsync(indexProfile);
-
-                        resetCounter++;
-                    }
-
-                    if (resetCounter == 0)
-                    {
-                        await _notifier.WarningAsync(H["No index were reset."]);
-                    }
-                    else
-                    {
-                        await _notifier.SuccessAsync(H.Plural(resetCounter, "1 index has been reset successfully.", "{0} indexes have been reset successfully."));
-                    }
-                    break;
-
                 case IndexingEntityAction.Synchronize:
-                    var synchronizedCounter = 0;
-
-                    foreach (var id in itemIds)
-                    {
-                        var index = await _indexProfileManager.FindByIdAsync(id);
-
-                        if (index == null)
-                        {
-                            continue;
-                        }
-
-                        await _indexProfileManager.SynchronizeAsync(index);
-
-                        synchronizedCounter++;
-                    }
-
-                    if (synchronizedCounter == 0)
-                    {
-                        await _notifier.WarningAsync(H["No index were synchronized."]);
-                    }
-                    else
-                    {
-                        await _notifier.SuccessAsync(H.Plural(synchronizedCounter, "1 index has been synchronized successfully.", "{0} indexes have been synchronized successfully."));
-                    }
-                    break;
                 case IndexingEntityAction.Rebuild:
-                    var rebuildCounter = 0;
-                    foreach (var id in itemIds)
+                    var action = options.BulkAction switch
                     {
-                        var indexProfile = await _indexProfileManager.FindByIdAsync(id);
-
-                        if (indexProfile == null)
-                        {
-                            continue;
-                        }
-
-                        if (!indexManagers.TryGetValue(indexProfile.ProviderName, out var indexManager))
-                        {
-                            indexManager = _serviceProvider.GetKeyedService<IIndexManager>(indexProfile.ProviderName);
-                            indexManagers.Add(indexProfile.ProviderName, indexManager);
-                        }
-
-                        if (indexManager is null)
-                        {
-                            continue;
-                        }
-
-                        if (!await indexManager.RebuildAsync(indexProfile))
-                        {
-                            continue;
-                        }
-
-                        rebuildCounter++;
-
-                        await _indexProfileManager.ResetAsync(indexProfile);
-                        await _indexProfileManager.UpdateAsync(indexProfile);
-                        await _indexProfileManager.SynchronizeAsync(indexProfile);
-                    }
-
-                    if (rebuildCounter == 0)
+                        IndexingEntityAction.Reset => IndexLifecycleAction.Reset,
+                        IndexingEntityAction.Rebuild => IndexLifecycleAction.Rebuild,
+                        _ => IndexLifecycleAction.Synchronize,
+                    };
+                    var queued = 0;
+                    foreach (var id in itemIds.Distinct(StringComparer.Ordinal))
                     {
-                        await _notifier.WarningAsync(H["No index were rebuilt."]);
+                        if (await _indexProfileManager.FindByIdAsync(id) is null) { continue; }
+                        await _operations.QueueAsync(id, action);
+                        queued++;
                     }
-                    else
-                    {
-                        await _notifier.SuccessAsync(H.Plural(rebuildCounter, "1 index has been rebuilt successfully.", "{0} indexes have been rebuilt successfully."));
-                    }
+                    await _notifier.SuccessAsync(H.Plural(queued, "1 index operation was queued.", "{0} index operations were queued."));
                     break;
                 default:
                     return BadRequest();
             }
         }
 
+        return RedirectToAction(nameof(Index));
+    }
+    private async Task<IActionResult> QueueLifecycleAsync(string id, IndexLifecycleAction action)
+    {
+        if (!await _authorizationService.AuthorizeAsync(User, IndexingPermissions.ManageIndexes)) { return Forbid(); }
+        if (await _indexProfileManager.FindByIdAsync(id) is null) { return NotFound(); }
+        await _operations.QueueAsync(id, action);
+        await _notifier.SuccessAsync(H["The index operation was queued."]);
         return RedirectToAction(nameof(Index));
     }
 }
