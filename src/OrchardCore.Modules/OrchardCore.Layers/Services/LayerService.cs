@@ -93,7 +93,7 @@ public class LayerService : ILayerService
         {
             return new LayerMutationResult { Status = LayerMutationStatus.NotFound };
         }
-        var widgets = await GetLayerWidgetsMetadataAsync(item => item.Latest);
+        var widgets = await GetLayerWidgetsMetadataAsync(item => item.Latest || item.Published);
         if (widgets.Any(widget => string.Equals(widget.Layer, layer.Name, StringComparison.OrdinalIgnoreCase)))
         {
             return new LayerMutationResult { Status = LayerMutationStatus.Referenced, Layer = layer };

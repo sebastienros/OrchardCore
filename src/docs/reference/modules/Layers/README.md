@@ -98,3 +98,11 @@ Layer settings can be configured using the `Settings` recipe step:
 | Property | Type            | Description                                       |
 |----------|-----------------|---------------------------------------------------|
 | `Zones`  | Array of String | The list of available zones for widget placement. |
+
+### Remote widget placement
+
+The [widget placement API](../../api/layers/README.md#widget-placement) exposes
+configured zones and authorized widget placements through OpenAPI, Pomi and MCP.
+The admin editor and drag-and-drop action share its validation and persistence
+service. Moving a published widget requires content edit and publish permission;
+draft body changes remain unpublished.

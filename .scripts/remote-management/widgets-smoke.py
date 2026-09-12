@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify layer CRUD, permissions, projection and rendered rules on a disposable tenant."""
+"""Verify widget placement, version permissions, shared moves and rendering on a disposable tenant."""
 import copy
 import json
 import os
@@ -17,7 +17,7 @@ state = json.loads(state_path.read_text())
 base = state['url']
 assert urllib.parse.urlparse(base).hostname in ('127.0.0.1', 'localhost', '::1')
 wrapper = Path(__file__).with_name('pomi-fixture.py')
-name = 'LayerSmoke' + secrets.token_hex(4)
+name = 'WidgetSmoke' + secrets.token_hex(4)
 tokens = {}
 items, types = [], []
 
@@ -55,7 +55,7 @@ def request(path, method='GET', body=None, client='cli-fixture', status=200, raw
         return json.loads(text) if text else None
 
 
-def pomi(*args, body=None, client='cli-layers', status=None, failure=False):
+def pomi(*args, body=None, client='cli-widgets', status=None, failure=False):
     env = os.environ.copy()
     env.update(OC_FIXTURE_CONFIG_HOME=config_home, OC_FIXTURE_CLIENT_ID=client)
     command = [sys.executable, str(wrapper), str(state_path), *args, '--output', 'json']
@@ -74,9 +74,9 @@ def pomi(*args, body=None, client='cli-layers', status=None, failure=False):
     return json.loads(result.stdout) if result.stdout.strip() else None
 
 
-def tool(verb, arguments=None, client='cli-layers', status=200):
+def tool(verb, arguments=None, client='cli-widgets', status=200):
     result = request('mcp', 'POST', {'jsonrpc': '2.0', 'id': 1, 'method': 'tools/call',
-        'params': {'name': 'layers_' + verb, 'arguments': arguments or {}}}, client=client)['result']
+        'params': {'name': 'layers_widgets_' + verb, 'arguments': arguments or {}}}, client=client)['result']
     content = json.loads(result['content'][0]['text'])
     assert content['statusCode'] == status, content
     assert result.get('isError', False) == (status >= 400)
@@ -101,55 +101,15 @@ def feature(name, enabled):
     request('api/features/' + name + (':enable?force=true' if enabled else ':disable'), 'POST')
 
 
-with tempfile.TemporaryDirectory(prefix='layers-cli-', dir=state_path.parent) as config_home:
+with tempfile.TemporaryDirectory(prefix='widgets-cli-', dir=state_path.parent) as config_home:
     pomi('context', 'add', name, base, '--current')
-    feature('OrchardCore.Layers', True)
-    feature('OrchardCore.RemoteManagement.Mcp', True)
+    for module in ['OrchardCore.Layers', 'OrchardCore.Html', 'OrchardCore.Autoroute', 'OrchardCore.RemoteManagement.Mcp']:
+        feature(module, True)
     pomi('api', 'refresh', '--force')
-    definition = {'name': name, 'description': 'Layer verification', 'conditions': [
-        {'name': 'AllConditionGroup', 'conditions': [
-            {'name': 'BooleanCondition', 'properties': {'value': True}},
-            {'name': 'IsAnonymousCondition'}]}]}
     try:
-        descriptors = pomi('layers', 'conditions')
-        assert pomi('layers', 'schema', '--operation', 'create')
-        assert any(entry['name'] == 'AllConditionGroup' and entry['canWrite'] for entry in descriptors)
-        assert pomi('layers', 'validate', body=definition)['isValid']
-        special = copy.deepcopy(definition)
-        special['name'] = name + '/space % name'
-        assert pomi('layers', 'create', body=special)['name'] == special['name']
-        assert pomi('layers', 'show', special['name'])['name'] == special['name']
-        assert tool('show', {'query': {'name': special['name']}})['name'] == special['name']
-        pomi('layers', 'delete', special['name'], '--force')
-        pomi('layers', 'show', special['name'], status=404)
-        saved = pomi('layers', 'create', body=definition)
-        assert saved == pomi('layers', 'create', body=definition)
-        assert pomi('layers', 'list', '--search', name)['totalCount'] == 1
-        invalid = copy.deepcopy(definition)
-        invalid['conditions'][0]['conditions'][0]['properties']['value'] = 'invalid'
-        assert not pomi('layers', 'validate', body=invalid)['isValid']
-        pomi('layers', 'update', name, body=invalid, status=400)
-        assert saved == pomi('layers', 'show', name)
-        assert saved == tool('show', {'query': {'name': name}})
-        saved['description'] = 'Updated through MCP'
-        updated = tool('update', {'query': {'name': name}, 'body': saved})
-        assert updated == pomi('layers', 'show', name)
-        pomi('layers', 'delete', name, failure=True)
-        assert updated == pomi('layers', 'show', name)
-
-        for path, method, body in [('api/layers', 'GET', None), ('api/layers/by-name?name=' + urllib.parse.quote(name, safe=''), 'GET', None),
-                ('api/layer-conditions', 'GET', None), ('api/layers/validate', 'POST', definition),
-                ('api/layers', 'POST', definition), ('api/layers/by-name?name=' + urllib.parse.quote(name, safe=''), 'PUT', definition),
-                ('api/layers/by-name?name=' + urllib.parse.quote(name, safe=''), 'DELETE', None)]:
-            request(path, method, body, client=None, status=401)
-            request(path, method, body, client='cli-discovery', status=403)
-        tool('show', {'query': {'name': name}}, client='cli-discovery', status=403)
-        print('Layer CRUD, retries, validation, HTTP and MCP permissions: passed', flush=True)
-
-        # Compose a public page and widget using the existing content APIs, then prove rule evaluation.
-        for module in ['OrchardCore.Html', 'OrchardCore.Autoroute']:
-            feature(module, True)
         pomi('themes', 'set-current', 'TheTheme', client='cli-fixture')
+        assert {'Content', 'Footer'}.issubset(pomi('layers', 'widgets', 'zones'))
+        assert pomi('layers', 'widgets', 'schema', '--operation', 'update')
         for suffix, parts, stereotype in [('Page', ['TitlePart', 'HtmlBodyPart', 'AutoroutePart'], None),
                 ('Widget', ['TitlePart', 'HtmlBodyPart'], 'Widget')]:
             type_name = name + suffix
@@ -159,37 +119,74 @@ with tempfile.TemporaryDirectory(prefix='layers-cli-', dir=state_path.parent) as
             pomi('content', 'types', 'create', client='cli-fixture', body={'name': type_name, 'displayName': type_name,
                 'settings': {'ContentTypeSettings': settings}, 'parts': [{'name': part, 'partName': part} for part in parts]})
             types.append(type_name)
+        layer = {'name': name, 'conditions': [{'name': 'BooleanCondition', 'properties': {'value': True}}]}
+        pomi('layers', 'create', body=layer)
         page = pomi('content', 'items', 'save', client='cli-fixture', body={'ContentType': name + 'Page',
-            'TitlePart': {'Title': name}, 'HtmlBodyPart': {'Html': '<p>Layer test page</p>'}, 'AutoroutePart': {'Path': name.lower()}})
+            'TitlePart': {'Title': name}, 'HtmlBodyPart': {'Html': '<p>Widget placement page</p>'}, 'AutoroutePart': {'Path': name.lower()}})
         items.append(page['ContentItemId'])
-        marker = 'layer-marker-' + secrets.token_hex(8)
-        widget = pomi('content', 'items', 'save', client='cli-fixture', body={'ContentType': name + 'Widget',
-            'TitlePart': {'Title': 'Layer test widget'}, 'HtmlBodyPart': {'Html': '<p>' + marker + '</p>'},
-            'LayerMetadata': {'Layer': name, 'Zone': 'Content', 'Position': 0, 'RenderTitle': False}})
-        items.append(widget['ContentItemId'])
-        assert marker in request(name.lower(), client=None, raw=True)
-        pomi('layers', 'delete', name, '--force', status=409)
-        updated['conditions'][0]['conditions'][0]['properties']['value'] = False
-        pomi('layers', 'update', name, body=updated)
-        assert marker not in request(name.lower(), client=None, raw=True)
-        updated['conditions'][0]['conditions'][0]['properties']['value'] = True
-        pomi('layers', 'update', name, body=updated)
-        assert marker in request(name.lower(), client=None, raw=True)
-        print('Layer condition changes affect rendered widgets; referenced deletion refused: passed', flush=True)
+        markers = ['widget-first-' + secrets.token_hex(6), 'widget-second-' + secrets.token_hex(6)]
+        widgets = []
+        for marker in markers:
+            widget = pomi('content', 'items', 'save', client='cli-fixture', body={'ContentType': name + 'Widget',
+                'TitlePart': {'Title': marker}, 'HtmlBodyPart': {'Html': '<p>' + marker + '</p>'}})
+            items.append(widget['ContentItemId'])
+            widgets.append(widget)
+        first, second = [widget['ContentItemId'] for widget in widgets]
+        pomi('layers', 'widgets', 'show', first, status=404)
+        assert markers[0] not in request(name.lower(), client=None, raw=True)
+        draft_marker = 'unpublished-' + secrets.token_hex(6)
+        request('api/content/' + first + '/draft', 'POST')
+        request('api/content/' + first + '/draft', 'PUT', {'HtmlBodyPart': {'Html': '<p>' + draft_marker + '</p>'}})
+        placement = {'layer': name, 'zone': 'Content', 'position': 2, 'renderTitle': False}
+        pomi('layers', 'widgets', 'update', first, body=placement, client='cli-layers', status=403)
+        pomi('layers', 'widgets', 'update', first, body=placement, client='cli-widgets-editor', status=403)
+        assert not request('api/content/' + first + '?version=latest').get('LayerMetadata')
+        saved = pomi('layers', 'widgets', 'update', first, body=placement)
+        assert saved == pomi('layers', 'widgets', 'update', first, body=placement)
+        pomi('layers', 'widgets', 'update', second, body={**placement, 'position': 1})
+        html = request(name.lower(), client=None, raw=True)
+        assert html.index(markers[1]) < html.index(markers[0]) and draft_marker not in html
+        draft = request('api/content/' + first + '?version=latest')
+        published = request('api/content/' + first + '?version=published')
+        assert not draft['Published'] and draft_marker in draft['HtmlBodyPart']['Html']
+        assert published['Published'] and markers[0] in published['HtmlBodyPart']['Html']
+        assert draft['ContentItemVersionId'] != published['ContentItemVersionId']
+        assert draft['LayerMetadata'] == published['LayerMetadata']
+        listing = pomi('layers', 'widgets', 'list', '--layer', name, '--take', '1')
+        assert listing['totalCount'] == 2 and listing['items'][0]['contentItemId'] == second
+        for invalid in [{**placement, 'layer': 'missing-layer'}, {**placement, 'zone': 'content'},
+                {'layer': name, 'zone': 'Content'}, {**placement, 'unknown': True}]:
+            pomi('layers', 'widgets', 'update', first, body=invalid, status=400)
+        assert pomi('layers', 'widgets', 'show', first)['placement'] == placement
+        pomi('layers', 'widgets', 'update', page['ContentItemId'], body=placement, status=400)
+        moved = {**placement, 'zone': 'Footer', 'position': -1}
+        assert tool('update', {'path': {'contentItemId': first}, 'body': moved}) == moved
+        assert tool('show', {'path': {'contentItemId': first}})['placement'] == moved
+        html = request(name.lower(), client=None, raw=True)
+        assert markers[0] in html and markers[1] in html and draft_marker not in html
+        assert request('api/content/' + first + '?version=published')['LayerMetadata']['Zone'] == 'Footer'
+        print('Widget attachment, ordering, invalid input, retries, version preservation and MCP moves: passed', flush=True)
+
+        for path, method, body in [('api/layer-widgets', 'GET', None), ('api/layer-widget-zones', 'GET', None),
+                ('api/layer-widgets/' + first, 'GET', None), ('api/layer-widgets/' + first, 'PUT', placement)]:
+            request(path, method, body, client=None, status=401)
+            request(path, method, body, client='cli-discovery', status=403)
+        tool('update', {'path': {'contentItemId': first}, 'body': placement}, client='cli-layers', status=403)
+        print('HTTP/MCP module and content edit/publish permissions: passed', flush=True)
 
         ids, commands, names = catalog()
-        assert len([command for command in commands if command.startswith('layers ') and not command.startswith('layers widgets ')]) == 7
-        assert len([tool_name for tool_name in names if tool_name.startswith('layers_') and not tool_name.startswith('layers_widgets_')]) == 7
+        assert len([command for command in commands if command.startswith('layers widgets ')]) == 4
+        assert len([entry for entry in names if entry.startswith('layers_widgets_')]) == 4
         feature('OrchardCore.RemoteManagement.Cli', False)
         assert not catalog()[1]
-        assert tool('show', {'query': {'name': name}})['name'] == name
+        assert tool('show', {'path': {'contentItemId': first}})['placement'] == moved
         feature('OrchardCore.RemoteManagement.Cli', True)
         feature('OrchardCore.Layers', False)
-        assert not any(tool_name.startswith('layers_') for tool_name in catalog()[2])
-        request('api/layers', status=404, raw=True)
+        assert not any(entry.startswith('layers_widgets_') for entry in catalog()[2])
+        request('api/layer-widgets', status=404, raw=True)
         feature('OrchardCore.Layers', True)
         assert set(catalog()[1]) == set(commands)
-        print('Unique catalogs, feature removal/restoration and MCP with CLI disabled: passed', flush=True)
+        print('Unique discovery, feature removal/restoration and MCP with CLI disabled: passed', flush=True)
     finally:
         feature('OrchardCore.RemoteManagement.Cli', True)
         feature('OrchardCore.Layers', True)
@@ -197,8 +194,6 @@ with tempfile.TemporaryDirectory(prefix='layers-cli-', dir=state_path.parent) as
             pomi('content', 'items', 'delete', item_id, '--force', client='cli-fixture')
         for type_name in reversed(types):
             pomi('content', 'types', 'delete', type_name, '--force', client='cli-fixture')
-        pomi('layers', 'delete', name + '/space % name', '--force')
-        pomi('layers', 'delete', name, '--force')
         pomi('layers', 'delete', name, '--force')
 
-print('Layers smoke passed; feature and theme changes remain confined to the disposable fixture.')
+print('Widgets smoke passed; changes remain confined to the disposable fixture.')

@@ -32,6 +32,7 @@ python3 .scripts/remote-management/tenant-install-smoke.py <fixture.json>
 python3 .scripts/remote-management/graphql-smoke.py <fixture.json>
 python3 .scripts/remote-management/catalog-smoke.py <fixture.json>
 python3 .scripts/remote-management/layers-smoke.py <fixture.json>
+python3 .scripts/remote-management/widgets-smoke.py <fixture.json>
 python3 .scripts/remote-management/shortcodes-smoke.py <fixture.json>
 python3 .scripts/remote-management/placements-smoke.py <fixture.json>
 ```
@@ -397,3 +398,8 @@ confirmation and schema discovery, unique catalogs and independent CLI/feature g
 `placements-smoke.py` verifies rule CRUD, registered filters, normalized retries, denied
 HTTP/MCP requests, database/file store isolation, rendered matching and last-match ordering,
 empty-array deletion, unique catalogs and independent CLI/feature gates.
+
+`widgets-smoke.py` verifies attaching existing widget content, configured-zone
+validation, ordering, published/draft separation, restricted edit/publish roles,
+MCP moves and feature transitions against real rendered pages. The disposable
+fixture configures Content and Footer zones and dedicated widget clients.

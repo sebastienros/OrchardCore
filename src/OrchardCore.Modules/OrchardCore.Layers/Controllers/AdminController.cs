@@ -10,15 +10,12 @@ using OrchardCore.ContentManagement.Metadata;
 using OrchardCore.DisplayManagement;
 using OrchardCore.DisplayManagement.ModelBinding;
 using OrchardCore.DisplayManagement.Notify;
-using OrchardCore.Documents;
 using OrchardCore.Entities;
-using OrchardCore.Layers.Handlers;
 using OrchardCore.Layers.Models;
 using OrchardCore.Layers.Services;
 using OrchardCore.Layers.ViewModels;
 using OrchardCore.Rules;
 using OrchardCore.Settings;
-using YesSql;
 
 namespace OrchardCore.Layers.Controllers;
 
@@ -26,14 +23,12 @@ namespace OrchardCore.Layers.Controllers;
 public sealed class AdminController : Controller
 {
     private readonly IContentDefinitionManager _contentDefinitionManager;
-    private readonly IContentManager _contentManager;
     private readonly IContentItemDisplayManager _contentItemDisplayManager;
     private readonly ISiteService _siteService;
     private readonly ILayerService _layerService;
     private readonly IAuthorizationService _authorizationService;
-    private readonly ISession _session;
     private readonly IUpdateModelAccessor _updateModelAccessor;
-    private readonly IVolatileDocumentManager<LayerState> _layerStateManager;
+    private readonly ILayerWidgetService _widgets;
     private readonly IDisplayManager<Condition> _conditionDisplayManager;
     private readonly IDisplayManager<Rule> _ruleDisplayManager;
     private readonly IEnumerable<IConditionFactory> _conditionFactories;
@@ -45,14 +40,12 @@ public sealed class AdminController : Controller
 
     public AdminController(
         IContentDefinitionManager contentDefinitionManager,
-        IContentManager contentManager,
         IContentItemDisplayManager contentItemDisplayManager,
         ISiteService siteService,
         ILayerService layerService,
         IAuthorizationService authorizationService,
-        ISession session,
         IUpdateModelAccessor updateModelAccessor,
-        IVolatileDocumentManager<LayerState> layerStateManager,
+        ILayerWidgetService widgets,
         IDisplayManager<Condition> conditionDisplayManager,
         IDisplayManager<Rule> ruleDisplayManager,
         IEnumerable<IConditionFactory> conditionFactories,
@@ -62,14 +55,12 @@ public sealed class AdminController : Controller
         ILogger<AdminController> logger)
     {
         _contentDefinitionManager = contentDefinitionManager;
-        _contentManager = contentManager;
         _contentItemDisplayManager = contentItemDisplayManager;
         _siteService = siteService;
         _layerService = layerService;
         _authorizationService = authorizationService;
-        _session = session;
         _updateModelAccessor = updateModelAccessor;
-        _layerStateManager = layerStateManager;
+        _widgets = widgets;
         _conditionDisplayManager = conditionDisplayManager;
         _ruleDisplayManager = ruleDisplayManager;
         _conditionFactories = conditionFactories;
@@ -248,49 +239,20 @@ public sealed class AdminController : Controller
             return Unauthorized();
         }
 
-        // Load the latest version first if any
-        var contentItem = await _contentManager.GetAsync(contentItemId, VersionOptions.Latest);
-
-        if (contentItem == null)
+        var result = await _widgets.UpdateAsync(User, contentItemId,
+            new LayerMetadata { Position = position, Zone = zone }, positionOnly: true);
+        if (result.Status == LayerWidgetMutationStatus.NotFound)
         {
             return NotFound();
         }
-
-        if (!contentItem.TryGet<LayerMetadata>(out var layerMetadata))
+        if (result.Status == LayerWidgetMutationStatus.Forbidden)
         {
             return Forbid();
         }
-
-        layerMetadata.Position = position;
-        layerMetadata.Zone = zone;
-
-        contentItem.Apply(layerMetadata);
-
-        await _session.SaveAsync(contentItem);
-
-        // In case the moved contentItem is the draft for a published contentItem we update it's position too.
-        // We do that because we want the position of published and draft version to be the same.
-        if (contentItem.IsPublished() == false)
+        if (result.Status == LayerWidgetMutationStatus.Invalid)
         {
-            var publishedContentItem = await _contentManager.GetAsync(contentItemId, VersionOptions.Published);
-            if (publishedContentItem != null)
-            {
-                if (!publishedContentItem.TryGet(out layerMetadata))
-                {
-                    return Forbid();
-                }
-
-                layerMetadata.Position = position;
-                layerMetadata.Zone = zone;
-
-                publishedContentItem.Apply(layerMetadata);
-
-                await _session.SaveAsync(publishedContentItem);
-            }
+            return BadRequest(result.Errors);
         }
-
-        // The state will be updated once the ambient session is committed.
-        await _layerStateManager.UpdateAsync(new LayerState());
 
         if (Request.Headers != null && Request.Headers.XRequestedWith == "XMLHttpRequest")
         {

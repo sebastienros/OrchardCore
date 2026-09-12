@@ -14,5 +14,11 @@ internal sealed class LayersRemoteManagementCapabilityProvider : IRemoteManageme
                 Version = $"{RemoteManagementConstants.ProtocolMajorVersion}.{RemoteManagementConstants.ProtocolMinorVersion}",
                 DisplayName = "Layers",
             },
+            new RemoteManagementCapability
+            {
+                Id = LayerWidgetEndpoints.CapabilityName,
+                Version = $"{RemoteManagementConstants.ProtocolMajorVersion}.{RemoteManagementConstants.ProtocolMinorVersion}",
+                DisplayName = "Layer Widgets",
+            },
         ]);
 }

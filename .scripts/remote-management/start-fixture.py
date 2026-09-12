@@ -23,6 +23,7 @@ recipe["name"] = "CliFixture"
 recipe["steps"][0]["enable"] += ["OrchardCore.RemoteManagement.Cli", "OrchardCore.Tenants", "OrchardCore.Tenants.FileProvider", "OrchardCore.Workflows", "OrchardCore.Queries.Sql", "OrchardCore.Localization", "OrchardCore.DataLocalization", "OrchardCore.Apis.GraphQL"]
 secret = secrets.token_urlsafe(32)
 recipe["steps"] += [
+    {"name": "settings", "LayerSettings": {"Zones": ["Content", "Footer"]}},
     {"name": "RemoteManagementConfiguration"},
     {"name": "RemoteManagementCliConfiguration"},
     {"name": "Roles", "Roles": [{"Name": "CliDiscovery", "Permissions": ["AccessRemoteManagement"]}]},
@@ -42,6 +43,8 @@ recipe["steps"] += [
 for suffix, permissions in [
     ("graphql-reader", ["ExecuteGraphQL"]),
     ("layers", ["ManageLayers"]),
+    ("widgets", ["ManageLayers", "EditContent", "PublishContent", "ViewContent", "PreviewContent"]),
+    ("widgets-editor", ["ManageLayers", "EditContent", "ViewContent", "PreviewContent"]),
     ("shortcodes", ["ManageShortcodeTemplates"]),
     ("placements", ["ManagePlacements"]),
     ("translator-fr", ["ViewDynamicTranslations", "ManageTranslations_fr"]),
