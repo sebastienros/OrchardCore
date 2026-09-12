@@ -26,6 +26,8 @@ public enum IndexProcessingStatus
     ProviderUnavailable,
     /// <summary>The provider does not contain the requested index.</summary>
     ProviderMissing,
+    /// <summary>The provider rejected a requested lifecycle operation.</summary>
+    ProviderRejected,
     /// <summary>The profile is absent from this indexing source.</summary>
     NotFound,
     /// <summary>The profile's source is not supported by this indexing service.</summary>

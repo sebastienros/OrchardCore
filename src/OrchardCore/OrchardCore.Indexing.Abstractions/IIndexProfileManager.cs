@@ -141,7 +141,7 @@ public interface IIndexProfileManager
     ValueTask SynchronizeAsync(IndexProfile indexProfile);
 
     /// <summary>
-    /// Asynchronously resets the specified index entity.
+    /// Asynchronously resets the specified index entity. Required handler failures propagate to the caller.
     /// </summary>
     /// <param name="indexProfile">The index entity to reset.</param>
     /// <returns>

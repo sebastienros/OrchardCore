@@ -73,3 +73,16 @@ are not part of this result contract. The strict build and all ten progress/outc
 Merged Layers PR #25 (`769dd97c9`) is integrated; all its CI passed. The lifecycle
 branch still has no unmerged dependencies. Operation persistence, reset/rebuild
 coordination, endpoint/command exposure and live lifecycle verification remain.
+
+## Lifecycle coordinator checkpoint
+
+`IIndexLifecycleService.ExecuteAsync` dispatches to a keyed indexing source and
+uses the worker's single per-index lock for preparation and processing. Reset
+resets/persists the profile before processing; rebuild first recreates the provider
+index, then resets/persists and processes. A rejected provider rebuild does not
+advance into reset or processing. Synchronization performs no reset. Required reset
+handler failures now propagate. This executor does not itself schedule a job.
+
+The content indexing source is registered with the shared coordinator. The strict build passes with zero warnings/errors; all 21 focused processing,
+coordinator and handler tests pass, including operation ordering, single lock
+acquisition and reset-handler propagation. Existing admin/recipe migration, persistent status and endpoints remain.

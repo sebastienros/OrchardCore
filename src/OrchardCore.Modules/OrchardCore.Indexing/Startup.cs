@@ -61,6 +61,8 @@ public sealed class ContentStartup : StartupBase
         services.TryAddEnumerable(ServiceDescriptor.Scoped<IContentHandler, IndexingContentHandler>());
         services.AddScoped<IContentHandler, CreateIndexingTaskContentHandler>();
         services.TryAddScoped<ContentIndexingService>();
+        services.AddKeyedScoped<NamedIndexingService>(IndexingConstants.ContentsIndexSource,
+            (provider, _) => provider.GetRequiredService<ContentIndexingService>());
         services.AddIndexProfileHandler<ContentIndexProfileHandler>();
         services.AddDisplayDriver<IndexProfile, ContentIndexProfileDisplayDriver>();
         services.TryAddEnumerable(ServiceDescriptor.Scoped<IModularTenantEvents, ContentIndexInitializerService>());

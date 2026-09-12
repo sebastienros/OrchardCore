@@ -77,7 +77,12 @@ public abstract class NamedIndexingService
         return results;
     }
 
-    private async Task<IReadOnlyList<IndexProcessingResult>> ProcessRecordsAsync(IEnumerable<IndexProfile> indexProfiles)
+    internal async Task<IndexProcessingResult> ProcessIndexWithPreparationAsync(IndexProfile profile,
+        Func<IndexProfile, IIndexManager, Task<bool>> prepare)
+        => (await ProcessRecordsAsync([profile], prepare)).Single();
+
+    private async Task<IReadOnlyList<IndexProcessingResult>> ProcessRecordsAsync(IEnumerable<IndexProfile> indexProfiles,
+        Func<IndexProfile, IIndexManager, Task<bool>> prepare = null)
     {
         if (!indexProfiles.Any())
         {
@@ -148,6 +153,12 @@ public abstract class NamedIndexingService
                 }
 
                 lockers.Add(locker);
+
+                if (prepare is not null && !await prepare(indexProfile, indexManager))
+                {
+                    results[indexProfile.Id].Status = IndexProcessingStatus.ProviderRejected;
+                    continue;
+                }
 
                 if (!await indexManager.ExistsAsync(indexProfile.IndexFullName))
                 {

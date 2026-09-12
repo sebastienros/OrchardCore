@@ -252,3 +252,16 @@ read/preparation failure stops the run rather than skipping ahead.
 Records successfully excluded by an index's selection still advance its cursor.
 They do not require a provider write. These progress rules do not make a scheduled
 synchronization request proof that indexing has completed.
+
+### Coordinating lifecycle execution
+
+`IIndexLifecycleService.ExecuteAsync` executes synchronization, reset or rebuild
+through the registered indexing source. The worker holds one per-index lock across
+preparation and processing. Reset replays tasks without recreating the provider
+index; rebuild recreates it before resetting and replaying. A provider rejection or
+required reset-handler failure prevents subsequent processing.
+
+This service executes work directly and returns an `IndexProcessingResult`. Callers
+that need asynchronous HTTP operation tracking must schedule and track that work
+separately. A completed result describes the queue observed during that run; later
+content changes still require indexing.
