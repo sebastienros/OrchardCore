@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Extensions.Localization;
 using OrchardCore.DisplayManagement;
@@ -9,7 +10,15 @@ using OrchardCore.DisplayManagement.ModelBinding;
 using OrchardCore.DisplayManagement.Shapes;
 using OrchardCore.DisplayManagement.Zones;
 using OrchardCore.Entities;
+using OrchardCore.Environment.Shell;
+using OrchardCore.RemoteManagement;
+using OrchardCore.Search;
+using OrchardCore.Security;
+using OrchardCore.Security.Permissions;
+using OrchardCore.Settings.Endpoints.Api;
+using OrchardCore.Tests.Apis.Context;
 using OrchardCore.Indexing;
+using OrchardCore.Indexing.Core;
 using OrchardCore.Indexing.Models;
 using OrchardCore.Localization;
 using OrchardCore.Search.Drivers;
@@ -75,8 +84,8 @@ public class SearchSettingsSectionTests
         var result = await provider.UpdateAsync(JsonNode.Parse(json).AsObject());
 
         Assert.NotEmpty(result.Errors);
-        Assert.Equal("Original", site.As<SearchSettings>().PageTitle);
-        Assert.Equal("Old", site.As<SearchSettings>().DefaultIndexProfileName);
+        Assert.Equal("Original", site.GetOrCreate<SearchSettings>().PageTitle);
+        Assert.Equal("Old", site.GetOrCreate<SearchSettings>().DefaultIndexProfileName);
         service.Verify(value => value.UpdateSiteSettingsAsync(It.IsAny<ISite>()), Times.Never());
     }
 
@@ -125,6 +134,117 @@ public class SearchSettingsSectionTests
         Assert.Equal("Old", settings.DefaultIndexProfileName);
         Assert.Equal("Keep", settings.Placeholder);
         Assert.Equal(invalidSelection ? "Original" : "Changed", settings.PageTitle);
+    }
+
+    [Fact]
+    public async Task SectionOperations_RequireBothManagementAndSearchPermission()
+    {
+        using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
+        var http = new DefaultHttpContext { RequestServices = services };
+        var (provider, site) = Create(new SiteSettings(), Mock.Of<IIndexProfileStore>());
+        ISiteSettingsSectionProvider[] providers = [provider];
+        foreach (var authorization in new[]
+        {
+            Authorize(RemoteManagementPermissions.AccessRemoteManagement),
+            Authorize(SearchPermissions.ManageSearchSettings),
+            Authorize(RemoteManagementPermissions.AccessRemoteManagement, IndexingPermissions.ManageIndexes),
+        })
+        {
+            foreach (var result in new[]
+            {
+                await SiteSettingsSectionEndpoints.GetAsync(http, authorization, providers, "frontend-search"),
+                await SiteSettingsSectionEndpoints.SchemaAsync(http, authorization, providers, "frontend-search"),
+                await SiteSettingsSectionEndpoints.UpdateAsync(http, authorization, providers, "frontend-search", []),
+            })
+            {
+                Assert.Equal(403, Assert.IsAssignableFrom<IStatusCodeHttpResult>(result).StatusCode);
+            }
+        }
+        site.VerifyNoOtherCalls();
+        var authorized = Authorize(RemoteManagementPermissions.AccessRemoteManagement, SearchPermissions.ManageSearchSettings);
+        Assert.IsType<Ok<SiteSettingsSectionUpdateResult>>(await SiteSettingsSectionEndpoints.UpdateAsync(http, authorized, providers,
+            "frontend-search", new JsonObject { ["pageTitle"] = "Allowed" }));
+    }
+
+    [Fact]
+    public async Task Admin_Denied_DoesNotBindOrChangeSettings()
+    {
+        var updater = new Mock<IUpdateModel>(MockBehavior.Strict);
+        var profiles = new Mock<IIndexProfileStore>(MockBehavior.Strict);
+        var settings = new SearchSettings { PageTitle = "Keep" };
+        var driver = new SearchSettingsDisplayDriver(new HttpContextAccessor { HttpContext = new DefaultHttpContext() },
+            Authorize(), profiles.Object, Localizer<SearchSettingsDisplayDriver>());
+
+        Assert.Null(await driver.UpdateAsync(new SiteSettings(), settings, new UpdateEditorContext(new Shape(), "search", false, "",
+            Mock.Of<IShapeFactory>(), Mock.Of<IZoneHolding>(), updater.Object)));
+
+        Assert.Equal("Keep", settings.PageTitle);
+        updater.VerifyNoOtherCalls();
+        profiles.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task Section_PersistsInTenantAndFollowsFeatureLifecycle()
+    {
+        using var owner = new SiteContext();
+        using var other = new SiteContext();
+        await owner.InitializeAsync();
+        await other.InitializeAsync();
+        await owner.UsingTenantScopeAsync(async scope =>
+        {
+            var manager = scope.ServiceProvider.GetRequiredService<IShellFeaturesManager>();
+            var feature = (await manager.GetAvailableFeaturesAsync()).Single(value => value.Id == "OrchardCore.Search");
+            await manager.EnableFeaturesAsync([feature], force: true);
+        });
+        await owner.UsingTenantScopeAsync(async scope =>
+        {
+            var siteService = scope.ServiceProvider.GetRequiredService<ISiteService>();
+            var site = await siteService.LoadSiteSettingsAsync();
+            site.Properties[nameof(SearchSettings)] = new JsonObject { ["ProviderName"] = "legacy-provider" };
+            await siteService.UpdateSiteSettingsAsync(site);
+            var provider = Assert.Single(scope.ServiceProvider.GetServices<ISiteSettingsSectionProvider>(), value => value.Descriptor.Name == "frontend-search");
+            var result = await provider.UpdateAsync(new JsonObject { ["pageTitle"] = "Owner search", ["placeholder"] = "Owner placeholder" });
+            Assert.True(result.Changed);
+            Assert.False(result.ReloadRequested);
+            Assert.DoesNotContain("legacy-provider", result.Section.Values.ToJsonString(), StringComparison.Ordinal);
+        });
+        await other.UsingTenantScopeAsync(async scope =>
+        {
+            var settings = await scope.ServiceProvider.GetRequiredService<ISiteService>().GetSettingsAsync<SearchSettings>();
+            Assert.NotEqual("Owner search", settings.PageTitle);
+        });
+        await owner.UsingTenantScopeAsync(async scope =>
+        {
+            var site = await scope.ServiceProvider.GetRequiredService<ISiteService>().GetSiteSettingsAsync();
+            Assert.Equal("Owner search", site.GetOrCreate<SearchSettings>().PageTitle);
+            Assert.Equal("Owner placeholder", site.GetOrCreate<SearchSettings>().Placeholder);
+            Assert.Equal("legacy-provider", site.Properties[nameof(SearchSettings)]["ProviderName"].GetValue<string>());
+            var manager = scope.ServiceProvider.GetRequiredService<IShellFeaturesManager>();
+            var feature = (await manager.GetAvailableFeaturesAsync()).Single(value => value.Id == "OrchardCore.Search");
+            await manager.DisableFeaturesAsync([feature], force: true);
+        });
+        await owner.UsingTenantScopeAsync(async scope =>
+        {
+            Assert.DoesNotContain(scope.ServiceProvider.GetServices<ISiteSettingsSectionProvider>(), value => value.Descriptor.Name == "frontend-search");
+            var manager = scope.ServiceProvider.GetRequiredService<IShellFeaturesManager>();
+            var feature = (await manager.GetAvailableFeaturesAsync()).Single(value => value.Id == "OrchardCore.Search");
+            await manager.EnableFeaturesAsync([feature], force: true);
+        });
+        await owner.UsingTenantScopeAsync(async scope =>
+        {
+            var provider = Assert.Single(scope.ServiceProvider.GetServices<ISiteSettingsSectionProvider>(), value => value.Descriptor.Name == "frontend-search");
+            Assert.Equal("Owner search", (await provider.GetAsync()).Values["pageTitle"].GetValue<string>());
+        });
+    }
+
+    private static IAuthorizationService Authorize(params Permission[] permissions)
+    {
+        var authorization = new Mock<IAuthorizationService>();
+        authorization.Setup(value => value.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<IEnumerable<IAuthorizationRequirement>>()))
+            .ReturnsAsync((ClaimsPrincipal _, object _, IEnumerable<IAuthorizationRequirement> requirements) =>
+                requirements.OfType<PermissionRequirement>().All(requirement => permissions.Any(permission => permission.Name == requirement.Permission.Name))
+                    ? AuthorizationResult.Success() : AuthorizationResult.Failed());
+        return authorization.Object;
     }
 
     private static StringLocalizer<T> Localizer<T>() => new(new NullStringLocalizerFactory());

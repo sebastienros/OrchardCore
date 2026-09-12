@@ -61,3 +61,15 @@ writes, unknown/type-invalid/missing-index rejection without partial mutation,
 preservation of stale/empty omitted defaults, and partial admin submissions.
 Permission/feature/persistence coverage, real frontend verification, Pomi package
 updates, integrated validation and independent PR/CI remain.
+
+## Permission and tenant lifecycle verification
+
+The integrated branch builds with zero warnings/errors. All 12 section/editor
+tests pass. Additional coverage exercises actual settings endpoint authorization:
+remote access alone, search permission alone and index-management permission with
+remote access are each insufficient. Denied admin requests do not bind or mutate.
+
+Real tenant scopes verify persistence, isolation from a second tenant, preservation
+of the obsolete provider property without exposing it in readback, section removal
+when Search is disabled, and retained settings after re-enabling Search. Frontend
+runtime, Pomi/MCP, package/docs and full-suite validation remain.
