@@ -42,9 +42,9 @@ index publicly queryable; retain the existing per-index query permission checks.
 
 ## Status
 
-Source audit complete. Implementation, tests, live verification, Pomi documentation,
-package update and independent PR/CI remain. The module's existing settings editor
-and frontend controller are the authoritative behavior, not the deprecated
+Implementation, caller regression tests, live HTTP/Pomi/MCP/frontend verification,
+and Pomi package documentation are complete. Local integration checks pass; independent PR/CI is the remaining gate. The module's existing settings editor and frontend
+controller remain authoritative, rather than the deprecated
 `SearchSettings.ProviderName` property's stale replacement hint.
 
 ## Initial implementation verification
@@ -91,3 +91,16 @@ production changes. Pomi package 0.10.26 documents the workflow; the inventory m
 Search from M to D (D26/P24/A1/M28/S36/I70/X3, 188 total). The number of modules
 contributing direct WithCliCommand metadata remains unchanged because this adapter
 uses the existing common settings operations.
+
+## Integrated release verification
+
+On the integrated target `8bb1ff436`, the full strict solution build passes with zero
+warnings/errors. All 3,425 server tests pass with one CI-only skip, all 295 CLI tests
+pass, and all 78 authentication/MCP tests pass. The initial no-restore attempt found
+missing assets for previously unbuilt projects in this worktree; restoring the full
+solution resolved this setup issue without code changes.
+
+Strict MkDocs, plugin links and reproducible Pomi distribution checks pass. All 319
+skill examples across 244 generated help pages validate against the fresh tenant.
+The live smoke verifies actual frontend behavior as well as management transports.
+Independent PR CI, including Linux functional tests and Windows, remains the merge gate.
