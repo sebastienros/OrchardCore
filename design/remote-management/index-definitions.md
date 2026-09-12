@@ -203,4 +203,4 @@ removal solely for this cleanup; its default remains unchanged.
 Inventory now classifies Indexing as partial (discovery exists, observable lifecycle
 remains), and records Lucene definition commands without claiming complete provider
 lifecycle. Counts: D25/P24/A1/M29/S36/I70/X3, all 188 features accounted for.
-Remaining: Pomi packaging, final review/checks and independent PR/CI/merge.
+Pomi 0.10.24 packages the index workflow with pinned published manuals. Strict docs and reproducible distribution checks pass. Live help validates all 311 examples across 239 help pages after enabling the required fixture features; it also caught and corrected the existing widget-placement `--file` example to `--body-file`. Remaining: independent PR review/CI/merge.
