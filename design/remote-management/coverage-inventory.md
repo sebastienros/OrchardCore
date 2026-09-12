@@ -8,6 +8,7 @@ P03 adds stored shortcode-template coverage; P04 adds shape placements after the
 (`1408ff58f`). P05 adds widget placement after the Placements merge (`541f23b0d`).
 P06 adds typed section contracts and HTTPS after the widget merge (`19b7b75e6`).
 P09 adds content localization after the typed settings merge (`60236178c`).
+P07 adds the CORS settings adapter after the localization merge (`9d990f99d`).
 The campaign ledger records delivery state.
 
 ## Scope and interpretation
@@ -49,16 +50,16 @@ The categories are mutually exclusive planning classifications, not percentages 
 
 | Code | Classification | Feature count |
 | --- | --- | ---: |
-| D | Direct management OpenAPI and Pomi commands exist | 18 |
+| D | Direct management OpenAPI and Pomi commands exist | 19 |
 | P | Partial: important operations missing, or only helper/protocol/shared coverage | 26 |
 | A | Management OpenAPI exists; Pomi projection intentionally absent | 1 |
-| M | Dedicated management API and corresponding commands missing | 34 |
+| M | Dedicated management API and corresponding commands missing | 33 |
 | S | Shared API/commands or a built-in CLI workflow; validate the stated limits | 36 |
 | I | Infrastructure, rendering, protocol, provider or alias; no separate API proposed by default | 70 |
 | X | Sample; excluded from delivery priorities | 3 |
 
-There are **34 features with neither dedicated management APIs nor commands**, and **26 with
-partial coverage requiring a scope decision**. These are not 60 independent implementation tasks:
+There are **33 features with neither dedicated management APIs nor commands**, and **26 with
+partial coverage requiring a scope decision**. These are not 59 independent implementation tasks:
 the plan consolidates them into shared workflows. Another 36 features reuse existing transports
 or built-in commands. Twenty production modules contribute direct `WithCliCommand` operation
 registrations; this does not imply all features in those modules are covered.
@@ -91,6 +92,7 @@ Backlog IDs refer to [the delivery plan](coverage-plan.md#work-packages).
 | [ContentLocalization](../../src/OrchardCore.Modules/OrchardCore.ContentLocalization/Manifest.cs) / `OrchardCore.ContentLocalization` | Variant discovery and draft localization | `content localizations` | P09: existing manager clones through shared admin/API authorization, configured cultures and editable-target retries; version-aware reads filter each variant. Picker settings remain a separate feature gap. | B04 |
 | [ContentTypes](../../src/OrchardCore.Modules/OrchardCore.ContentTypes/Manifest.cs) / `OrchardCore.ContentTypes` | Yes | `content types`, `parts`, `fields`, `part-types`, `field-types`, `settings` | Definition CRUD/discovery exists; extension settings-schema completeness belongs to B03. | — |
 | [Contents](../../src/OrchardCore.Modules/OrchardCore.Contents/Manifest.cs) / `OrchardCore.Contents` | Yes | `content items`; `content versions` | CRUD, drafts, validation/schema, rendering and version operations exist; extension lifecycle parity belongs to B03. | — |
+| [Cors](../../src/OrchardCore.Modules/OrchardCore.Cors/Manifest.cs) / `OrchardCore.Cors` | Typed policy section read/schema/update | `settings sections` (`cors`) | P07: complete policy replacement, shared admin/API/runtime validation, source ownership, default selection, no-op reload behavior and actual CORS headers. | B05 |
 | [CustomSettings](../../src/OrchardCore.Modules/OrchardCore.CustomSettings/Manifest.cs) / `OrchardCore.CustomSettings` | Yes | `custom-settings` | Content-type-defined custom settings are supported. This does not expose arbitrary module site-settings sections. | — |
 | [Features](../../src/OrchardCore.Modules/OrchardCore.Features/Manifest.cs) / `OrchardCore.Features` | Yes | `features` | Existing management surface; preserve regression coverage. | — |
 | [HomeRoute](../../src/OrchardCore.Modules/OrchardCore.HomeRoute/Manifest.cs) / `OrchardCore.HomeRoute` | Yes | `settings set-home-content` | Existing management surface; preserve regression coverage. | — |
@@ -157,7 +159,6 @@ Backlog IDs refer to [the delivery plan](coverage-plan.md#work-packages).
 | [Contents](../../src/OrchardCore.Modules/OrchardCore.Contents/Manifest.cs) / `OrchardCore.Contents.Deployment.ExportContentToDeploymentTarget` | No dedicated management API | None | Admin export/add-to-plan/download action; define shared deployment operations and artifact handling. | B08 |
 | [Contents](../../src/OrchardCore.Modules/OrchardCore.Contents/Manifest.cs) / `OrchardCore.Contents.Deployment.AddToDeploymentPlan` | No dedicated management API | None | Admin export/add-to-plan/download action; define shared deployment operations and artifact handling. | B08 |
 | [Contents](../../src/OrchardCore.Modules/OrchardCore.Contents/Manifest.cs) / `OrchardCore.Contents.Deployment.Download` | No dedicated management API | None | Admin export/add-to-plan/download action; define shared deployment operations and artifact handling. | B08 |
-| [Cors](../../src/OrchardCore.Modules/OrchardCore.Cors/Manifest.cs) / `OrchardCore.Cors` | No dedicated management API | None | Policy listing/CRUD/validation is admin-only; use a typed section and existing permissions. | B05 |
 | [Deployment](../../src/OrchardCore.Modules/OrchardCore.Deployment/Manifest.cs) / `OrchardCore.Deployment` | No dedicated management API | None | Plan/step CRUD, step schemas, export artifacts and import execution lack a management contract. Existing recipe execution does not cover plan editing or arbitrary archive import. | B08 |
 | [Email](../../src/OrchardCore.Modules/OrchardCore.Email/Manifest.cs) / `OrchardCore.Email` | No dedicated management API | None | Delivery configuration and test-send are admin-only; define redacted settings and bounded delivery checks. | B12 |
 | [Email.Smtp](../../src/OrchardCore.Modules/OrchardCore.Email.Smtp/Manifest.cs) / `OrchardCore.Email.Smtp` | No dedicated management API | None | Tenant SMTP settings need an explicit redacted read/write contract; core settings commands do not cover them. | B12 |

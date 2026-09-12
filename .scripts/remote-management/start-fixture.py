@@ -51,6 +51,7 @@ for suffix, permissions in [
     ("widgets-editor", ["ManageLayers", "EditContent", "ViewContent", "PreviewContent"]),
     ("shortcodes", ["ManageShortcodeTemplates"]),
     ("https", ["ManageHttps"]),
+    ("cors", ["ManageCorsSettings"]),
     ("placements", ["ManagePlacements"]),
     ("translator-fr", ["ViewDynamicTranslations", "ManageTranslations_fr"]),
     ("translation-reader", ["ViewDynamicTranslations"]),

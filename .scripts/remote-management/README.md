@@ -449,3 +449,17 @@ published/latest variant filtering, restricted application permissions, MCP equi
 and independent feature removal/restoration. The fixture provides separate localizer,
 localizer-without-edit and published-content-reader identities. Synthetic content remains
 in the disposable tenant for inspection.
+
+## CORS settings
+
+```bash
+python3 .scripts/remote-management/cors-settings-smoke.py <fixture.json>
+```
+
+This enables CORS and HTTPS together to verify two providers behind the four shared
+section operations. It checks complete policy replacement, omitted/empty/null behavior,
+validation, no-op retries and real preflight/simple response headers for default/selected
+policies, origins, methods, headers and credentials. Restricted CORS, HTTPS-only and
+discovery-only applications verify section permissions. It checks feature lifecycle and
+MCP with the CLI feature disabled, then leaves the disposable tenant's CORS policies empty.
+The unit suite also verifies the existing admin editor and invalid recipe-import defenses.

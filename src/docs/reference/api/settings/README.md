@@ -283,6 +283,24 @@ The editor's normal Settings controller still owns saving its document; the
 section provider saves through the same site service. Recipe imports retain their
 existing behavior and are not routed through remote update validation.
 
+### CORS section
+
+The `cors` section is available with `OrchardCore.Cors` and requires `ManageCorsSettings`.
+Its tenant-owned `policies` array contains named CORS policies. Omission preserves the array;
+a supplied array replaces all policies and `[]` removes them. Null is invalid. Each policy
+is a complete definition; omitted Boolean fields are false and omitted lists are empty.
+The [CORS module reference](../../modules/Cors/README.md#remote-settings-section) documents
+the fields, validation and full example. The section is not a projection of host-added
+`CorsOptions` or arbitrary site properties.
+
+The admin editor and section provider share `CorsService` validation and persistence.
+Invalid names, duplicate policies, multiple defaults, invalid origins/header/method tokens
+and credentialed wildcard origins are rejected without saving or reloading. A changed
+save requests a tenant reload. Runtime options reuse validation to skip invalid imported
+policies; the first valid policy is the default when none is explicitly selected. Verify
+actual preflight and simple request headers after updating. CORS does not authenticate
+callers or grant API permissions.
+
 ### Adding a section provider
 
 Register a scoped `ISiteSettingsSectionProvider` in its owning feature. Give it a

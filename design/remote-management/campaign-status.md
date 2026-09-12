@@ -35,9 +35,9 @@ The [schedule](pr-schedule.md) and [plan](coverage-plan.md) define the work and 
 | P05 Widget placement | Merged | [PR #10](https://github.com/sebastienros/OrchardCore/pull/10), merge `19b7b75e6`; all CI checks passed. Shared admin/editor service, four operations, rendered ordering/moves and content permission/version checks. |
 | Website composition gate | Verified locally | `website-composition-smoke.py`: `tenants install --enable-remote-management`, stored application context without login, private administrator files, content/widget/layer/placement/shortcode rendering and setup-only context preservation on the merged presentation baseline. |
 | P06 Typed settings + HTTPS | Merged | [PR #11](https://github.com/sebastienros/OrchardCore/pull/11), merge `60236178c`; all CI checks passed. Explicit section contracts, shared HTTPS editor validation, trusted HTTPS/Pomi/MCP checks. Layers zone-settings editing remains a follow-up adapter. |
-| P07 CORS | Planned | After P06 merges. |
+| P07 CORS | In verification | Independent `codex/remote-cors-settings` from merged target `9d990f99d`. Shared admin/API/runtime validation, typed policies and real preflights; fixes two reproduced baseline runtime failures. |
 | P08 Security headers | Planned | After P06 merges. |
-| P09 Content localization | In verification | B04; independent `codex/remote-content-localization`, rebased onto merged target `60236178c`. Shared admin/API service delegates cloning and localization handlers to the existing manager. |
+| P09 Content localization | Merged | [PR #12](https://github.com/sebastienros/OrchardCore/pull/12), merge `9d990f99d`; all CI checks passed. Shared admin/API workflow, existing localization handlers, draft retries and version-aware permission checks verified. |
 | P10 URL rewriting | Planned | B10. |
 | Application/scope discovery and administration | Planned | Separate B06 resource PRs. |
 | Application credential lifecycle | Planned | After application administration merges. |
