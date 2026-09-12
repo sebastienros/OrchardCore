@@ -11,7 +11,7 @@ on the `Default` tenant before a client can authenticate to these endpoints.
 
 ## Authentication and authorization
 
-All operations use the Orchard Core API authentication scheme and require:
+Tenant lifecycle operations use the Orchard Core API authentication scheme and require:
 
 - an authenticated bearer token;
 - the **Access remote management API** permission
@@ -1140,12 +1140,76 @@ Authentication-policy failures occur before the handler. The bearer
 authentication handler supplies the `401` or policy-level `403` response, so
 those failures do not have an endpoint-defined JSON body.
 
+## Feature-profile definitions
+
+Enable `OrchardCore.Tenants.FeatureProfiles` on the Default tenant to manage profile
+definitions. These operations advertise the separate `tenant-feature-profiles`
+capability and require API bearer authentication, `AccessRemoteManagement` and
+`ManageTenantFeatureProfiles`. They reject child-tenant calls, including in-process
+MCP invocation. Tenant lifecycle permissions do not substitute for profile-management
+permission.
+
+| Method | Route | Pomi command |
+| --- | --- | --- |
+| GET | `api/tenants/feature-profiles` | `tenants feature-profiles list` |
+| GET | `api/tenants/feature-profiles/by-id?id=...` | `tenants feature-profiles show <id>` |
+| GET | `api/tenants/feature-profiles/schema` | `tenants feature-profiles schema` |
+| POST | `api/tenants/feature-profiles` | `tenants feature-profiles create` |
+| PUT | `api/tenants/feature-profiles/by-id?id=...` | `tenants feature-profiles update <id>` |
+| DELETE | `api/tenants/feature-profiles/by-id?id=...` | `tenants feature-profiles delete <id>` |
+
+Create and update accept a complete JSON definition through `--body-file` or `--stdin`:
+
+```json
+{
+  "id": "standard",
+  "name": "Standard tenants",
+  "featureRules": [
+    { "rule": "Exclude", "expression": "Custom.*" },
+    { "rule": "Include", "expression": "Custom.Allowed" }
+  ]
+}
+```
+
+`id` is a case-insensitive, immutable assignment identifier; it cannot contain commas
+or surrounding whitespace. `name` is an editable display name and must not duplicate
+another profile's display name. Both are required by the API. Legacy recipe definitions
+may omit ID/name and continue using the dictionary key as their fallback.
+
+Rules retain their order: later matching rules determine the result. Use `schema` to
+find registered rule names and the rule-array schema. Expressions belong to their
+rule provider; the built-in Include/Exclude rules support wildcard matching. Updating
+replaces the display name and rule array; omission or `[]` clears all rules, while
+explicit null, unknown rule names and empty expressions are rejected. Unknown JSON
+properties are also rejected. Shared validation applies to admin and recipe updates.
+
+List supports `search` across ID/display name, `skip` (default 0), and `take` (default
+50, maximum 200). It returns `items`, `totalCount`, `skip` and `take`. Show and update
+return `404` when the identifier is absent. Create returns `201`, an equivalent retry
+returns `200`, and a conflicting definition under the same identifier returns `409`.
+Equivalent updates avoid another save. Delete returns `204`, including on repetition;
+use `--force` to suppress Pomi's deletion confirmation during automation.
+
+Assign the identifier through the existing tenant `featureProfiles` field. Definition
+edits and deletion do not rewrite assignments or automatically disable already enabled
+features. A missing assigned profile does not restrict feature selection in the existing
+validator. Deleting a profile can therefore remove its restriction on future feature
+selection; it is not a way to disable a tenant or its installed features.
+
+With MCP enabled, these operations project to `tenants_feature_profiles_list`,
+`tenants_feature_profiles_show`, `tenants_feature_profiles_schema`,
+`tenants_feature_profiles_create`, `tenants_feature_profiles_update` and
+`tenants_feature_profiles_delete`, using the same handlers and permissions.
+
 ## Endpoint coverage and sources
 
-This page covers all **8** routes mapped by
+The tenant lifecycle reference covers all **8** routes mapped by
 `TenantManagementEndpoints.AddTenantManagementEndpoints`. It was derived from
 `TenantManagementEndpoints.cs`, `TenantInstallEndpoints.cs`, `TenantModelBase.cs`, `TenantValidator.cs`,
 `TenantDatabasePatternResolver.cs`, `TenantConnectionStringRedactor.cs`,
 `TenantRemoteManagementCapabilityProvider.cs`, tenant and shell settings/state
 extensions, `TenantRemoteManagementConfigurationService.cs`, endpoint metadata
 tests, and tenant validator/response/path tests.
+
+Feature-profile definitions are mapped separately by `FeatureProfileManagementEndpoints`
+and reuse `FeatureProfilesManager`, the admin editor, recipe step and registered rule schema.

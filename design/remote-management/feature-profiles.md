@@ -52,3 +52,18 @@ no-op writes, and the existing admin edit no longer removes before updating.
 Passing-after strict server build has zero warnings/errors and all three manager
 regressions pass. API request/response models are drafted; endpoints, shared validation
 and the remaining integration/live/documentation/CI gates are not complete.
+
+## Endpoint implementation checkpoint
+
+Six endpoints now provide profile CRUD, bounded discovery and the registered rule
+schema under the Default tenant. Routing and handlers both require profile-management
+and remote-management permissions; handlers reject child tenants before accessing
+services. The existing manager validates IDs, legacy name defaults, unique display
+names and registered nonempty rules. Admin and recipes use that same validation.
+
+Strict server build: zero warnings/errors. Fourteen focused tests pass across the
+manager, CRUD/retries/paging, denied and child calls, admin rejection and recipe legacy
+handling/rejection. A prefixed creation-location regression exposed a missing slash;
+the production URL is fixed and the regression now passes. Full suite, feature
+lifecycle/catalog, live tenant enforcement, Pomi/MCP, skills and CI remain required.
+Canonical API/module documentation is drafted, not yet verified by strict docs build.

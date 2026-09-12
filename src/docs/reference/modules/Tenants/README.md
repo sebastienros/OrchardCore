@@ -123,6 +123,10 @@ By using the `FeatureProfiles` recipe step, you can define profiles from recipes
 }
 ```
 
+Profile definitions can also be managed through `pomi tenants feature-profiles` or
+the [feature-profile management API](../../api/tenants/README.md#feature-profile-definitions).
+The API uses the same manager and validation as the admin editor and recipe step.
+
 ### Selecting a feature profile
 
 1. Create a Feature Profile.
