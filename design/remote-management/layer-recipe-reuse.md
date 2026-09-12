@@ -28,5 +28,8 @@ this audit does not claim those methods have already been extracted or validated
 
 ## Evidence
 
-Regression tests added before production changes. Baseline build/test is running;
-results and final validation will be recorded after inspecting the completed run.
+The strict baseline build passed. All three regressions fail on the original
+recipe: whitespace names and invalid scripts report no error, and an unknown
+condition after a valid entry leaves the loaded document mutated. After refactoring, the strict build passes with zero warnings/errors and all 22
+recipe, layer API and rule-service tests pass. Additional successful recipe and
+extension compatibility coverage, full-suite validation, docs and PR/CI remain.

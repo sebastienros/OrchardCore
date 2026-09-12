@@ -9,7 +9,7 @@ using OrchardCore.Recipes.Models;
 using OrchardCore.Rules;
 using OrchardCore.Rules.Models;
 using OrchardCore.Rules.Services;
-using YesSql;
+using ISession = YesSql.ISession;
 
 namespace OrchardCore.Tests.Modules.OrchardCore.Layers;
 
