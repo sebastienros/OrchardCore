@@ -138,3 +138,11 @@ variants and creates or reuses a localized draft through Pomi and MCP. It uses t
 localization manager and handlers; the admin localization action shares the service's
 permission checks, configured culture validation and retry behavior. Creating a localization
 does not publish it. Existing target variants must be editable before they can be reused.
+
+## Remote picker settings
+
+The [content culture picker settings section](../../api/settings/README.md#content-culture-picker-section)
+manages cookie-writing and homepage-fallback behavior through OpenAPI, Pomi and MCP.
+It requires the picker feature and `ManageContentCulturePicker`, and shares mutation
+logic with both existing admin settings editors. Changes take effect without reloading
+the tenant. Disabling cookie writing does not remove existing visitor cookies.
