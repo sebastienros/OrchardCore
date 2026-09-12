@@ -128,7 +128,7 @@ The module advertises the `url-rewriting` capability.
 | `POST /api/url-rewriting/rules/validate` | `url-rewriting rules validate` | Validation and source parsing without saving or matching a request. |
 | `POST /api/url-rewriting/rules` | `url-rewriting rules create` | Create a complete definition. |
 | `PUT /api/url-rewriting/rules/{id}` | `url-rewriting rules update <id>` | Replace a complete definition, preserving source, identity and order. |
-| `DELETE /api/url-rewriting/rules/{id}` | `url-rewriting rules delete <id> --yes` | Delete; a missing rule succeeds without mutation. |
+| `DELETE /api/url-rewriting/rules/{id}` | `url-rewriting rules delete <id> --force` | Delete; a missing rule succeeds without mutation. |
 | `PUT /api/url-rewriting/rules/{id}/position` | `url-rewriting rules move <id>` | Move using `{"position": 0}` for the first rule. |
 
 ```bash

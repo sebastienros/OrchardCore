@@ -150,6 +150,8 @@ with tempfile.TemporaryDirectory(prefix='rewrite-cli-', dir=state_path.parent) a
     probe(path, 404)
     pomi('url-rewriting', 'rules', 'create', body=rewrite)
     probe(path, 401)  # Reaches the protected API after an in-process rewrite.
+    assert request(path.lstrip('/'))['openApiUrl']
+    request(path.lstrip('/'), client='cli-denied', status=403)
     for client in ['cli-discovery', 'cli-denied']:
         for method, route, body in [('GET', '', None), ('GET', '/' + first_id, None),
                 ('POST', '/validate', first), ('POST', '', first), ('PUT', '/' + first_id, first),
@@ -159,7 +161,7 @@ with tempfile.TemporaryDirectory(prefix='rewrite-cli-', dir=state_path.parent) a
     tool('show', {'path': {'id': first_id}}, client='cli-discovery', status=403)
     request('api/url-rewriting/rules', 'POST', {**first, 'unexpected': True}, status=400, raw=True)
     feature(False)
-    request('api/url-rewriting/rules', status=404)
+    request('api/url-rewriting/rules', status=404, raw=True)
     probe(path + '/two', 404)
     feature(True)
     assert tool('show', {'path': {'id': first_id}})['id'] == first_id
@@ -167,8 +169,8 @@ with tempfile.TemporaryDirectory(prefix='rewrite-cli-', dir=state_path.parent) a
     assert tool('show', {'path': {'id': first_id}})['id'] == first_id
     request('api/features/OrchardCore.RemoteManagement.Cli:enable?force=true', 'POST')
     for rule_id in [first_id, second_id, rewrite_id]:
-        pomi('url-rewriting', 'rules', 'delete', rule_id, '--yes')
-        pomi('url-rewriting', 'rules', 'delete', rule_id, '--yes')
+        pomi('url-rewriting', 'rules', 'delete', rule_id, '--force')
+        pomi('url-rewriting', 'rules', 'delete', rule_id, '--force')
     probe(path, 404)
     assert pomi('url-rewriting', 'rules', 'list', '--take', '200')['items'] == initial
     print('PASS: rewrite rules CLI/MCP CRUD, stable retries, source validation and persisted ordering')
