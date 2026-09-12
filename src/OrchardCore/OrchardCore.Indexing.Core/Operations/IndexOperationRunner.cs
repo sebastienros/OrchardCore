@@ -95,8 +95,14 @@ public sealed class IndexOperationRunner
             _logger.LogError(exception, "Index operation {OperationId} failed for index {IndexId}.", operationId, operation.IndexId);
             result = new IndexProcessingResult { IndexId = operation.IndexId, Status = IndexProcessingStatus.Failed };
         }
-        var state = result?.Status == IndexProcessingStatus.Completed ? IndexOperationState.Completed : IndexOperationState.Failed;
-        if (!await _store.TransitionAsync(operationId, IndexOperationState.Running, state, result))
+        var state = result?.Status switch
+        {
+            IndexProcessingStatus.Completed => IndexOperationState.Completed,
+            IndexProcessingStatus.Unverified => IndexOperationState.Uncertain,
+            _ => IndexOperationState.Failed,
+        };
+        if (!await _store.TransitionAsync(operationId, IndexOperationState.Running, state, result)
+            && state != IndexOperationState.Uncertain)
         {
             // An observation deadline may have elapsed while the original execution was still running.
             await _store.TransitionAsync(operationId, IndexOperationState.Uncertain, state, result);

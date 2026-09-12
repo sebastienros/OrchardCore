@@ -115,6 +115,50 @@ public class IndexLifecycleServiceTests
         locker.Verify(value => value.DisposeAsync(), Times.Once());
     }
 
+    [Theory]
+    [InlineData(IndexLifecycleAction.Synchronize, false)]
+    [InlineData(IndexLifecycleAction.Reset, false)]
+    [InlineData(IndexLifecycleAction.Rebuild, false)]
+    [InlineData(IndexLifecycleAction.Rebuild, true)]
+    public async Task LegacySource_PreservesHandlersWithoutClaimingCompletion(IndexLifecycleAction action, bool rejected)
+    {
+        var calls = new List<string>();
+        var profile = new IndexProfile { Id = "legacy", Type = "Legacy", ProviderName = "Test" };
+        var profiles = new Mock<IIndexProfileManager>();
+        profiles.Setup(value => value.FindByIdAsync(profile.Id)).ReturnsAsync(profile);
+        profiles.Setup(value => value.ResetAsync(profile)).Callback(() => calls.Add("reset"));
+        profiles.Setup(value => value.UpdateAsync(profile, null)).Callback(() => calls.Add("update"));
+        var provider = new Mock<IIndexManager>();
+        provider.Setup(value => value.RebuildAsync(profile)).Callback(() => calls.Add("rebuild")).ReturnsAsync(!rejected);
+        var locker = new Mock<ILocker>();
+        locker.Setup(value => value.DisposeAsync()).Callback(() => calls.Add("release"));
+        var locking = new Mock<IDistributedLock>();
+        locking.Setup(value => value.TryAcquireLockAsync("IndexingService-legacy", It.IsAny<TimeSpan>(), It.IsAny<TimeSpan>()))
+            .Callback(() => calls.Add("lock")).ReturnsAsync((locker.Object, true));
+        var handler = new Mock<IIndexProfileHandler>();
+        handler.Setup(value => value.SynchronizedAsync(It.IsAny<IndexProfileSynchronizedContext>()))
+            .Callback<IndexProfileSynchronizedContext>(context =>
+            {
+                Assert.False(context.IsIndexingCompleted);
+                Assert.Same(profile, context.IndexProfile);
+                calls.Add("synchronized");
+            });
+        using var services = new ServiceCollection().AddSingleton(locking.Object).AddSingleton(handler.Object)
+            .AddKeyedSingleton<IIndexManager>("Test", provider.Object).BuildServiceProvider();
+
+        var result = await new IndexLifecycleService(profiles.Object, services).ExecuteAsync(profile.Id, action);
+
+        Assert.Equal(rejected ? IndexProcessingStatus.ProviderRejected : IndexProcessingStatus.Unverified, result.Status);
+        Assert.Null(result.LastTaskId);
+        var expected = new List<string>();
+        if (action != IndexLifecycleAction.Synchronize) { expected.Add("lock"); }
+        if (action == IndexLifecycleAction.Rebuild) { expected.Add("rebuild"); }
+        if (!rejected && action != IndexLifecycleAction.Synchronize) { expected.AddRange(["reset", "update"]); }
+        if (action != IndexLifecycleAction.Synchronize) { expected.Add("release"); }
+        if (!rejected) { expected.Add("synchronized"); }
+        Assert.Equal(expected, calls);
+    }
+
     [Fact]
     public async Task ContentHandler_AlreadyProcessed_DoesNotStartAnotherProcessor()
     {

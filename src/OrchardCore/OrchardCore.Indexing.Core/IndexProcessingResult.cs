@@ -47,4 +47,6 @@ public enum IndexProcessingStatus
     NotFound,
     /// <summary>The profile's source is not supported by this indexing service.</summary>
     Unsupported,
+    /// <summary>Legacy handlers were invoked but do not expose a verifiable processing outcome.</summary>
+    Unverified,
 }

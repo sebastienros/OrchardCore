@@ -1,12 +1,13 @@
 using Microsoft.Extensions.DependencyInjection;
 using OrchardCore.Indexing.Models;
+using OrchardCore.Locking.Distributed;
 
 namespace OrchardCore.Indexing.Core;
 
 /// <summary>Executes index lifecycle work through the shared worker and its per-index lock.</summary>
 public interface IIndexLifecycleService
 {
-    /// <summary>Executes an action and returns its processing outcome. This method does not schedule background work.</summary>
+    /// <summary>Executes an action and returns its processing outcome. Legacy extension handlers may schedule additional work; such execution returns an unverified outcome.</summary>
     Task<IndexProcessingResult> ExecuteAsync(string indexId, IndexLifecycleAction action);
 }
 
@@ -50,30 +51,60 @@ public sealed class IndexLifecycleService : IIndexLifecycleService
         var processor = _services.GetKeyedService<NamedIndexingService>(profile.Type);
         if (processor is null)
         {
-            return new IndexProcessingResult { IndexId = indexId, Status = IndexProcessingStatus.Unsupported };
+            return await ExecuteLegacyAsync(profile, action);
         }
-        var result = await processor.ProcessIndexWithPreparationAsync(profile, async (index, provider) =>
-        {
-            if (action == IndexLifecycleAction.Synchronize)
-            {
-                return true;
-            }
-            if (action == IndexLifecycleAction.Rebuild && !await provider.RebuildAsync(index))
-            {
-                return false;
-            }
-            await _profiles.ResetAsync(index);
-            await _profiles.UpdateAsync(index);
-            return true;
-        });
+        var result = await processor.ProcessIndexWithPreparationAsync(profile,
+            (index, provider) => PrepareAsync(index, provider, action));
         if (result.Status == IndexProcessingStatus.Completed)
         {
-            var context = new IndexProfileSynchronizedContext(profile) { IsIndexingCompleted = true };
-            foreach (var handler in _services.GetServices<IIndexProfileHandler>())
-            {
-                await handler.SynchronizedAsync(context);
-            }
+            await NotifyAsync(profile, indexingCompleted: true);
         }
         return result;
+    }
+
+    private async Task<bool> PrepareAsync(IndexProfile profile, IIndexManager provider, IndexLifecycleAction action)
+    {
+        if (action == IndexLifecycleAction.Synchronize) { return true; }
+        if (action == IndexLifecycleAction.Rebuild && !await provider.RebuildAsync(profile)) { return false; }
+        await _profiles.ResetAsync(profile);
+        await _profiles.UpdateAsync(profile);
+        return true;
+    }
+
+    private async Task<IndexProcessingResult> ExecuteLegacyAsync(IndexProfile profile, IndexLifecycleAction action)
+    {
+        if (action != IndexLifecycleAction.Synchronize)
+        {
+            var provider = _services.GetKeyedService<IIndexManager>(profile.ProviderName);
+            if (action == IndexLifecycleAction.Rebuild && provider is null)
+            {
+                return new IndexProcessingResult(profile.Id, IndexProcessingStatus.ProviderUnavailable);
+            }
+            var locking = _services.GetRequiredService<IDistributedLock>();
+            var (locker, locked) = await locking.TryAcquireLockAsync("IndexingService-" + profile.Id,
+                TimeSpan.FromSeconds(3), TimeSpan.FromMinutes(15));
+            if (!locked) { return new IndexProcessingResult(profile.Id, IndexProcessingStatus.Busy); }
+            await using (locker)
+            {
+                if (!await PrepareAsync(profile, provider, action))
+                {
+                    return new IndexProcessingResult(profile.Id, IndexProcessingStatus.ProviderRejected);
+                }
+            }
+        }
+
+        // Legacy handlers may acquire their own lock or schedule another job. Their
+        // void result cannot establish that indexing completed, even after they return.
+        await NotifyAsync(profile, indexingCompleted: false);
+        return new IndexProcessingResult(profile.Id, IndexProcessingStatus.Unverified);
+    }
+
+    private async Task NotifyAsync(IndexProfile profile, bool indexingCompleted)
+    {
+        var context = new IndexProfileSynchronizedContext(profile) { IsIndexingCompleted = indexingCompleted };
+        foreach (var handler in _services.GetServices<IIndexProfileHandler>())
+        {
+            await handler.SynchronizedAsync(context);
+        }
     }
 }

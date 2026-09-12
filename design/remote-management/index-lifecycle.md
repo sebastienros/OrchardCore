@@ -215,3 +215,19 @@ pass, including callback ordering/context and prevention of duplicate content
 processing. Custom sources lacking a keyed processor still require a compatibility
 fallback with an explicitly unverified outcome. Lock-expiry semantics and renewed
 integrated/live verification remain before PR publication.
+
+## Legacy source compatibility
+
+Sources without a keyed processor now retain legacy synchronization handlers.
+Reset/rebuild share the coordinator's preparation method; their preparation lock
+is released before dispatching handlers, which may acquire locks themselves or
+schedule additional work. Provider rejection prevents reset and handler dispatch.
+Legacy contexts retain `IsIndexingCompleted = false`.
+
+Because these handlers expose no verifiable completion result, the coordinator
+returns `Unverified`, and the runner persists `Uncertain` without automatically
+repeating the execution. Verified remote provider/source gates are unchanged.
+The strict build passes with zero warnings/errors and all 17 coordinator/runner
+cases pass, including legacy action ordering, rejected rebuild and persisted
+unverified status with single execution. Lock-expiry handling and renewed
+integrated/live/docs/package verification remain before PR publication.

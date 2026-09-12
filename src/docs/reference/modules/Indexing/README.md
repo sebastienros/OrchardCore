@@ -274,6 +274,16 @@ uses this flag to avoid indexing the same queue again. Legacy synchronization
 contexts default to `false` and retain the built-in processing behavior. Callback
 exceptions prevent the tracked operation from being recorded as completed.
 
+Custom sources without a keyed `NamedIndexingService` retain their legacy
+synchronization-handler path for admin and recipe operations. Reset/rebuild prepare
+the profile through the same coordinator, then release its preparation lock before
+invoking handlers, which may manage their own locks or schedule further work.
+These callbacks receive `IsIndexingCompleted = false`. Since legacy handlers return
+no processing outcome, the coordinator returns `Unverified` and the operation is
+recorded as `Uncertain`, never as completed. Register a keyed processor for the
+source type to provide directly observed processing outcomes. This compatibility
+path does not enable an unverified source/provider for remote lifecycle requests.
+
 ### Persisting lifecycle state
 
 `IndexOperationStore` stores lifecycle records in the tenant database with opaque
