@@ -116,6 +116,17 @@ public abstract class NamedIndexingService
                     indexManagers.Add(indexProfile.ProviderName, indexManager);
                 }
 
+                (var locker, var isLocked) = await distributedLock.TryAcquireLockAsync($"IndexingService-{indexProfile.Id}", TimeSpan.FromSeconds(3), TimeSpan.FromMinutes(15));
+
+                if (!isLocked)
+                {
+                    Logger.LogWarning("The index {Name} is already being indexed. Skipping", indexProfile.Name);
+
+                    continue;
+                }
+
+                lockers.Add(locker);
+
                 if (!await indexManager.ExistsAsync(indexProfile.IndexFullName))
                 {
                     Logger.LogWarning("The index '{IndexName}' does not exist for the provider '{ProviderName}'.", indexProfile.IndexName, indexProfile.ProviderName);
@@ -126,21 +137,6 @@ public abstract class NamedIndexingService
                 var taskId = await documentIndexManager.GetLastTaskIdAsync(indexProfile);
                 lastTaskId = Math.Min(lastTaskId, taskId);
                 tracker.Add(indexProfile.Id, new IndexProfileEntryContext(indexProfile, documentIndexManager, taskId));
-
-                (var locker, var isLocked) = await distributedLock.TryAcquireLockAsync($"IndexingService-{indexProfile.Id}", TimeSpan.FromSeconds(3), TimeSpan.FromMinutes(15));
-
-                if (!isLocked)
-                {
-                    documentIndexManagers.Remove(indexProfile.ProviderName);
-                    indexManagers.Remove(indexProfile.ProviderName);
-                    tracker.Remove(indexProfile.Id);
-
-                    Logger.LogWarning("The index {Name} is already being indexed. Skipping", indexProfile.Name);
-
-                    continue;
-                }
-
-                lockers.Add(locker);
             }
 
             if (tracker.Count == 0)

@@ -242,7 +242,8 @@ Provider index-name uniqueness is enforced for all registered providers, not onl
 
 ### Indexing batch failures
 
-The shared background indexer keeps an index's cursor before a failed batch. A
+The shared background indexer reads provider state and its cursor under the per-index
+lock, and keeps an index's cursor before a failed batch. A
 failed document handler, provider rejection, or cursor update stops that index for
 the current run; other indexes may continue. A subsequent run retries from its last
 saved cursor, so provider mutations in an incomplete batch may be repeated. A batch

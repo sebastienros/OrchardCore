@@ -56,5 +56,7 @@ provider rejection or cursor-write failure, while other indexes may continue.
 A failure preparing/loading a whole batch stops the run. Successful filtered batches
 advance progress without a provider write, and indexes already ahead are not moved
 backwards. Required document-build handlers are awaited directly so failure is not
-silently treated as a complete document. Verification of this first fix is running;
-observable operation results and lifecycle endpoints are still pending.
+silently treated as a complete document. The strict build and all six focused progress tests pass. A new lock-ordering
+regression failed before moving provider existence/cursor reads under the per-index
+lock and passes afterward. Provider rejection/exception tests also prove that other
+indexes continue. Observable operation results and lifecycle endpoints remain pending.
