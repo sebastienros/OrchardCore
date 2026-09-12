@@ -148,3 +148,6 @@ named-query verification (including content updates), feature lifecycle/cross-te
 checks, finish the legacy recipe/editor caller audit, verify handler failures cannot
 produce misleading mutation success, update Pomi skills/inventory and run final checks.
 No claim of durable synchronization completion or later provider/lifecycle delivery.
+
+Typed endpoint checkpoint `714ec59bf` also passes strict MkDocs validation.
+The worktree is not yet published as an index implementation PR.
