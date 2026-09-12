@@ -78,11 +78,11 @@ public abstract class NamedIndexingService
     }
 
     internal async Task<IndexProcessingResult> ProcessIndexWithPreparationAsync(IndexProfile profile,
-        Func<IndexProfile, IIndexManager, Task<bool>> prepare)
+        Func<IndexProfile, IIndexManager, Action, Task<bool>> prepare)
         => (await ProcessRecordsAsync([profile], prepare)).Single();
 
     private async Task<IReadOnlyList<IndexProcessingResult>> ProcessRecordsAsync(IEnumerable<IndexProfile> indexProfiles,
-        Func<IndexProfile, IIndexManager, Task<bool>> prepare = null)
+        Func<IndexProfile, IIndexManager, Action, Task<bool>> prepare = null)
     {
         if (!indexProfiles.Any())
         {
@@ -100,6 +100,7 @@ public abstract class NamedIndexingService
 
         var distributedLock = _serviceProvider.GetRequiredService<IDistributedLock>();
         var lockers = new List<ILocker>();
+        var leases = new Dictionary<string, IndexingLease>();
 
         try
         {
@@ -142,7 +143,8 @@ public abstract class NamedIndexingService
                     indexManagers.Add(indexProfile.ProviderName, indexManager);
                 }
 
-                (var locker, var isLocked) = await distributedLock.TryAcquireLockAsync($"IndexingService-{indexProfile.Id}", TimeSpan.FromSeconds(3), TimeSpan.FromMinutes(15));
+                var lease = new IndexingLease(_serviceProvider);
+                (var locker, var isLocked) = await distributedLock.TryAcquireLockAsync($"IndexingService-{indexProfile.Id}", TimeSpan.FromSeconds(3), IndexingLease.Duration);
 
                 if (!isLocked)
                 {
@@ -153,25 +155,37 @@ public abstract class NamedIndexingService
                 }
 
                 lockers.Add(locker);
-
-                if (prepare is not null && !await prepare(indexProfile, indexManager))
+                leases.Add(indexProfile.Id, lease);
+                try
                 {
-                    results[indexProfile.Id].Status = IndexProcessingStatus.ProviderRejected;
-                    continue;
-                }
+                    lease.EnsureActive();
 
-                if (!await indexManager.ExistsAsync(indexProfile.IndexFullName))
+                    if (prepare is not null && !await prepare(indexProfile, indexManager, lease.EnsureActive))
+                    {
+                        results[indexProfile.Id].Status = IndexProcessingStatus.ProviderRejected;
+                        continue;
+                    }
+
+                    lease.EnsureActive();
+                    if (!await indexManager.ExistsAsync(indexProfile.IndexFullName))
+                    {
+                        results[indexProfile.Id].Status = IndexProcessingStatus.ProviderMissing;
+                        Logger.LogWarning("The index '{IndexName}' does not exist for the provider '{ProviderName}'.", indexProfile.IndexName, indexProfile.ProviderName);
+
+                        continue;
+                    }
+
+                    lease.EnsureActive();
+                    var taskId = await documentIndexManager.GetLastTaskIdAsync(indexProfile);
+                    lease.EnsureActive();
+                    results[indexProfile.Id].LastTaskId = taskId;
+                    lastTaskId = Math.Min(lastTaskId, taskId);
+                    tracker.Add(indexProfile.Id, new IndexProfileEntryContext(indexProfile, documentIndexManager, taskId));
+                }
+                catch (IndexingLeaseExpiredException)
                 {
-                    results[indexProfile.Id].Status = IndexProcessingStatus.ProviderMissing;
-                    Logger.LogWarning("The index '{IndexName}' does not exist for the provider '{ProviderName}'.", indexProfile.IndexName, indexProfile.ProviderName);
-
-                    continue;
+                    results[indexProfile.Id].Status = IndexProcessingStatus.LockExpired;
                 }
-
-                var taskId = await documentIndexManager.GetLastTaskIdAsync(indexProfile);
-                results[indexProfile.Id].LastTaskId = taskId;
-                lastTaskId = Math.Min(lastTaskId, taskId);
-                tracker.Add(indexProfile.Id, new IndexProfileEntryContext(indexProfile, documentIndexManager, taskId));
             }
 
             if (tracker.Count == 0)
@@ -210,6 +224,7 @@ public abstract class NamedIndexingService
 
                             try
                             {
+                                leases[entry.IndexProfile.Id].EnsureActive();
                                 var buildIndexContext = await GetBuildDocumentIndexAsync(entry, task);
 
                                 if (buildIndexContext is null)
@@ -219,6 +234,7 @@ public abstract class NamedIndexingService
 
                                 foreach (var handler in _documentIndexHandlers)
                                 {
+                                    leases[entry.IndexProfile.Id].EnsureActive();
                                     await handler.BuildIndexAsync(buildIndexContext);
                                 }
 
@@ -250,14 +266,17 @@ public abstract class NamedIndexingService
 
                         try
                         {
+                            leases[indexEntry.Key].EnsureActive();
                             // AddOrUpdateDocumentsAsync is an upsert operation that handles both adding new documents
                             // and updating existing ones. Implementations should handle any necessary deletions internally.
                             if (indexEntry.Value.Count == 0 || await trackerEntry.DocumentIndexManager.AddOrUpdateDocumentsAsync(trackerEntry.IndexProfile, indexEntry.Value))
                             {
+                                leases[indexEntry.Key].EnsureActive();
                                 // Successfully filtered records also count as processed, without regressing ahead indexes.
                                 if (lastTaskId > trackerEntry.LastTaskId)
                                 {
                                     await trackerEntry.DocumentIndexManager.SetLastTaskIdAsync(trackerEntry.IndexProfile, lastTaskId);
+                                    leases[indexEntry.Key].EnsureActive();
                                     results[trackerEntry.IndexProfile.Id].LastTaskId = lastTaskId;
                                 }
                             }
@@ -298,6 +317,10 @@ public abstract class NamedIndexingService
             foreach (var locker in lockers)
             {
                 await locker.DisposeAsync();
+            }
+            foreach (var (id, lease) in leases)
+            {
+                if (lease.Expired) { results[id].Status = IndexProcessingStatus.LockExpired; }
             }
         }
     }

@@ -49,4 +49,6 @@ public enum IndexProcessingStatus
     Unsupported,
     /// <summary>Legacy handlers were invoked but do not expose a verifiable processing outcome.</summary>
     Unverified,
+    /// <summary>The lock lease elapsed; in-flight provider effects and exclusive ownership cannot be confirmed.</summary>
+    LockExpired,
 }

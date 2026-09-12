@@ -98,7 +98,7 @@ public sealed class IndexOperationRunner
         var state = result?.Status switch
         {
             IndexProcessingStatus.Completed => IndexOperationState.Completed,
-            IndexProcessingStatus.Unverified => IndexOperationState.Uncertain,
+            IndexProcessingStatus.Unverified or IndexProcessingStatus.LockExpired => IndexOperationState.Uncertain,
             _ => IndexOperationState.Failed,
         };
         if (!await _store.TransitionAsync(operationId, IndexOperationState.Running, state, result)

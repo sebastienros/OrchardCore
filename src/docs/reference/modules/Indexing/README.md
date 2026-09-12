@@ -256,8 +256,8 @@ synchronization request proof that indexing has completed.
 ### Coordinating lifecycle execution
 
 `IIndexLifecycleService.ExecuteAsync` executes synchronization, reset or rebuild
-through the registered indexing source. The worker holds one per-index lock across
-preparation and processing. Reset replays tasks without recreating the provider
+through the registered indexing source. The worker acquires one per-index lock for
+preparation and processing, subject to its 15-minute lease. Reset replays tasks without recreating the provider
 index; rebuild recreates it before resetting and replaying. A provider rejection or
 required reset-handler failure prevents subsequent processing.
 
@@ -283,6 +283,15 @@ no processing outcome, the coordinator returns `Unverified` and the operation is
 recorded as `Uncertain`, never as completed. Register a keyed processor for the
 source type to provide directly observed processing outcomes. This compatibility
 path does not enable an unverified source/provider for remote lifecycle requests.
+
+The lock API does not renew leases. The worker measures elapsed time with a
+monotonic clock, checks the lease before starting further work or writes, and
+reports `LockExpired` if the lease elapsed. The operation becomes `Uncertain`.
+A provider call already in flight cannot be cancelled by this check and may have
+changed the index; the server does not claim continued exclusive ownership or
+successful completion. Inspect the provider before requesting new work. The last
+reported cursor is the value confirmed before expiry, which may differ from a
+provider write that finished after expiry.
 
 ### Persisting lifecycle state
 

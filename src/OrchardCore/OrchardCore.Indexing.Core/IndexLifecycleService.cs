@@ -54,7 +54,7 @@ public sealed class IndexLifecycleService : IIndexLifecycleService
             return await ExecuteLegacyAsync(profile, action);
         }
         var result = await processor.ProcessIndexWithPreparationAsync(profile,
-            (index, provider) => PrepareAsync(index, provider, action));
+            (index, provider, ensureActive) => PrepareAsync(index, provider, action, ensureActive));
         if (result.Status == IndexProcessingStatus.Completed)
         {
             await NotifyAsync(profile, indexingCompleted: true);
@@ -62,12 +62,16 @@ public sealed class IndexLifecycleService : IIndexLifecycleService
         return result;
     }
 
-    private async Task<bool> PrepareAsync(IndexProfile profile, IIndexManager provider, IndexLifecycleAction action)
+    private async Task<bool> PrepareAsync(IndexProfile profile, IIndexManager provider, IndexLifecycleAction action, Action ensureActive)
     {
+        ensureActive();
         if (action == IndexLifecycleAction.Synchronize) { return true; }
         if (action == IndexLifecycleAction.Rebuild && !await provider.RebuildAsync(profile)) { return false; }
+        ensureActive();
         await _profiles.ResetAsync(profile);
+        ensureActive();
         await _profiles.UpdateAsync(profile);
+        ensureActive();
         return true;
     }
 
@@ -81,14 +85,23 @@ public sealed class IndexLifecycleService : IIndexLifecycleService
                 return new IndexProcessingResult(profile.Id, IndexProcessingStatus.ProviderUnavailable);
             }
             var locking = _services.GetRequiredService<IDistributedLock>();
+            var lease = new IndexingLease(_services);
             var (locker, locked) = await locking.TryAcquireLockAsync("IndexingService-" + profile.Id,
-                TimeSpan.FromSeconds(3), TimeSpan.FromMinutes(15));
+                TimeSpan.FromSeconds(3), IndexingLease.Duration);
             if (!locked) { return new IndexProcessingResult(profile.Id, IndexProcessingStatus.Busy); }
             await using (locker)
             {
-                if (!await PrepareAsync(profile, provider, action))
+                try
                 {
-                    return new IndexProcessingResult(profile.Id, IndexProcessingStatus.ProviderRejected);
+                    if (!await PrepareAsync(profile, provider, action, lease.EnsureActive))
+                    {
+                        return new IndexProcessingResult(profile.Id, lease.Expired
+                            ? IndexProcessingStatus.LockExpired : IndexProcessingStatus.ProviderRejected);
+                    }
+                }
+                catch (IndexingLeaseExpiredException)
+                {
+                    return new IndexProcessingResult(profile.Id, IndexProcessingStatus.LockExpired);
                 }
             }
         }

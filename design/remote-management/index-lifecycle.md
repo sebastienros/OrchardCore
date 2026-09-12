@@ -231,3 +231,19 @@ The strict build passes with zero warnings/errors and all 17 coordinator/runner
 cases pass, including legacy action ordering, rejected rebuild and persisted
 unverified status with single execution. Lock-expiry handling and renewed
 integrated/live/docs/package verification remain before PR publication.
+
+## Lock lease expiry
+
+The shared worker now measures the existing 15-minute lease with a monotonic clock
+from before acquisition. Preparation and processing check the lease before further
+operations and cursor writes. Elapsed leases override completed/failed processing
+results with `LockExpired`; the runner persists `Uncertain`. Legacy preparation
+uses the same lease checks. Existing calls cannot be cancelled retroactively, so
+an in-flight provider write may take effect after expiry; neither continued lock
+ownership nor successful completion is claimed.
+
+The strict build passes with zero warnings/errors and all 31 focused progress,
+coordinator and runner cases pass. Simulated expiry in document handlers, provider
+writes and an empty final queue read prevents cursor advancement/completed status.
+The runner persists uncertain lock-expired outcomes without repeating execution.
+Renewed integrated/live/docs/package verification and independent PR/CI remain.

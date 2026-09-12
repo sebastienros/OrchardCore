@@ -15,6 +15,7 @@ public class IndexOperationRunnerTests
     [InlineData("exception")]
     [InlineData("late")]
     [InlineData("unverified")]
+    [InlineData("expired")]
     public async Task Run_ConfirmedOutcome_IsPersistedWithoutRepeatingWork(string scenario)
     {
         using var context = new SiteContext();
@@ -37,7 +38,8 @@ public class IndexOperationRunnerTests
                     now = now.AddMinutes(31);
                     Assert.Equal(IndexOperationState.Uncertain, (await runner.FindAsync(operation.OperationId)).State);
                 }
-                return new IndexProcessingResult("index", scenario == "unverified" ? IndexProcessingStatus.Unverified
+                return new IndexProcessingResult("index", scenario == "expired" ? IndexProcessingStatus.LockExpired
+                    : scenario == "unverified" ? IndexProcessingStatus.Unverified
                     : scenario == "failed" ? IndexProcessingStatus.Busy : IndexProcessingStatus.Completed, 42);
             });
             runner = new IndexOperationRunner(store, executor.Object, clock.Object, new HttpContextAccessor(), NullLogger<IndexOperationRunner>.Instance);
@@ -48,9 +50,10 @@ public class IndexOperationRunnerTests
             var result = await store.FindAsync(operation.OperationId);
             var completed = scenario is "completed" or "late";
             Assert.Equal(completed ? IndexOperationState.Completed
-                : scenario == "unverified" ? IndexOperationState.Uncertain : IndexOperationState.Failed, result.State);
+                : scenario is "unverified" or "expired" ? IndexOperationState.Uncertain : IndexOperationState.Failed, result.State);
             Assert.Equal(scenario == "exception" ? IndexProcessingStatus.Failed
-                : scenario == "unverified" ? IndexProcessingStatus.Unverified
+                : scenario == "expired" ? IndexProcessingStatus.LockExpired
+                    : scenario == "unverified" ? IndexProcessingStatus.Unverified
                 : scenario == "failed" ? IndexProcessingStatus.Busy : IndexProcessingStatus.Completed, result.Outcome);
             Assert.Equal(scenario == "exception" ? null : (long?)42, result.LastTaskId);
             executor.Verify(value => value.ExecuteAsync("index", IndexLifecycleAction.Rebuild), Times.Once);

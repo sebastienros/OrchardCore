@@ -150,7 +150,43 @@ public class IndexingProgressTests
         documents.Verify(manager => manager.SetLastTaskIdAsync(profile, It.IsAny<long>()), Times.Never);
     }
 
-    private static ServiceProvider CreateServices(IDocumentIndexManager documents, Mock<IDistributedLock> locking = null, bool providerExists = true)
+    [Theory]
+    [InlineData("handler")]
+    [InlineData("provider")]
+    [InlineData("empty-queue")]
+    public async Task ProcessRecords_ExpiredLease_DoesNotAdvanceCursorOrReportCompletion(string stage)
+    {
+        long elapsed = 0;
+        var time = new Mock<TimeProvider>();
+        time.SetupGet(value => value.TimestampFrequency).Returns(TimeSpan.TicksPerSecond);
+        time.Setup(value => value.GetTimestamp()).Returns(() => elapsed);
+        var profile = new IndexProfile { Id = "index", Type = "Test", ProviderName = "Test", IndexFullName = "index" };
+        var profiles = new Mock<IIndexProfileStore>();
+        profiles.Setup(value => value.GetByTypeAsync("Test")).ReturnsAsync([profile]);
+        var tasks = new Mock<IIndexingTaskManager>();
+        tasks.Setup(value => value.GetIndexingTasksAsync(It.IsAny<long>(), It.IsAny<int>(), "Test"))
+            .Callback(() => { if (stage == "empty-queue") { elapsed = TimeSpan.FromMinutes(16).Ticks; } })
+            .ReturnsAsync((long after, int count, string category) => after == 0 && stage != "empty-queue"
+                ? new[] { new RecordIndexingTask { Id = 1, RecordId = "record", Category = category } } : []);
+        var documents = new Mock<IDocumentIndexManager>();
+        documents.Setup(value => value.AddOrUpdateDocumentsAsync(profile, It.IsAny<IEnumerable<DocumentIndex>>()))
+            .Callback(() => { if (stage == "provider") { elapsed = TimeSpan.FromMinutes(16).Ticks; } }).ReturnsAsync(true);
+        var handler = new Mock<IDocumentIndexHandler>();
+        handler.Setup(value => value.BuildIndexAsync(It.IsAny<BuildDocumentIndexContext>()))
+            .Callback(() => { if (stage == "handler") { elapsed = TimeSpan.FromMinutes(16).Ticks; } });
+        using var services = CreateServices(documents.Object, time: time.Object);
+        var indexing = new TestIndexingService(profiles.Object, tasks.Object, [handler.Object], services);
+
+        var result = Assert.Single(await indexing.ProcessRecordsWithResultsAsync([profile.Id]));
+
+        Assert.Equal(IndexProcessingStatus.LockExpired, result.Status);
+        Assert.Equal(0, result.LastTaskId);
+        documents.Verify(value => value.SetLastTaskIdAsync(profile, It.IsAny<long>()), Times.Never());
+        documents.Verify(value => value.AddOrUpdateDocumentsAsync(profile, It.IsAny<IEnumerable<DocumentIndex>>()),
+            stage == "provider" ? Times.Once() : Times.Never());
+    }
+
+    private static ServiceProvider CreateServices(IDocumentIndexManager documents, Mock<IDistributedLock> locking = null, bool providerExists = true, TimeProvider time = null)
     {
         var indexes = new Mock<IIndexManager>();
         indexes.Setup(manager => manager.ExistsAsync("index")).ReturnsAsync(providerExists);
@@ -160,7 +196,7 @@ public class IndexingProgressTests
             locking.Setup(value => value.TryAcquireLockAsync(It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<TimeSpan>()))
                 .ReturnsAsync(() => (Mock.Of<ILocker>(), true));
         }
-        return new ServiceCollection().AddSingleton(locking.Object)
+        return new ServiceCollection().AddSingleton(time ?? TimeProvider.System).AddSingleton(locking.Object)
             .AddKeyedSingleton<IDocumentIndexManager>("Test", documents)
             .AddKeyedSingleton<IIndexManager>("Test", indexes.Object).BuildServiceProvider();
     }
