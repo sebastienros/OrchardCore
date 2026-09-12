@@ -40,7 +40,7 @@ that approach. Report an installation blocker rather than silently bypassing Pom
 | Connect, log in, approve a device code, or manage saved contexts | [Authentication and contexts](references/authentication.md) |
 | Diagnose missing commands, cache freshness, permissions, or output | [Shared operating rules](references/shared-rules.md) |
 | Define types, parts, fields, and content models | [Content definitions](../orchardcore-cli-content-definitions/SKILL.md) |
-| Author, validate, publish, or restore content versions | [Content items](../orchardcore-cli-content-items/SKILL.md) |
+| Author, localize, publish, or restore content versions | [Content items](../orchardcore-cli-content-items/SKILL.md) |
 | Upload images/files, obtain URLs, or manage custom CSS/JavaScript | [Media](../orchardcore-cli-media/SKILL.md) |
 | Create Liquid shape overrides and verify rendering | [Templates](../orchardcore-cli-templates/SKILL.md) |
 | Manage named Liquid shortcode snippets | [Shortcode templates](../orchardcore-cli-templates/SKILL.md#shortcode-templates) |

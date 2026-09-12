@@ -1,6 +1,6 @@
 ---
 name: orchardcore-cli-content-items
-description: Authors and manages Orchard Core content items through `pomi`. Use for schema-driven JSON creation, drafts, updates, validation, publishing, unpublishing, rendering, deletion, version history, version restoration, ownership, and organizing tenant content by type, route, alias, taxonomy, and containment.
+description: Authors and manages Orchard Core content items through `pomi`. Use for schema-driven JSON creation, drafts, updates, validation, publishing, unpublishing, rendering, deletion, version history, version restoration, content localization, ownership, and organizing tenant content by type, route, alias, taxonomy, and containment.
 ---
 
 # Pomi CLI Content Items
@@ -84,6 +84,46 @@ values; explicit JSON `null` clears nullable values, including publish/archive
 schedules. Arrays replace the complete array, so preserve embedded IDs/items
 that should remain. Validate the candidate and read it back after saving; use
 the live schema to determine which properties allow null.
+
+## Localized variants
+
+Use `OrchardCore.ContentLocalization` and the source content type's `LocalizationPart`.
+Discover configured cultures, then create or reuse a variant through the localization
+manager; do not manufacture a localization set ID or clone an item by editing raw part JSON.
+
+```bash
+pomi localization cultures list
+pomi content localizations list <sourceId>
+pomi content localizations create <sourceId> --body-file culture.json
+pomi content localizations list <sourceId> --version published
+```
+
+`culture.json` contains only the selected configured culture:
+
+```json
+{ "culture": "fr" }
+```
+
+The result contains `item` (identity/version metadata) and `created`. A new variant
+is a draft; a retry reuses the existing editable variant without overwriting its body.
+Read `item.contentItemId` with `content items show --version latest`, edit it and
+publish only when requested. The source is the latest version; use the content
+version workflow first if a different source version is required.
+
+List defaults to latest and filters each variant by view/preview permission. A
+published-only list can contain fewer items. Creation requires source localization
+permission and content-type edit permission; retrying an existing target also
+requires edit permission on that target. The source must have `LocalizationPart`.
+Culture matching is case-insensitive; use a name from the configured culture list.
+A missing/disabled feature or part is unavailable, not a reason to write arbitrary
+localization IDs. A 409 means a published matching variant has a latest draft
+with changed culture/set membership; inspect and resolve that draft. Coordinate
+concurrent requests for the same set/culture because sequential retry behavior
+does not provide a distributed lock.
+
+[Content localizations API](https://github.com/sebastienros/OrchardCore/blob/67e9556d06ea2edc3d9fd434d88e3ff456068564/src/docs/reference/api/content-localizations/README.md)
+is a versioned reference; the live tenant contract takes precedence. UI-string
+translations and culture-picker settings are separate workflows.
 
 ## Lifecycle commands
 

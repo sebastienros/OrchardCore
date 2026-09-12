@@ -436,3 +436,16 @@ setup-only installation creates no context. Administrator credentials are retain
 owner-only files under the disposable fixture's composition directory. The Blog recipe
 supplies configured widget zones; the script does not claim zone-settings editing or
 local application scaffolding coverage.
+
+## Content localization
+
+```bash
+python3 .scripts/remote-management/content-localization-smoke.py <fixture.json>
+```
+
+This enables Content Localization and creates synthetic localized content. It verifies
+new drafts and sequential retries, preserved source content, configured cultures,
+published/latest variant filtering, restricted application permissions, MCP equivalence
+and independent feature removal/restoration. The fixture provides separate localizer,
+localizer-without-edit and published-content-reader identities. Synthetic content remains
+in the disposable tenant for inspection.

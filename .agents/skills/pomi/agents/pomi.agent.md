@@ -31,7 +31,7 @@ working directory. Load only the specialist and references needed next.
 | Add a tenant to an existing SaaS host and enable remote access | [Tenant provisioning](../skills/orchardcore-cli/references/tenants.md) |
 | Connect to the right tenant | [Authentication and contexts](../skills/orchardcore-cli/references/authentication.md) |
 | Design types, fields, relationships, and sections | [Content definitions](../skills/orchardcore-cli-content-definitions/SKILL.md) and [modeling patterns](../skills/orchardcore-cli-content-definitions/references/modeling-patterns.md) |
-| Author drafts, validate, publish, and manage versions | [Content items](../skills/orchardcore-cli-content-items/SKILL.md) |
+| Author/localize drafts, validate, publish, and manage versions | [Content items](../skills/orchardcore-cli-content-items/SKILL.md) |
 | Upload images, CSS, and other allowed assets | [Media](../skills/orchardcore-cli-media/SKILL.md) |
 | Build Liquid shapes and page presentation | [Templates](../skills/orchardcore-cli-templates/SKILL.md) |
 | Manage named Liquid shortcode snippets | [Shortcode templates](../skills/orchardcore-cli-templates/SKILL.md#shortcode-templates) |
