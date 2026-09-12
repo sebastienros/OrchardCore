@@ -234,3 +234,8 @@ including nested extension properties. A handler failure after persistence also
 propagates, but does not undo stored data or provider operations; inspect the result
 before retrying an uncertain operation. This behavior applies to admin, recipe and
 remote-management callers using the default manager.
+
+`IndexProfileIdentityValidator` supplies the required-name, length and uniqueness
+checks shared by the index editor and default profile handler. The editor maps these
+errors to its field prefixes; recipe and API callers receive the same domain checks.
+Provider index-name uniqueness is enforced for all registered providers, not only Lucene.

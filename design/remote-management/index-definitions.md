@@ -180,3 +180,27 @@ recipe/editor caller audit, skill/inventory updates and final PR review/CI.
 
 Checkpoint `b99e0bc6d` passes strict MkDocs validation. The index branch remains
 unpublished pending the remaining review gates above.
+
+## Existing caller and tenant-isolation checkpoint
+
+Legacy lucene-index creation now uses the shared coordinator. Four regressions cover
+successful creation, rejected creation compensation, and existing-profile repair with
+and without a provider index. The latter deliberately keeps the stored definition.
+IndexProfileIdentityValidator now owns required names, lengths and uniqueness for
+both the editor and default domain handler; editor field prefixes are preserved.
+Duplicate provider-name validation was removed from the Lucene-specific handler.
+The combined caller/validation suite passes all 18 tests, and the strict full solution
+build and full server suite pass (3,351 passed, one CI-only skip).
+
+The live isolation scenario provisions a child with --enable-remote-management, uses
+its saved application context without login and saves a 0600 administrator handoff.
+Parent and child create the same provider/display names with different profile IDs;
+foreign reads/updates fail, foreign deletes do not affect the owner, child mutation
+and deletion leave the parent unchanged, and a parent bearer token is rejected by
+the child. The disposable child is stopped and removed. The fixture opts into tenant
+removal solely for this cleanup; its default remains unchanged.
+
+Inventory now classifies Indexing as partial (discovery exists, observable lifecycle
+remains), and records Lucene definition commands without claiming complete provider
+lifecycle. Counts: D25/P24/A1/M29/S36/I70/X3, all 188 features accounted for.
+Remaining: Pomi packaging, final review/checks and independent PR/CI/merge.

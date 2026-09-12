@@ -2,7 +2,6 @@ using System.ComponentModel.DataAnnotations;
 using Microsoft.Extensions.Localization;
 using OrchardCore.ContentManagement;
 using OrchardCore.Entities;
-using OrchardCore.Indexing;
 using OrchardCore.Indexing.Core.Handlers;
 using OrchardCore.Indexing.Models;
 using OrchardCore.Infrastructure.Entities;
@@ -16,38 +15,28 @@ namespace OrchardCore.Lucene.Core.Handlers;
 /// </summary>
 public sealed class LuceneIndexValidationHandler : IndexProfileHandlerBase
 {
-    private readonly IIndexProfileStore _store;
     private readonly LuceneAnalyzerManager _analyzers;
     private readonly IStringLocalizer S;
 
-    /// <summary>Creates validation using the tenant's stored profiles and registered analyzers.</summary>
-    public LuceneIndexValidationHandler(IIndexProfileStore store, LuceneAnalyzerManager analyzers, IStringLocalizer<LuceneIndexValidationHandler> localizer)
+    /// <summary>Creates validation using the tenant's registered analyzers.</summary>
+    public LuceneIndexValidationHandler(LuceneAnalyzerManager analyzers, IStringLocalizer<LuceneIndexValidationHandler> localizer)
     {
-        _store = store;
         _analyzers = analyzers;
         S = localizer;
     }
 
     /// <inheritdoc />
-    public override async Task ValidatingAsync(ValidatingContext<IndexProfile> context)
+    public override Task ValidatingAsync(ValidatingContext<IndexProfile> context)
     {
         var profile = context.Model;
         if (!string.Equals(profile.ProviderName, LuceneConstants.ProviderName, StringComparison.OrdinalIgnoreCase))
         {
-            return;
+            return Task.CompletedTask;
         }
 
         if (!LuceneIndexNameValidator.IsValid(profile.IndexName) || !LuceneIndexNameValidator.IsValid(profile.IndexFullName))
         {
             context.Result.Fail(new ValidationResult(S["The Lucene index name must be a single file name without path separators or reserved filename characters."], [nameof(IndexProfile.IndexName)]));
-        }
-        else
-        {
-            var existing = await _store.FindByIndexNameAndProviderAsync(profile.IndexName, profile.ProviderName);
-            if (existing is not null && existing.Id != profile.Id)
-            {
-                context.Result.Fail(new ValidationResult(S["There is already another index with the same name."], [nameof(IndexProfile.IndexName)]));
-            }
         }
 
         var metadata = profile.GetOrCreate<LuceneIndexMetadata>();
@@ -58,6 +47,8 @@ public sealed class LuceneIndexValidationHandler : IndexProfileHandlerBase
         {
             context.Result.Fail(new ValidationResult(S["The Lucene version is not supported."], [nameof(query.DefaultVersion)]));
         }
+
+        return Task.CompletedTask;
     }
 
     private void ValidateAnalyzer(string name, string member, ValidatingContext<IndexProfile> context)

@@ -440,3 +440,9 @@ Creation's scheduled synchronization and the worker use the normal indexing pipe
 existing named Lucene queries can read the resulting index. Changing and publishing a
 content item updates its indexed terms on a subsequent worker run, without updating
 the index definition or recreating the named query.
+
+The legacy `lucene-index` recipe creates new profiles through the same coordinator
+as the admin and typed API, including compensation when provider creation is rejected.
+For an existing profile it preserves the legacy behavior: keep its definition, ensure
+its provider index exists, then schedule synchronization. That repair path does not
+replace the stored definition with the recipe's incoming settings.
