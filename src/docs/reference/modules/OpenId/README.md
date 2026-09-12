@@ -250,6 +250,12 @@ OpenID Connect apps require the following configuration.
 - Advanced Parameters: Allows setting additional parameters that can be sent with the authorize request. Note: The default parameters are set from the options above.
 - Require PKCE: Applies PKCE for the registered application. Ensure that the client library being used supports PKCE.
 
+The application editor and recipe step share the same settings update logic. Updating a
+confidential application without a new client secret preserves its existing credential.
+Switching to a public application removes the secret. Roles, scopes and redirect URIs
+replace their existing collections, while custom descriptor properties are preserved.
+If OpenID validation rejects an update, the previous application values remain available.
+
 A sample of OpenID Connect App recipe step:
 
 ```json

@@ -34,13 +34,39 @@ internal static class OpenIdApplicationExtensions
 {
     internal static readonly string[] s_separator = [" ", ","];
 
-    public static async Task UpdateDescriptorFromSettings(this IOpenIdApplicationManager _applicationManager, OpenIdApplicationSettings model, object application = null)
+    public static async Task UpdateDescriptorFromSettings(this IOpenIdApplicationManager manager, OpenIdApplicationSettings model,
+        object application = null, CancellationToken cancellationToken = default)
+    {
+        var descriptor = await manager.BuildDescriptorFromSettingsAsync(model, application, cancellationToken);
+        if (application is null)
+        {
+            await manager.CreateAsync(descriptor, cancellationToken);
+            return;
+        }
+
+        var original = new OpenIdApplicationDescriptor();
+        await manager.PopulateAsync(original, application, cancellationToken);
+        try
+        {
+            await manager.UpdateAsync(application, descriptor, cancellationToken);
+        }
+        catch (OpenIddictExceptions.ValidationException)
+        {
+            // OpenIddict populates the tracked entity before validating the descriptor.
+            // Restore the previous values so rejected edits cannot contaminate readback.
+            await manager.PopulateAsync(application, original, CancellationToken.None);
+            throw;
+        }
+    }
+
+    internal static async Task<OpenIdApplicationDescriptor> BuildDescriptorFromSettingsAsync(this IOpenIdApplicationManager _applicationManager,
+        OpenIdApplicationSettings model, object application = null, CancellationToken cancellationToken = default)
     {
         var descriptor = new OpenIdApplicationDescriptor();
 
         if (application != null)
         {
-            await _applicationManager.PopulateAsync(descriptor, application);
+            await _applicationManager.PopulateAsync(descriptor, application, cancellationToken);
         }
 
         descriptor.ClientId = model.ClientId;
@@ -272,14 +298,6 @@ internal static class OpenIdApplicationExtensions
             descriptor.RedirectUris.Add(uri);
         }
 
-        if (application == null)
-        {
-            await _applicationManager.CreateAsync(descriptor);
-        }
-        else
-        {
-            await _applicationManager.UpdateAsync(application, descriptor);
-        }
-
+        return descriptor;
     }
 }

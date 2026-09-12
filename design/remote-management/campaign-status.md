@@ -41,8 +41,9 @@ The [schedule](pr-schedule.md) and [plan](coverage-plan.md) define the work and 
 | P09 Content localization | Merged | [PR #12](https://github.com/sebastienros/OrchardCore/pull/12), merge `9d990f99d`; all CI checks passed. Shared admin/API workflow, existing localization handlers, draft retries and version-aware permission checks verified. |
 | P10 URL rewriting | Merged | [PR #15](https://github.com/sebastienros/OrchardCore/pull/15), merge `e8e6fda18`; all CI checks passed. Shared admin/recipe validation, lifecycle and native runtime rerouting verified. |
 | Content culture picker settings | Merged | [PR #17](https://github.com/sebastienros/OrchardCore/pull/17), merge `6e9f1f64f`; all CI checks passed. Shared admin mutations, typed section and runtime cookie/redirect checks. |
-| Application/scope discovery | In verification | Independent `codex/remote-openid-discovery`; existing managers, four redacted reads and separate permissions. |
-| Application/scope administration | Planned | Separate B06 mutation PRs after discovery. |
+| Application/scope discovery | Merged | [PR #19](https://github.com/sebastienros/OrchardCore/pull/19), merge `f28af3782`; all CI checks passed. |
+| Scope administration | In verification | [PR #20](https://github.com/sebastienros/OrchardCore/pull/20); local validation passed, CI running. |
+| Application administration | In development | Independent `codex/remote-openid-applications` from merged `f28af3782`; [contract and existing-path audit](openid-applications.md). Shared editor tracked-state regression reproduced before changes. |
 | Application credential lifecycle | Planned | After application administration merges. |
 | Tenant feature-profile definitions | Planned | Independent B06 slice. |
 | Common index definitions and lifecycle | Planned | B07 with local Lucene verification. |
