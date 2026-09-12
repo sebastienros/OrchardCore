@@ -97,3 +97,18 @@ The `UrlRewriting` step allows you to create or update URL rewrite rules easily.
   - **Append**: Appends the original query string to the new URL.
   - **Drop**: Ignores the query string during the rewrite.
 - **SkipFurtherRules**: When set to `true`, any subsequent rules will not be processed if this rule matches.
+
+## Validation and updates
+
+The admin editor and recipe importer use the rewrite manager's validation handlers.
+Validation checks required names, match patterns, query policies and redirect statuses,
+then asks the registered source to construct its runtime rule before saving. Rewrite
+and redirect arguments cannot contain literal whitespace or control characters because
+they are emitted as individual Apache rewrite arguments. Escape match characters or
+URL-encode substitution characters as appropriate. A substitution is a replacement
+expression, not a regular expression.
+
+Edits use independent metadata copies so invalid changes do not mutate stored rules.
+Saving an unchanged rule or deleting a missing rule does not reload the tenant.
+Changed saves, deletes and ordering changes request a reload. The manager uses one-based ordering positions, matching the admin sortable list
+which includes a header row. Stored rule order values are zero-based.
