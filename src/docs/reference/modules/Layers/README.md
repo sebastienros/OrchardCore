@@ -4,6 +4,10 @@ The Layers can be managed from the `Design > Widgets` page in the admin.
 
 A Layer has a name, a description and a rule in which you specify a condition to render the widgets that will be associated to this Layer.
 
+For remote layer definitions, condition discovery and validation, see the
+[Layers API](../../api/layers/README.md). It supplies Pomi commands and eligible MCP tools
+using the same tenant document and `ManageLayers` permission.
+
 ![Create Layer.](./assets/create-layer.png)
 
 _The Layer needs to be saved first to reveal the Rule option._

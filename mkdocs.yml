@@ -218,6 +218,7 @@ nav:
               - Media: reference/api/media/README.md
               - Queries: reference/api/queries/README.md
               - Templates: reference/api/templates/README.md
+              - Layers: reference/api/layers/README.md
               - Themes: reference/api/themes/README.md
               - Workflows: reference/api/workflows/README.md
           - Administration:
