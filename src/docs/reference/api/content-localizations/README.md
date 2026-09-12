@@ -44,7 +44,8 @@ without the required permission returns 403. No list operation modifies content.
 
 Each summary includes `contentItemId`, `contentItemVersionId`, `contentType`, `displayText`,
 `localizationSet`, `culture`, `published` and `latest`. Full content is available through the
-[content items API](../content-items/README.md) using its own permissions.
+[content items API](../content-items/README.md) using its own permissions, including
+`AccessContentApi`. A minimal localizer grant alone does not authorize those separate endpoints.
 
 ## Create or reuse a variant
 
@@ -76,7 +77,9 @@ item/version. If a published matching variant has a latest draft with a differen
 the API returns 409 so that the draft can be resolved first. This does not provide a concurrency
 lock across simultaneous localization requests; coordinate parallel writers to the same set/culture.
 
-Edit and publish the returned item explicitly through the content APIs. The admin action retains
+Inspect, edit and publish the returned item explicitly through the content APIs. Existing
+localization handlers can change part values; for example, Autoroute clears the cloned path
+so it can be regenerated or explicitly assigned for the translated item. The admin action retains
 its notifications and redirect flow while using the same localization service. Culture-picker
 and request-culture settings are separate configuration workflows. UI-string translation APIs
 retain their existing API-only policy.

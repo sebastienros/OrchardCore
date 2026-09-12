@@ -106,6 +106,7 @@ with tempfile.TemporaryDirectory(prefix='content-localizations-cli-', dir=state_
     feature('OrchardCore.RemoteManagement.Mcp', True)
     feature('OrchardCore.Html', True)
     feature('OrchardCore.Autoroute', True)
+    pomi('themes', 'set-current', 'TheTheme', client='cli-fixture')
     pomi('api', 'refresh', '--force')
     pomi('localization', 'settings', 'update', client='cli-fixture', body={'defaultCulture': 'en', 'supportedCultures': ['en', 'fr', 'de']})
     definition = {'name': name, 'displayName': name,
@@ -127,6 +128,7 @@ with tempfile.TemporaryDirectory(prefix='content-localizations-cli-', dir=state_
     assert not again['created'] and again['item'] == created['item']
     target = request('api/content/' + target_id + '?version=latest')
     assert target['HtmlBodyPart']['Html'] == source['HtmlBodyPart']['Html']
+    assert target['AutoroutePart']['Path'] is None  # Existing localization handler clears the route.
     assert target['LocalizationPart']['LocalizationSet'] == source['LocalizationPart']['LocalizationSet']
     assert request('api/content/' + source_id + '?version=latest') == source
     assert len(pomi('content', 'localizations', 'list', source_id)) == 2
@@ -142,10 +144,18 @@ with tempfile.TemporaryDirectory(prefix='content-localizations-cli-', dir=state_
     assert localized['created'] and not localized['item']['published']
     tool('create', {'path': {'contentItemId': source_id}, 'body': {'culture': 'de'}}, client='cli-content-localizer-no-edit', status=403)
     assert len(tool('list', {'path': {'contentItemId': source_id}})) == 3
-    # A distinct draft body must not leak through published variant selection.
+    # Editing and publication remain explicit content operations outside localization.
+    translated_marker = marker + '-fr'
+    translated_path = name.lower() + '-fr'
+    pomi('content', 'items', 'update-draft', target_id, body={'AutoroutePart': {'Path': translated_path}}, status=403)  # Existing content API also requires AccessContentApi.
+    edited = pomi('content', 'items', 'update-draft', target_id, client='cli-fixture', body={'HtmlBodyPart': {'Html': '<p>' + translated_marker + '</p>'}, 'AutoroutePart': {'Path': translated_path}})
+    assert not edited['Published']
+    assert not pomi('content', 'localizations', 'create', source_id, body={'culture': 'fr'})['created']
+    assert request('api/content/' + target_id + '?version=latest')['HtmlBodyPart'] == edited['HtmlBodyPart']
     request('api/content/' + target_id + '/publish', 'POST', status=200, raw=True)
     variants = pomi('content', 'localizations', 'list', source_id, '--version', 'published', client='cli-content-reader')
     assert len(variants) == 2 and all(item['published'] for item in variants)
+    assert translated_marker in request(translated_path, client=None, raw=True)
     ids, commands, names = catalog()
     assert len([value for value in commands if value.startswith('content localizations ')]) == 2
     assert 'content_localizations_create' in names
