@@ -137,21 +137,9 @@ public sealed class ApplicationController : Controller
             return Forbid();
         }
 
-        if (!string.IsNullOrEmpty(model.ClientSecret) &&
-             string.Equals(model.Type, OpenIddictConstants.ClientTypes.Public, StringComparison.OrdinalIgnoreCase))
+        foreach (var error in OpenIdApplicationExtensions.ValidateClientSettings(model.Type, model.ApplicationType, model.ClientSecret, S, isNew: true))
         {
-            ModelState.AddModelError(nameof(model.ClientSecret), S["No client secret can be set for public applications."]);
-        }
-        else if (string.IsNullOrEmpty(model.ClientSecret) &&
-                 string.Equals(model.Type, OpenIddictConstants.ClientTypes.Confidential, StringComparison.OrdinalIgnoreCase))
-        {
-            ModelState.AddModelError(nameof(model.ClientSecret), S["The client secret is required for confidential applications."]);
-        }
-
-        if (string.Equals(model.ApplicationType, OpenIddictConstants.ApplicationTypes.Native, StringComparison.OrdinalIgnoreCase) &&
-            !string.Equals(model.Type, OpenIddictConstants.ClientTypes.Public, StringComparison.OrdinalIgnoreCase))
-        {
-            ModelState.AddModelError(nameof(model.Type), S["Native applications must be public clients."]);
+            ModelState.AddModelError(error.MemberNames.Single(), error.ErrorMessage);
         }
 
         if (!string.IsNullOrEmpty(model.ClientId) && await _applicationManager.FindByClientIdAsync(model.ClientId) != null)
@@ -309,24 +297,10 @@ public sealed class ApplicationController : Controller
             return NotFound();
         }
 
-        // If the application was a public client and is now a confidential client, ensure a client secret was provided.
-        if (string.IsNullOrEmpty(model.ClientSecret) &&
-           !string.Equals(model.Type, OpenIddictConstants.ClientTypes.Public, StringComparison.OrdinalIgnoreCase) &&
-            await _applicationManager.HasClientTypeAsync(application, OpenIddictConstants.ClientTypes.Public))
+        foreach (var error in OpenIdApplicationExtensions.ValidateClientSettings(model.Type, model.ApplicationType, model.ClientSecret, S,
+            isNew: false, wasPublic: await _applicationManager.HasClientTypeAsync(application, OpenIddictConstants.ClientTypes.Public)))
         {
-            ModelState.AddModelError(nameof(model.ClientSecret), S["Setting a new client secret is required."]);
-        }
-
-        if (!string.IsNullOrEmpty(model.ClientSecret) &&
-             string.Equals(model.Type, OpenIddictConstants.ClientTypes.Public, StringComparison.OrdinalIgnoreCase))
-        {
-            ModelState.AddModelError(nameof(model.ClientSecret), S["No client secret can be set for public applications."]);
-        }
-
-        if (string.Equals(model.ApplicationType, OpenIddictConstants.ApplicationTypes.Native, StringComparison.OrdinalIgnoreCase) &&
-            !string.Equals(model.Type, OpenIddictConstants.ClientTypes.Public, StringComparison.OrdinalIgnoreCase))
-        {
-            ModelState.AddModelError(nameof(model.Type), S["Native applications must be public clients."]);
+            ModelState.AddModelError(error.MemberNames.Single(), error.ErrorMessage);
         }
 
         if (ModelState.IsValid)

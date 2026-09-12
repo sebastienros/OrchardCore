@@ -121,6 +121,10 @@ not exposed for secret-bearing operations. Inspect live help on older servers.
 ```bash
 pomi openid applications list --skip 0 --take 50
 pomi openid applications show <client-id>
+pomi openid applications schema --operation create
+pomi openid applications create --body-file application.json
+pomi openid applications update <client-id> --body-file application.json
+pomi openid applications delete <client-id> --force
 pomi openid scopes list --skip 0 --take 50
 pomi openid scopes show orchardcore.management
 pomi openid scopes schema --operation create
@@ -135,10 +139,25 @@ ID for application lookup and the scope name for scope lookup. The returned `id`
 is an administrative storage identifier. Page through results using `totalCount`,
 `skip` and `take`; the maximum page size is 200.
 
-Application operations are discovery reads; they do not recover a secret or rotate
-credentials. Responses omit credentials, keys, custom properties and private
-settings. Registered grants and requirements do not establish which flows the
-server currently permits.
+Application create/update requires `clientId`, `displayName` and `clientType`
+(`public` or `confidential`). Confidential creation needs `clientSecret`. Supply
+the complete request through a protected `--body-file` or `--stdin`; inline body
+and secret arguments are not exposed. An omitted secret preserves an existing
+confidential credential. Other settings are replacements: omitted roles, scopes
+and redirect URIs clear them, and omitted grant/endpoint flags are false. Use
+registered role/scope names and inspect the live schema before replacing settings.
+The body client ID must match the update target. Equivalent creation retries
+succeed; differing definitions or credentials conflict. Responses omit credentials,
+keys, custom properties and private settings. Dedicated credential lifecycle
+operations follow separately. Registered grants do not establish which flows the
+server currently permits. Deletion prevents new client authentication; it does not
+promise immediate invalidation of every previously issued token.
+
+Application provisioning does not alter the independent administrator account.
+Unattended installation still saves its application context automatically. For an
+additional application, select its tenant context and use the existing
+`OC_CLIENT_ID`/`OC_CLIENT_SECRET` credential sources for noninteractive requests;
+keep the administrator handoff file separate from application credentials.
 
 Scope create/update bodies require `name` and `displayName`. Updates replace the
 editable fields: omitted `description` is cleared, and omitted `resources` or
@@ -170,4 +189,4 @@ Versioned API references (live tenant schemas take precedence):
 - [Users](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/api/users/README.md)
 - [Roles](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/api/roles/README.md)
 
-- [OpenID management](https://github.com/sebastienros/OrchardCore/blob/7cf2e51e94128d53426f025387a7e011347011d0/src/docs/reference/api/openid/README.md)
+- [OpenID management](https://github.com/sebastienros/OrchardCore/blob/3721329714164f675a354ab6f375e82f999fc504/src/docs/reference/api/openid/README.md)

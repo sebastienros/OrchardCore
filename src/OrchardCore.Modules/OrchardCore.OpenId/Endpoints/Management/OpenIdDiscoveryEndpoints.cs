@@ -134,7 +134,7 @@ internal static class OpenIdDiscoveryEndpoints
         return item is null ? context.ApiNotFoundProblem() : TypedResults.Ok(await DescribeAsync(manager, item, context.RequestAborted));
     }
 
-    private static async Task<OpenIdApplicationResponse> DescribeAsync(IOpenIdApplicationManager manager, object item, CancellationToken cancellationToken) =>
+    internal static async Task<OpenIdApplicationResponse> DescribeAsync(IOpenIdApplicationManager manager, object item, CancellationToken cancellationToken) =>
         new()
         {
             Id = await manager.GetPhysicalIdAsync(item, cancellationToken),

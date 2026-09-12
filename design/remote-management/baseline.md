@@ -98,6 +98,21 @@ recipe. A regression test confirmed that selecting a container already used by a
 contained homepage retained the old `JsonPath`. The shared home-route service
 compares the complete route so that this selection clears stale route values.
 
+### Application editor tracked-state preservation
+
+On merged discovery baseline `f28af3782`, a real-manager application update preserves
+the existing secret and custom properties when the secret is omitted. However, an
+invalid redirect URI containing a fragment causes OpenID validation to reject the
+update after the tracked application has already been populated.
+`OpenIdApplicationEditorTests.SharedEditor_PreservesCredentialsAndPrivateProperties_AndRejectsInvalidChanges`
+then reads `Rejected` instead of the previously saved `Updated` display name.
+This is an existing shared admin/recipe path defect, reproduced before application API
+changes. The application slice restores the original descriptor on validation failure
+and exposes the existing settings builder for reuse by the planned API.
+The regression passes after the fix, together with all 14 targeted application editor,
+admin controller and recipe tests. The test-project build with analyzers and warnings
+as errors has zero warnings/errors; broader validation remains part of the API slice.
+
 ## Scope recipe update regression
 
 On merged base `4d48d0e6b`, a real-manager recipe update without `Resources`
@@ -105,7 +120,7 @@ clears an existing resource list. The recipe copied an empty descriptor into the
 stored object instead of copying the stored object into its update descriptor.
 The shared scope editor corrects the direction and preserves unedited custom
 properties. Admin edits retain their explicit-empty clearing behavior and current
-resource restriction. Scope API mutation work is still in progress.
+resource restriction. Scope API mutations were delivered in PR #20.
 
 A separate fixture attempt found that nonempty localized scope display-name
 maps fail YesSql serialization because `CultureInfo` dictionary keys have no
