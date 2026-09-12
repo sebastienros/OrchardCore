@@ -44,7 +44,7 @@ The [schedule](pr-schedule.md) and [plan](coverage-plan.md) define the work and 
 | Application/scope discovery | Merged | [PR #19](https://github.com/sebastienros/OrchardCore/pull/19), merge `f28af3782`; all CI checks passed. |
 | Scope administration | Merged | [PR #20](https://github.com/sebastienros/OrchardCore/pull/20), merge `1e1774933`; all CI checks passed. Shared admin/recipe editing and scope CRUD verified. |
 | Application administration | Merged | [PR #21](https://github.com/sebastienros/OrchardCore/pull/21), merge `3ca2febc9`; all required CI checks passed. Shared editor settings, application CRUD and live client-credentials checks verified. |
-| Application credential lifecycle | In development | Independent `codex/remote-openid-credentials`, integrated with merged `3ca2febc9`; [contract](openid-credentials.md). Private one-time output is implemented; credential endpoints and integrated verification remain. |
+| Application credential lifecycle | In verification | Independent `codex/remote-openid-credentials`, integrated with merged `3ca2febc9`; [contract](openid-credentials.md). Private one-time output and manager-backed endpoints are implemented; live HTTP/Pomi/MCP checks and strict solution build pass. Server 3,267 passed (one CI-only skip), CLI 295 and authentication/MCP 78 passed; Strict docs, plugin links and reproducible skill distribution pass; CI remains. |
 | Tenant feature-profile definitions | Planned | Independent B06 slice. |
 | Common index definitions and lifecycle | Planned | B07 with local Lucene verification. |
 | Deployment plans, export and import | Planned | Separate B08 resource/execution PRs. |
@@ -124,3 +124,16 @@ agreed slices are delivered and any remaining gaps have an explicit disposition.
   and exposes only its path in normal output. Strict CLI test-project build has
   zero warnings/errors; all 295 CLI tests pass locally. Windows ACL runtime
   verification and the full server/credential workflow remain future CI/slice gates.
+
+- Credential lifecycle verification: baseline OpenAPI on merged application PR #21
+  exposes application CRUD but no credential operations. New rotation/revocation
+  uses the existing manager, shared tracked lookup, random-secret generator and
+  admin/recipe validation rollback. Strict solution build passes with zero warnings
+  and errors after a terminal compiler crash in unrelated KeyVault and a successful
+  retry. Server 3,267 passed (one CI-only skip), CLI 295, authentication/MCP 78.
+  Live HTTP/Pomi/MCP checks passed for retired-secret rejection, settings preservation,
+  denied callers, destination gating and MCP with CLI disabled. Windows file ACLs
+  remain a Windows CI gate. Canonical docs and Pomi skills 0.10.22 are updated.
+
+- Credential canonical documentation, plugin link verification and reproducible skill
+  distribution pass. The next gate is the independent PR CI, including Windows ACLs.

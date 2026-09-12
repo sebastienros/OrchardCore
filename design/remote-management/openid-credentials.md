@@ -70,6 +70,11 @@ The writer is exercised for file permissions, preserving the JSON response, retu
 only the file path, cleanup of unused reservations, and refusing existing files
 before another mutation. Windows ACL assertions await Windows CI.
 
-Next: implement the rotation/revocation endpoints with shared generator and manager
-rollback, then run server/CLI/MCP/live credential verification, update the canonical
-OpenID docs and skills, and publish an independent PR. This slice is not complete.
+Rotation/revocation endpoints now reuse the shared random-secret generator, existing
+application manager and validation rollback used by admin/recipe edits. The strict
+solution build passes with zero warnings/errors (after a terminal compiler crash in
+the unrelated KeyVault project and a successful retry). Targeted server tests and
+live Pomi/HTTP/MCP checks pass, including retired-secret rejection, private output,
+preserved configuration, restricted callers and MCP with CLI disabled. Full suites pass: server 3,267 (one CI-only skip), CLI 295 and authentication/MCP 78.
+Strict documentation, plugin links and reproducible skill distribution pass.
+The independent PR still requires green CI, including Windows ACL verification.

@@ -23,6 +23,10 @@ public sealed class RemoteManagementClientCredentials
     public static RemoteManagementClientCredentials Generate() => new()
     {
         ClientId = "pomi-" + Guid.NewGuid().ToString("N"),
-        ClientSecret = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)),
+        ClientSecret = GenerateSecret(),
     };
+    /// <summary>
+    /// Generates a 256-bit random shared secret for provisioning or credential replacement.
+    /// </summary>
+    public static string GenerateSecret() => Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
 }
