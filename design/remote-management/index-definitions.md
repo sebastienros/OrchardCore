@@ -177,3 +177,6 @@ Live definition verification also passes with Lucene disabled/re-enabled: endpoi
 and MCP tools disappear and return, preserving the stored definition. CLI-disabled
 MCP access remains verified. Remaining gates are cross-tenant isolation, the legacy
 recipe/editor caller audit, skill/inventory updates and final PR review/CI.
+
+Checkpoint `b99e0bc6d` passes strict MkDocs validation. The index branch remains
+unpublished pending the remaining review gates above.
