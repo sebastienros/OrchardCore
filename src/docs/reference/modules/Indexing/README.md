@@ -226,3 +226,11 @@ removes the local profile. Provider rejection preserves the local profile. The a
 force-delete option permits local removal when the provider is missing or rejects
 deletion, but provider exceptions still propagate. Results distinguish success,
 unavailable providers, provider rejection and failure to remove the local profile.
+
+The default profile manager propagates failures from initialization, mutation and
+validation handlers. It does not save after a creating/updating/validation handler
+fails. Failed updates restore the tracked values from before the updating handlers,
+including nested extension properties. A handler failure after persistence also
+propagates, but does not undo stored data or provider operations; inspect the result
+before retrying an uncertain operation. This behavior applies to admin, recipe and
+remote-management callers using the default manager.

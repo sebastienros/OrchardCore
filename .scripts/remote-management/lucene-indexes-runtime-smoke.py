@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify Lucene index definitions, shared mutations and permission checks through HTTP/Pomi/MCP."""
+"""Verify indexed content changes through existing named Lucene queries."""
 import json
 import os
 from pathlib import Path
@@ -7,6 +7,7 @@ import secrets
 import subprocess
 import sys
 import tempfile
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -44,7 +45,7 @@ def request(path, method='GET', body=None, client='cli-fixture', status=200, raw
         response = error
     with response:
         text = response.read().decode()
-        assert response.status == status, (method, path, response.status, status)
+        assert (response.status in status if isinstance(status, tuple) else response.status == status), (method, path, response.status, status)
         if raw:
             return text, response.headers
         if response.headers.get('Content-Type', '').startswith('text/event-stream'):
@@ -69,6 +70,16 @@ def pomi(*args, body=None, client='cli-indexes', status=None, failure=False):
         assert result.returncode != 0, args
         assert json.loads(result.stderr or result.stdout)['error']['status'] == status, 'unexpected CLI error status'
         return
+    if result.returncode != 0:
+        try:
+            error = json.loads(result.stderr or result.stdout).get('error', {})
+            print('CLI failure:', args[:3], error.get('code'), error.get('status'), error.get('message'), flush=True)
+        except (ValueError, AttributeError):
+            message = result.stderr or result.stdout
+            for value in [state.get('OC_CLIENT_SECRET', ''), *tokens.values()]:
+                if value:
+                    message = message.replace(value, '[redacted]')
+            print('CLI diagnostic:', message[:1600], flush=True)
     assert result.returncode == 0, (args[:3], 'CLI request failed')
     return json.loads(result.stdout) if result.stdout.strip() else None
 
@@ -89,58 +100,67 @@ def catalog():
     return [name for name in names if name.startswith('indexes_lucene_')]
 
 
-with tempfile.TemporaryDirectory(prefix='lucene-indexes-cli-', dir=state_path.parent) as config_home:
+def wait_for_query(query_name, expected_count, phase):
+    deadline = time.monotonic() + 150
+    next_progress = time.monotonic() + 30
+    while True:
+        result = request('api/queries/named/' + query_name + '/execute', 'POST', {})
+        if result['count'] == expected_count:
+            return result
+        assert time.monotonic() < deadline, (phase, 'indexing did not reach expected query result', result['count'], expected_count)
+        if time.monotonic() >= next_progress:
+            print('Waiting for indexing:', phase, flush=True)
+            next_progress += 30
+        time.sleep(2)
+
+
+with tempfile.TemporaryDirectory(prefix='lucene-runtime-cli-', dir=state_path.parent) as config_home:
     pomi('context', 'add', name, base, '--current')
-    request('api/features/OrchardCore.RemoteManagement.Mcp:enable?force=true', 'POST')
     request('api/features/OrchardCore.Lucene:enable?force=true', 'POST')
+    request('api/features/OrchardCore.Indexing.Worker:enable?force=true', 'POST')
     pomi('api', 'refresh', '--force')
-    assert len(catalog()) == 5
-    assert 'standardanalyzer' in pomi('indexes', 'lucene', 'analyzers')
+    query_names = []
+    item_id = None
+    index_id = None
     pomi('content', 'types', 'create', body={'name': name, 'displayName': name,
         'settings': {'ContentTypeSettings': {'creatable': True, 'draftable': True, 'versionable': True}},
-        'parts': [{'name': 'TitlePart', 'partName': 'TitlePart', 'settings': {}}]}, client='cli-fixture')
-    body = {'name': name, 'indexName': name.lower(), 'indexedContentTypes': [name],
-        'indexLatest': False, 'culture': 'any', 'analyzerName': 'standardanalyzer',
-        'storeSourceData': False, 'queryAnalyzerName': 'standardanalyzer',
-        'allowLuceneQueries': False, 'defaultVersion': 'LUCENE_48', 'defaultSearchFields': ['Content.ContentItem.FullText']}
-    created = pomi('indexes', 'lucene', 'create', body=body)
-    index_id = created['id']
-    path = 'api/indexes/lucene/by-id?' + urllib.parse.urlencode({'id': index_id})
+        'parts': [{'name': 'TitlePart', 'partName': 'TitlePart', 'settings': {
+            'LuceneContentIndexSettings': {'Included': True, 'Stored': True, 'Keyword': True}}}]}, client='cli-fixture')
     try:
-        assert created['definition'] == body
-        assert pomi('indexes', 'lucene', 'create', body=body) == created
-        assert tool('show', {'query': {'id': index_id}}) == created
-        assert request(path, client='cli-indexes') == created
-        request(path, client=None, status=401)
-        for denied in ['cli-denied', 'cli-discovery']:
-            request(path, client=denied, status=403)
-            request(path, 'PUT', body, client=denied, status=403)
-        for invalid in [{**body, 'indexedContentTypes': []}, {**body, 'analyzerName': 'missing'},
-                        {**body, 'indexName': '../outside'}, {**body, 'properties': {'Secret': 'not-allowed'}}]:
-            request(path, 'PUT', invalid, client='cli-indexes', status=400)
-            assert request(path, client='cli-indexes') == created
-        request('api/indexes/lucene', 'POST', {**body, 'storeSourceData': True}, client='cli-indexes', status=409)
-        replacement = {**body, 'name': name + ' updated', 'storeSourceData': True, 'indexLatest': True}
-        changed = pomi('indexes', 'lucene', 'update', index_id, body=replacement)
-        assert changed['definition'] == replacement, {key: (replacement[key], changed['definition'].get(key)) for key in replacement if replacement[key] != changed['definition'].get(key)}
-        assert tool('update', {'query': {'id': index_id}, 'body': replacement}) == changed
-        request('api/features/OrchardCore.RemoteManagement.Cli:disable', 'POST')
-        try:
-            assert tool('show', {'query': {'id': index_id}}) == changed
-        finally:
-            request('api/features/OrchardCore.RemoteManagement.Cli:enable?force=true', 'POST')
-        request('api/features/OrchardCore.Lucene:disable', 'POST')
-        try:
-            assert catalog() == []
-            request(path, client='cli-indexes', status=404)
-        finally:
-            request('api/features/OrchardCore.Lucene:enable?force=true', 'POST')
-        assert len(catalog()) == 5
-        assert request(path, client='cli-indexes') == changed
-        pomi('api', 'refresh', '--force')
-        pomi('indexes', 'lucene', 'delete', index_id, '--force')
-        tool('delete', {'query': {'id': index_id}}, status=204)
+        first = 'first' + secrets.token_hex(8)
+        second = 'second' + secrets.token_hex(8)
+        item = pomi('content', 'items', 'create-draft', body={'ContentType': name, 'TitlePart': {'Title': first}}, client='cli-fixture')
+        item_id = item['ContentItemId']
+        pomi('content', 'items', 'publish', item_id, client='cli-fixture')
+        created = pomi('indexes', 'lucene', 'create', body={'name': name, 'indexName': name.lower(),
+            'indexedContentTypes': [name], 'storeSourceData': True})
+        index_id = created['id']
+        for suffix, title in [('First', first), ('Second', second)]:
+            query_name = name + suffix
+            request('api/queries', 'POST', {'name': query_name, 'source': 'Lucene', 'returnContentItems': True,
+                'properties': {'LuceneQueryMetadata': {'Index': name, 'Template': json.dumps({
+                    'query': {'term': {'TitlePart': title}}, 'size': 10})}}}, status=201)
+            query_names.append(query_name)
+        result = wait_for_query(query_names[0], 1, 'initial content')
+        assert result['items'][0]['ContentItemId'] == item_id
+        assert result['items'][0]['TitlePart']['Title'] == first
+        assert request('api/queries/named/' + query_names[1] + '/execute', 'POST', {})['count'] == 0
+        print('PASS: newly created index serves pre-existing published content through a named query', flush=True)
+        draft = pomi('content', 'items', 'draft', item_id, client='cli-fixture')
+        draft['TitlePart']['Title'] = second
+        pomi('content', 'items', 'update', item_id, body=draft, client='cli-fixture')
+        pomi('content', 'items', 'publish', item_id, client='cli-fixture')
+        result = wait_for_query(query_names[1], 1, 'updated content')
+        assert result['items'][0]['ContentItemId'] == item_id
+        assert result['items'][0]['TitlePart']['Title'] == second
+        wait_for_query(query_names[0], 0, 'old indexed title removed')
+        assert pomi('indexes', 'lucene', 'show', index_id)['definition'] == created['definition']
+        print('PASS: background indexing replaces old indexed terms and existing named queries see updated content', flush=True)
     finally:
-        request(path, 'DELETE', client='cli-indexes', status=204)
+        for query_name in query_names:
+            request('api/queries/named/' + query_name, 'DELETE', status=(200, 204))
+        if index_id:
+            pomi('indexes', 'lucene', 'delete', index_id, '--force')
+        if item_id:
+            pomi('content', 'items', 'delete', item_id, '--force', client='cli-fixture')
         pomi('content', 'types', 'delete', name, '--force', client='cli-fixture')
-print('PASS: typed Lucene definitions through HTTP/Pomi/MCP, retries, permissions, Lucene feature lifecycle and CLI feature independence')

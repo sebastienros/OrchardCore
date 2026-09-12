@@ -151,3 +151,29 @@ No claim of durable synchronization completion or later provider/lifecycle deliv
 
 Typed endpoint checkpoint `714ec59bf` also passes strict MkDocs validation.
 The worktree is not yet published as an index implementation PR.
+
+## Required handler and indexed-content checkpoint
+
+Four baseline regressions demonstrated that initialization, creation, updating and
+validation handler failures were swallowed. Required mutation/validation handlers now
+propagate failures; updates restore their pre-handler snapshot on pre-persistence
+failure. Three additional regressions distinguish failures after persistence, which
+propagate without pretending stored state was rolled back.
+
+The minimal Pomi request exposed required schema fields that already had server
+defaults. Defaulted culture/analyzer/search-field properties are now optional in the
+schema; explicit null/blank values are still rejected. Contract tests cover defaults
+and explicit nulls, and the live runtime check uses the minimal payload successfully.
+
+Strict full solution build passes zero warnings/errors. Server suite: 3,344 passed,
+one CI-only skip; CLI 295 and MCP/authentication 78 passed. The real Lucene runtime
+scenario creates published content before the index, creates the index through Pomi,
+and reads it through a named Lucene term query. After editing and republishing the
+content, the normal worker makes the new term match and removes the old term from
+query results. The same index and named query definitions remain in place. Cleanup
+passes after correcting the script's query-delete success expectation to 200/204.
+
+Live definition verification also passes with Lucene disabled/re-enabled: endpoints
+and MCP tools disappear and return, preserving the stored definition. CLI-disabled
+MCP access remains verified. Remaining gates are cross-tenant isolation, the legacy
+recipe/editor caller audit, skill/inventory updates and final PR review/CI.

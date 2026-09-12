@@ -407,7 +407,10 @@ shown defaults; update replaces those editable values while preserving unknown
 extension metadata. Responses contain `id` and `definition`, without arbitrary
 profile properties, owner information, or physical provider paths. The index ID is
 the administrative identifier used in show/update/delete; `indexName` is the
-provider resource name and cannot change on update. The default Lucene compatibility version
+provider resource name and cannot change on update. Named queries and default search
+settings also reference the administrative `name`; renaming it does not rewrite those
+references. Retain that name or update dependent definitions when renaming.
+The default Lucene compatibility version
 is `LUCENE_48`; existing named compatibility versions, including `LUCENE_30`, remain
 accepted. Analyzer names must be registered, content types must be nonempty and unique,
 and index names must be single filenames without path separators or reserved characters.
@@ -431,3 +434,9 @@ command locally; it does not request server-side force deletion.
 MCP exposes `indexes_lucene_show`, `indexes_lucene_create`, `indexes_lucene_update`,
 `indexes_lucene_delete`, and `indexes_lucene_analyzers`. They remain available when
 the MCP feature is enabled and the CLI feature is disabled.
+
+Enable `OrchardCore.Indexing.Worker` for ongoing scheduled content-index updates.
+Creation's scheduled synchronization and the worker use the normal indexing pipeline;
+existing named Lucene queries can read the resulting index. Changing and publishing a
+content item updates its indexed terms on a subsequent worker run, without updating
+the index definition or recreating the named query.

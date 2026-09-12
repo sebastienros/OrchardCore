@@ -25,18 +25,18 @@ public sealed class LuceneIndexDefinition
     public string[] IndexedContentTypes { get; set; } = [];
 
     /// <summary>Gets or sets the content culture, or any for all cultures.</summary>
-    [Required, StringLength(100)]
+    [StringLength(100)]
     public string Culture { get; set; } = "any";
 
     /// <summary>Gets or sets a registered indexing analyzer.</summary>
-    [Required, StringLength(255)]
+    [StringLength(255)]
     public string AnalyzerName { get; set; } = LuceneConstants.DefaultAnalyzer;
 
     /// <summary>Gets or sets whether to store source document data.</summary>
     public bool StoreSourceData { get; set; }
 
     /// <summary>Gets or sets a registered default query analyzer.</summary>
-    [Required, StringLength(255)]
+    [StringLength(255)]
     public string QueryAnalyzerName { get; set; } = LuceneConstants.DefaultAnalyzer;
 
     /// <summary>Gets or sets whether the default query permits Lucene query syntax.</summary>
@@ -47,7 +47,7 @@ public sealed class LuceneIndexDefinition
     public LuceneVersion DefaultVersion { get; set; } = LuceneConstants.DefaultVersion;
 
     /// <summary>Gets or sets the fields searched by the default query.</summary>
-    [Required, MaxLength(200)]
+    [MaxLength(200)]
     public string[] DefaultSearchFields { get; set; } = [ContentIndexingConstants.FullTextKey];
 }
 

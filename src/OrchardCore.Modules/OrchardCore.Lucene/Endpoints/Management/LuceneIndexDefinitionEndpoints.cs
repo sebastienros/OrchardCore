@@ -166,6 +166,11 @@ internal static class LuceneIndexDefinitionEndpoints
         if (definition is null) { return TypedResults.Problem("A definition is required.", statusCode: 400); }
         var errors = new List<ValidationResult>();
         Validator.TryValidateObject(definition, new ValidationContext(definition), errors, validateAllProperties: true);
+        if (string.IsNullOrWhiteSpace(definition.Culture) || string.IsNullOrWhiteSpace(definition.AnalyzerName) ||
+            string.IsNullOrWhiteSpace(definition.QueryAnalyzerName) || definition.DefaultSearchFields is null)
+        {
+            errors.Add(new ValidationResult("Culture, analyzer names, and default search fields cannot be null or blank."));
+        }
         if (definition.IndexedContentTypes?.Any(string.IsNullOrWhiteSpace) == true || definition.DefaultSearchFields?.Any(string.IsNullOrWhiteSpace) == true)
         {
             errors.Add(new ValidationResult("Content type and search field names cannot be blank."));

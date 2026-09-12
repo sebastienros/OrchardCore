@@ -112,6 +112,39 @@ public class LuceneIndexDefinitionTests
     }
 
     [Fact]
+    public async Task MinimalDefinition_UsesDefaultsAndCanBeCreated()
+    {
+        var definition = JsonSerializer.Deserialize<LuceneIndexDefinition>(
+            """{"name":"Articles","indexName":"articles","indexedContentTypes":["Article"]}""", JsonSerializerOptions.Web);
+        var profile = Profile();
+        var profiles = new Mock<IIndexProfileManager>();
+        profiles.Setup(value => value.NewAsync("Lucene", "Content", It.IsAny<System.Text.Json.Nodes.JsonNode>())).ReturnsAsync(profile);
+        var management = new Mock<IIndexProfileManagementService>();
+        management.Setup(value => value.CreateAsync(profile)).ReturnsAsync(IndexProfileManagementResult.Success);
+
+        Assert.Equal(201, Status(await LuceneIndexDefinitionEndpoints.CreateAsync(new DefaultHttpContext(), Authorize(), profiles.Object, management.Object, definition)));
+        Assert.Equal("any", definition.Culture);
+        Assert.Equal("standardanalyzer", definition.AnalyzerName);
+        Assert.Equal("standardanalyzer", definition.QueryAnalyzerName);
+        Assert.NotEmpty(definition.DefaultSearchFields);
+    }
+
+    [Theory]
+    [InlineData("culture")]
+    [InlineData("analyzerName")]
+    [InlineData("queryAnalyzerName")]
+    [InlineData("defaultSearchFields")]
+    public async Task ExplicitNullDefaultedSetting_IsRejectedBeforeReading(string property)
+    {
+        var data = System.Text.Json.Nodes.JsonNode.Parse("""{"name":"Articles","indexName":"articles","indexedContentTypes":["Article"]}""");
+        data[property] = null;
+        var definition = data.Deserialize<LuceneIndexDefinition>(JsonSerializerOptions.Web);
+        var profiles = new Mock<IIndexProfileManager>(MockBehavior.Strict);
+        Assert.Equal(400, Status(await LuceneIndexDefinitionEndpoints.CreateAsync(new DefaultHttpContext(), Authorize(), profiles.Object, null, definition)));
+        profiles.VerifyNoOtherCalls();
+    }
+
+    [Fact]
     public void Definition_RejectsArbitraryProperties()
     {
         Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<LuceneIndexDefinition>("""{"Properties":{"Secret":"value"}}"""));

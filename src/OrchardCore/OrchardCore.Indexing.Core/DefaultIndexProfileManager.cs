@@ -30,7 +30,7 @@ public sealed class DefaultIndexProfileManager : IIndexProfileManager
         ArgumentNullException.ThrowIfNull(indexProfile);
 
         var deletingContext = new DeletingContext<IndexProfile>(indexProfile);
-        await _handlers.InvokeAsync((handler, ctx) => handler.DeletingAsync(ctx), deletingContext, _logger);
+        await InvokeRequiredAsync(deletingContext, static (handler, ctx) => handler.DeletingAsync(ctx));
 
         if (string.IsNullOrEmpty(indexProfile.Id))
         {
@@ -40,7 +40,7 @@ public sealed class DefaultIndexProfileManager : IIndexProfileManager
         var removed = await _store.DeleteAsync(indexProfile);
 
         var deletedContext = new DeletedContext<IndexProfile>(indexProfile);
-        await _handlers.InvokeAsync((handler, ctx) => handler.DeletedAsync(ctx), deletedContext, _logger);
+        await InvokeRequiredAsync(deletedContext, static (handler, ctx) => handler.DeletedAsync(ctx));
 
         return removed;
     }
@@ -114,10 +114,10 @@ public sealed class DefaultIndexProfileManager : IIndexProfileManager
         };
 
         var initializingContext = new InitializingContext<IndexProfile>(index, data);
-        await _handlers.InvokeAsync((handler, ctx) => handler.InitializingAsync(ctx), initializingContext, _logger);
+        await InvokeRequiredAsync(initializingContext, static (handler, ctx) => handler.InitializingAsync(ctx));
 
         var initializedContext = new InitializedContext<IndexProfile>(index);
-        await _handlers.InvokeAsync((handler, ctx) => handler.InitializedAsync(ctx), initializedContext, _logger);
+        await InvokeRequiredAsync(initializedContext, static (handler, ctx) => handler.InitializedAsync(ctx));
 
         if (string.IsNullOrEmpty(index.Id))
         {
@@ -144,12 +144,12 @@ public sealed class DefaultIndexProfileManager : IIndexProfileManager
         ArgumentNullException.ThrowIfNull(index);
 
         var creatingContext = new CreatingContext<IndexProfile>(index);
-        await _handlers.InvokeAsync((handler, ctx) => handler.CreatingAsync(ctx), creatingContext, _logger);
+        await InvokeRequiredAsync(creatingContext, static (handler, ctx) => handler.CreatingAsync(ctx));
 
         await _store.CreateAsync(index);
 
         var createdContext = new CreatedContext<IndexProfile>(index);
-        await _handlers.InvokeAsync((handler, ctx) => handler.CreatedAsync(ctx), createdContext, _logger);
+        await InvokeRequiredAsync(createdContext, static (handler, ctx) => handler.CreatedAsync(ctx));
     }
 
     public async ValueTask UpdateAsync(IndexProfile index, JsonNode data = null)
@@ -165,11 +165,18 @@ public sealed class DefaultIndexProfileManager : IIndexProfileManager
             CreatedUtc = index.CreatedUtc, Author = index.Author, OwnerId = index.OwnerId,
             Properties = index.Properties?.DeepClone().AsObject(),
         };
-        var updatingContext = new UpdatingContext<IndexProfile>(index, data);
-        await _handlers.InvokeAsync((handler, ctx) => handler.UpdatingAsync(ctx), updatingContext, _logger);
+        try
+        {
+            var updatingContext = new UpdatingContext<IndexProfile>(index, data);
+            await InvokeRequiredAsync(updatingContext, static (handler, ctx) => handler.UpdatingAsync(ctx));
 
-        var validation = await ValidateAsync(index);
-        if (!validation.Succeeded)
+            var validation = await ValidateAsync(index);
+            if (!validation.Succeeded)
+            {
+                throw new IndexProfileValidationException(validation.Errors);
+            }
+        }
+        catch
         {
             index.Id = original.Id;
             index.Name = original.Name;
@@ -181,13 +188,13 @@ public sealed class DefaultIndexProfileManager : IIndexProfileManager
             index.Author = original.Author;
             index.OwnerId = original.OwnerId;
             index.Properties = original.Properties;
-            throw new IndexProfileValidationException(validation.Errors);
+            throw;
         }
 
         await _store.UpdateAsync(index);
 
         var updatedContext = new UpdatedContext<IndexProfile>(index);
-        await _handlers.InvokeAsync((handler, ctx) => handler.UpdatedAsync(ctx), updatedContext, _logger);
+        await InvokeRequiredAsync(updatedContext, static (handler, ctx) => handler.UpdatedAsync(ctx));
     }
 
     public async ValueTask<ValidationResultDetails> ValidateAsync(IndexProfile index)
@@ -195,10 +202,10 @@ public sealed class DefaultIndexProfileManager : IIndexProfileManager
         ArgumentNullException.ThrowIfNull(index);
 
         var validatingContext = new ValidatingContext<IndexProfile>(index);
-        await _handlers.InvokeAsync((handler, ctx) => handler.ValidatingAsync(ctx), validatingContext, _logger);
+        await InvokeRequiredAsync(validatingContext, static (handler, ctx) => handler.ValidatingAsync(ctx));
 
         var validatedContext = new ValidatedContext<IndexProfile>(index, validatingContext.Result);
-        await _handlers.InvokeAsync((handler, ctx) => handler.ValidatedAsync(ctx), validatedContext, _logger);
+        await InvokeRequiredAsync(validatedContext, static (handler, ctx) => handler.ValidatedAsync(ctx));
 
         return validatingContext.Result;
     }
@@ -264,4 +271,14 @@ public sealed class DefaultIndexProfileManager : IIndexProfileManager
 
         await _handlers.InvokeAsync((handler, context) => handler.LoadedAsync(context), loadedContext, _logger);
     }
+    private async Task InvokeRequiredAsync<TContext>(TContext context, Func<IIndexProfileHandler, TContext, Task> invoke)
+    {
+        // Mutation and validation handlers are prerequisites, not best-effort notifications.
+        // Post-persistence errors also propagate, but cannot imply rollback of committed work.
+        foreach (var handler in _handlers)
+        {
+            await invoke(handler, context);
+        }
+    }
+
 }
