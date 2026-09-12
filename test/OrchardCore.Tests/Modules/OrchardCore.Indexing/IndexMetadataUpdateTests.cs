@@ -26,7 +26,7 @@ public class IndexMetadataUpdateTests
         var store = new Mock<IIndexProfileStore>();
         store.Setup(value => value.FindByIdAsync("id")).ReturnsAsync(profile);
         var manager = CreateManager(store.Object, services);
-        var recipe = new CreateOrUpdateIndexProfileStep(manager, Options.Create(new IndexingOptions()), services,
+        var recipe = new CreateOrUpdateIndexProfileStep(manager, Options.Create(new IndexingOptions()), new IndexProfileManagementService(manager, services),
             Mock.Of<IStringLocalizer<CreateOrUpdateIndexProfileStep>>());
         var context = new RecipeExecutionContext
         {

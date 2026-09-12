@@ -57,7 +57,7 @@ public class IndexProfileUpdateValidationTests
         store.Setup(value => value.FindByIdAsync("id")).ReturnsAsync(profile);
         store.Setup(value => value.UpdateAsync(profile)).Returns(ValueTask.CompletedTask);
         var manager = new DefaultIndexProfileManager(store.Object, [new TestHandler()], NullLogger<DefaultIndexProfileManager>.Instance);
-        var step = new CreateOrUpdateIndexProfileStep(manager, Options.Create(new IndexingOptions()), services,
+        var step = new CreateOrUpdateIndexProfileStep(manager, Options.Create(new IndexingOptions()), new IndexProfileManagementService(manager, services),
             Mock.Of<IStringLocalizer<CreateOrUpdateIndexProfileStep>>());
         var context = new RecipeExecutionContext
         {

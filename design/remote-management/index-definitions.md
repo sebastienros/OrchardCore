@@ -101,3 +101,17 @@ These tests do not establish live backend reindexing or complete typed API behav
 The full server suite also passes: 3,295 passed and one CI-only skip. Strict MkDocs
 validation passes on the committed canonical documentation. Shared-handler checkpoint
 `cd4ef4cf3` remains local; no index implementation PR has been opened yet.
+
+## Shared provider coordination checkpoint
+
+IIndexProfileManagementService now owns the local/provider create-compensate-schedule
+sequence and provider-first deletion. Existing admin creation, single deletion and
+bulk deletion, plus recipe creation, use it. The force-delete choice remains explicit;
+a missing provider is now handled without awaiting a null task. Uncertain provider
+exceptions propagate and do not claim compensation or synchronization succeeded.
+
+Strict server compilation passes with zero warnings/errors. All 28 focused index
+tests pass, including 14 new coordination/caller cases covering operation order,
+provider rejection, failed compensation, invalid profiles, missing providers,
+uncertain exceptions, recipe creation, and admin single/bulk deletion. Typed Lucene
+endpoints and full slice validation remain; this is an implementation checkpoint.

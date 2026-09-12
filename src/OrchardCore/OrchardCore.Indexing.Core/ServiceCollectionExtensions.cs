@@ -14,6 +14,7 @@ public static class ServiceCollectionExtensions
     {
         services.TryAddScoped<IIndexingTaskManager, IndexingTaskManager>();
         services.TryAddScoped<IIndexProfileManager, DefaultIndexProfileManager>();
+        services.TryAddScoped<IIndexProfileManagementService, IndexProfileManagementService>();
         services.TryAddScoped<IIndexProfileStore, DefaultIndexProfileStore>();
         services.AddIndexProfileHandler<DefaultIndexProfileHandler>();
         services.TryAddEnumerable(ServiceDescriptor.Scoped<IAuthorizationHandler, IndexingAuthorizationHandler>());

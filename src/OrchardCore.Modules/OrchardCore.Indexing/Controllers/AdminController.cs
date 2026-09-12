@@ -26,6 +26,7 @@ public sealed class AdminController : Controller
     private readonly IAuthorizationService _authorizationService;
     private readonly IUpdateModelAccessor _updateModelAccessor;
     private readonly IIndexProfileManager _indexProfileManager;
+    private readonly IIndexProfileManagementService _management;
     private readonly IndexingOptions _indexingOptions;
     private readonly IDisplayManager<IndexProfile> _displayManager;
     private readonly IServiceProvider _serviceProvider;
@@ -38,6 +39,7 @@ public sealed class AdminController : Controller
         IAuthorizationService authorizationService,
         IUpdateModelAccessor updateModelAccessor,
         IIndexProfileManager indexProfileManager,
+        IIndexProfileManagementService management,
         IDisplayManager<IndexProfile> displayManager,
         IOptions<IndexingOptions> indexingOptions,
         IServiceProvider serviceProvider,
@@ -48,6 +50,7 @@ public sealed class AdminController : Controller
         _authorizationService = authorizationService;
         _updateModelAccessor = updateModelAccessor;
         _indexProfileManager = indexProfileManager;
+        _management = management;
         _displayManager = displayManager;
         _serviceProvider = serviceProvider;
         _indexingOptions = indexingOptions.Value;
@@ -231,29 +234,20 @@ public sealed class AdminController : Controller
 
         if (ModelState.IsValid)
         {
-            var indexManager = _serviceProvider.GetKeyedService<IIndexManager>(indexProfile.ProviderName);
-
-            if (indexManager is null)
+            var result = await _management.CreateAsync(indexProfile);
+            if (result == IndexProfileManagementResult.ProviderUnavailable)
             {
-                await _notifier.ErrorAsync(H["No index manager found to rebuild index for provider '{0}'.", indexProfile.ProviderName]);
+                await _notifier.ErrorAsync(H["No index manager found to create index for provider '{0}'.", indexProfile.ProviderName]);
 
                 return RedirectToAction(nameof(Index));
             }
 
-            // Before creating the index in the provider, we need to create it locally to ensure all the properties are set.
-            await _indexProfileManager.CreateAsync(indexProfile);
-
-            if (!await indexManager.CreateAsync(indexProfile))
+            if (result != IndexProfileManagementResult.Success)
             {
-                // Delete the index locally if we failed to create it in the provider.
-                await _indexProfileManager.DeleteAsync(indexProfile);
-
                 await _notifier.ErrorAsync(H["Unable to create the index for the provider '{0}'.", indexProfile.ProviderName]);
 
                 return View(model);
             }
-
-            await _indexProfileManager.SynchronizeAsync(indexProfile);
 
             await _notifier.SuccessAsync(H["An index has been created successfully. The synchronizing process was triggered in the background."]);
 
@@ -372,41 +366,21 @@ public sealed class AdminController : Controller
             return NotFound();
         }
 
-        var indexManager = _serviceProvider.GetKeyedService<IIndexManager>(indexProfile.ProviderName);
-
-        if (force)
+        var result = await _management.DeleteAsync(indexProfile, force);
+        switch (result)
         {
-            await indexManager?.DeleteAsync(indexProfile);
-            await _indexProfileManager.DeleteAsync(indexProfile);
-
-            await _notifier.SuccessAsync(H["The index was removed successfully."]);
-
-            return RedirectToAction(nameof(Index));
-        }
-
-        if (indexManager is null)
-        {
-            await _notifier.ErrorAsync(H["No index manager found to rebuild index for provider '{0}'.", indexProfile.ProviderName]);
-
-            return RedirectToAction(nameof(Index));
-        }
-
-        var exists = await indexManager.ExistsAsync(indexProfile.IndexFullName);
-
-        if (exists && !await indexManager.DeleteAsync(indexProfile))
-        {
-            await _notifier.ErrorAsync(H["Unable to delete the index for the provider {0}.", indexProfile.ProviderName]);
-
-            return RedirectToAction(nameof(Index));
-        }
-
-        if (await _indexProfileManager.DeleteAsync(indexProfile))
-        {
-            await _notifier.SuccessAsync(H["The index was removed successfully."]);
-        }
-        else
-        {
-            await _notifier.ErrorAsync(H["Unable to delete the index locally. Try force-deleting the index."]);
+            case IndexProfileManagementResult.Success:
+                await _notifier.SuccessAsync(H["The index was removed successfully."]);
+                break;
+            case IndexProfileManagementResult.ProviderUnavailable:
+                await _notifier.ErrorAsync(H["No index manager found to delete index for provider '{0}'.", indexProfile.ProviderName]);
+                break;
+            case IndexProfileManagementResult.ProviderRejected:
+                await _notifier.ErrorAsync(H["Unable to delete the index for the provider {0}.", indexProfile.ProviderName]);
+                break;
+            case IndexProfileManagementResult.LocalDeleteFailed:
+                await _notifier.ErrorAsync(H["Unable to delete the index locally. Try force-deleting the index."]);
+                break;
         }
 
         return RedirectToAction(nameof(Index));
@@ -532,25 +506,7 @@ public sealed class AdminController : Controller
                             continue;
                         }
 
-                        if (!indexManagers.TryGetValue(indexProfile.ProviderName, out var indexManager))
-                        {
-                            indexManager = _serviceProvider.GetKeyedService<IIndexManager>(indexProfile.ProviderName);
-                            indexManagers.Add(indexProfile.ProviderName, indexManager);
-                        }
-
-                        if (indexManager is null)
-                        {
-                            continue;
-                        }
-
-                        var exists = await indexManager.ExistsAsync(indexProfile.IndexFullName);
-
-                        if (exists && !await indexManager.DeleteAsync(indexProfile))
-                        {
-                            continue;
-                        }
-
-                        if (await _indexProfileManager.DeleteAsync(indexProfile))
+                        if (await _management.DeleteAsync(indexProfile) == IndexProfileManagementResult.Success)
                         {
                             removeCounter++;
                         }

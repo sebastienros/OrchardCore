@@ -207,3 +207,22 @@ or execution operations; inspect the live command catalog before invoking them.
 With tenant MCP enabled, these operations are available as `indexes_list`,
 `indexes_show` and `indexes_providers_list`. Reads use the existing profile manager
 and registered indexing options; they do not serialize backend configuration objects.
+
+## Coordinating profiles and provider resources
+
+`IIndexProfileManagementService` coordinates creation and deletion for the admin UI
+and recipe creation. Extensions that need both a local profile and a provider index
+can use this service instead of repeating the coordination around `IIndexProfileManager`.
+
+Creation validates the profile, saves it locally so creation handlers can populate
+metadata, then asks the keyed `IIndexManager` to create the provider index. A rejected
+provider creation removes the local profile. If that compensation fails, the result
+is `LocalDeleteFailed`. Provider exceptions propagate and retain the local profile
+because the provider outcome may be uncertain. Synchronization is scheduled only
+after successful creation; it is not a completion signal for indexing.
+
+Deletion checks whether the provider index exists, removes it if necessary, and then
+removes the local profile. Provider rejection preserves the local profile. The admin's
+force-delete option permits local removal when the provider is missing or rejects
+deletion, but provider exceptions still propagate. Results distinguish success,
+unavailable providers, provider rejection and failure to remove the local profile.
