@@ -226,3 +226,12 @@ user remains available for human sign-in with the password in the handoff file.
 
 For host presets, validation, permissions, and complete DTOs, read the versioned
 [tenant API reference](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/api/tenants/README.md).
+
+## Feature-profile definitions and assignment
+
+Use the [feature-profile workflow](../../orchardcore-cli-automation/SKILL.md#tenant-feature-profiles)
+for host-owned definitions. It needs profile-management permission on the Default
+tenant. Tenant assignment still uses the existing `featureProfiles` array of profile
+IDs. Read the tenant first and preserve its URL and other editable fields when
+updating that array. The custom `tenants install` command may not expose profile
+assignment; inspect live help and use the supported tenant update contract afterward.
