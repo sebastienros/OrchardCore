@@ -41,7 +41,8 @@ The [schedule](pr-schedule.md) and [plan](coverage-plan.md) define the work and 
 | P09 Content localization | Merged | [PR #12](https://github.com/sebastienros/OrchardCore/pull/12), merge `9d990f99d`; all CI checks passed. Shared admin/API workflow, existing localization handlers, draft retries and version-aware permission checks verified. |
 | P10 URL rewriting | Merged | [PR #15](https://github.com/sebastienros/OrchardCore/pull/15), merge `e8e6fda18`; all CI checks passed. Shared admin/recipe validation, lifecycle and native runtime rerouting verified. |
 | Content culture picker settings | In verification | Independent `codex/remote-culture-picker-settings` from merged target `76bf74d92`; shared existing admin mutations, typed section and runtime cookie/redirect checks. |
-| Application/scope discovery and administration | Planned | Separate B06 resource PRs. |
+| Application/scope discovery | In verification | Independent `codex/remote-openid-discovery`; existing managers, four redacted reads and separate permissions. |
+| Application/scope administration | Planned | Separate B06 mutation PRs after discovery. |
 | Application credential lifecycle | Planned | After application administration merges. |
 | Tenant feature-profile definitions | Planned | Independent B06 slice. |
 | Common index definitions and lifecycle | Planned | B07 with local Lucene verification. |
@@ -77,3 +78,11 @@ agreed slices are delivered and any remaining gaps have an explicit disposition.
 - Shared-service requirement: API service extractions must also replace equivalent logic in
   existing callers. P02 migrates layer admin mutations and JavaScript editor syntax validation;
   regression checks cover metadata edits preserving rule identities and editor evaluation.
+
+- OpenID discovery baseline: the existing tenant catalog has no application/scope
+  reads. New list/show operations reuse the configured OpenID managers and allowlist
+  response fields. Pre-integration checks: strict build zero warnings/errors;
+  3,246 server tests passed with one CI-only skip, 291 CLI and 78 authentication/MCP
+  tests passed. Live paging, separate permissions, redaction and MCP without CLI
+  passed. Explicit lowercase query parameter names keep HTTP/OpenAPI/MCP aligned.
+  Strict docs, 45 pinned manual link formats and reproducible skill distribution passed.

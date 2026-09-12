@@ -31,6 +31,7 @@ python3 .scripts/remote-management/shared-content-smoke.py <fixture.json>
 python3 .scripts/remote-management/tenant-install-smoke.py <fixture.json>
 python3 .scripts/remote-management/graphql-smoke.py <fixture.json>
 python3 .scripts/remote-management/catalog-smoke.py <fixture.json>
+python3 .scripts/remote-management/openid-discovery-smoke.py <fixture.json>
 python3 .scripts/remote-management/layers-smoke.py <fixture.json>
 python3 .scripts/remote-management/widgets-smoke.py <fixture.json>
 python3 .scripts/remote-management/shortcodes-smoke.py <fixture.json>
@@ -492,3 +493,9 @@ Run `python3 .scripts/remote-management/culture-picker-settings-smoke.py <fixtur
 This checks partial updates, retries, permissions and feature lifecycle through HTTP/Pomi/MCP,
 plus real culture-cookie responses, localized redirects and homepage fallback. It creates a
 synthetic localized homepage in the disposable tenant and restores the original picker settings.
+
+`openid-discovery-smoke.py` verifies bounded application/scope discovery with separate
+management principals, explicit response fields, missing resources, invalid paging,
+HTTP/Pomi/MCP equivalence, unique catalogs, and MCP with CLI disabled. The test suite
+also verifies that the OpenID Management feature controls endpoint registration
+without requiring the authorization-server feature.

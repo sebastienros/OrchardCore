@@ -53,14 +53,14 @@ The categories are mutually exclusive planning classifications, not percentages 
 | Code | Classification | Feature count |
 | --- | --- | ---: |
 | D | Direct management OpenAPI and Pomi commands exist | 23 |
-| P | Partial: important operations missing, or only helper/protocol/shared coverage | 24 |
+| P | Partial: important operations missing, or only helper/protocol/shared coverage | 25 |
 | A | Management OpenAPI exists; Pomi projection intentionally absent | 1 |
-| M | Dedicated management API and corresponding commands missing | 31 |
+| M | Dedicated management API and corresponding commands missing | 30 |
 | S | Shared API/commands or a built-in CLI workflow; validate the stated limits | 36 |
 | I | Infrastructure, rendering, protocol, provider or alias; no separate API proposed by default | 70 |
 | X | Sample; excluded from delivery priorities | 3 |
 
-There are **31 features with neither dedicated management APIs nor commands**, and **24 with
+There are **30 features with neither dedicated management APIs nor commands**, and **25 with
 partial coverage requiring a scope decision**. These are not 55 independent implementation tasks:
 the plan consolidates them into shared workflows. Another 36 features reuse existing transports
 or built-in commands. Twenty-one production modules contribute direct `WithCliCommand` operation
@@ -121,6 +121,7 @@ Backlog IDs refer to [the delivery plan](coverage-plan.md#work-packages).
 
 | Module / feature ID | OpenAPI or HTTP surface | Existing Pomi coverage | Scope, gap and next action | Plan |
 | --- | --- | --- | --- | --- |
+| [OpenId](../../src/OrchardCore.Modules/OrchardCore.OpenId/Manifest.cs) / `OrchardCore.OpenId.Management` | Four redacted application/scope reads | `openid applications list/show`; `openid scopes list/show` | Existing managers provide bounded paging and natural-key lookup. General CRUD, role/grant assignment and credential rotation/revocation remain B06. | B06 |
 | [Deployment.Remote](../../src/OrchardCore.Modules/OrchardCore.Deployment.Remote/Manifest.cs) / `OrchardCore.Deployment.Remote` | Private API-key import protocol | None | Remote clients/instances/targets remain admin-only; existing import authentication is not the shared OAuth management contract. | B08 |
 | [Elasticsearch](../../src/OrchardCore.Modules/OrchardCore.Elasticsearch/Manifest.cs) / `OrchardCore.Elasticsearch` | Content/documents query API | Shared `queries` | Direct query endpoints lack CLI metadata; named-query execution is shared. Index lifecycle remains missing; avoid duplicating query transports. | B07 |
 | [Facebook](../../src/OrchardCore.Modules/OrchardCore.Facebook/Manifest.cs) / `OrchardCore.Facebook` | SDK helper; no management contract | None | Provider/widget/pixel settings are not managed through OpenAPI/Pomi. Authentication callbacks are not administration APIs. | B12 |
@@ -178,7 +179,6 @@ Backlog IDs refer to [the delivery plan](coverage-plan.md#work-packages).
 | [Microsoft.Authentication](../../src/OrchardCore.Modules/OrchardCore.Microsoft.Authentication/Manifest.cs) / `OrchardCore.Microsoft.Authentication.MicrosoftAccount` | No dedicated management API | None | Microsoft Account/Azure AD provider configuration lacks a redacted management contract. | B12 |
 | [Microsoft.Authentication](../../src/OrchardCore.Modules/OrchardCore.Microsoft.Authentication/Manifest.cs) / `OrchardCore.Microsoft.Authentication.AzureAD` | No dedicated management API | None | Microsoft Account/Azure AD provider configuration lacks a redacted management contract. | B12 |
 | [OpenId](../../src/OrchardCore.Modules/OrchardCore.OpenId/Manifest.cs) / `OrchardCore.OpenId.Client` | No dedicated management API | None | Client/provider settings lack a management contract; authentication callbacks remain protocol endpoints. | B06 |
-| [OpenId](../../src/OrchardCore.Modules/OrchardCore.OpenId/Manifest.cs) / `OrchardCore.OpenId.Management` | No dedicated management API | None | Application/scope CRUD, role/grant assignment, credential rotation/revocation and redacted status lack general management APIs. Bootstrap provisioning is narrower. | B06 |
 | [OpenId](../../src/OrchardCore.Modules/OrchardCore.OpenId/Manifest.cs) / `OrchardCore.OpenId.Validation` | No dedicated management API | None | Validation/authority configuration lacks management; may remain deployment-owned depending on scenario. | B06 |
 | [RateLimits](../../src/OrchardCore.Modules/OrchardCore.RateLimits/Manifest.cs) / `OrchardCore.RateLimits` | No dedicated management API | None | Limiter definitions, ordering/validation and tenant settings are admin-only. | B05 |
 | [ReCaptcha](../../src/OrchardCore.Modules/OrchardCore.ReCaptcha/Manifest.cs) / `OrchardCore.ReCaptcha` | No dedicated management API | None | Tenant validation settings lack a redacted section; do not expose challenge bypass/validation as an admin command. | B12 |

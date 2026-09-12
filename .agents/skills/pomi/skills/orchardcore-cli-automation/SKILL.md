@@ -1,6 +1,6 @@
 ---
 name: orchardcore-cli-automation
-description: Automates Orchard Core feature, recipe, query, workflow, user, and role management through `pomi`. Use for enabling module capabilities, executing recipes, defining/executing SQL or other queries, managing workflow types and instances, and provisioning tenant-local security principals and permissions.
+description: Automates Orchard Core feature, recipe, query, workflow, user, role, and OpenID discovery through `pomi`. Use for enabling module capabilities, executing recipes, defining/executing SQL or other queries, managing workflow types and instances, and provisioning tenant-local security principals and permissions.
 ---
 
 # Pomi CLI Automation
@@ -116,6 +116,26 @@ User create/update exposes `--password-env`, `--password-file`, and
 in a protected `--body-file`/`--stdin`. Inline `--body` and `--password` are
 not exposed for secret-bearing operations. Inspect live help on older servers.
 
+## OpenID application and scope discovery
+
+```bash
+pomi openid applications list --skip 0 --take 50
+pomi openid applications show <client-id>
+pomi openid scopes list --skip 0 --take 50
+pomi openid scopes show orchardcore.management
+```
+
+Requires `OrchardCore.OpenId.Management` and `AccessRemoteManagement`, plus
+`ManageApplications` for applications or `ManageScopes` for scopes. Use the client
+ID for application lookup and the scope name for scope lookup. The returned `id`
+is an administrative storage identifier. Page through results using `totalCount`,
+`skip` and `take`; the maximum page size is 200.
+
+These are discovery reads. Responses omit credentials, keys, custom properties
+and private settings. Registered grants and requirements do not establish which
+flows the server currently permits. Do not infer that reading an application can
+recover its secret or that these commands support credential rotation.
+
 ## Automation sequence
 
 1. Select an explicit context.
@@ -137,3 +157,5 @@ Versioned API references (live tenant schemas take precedence):
 - [Workflows](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/api/workflows/README.md)
 - [Users](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/api/users/README.md)
 - [Roles](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/api/roles/README.md)
+
+- [OpenID discovery](https://github.com/sebastienros/OrchardCore/blob/e790e4c06a4fddb49d160de80880d4719f9c93c1/src/docs/reference/api/openid/README.md)
