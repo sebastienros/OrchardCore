@@ -39,6 +39,7 @@ See [Authentication](authentication/README.md) for the OpenID Connect endpoints 
 
 - [Content definitions](content-definitions/README.md)
 - [Content items](content-items/README.md)
+- [Layers](layers/README.md)
 - [Media](media/README.md)
 - [Queries](queries/README.md)
 - [Shortcode templates](shortcode-templates/README.md)
