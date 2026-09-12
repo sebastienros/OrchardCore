@@ -60,3 +60,16 @@ silently treated as a complete document. The strict build and all six focused pr
 regression failed before moving provider existence/cursor reads under the per-index
 lock and passes afterward. Provider rejection/exception tests also prove that other
 indexes continue. Observable operation results and lifecycle endpoints remain pending.
+
+## Processing results
+
+`ProcessRecordsWithResultsAsync` uses the same worker as existing methods and
+returns a tenant-local index ID, outcome and last confirmed cursor. Completed means
+no further tasks were observed at the final read, not a guarantee about subsequent
+content changes. Missing profiles/providers and contention have explicit outcomes;
+failed indexes cannot inherit another index's success. Provider exception details
+are not part of this result contract. The strict build and all ten progress/outcome tests pass.
+
+Merged Layers PR #25 (`769dd97c9`) is integrated; all its CI passed. The lifecycle
+branch still has no unmerged dependencies. Operation persistence, reset/rebuild
+coordination, endpoint/command exposure and live lifecycle verification remain.

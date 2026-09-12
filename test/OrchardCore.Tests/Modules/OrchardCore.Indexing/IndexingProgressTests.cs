@@ -86,8 +86,12 @@ public class IndexingProgressTests
         using var services = CreateServices(documents.Object);
         var indexing = new TestIndexingService(profiles.Object, tasks.Object, [], services);
 
-        await indexing.ProcessRecordsAsync([failed.Id, healthy.Id]);
+        var results = await indexing.ProcessRecordsWithResultsAsync([failed.Id, healthy.Id]);
 
+        Assert.Equal(IndexProcessingStatus.Failed, results.Single(result => result.IndexId == failed.Id).Status);
+        var completed = results.Single(result => result.IndexId == healthy.Id);
+        Assert.Equal(IndexProcessingStatus.Completed, completed.Status);
+        Assert.Equal(2, completed.LastTaskId);
         documents.Verify(manager => manager.SetLastTaskIdAsync(failed, It.IsAny<long>()), Times.Never);
         documents.Verify(manager => manager.SetLastTaskIdAsync(healthy, 2), Times.Once);
         documents.Verify(manager => manager.AddOrUpdateDocumentsAsync(failed, It.IsAny<IEnumerable<DocumentIndex>>()), Times.Once);
@@ -118,10 +122,38 @@ public class IndexingProgressTests
         locker.Verify(value => value.DisposeAsync(), Times.Once);
     }
 
-    private static ServiceProvider CreateServices(IDocumentIndexManager documents, Mock<IDistributedLock> locking = null)
+    [Theory]
+    [InlineData(IndexProcessingStatus.NotFound)]
+    [InlineData(IndexProcessingStatus.Busy)]
+    [InlineData(IndexProcessingStatus.ProviderUnavailable)]
+    [InlineData(IndexProcessingStatus.ProviderMissing)]
+    public async Task ProcessRecords_SkippedIndex_IsNotReportedCompleted(IndexProcessingStatus expected)
+    {
+        var profile = new IndexProfile { Id = "index", Name = "Index", ProviderName = "Test", Type = "Test", IndexFullName = "index" };
+        var profiles = new Mock<IIndexProfileStore>();
+        profiles.Setup(store => store.GetByTypeAsync("Test")).ReturnsAsync(expected == IndexProcessingStatus.NotFound ? [] : [profile]);
+        var documents = new Mock<IDocumentIndexManager>();
+        var locking = new Mock<IDistributedLock>();
+        locking.Setup(value => value.TryAcquireLockAsync(It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<TimeSpan>()))
+            .ReturnsAsync(() => (Mock.Of<ILocker>(), expected != IndexProcessingStatus.Busy));
+        using var services = expected == IndexProcessingStatus.ProviderUnavailable
+            ? new ServiceCollection().AddSingleton(locking.Object).BuildServiceProvider()
+            : CreateServices(documents.Object, locking, expected != IndexProcessingStatus.ProviderMissing);
+        var tasks = new Mock<IIndexingTaskManager>(MockBehavior.Strict);
+        var indexing = new TestIndexingService(profiles.Object, tasks.Object, [], services);
+
+        var result = Assert.Single(await indexing.ProcessRecordsWithResultsAsync([profile.Id]));
+
+        Assert.Equal(profile.Id, result.IndexId);
+        Assert.Equal(expected, result.Status);
+        Assert.Null(result.LastTaskId);
+        documents.Verify(manager => manager.SetLastTaskIdAsync(profile, It.IsAny<long>()), Times.Never);
+    }
+
+    private static ServiceProvider CreateServices(IDocumentIndexManager documents, Mock<IDistributedLock> locking = null, bool providerExists = true)
     {
         var indexes = new Mock<IIndexManager>();
-        indexes.Setup(manager => manager.ExistsAsync("index")).ReturnsAsync(true);
+        indexes.Setup(manager => manager.ExistsAsync("index")).ReturnsAsync(providerExists);
         if (locking is null)
         {
             locking = new Mock<IDistributedLock>();
