@@ -52,16 +52,16 @@ The categories are mutually exclusive planning classifications, not percentages 
 
 | Code | Classification | Feature count |
 | --- | --- | ---: |
-| D | Direct management OpenAPI and Pomi commands exist | 25 |
+| D | Direct management OpenAPI and Pomi commands exist | 26 |
 | P | Partial: important operations missing, or only helper/protocol/shared coverage | 24 |
 | A | Management OpenAPI exists; Pomi projection intentionally absent | 1 |
-| M | Dedicated management API and corresponding commands missing | 29 |
+| M | Dedicated management API and corresponding commands missing | 28 |
 | S | Shared API/commands or a built-in CLI workflow; validate the stated limits | 36 |
 | I | Infrastructure, rendering, protocol, provider or alias; no separate API proposed by default | 70 |
 | X | Sample; excluded from delivery priorities | 3 |
 
-There are **29 features with neither dedicated management APIs nor commands**, and **24 with
-partial coverage requiring a scope decision**. These are not 53 independent implementation tasks:
+There are **28 features with neither dedicated management APIs nor commands**, and **24 with
+partial coverage requiring a scope decision**. These are not 52 independent implementation tasks:
 the plan consolidates them into shared workflows. Another 36 features reuse existing transports
 or built-in commands. Twenty-four production modules contribute direct `WithCliCommand` operation
 registrations; this does not imply all features in those modules are covered.
@@ -118,6 +118,8 @@ Backlog IDs refer to [the delivery plan](coverage-plan.md#work-packages).
 | [Layers](../../src/OrchardCore.Modules/OrchardCore.Layers/Manifest.cs) / `OrchardCore.Layers` | Layer and widget placement APIs | `layers`; `layers widgets`; `settings sections` | P02 definitions/conditions and P05 widget attachment/movement/order share admin services. Widget reads and writes enforce content permissions and preserve draft bodies. Configured zones are discoverable and editable through the `layer-zones` typed settings section, sharing normalization with the admin editor. | B01 |
 
 | [ContentLocalization](../../src/OrchardCore.Modules/OrchardCore.ContentLocalization/Manifest.cs) / `OrchardCore.ContentLocalization.ContentCulturePicker` | Typed `content-culture-picker` section | `settings sections` | Cookie selection/request behavior and homepage fallback share existing admin mutation logic; permission, persistence and runtime checks. Cookie lifetime remains host-owned. | B04 |
+
+| [Search](../../src/OrchardCore.Modules/OrchardCore.Search/Manifest.cs) / `OrchardCore.Search` | Typed `frontend-search` settings section | `settings sections` | Shared admin/API default-index selection, title and placeholder; no-op/partial updates, query permissions, tenant persistence and rendered frontend verified. | B07 |
 
 ### P — Partial: important operations missing, or only helper/protocol/shared coverage
 
@@ -182,7 +184,6 @@ Backlog IDs refer to [the delivery plan](coverage-plan.md#work-packages).
 | [OpenId](../../src/OrchardCore.Modules/OrchardCore.OpenId/Manifest.cs) / `OrchardCore.OpenId.Validation` | No dedicated management API | None | Validation/authority configuration lacks management; may remain deployment-owned depending on scenario. | B06 |
 | [RateLimits](../../src/OrchardCore.Modules/OrchardCore.RateLimits/Manifest.cs) / `OrchardCore.RateLimits` | No dedicated management API | None | Limiter definitions, ordering/validation and tenant settings are admin-only. | B05 |
 | [ReCaptcha](../../src/OrchardCore.Modules/OrchardCore.ReCaptcha/Manifest.cs) / `OrchardCore.ReCaptcha` | No dedicated management API | None | Tenant validation settings lack a redacted section; do not expose challenge bypass/validation as an admin command. | B12 |
-| [Search](../../src/OrchardCore.Modules/OrchardCore.Search/Manifest.cs) / `OrchardCore.Search` | No dedicated management API | None | Frontend search settings/default index selection lack typed management; query execution does not manage indexes. | B07 |
 | [Sms](../../src/OrchardCore.Modules/OrchardCore.Sms/Manifest.cs) / `OrchardCore.Sms` | No dedicated management API | None | SMS configuration and test-send lack a management contract; use redacted settings and bounded checks. | B12 |
 | [Templates](../../src/OrchardCore.Modules/OrchardCore.Templates/Manifest.cs) / `OrchardCore.AdminTemplates` | No dedicated management API | None | Separate admin template document is not exposed by the frontend templates API. | B02 |
 | [Twitter](../../src/OrchardCore.Modules/OrchardCore.Twitter/Manifest.cs) / `OrchardCore.Twitter.Signin` | No dedicated management API | None | Provider settings lack a redacted management contract; sign-in is an authentication protocol. | B12 |

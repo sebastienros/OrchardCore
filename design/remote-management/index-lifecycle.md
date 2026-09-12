@@ -272,3 +272,12 @@ pass after enabling their fixture feature dependencies and refreshing metadata.
 Local verification is complete for PR publication. The latest strict build and
 35 focused regression cases pass; the preceding integrated solution/server/CLI/MCP
 results are recorded above. CI must validate the published head before merge.
+
+## Merged result
+
+[PR #26](https://github.com/sebastienros/OrchardCore/pull/26) merged as
+`8bb1ff4366762d9796f49b48fb8bb504dd15352e` after all CI checks passed on exact head
+`c9f6910d1e3dfa524ffe85665fed8633270b3a62`, including Linux functional tests,
+Windows build/tests, CLI, frontend, assets and docs. Package/native publishing
+remained skipped. Frontend search settings and gated provider adapters remain
+separate campaign work.
