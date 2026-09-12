@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import secrets
 import socket
+import ssl
 import subprocess
 import tempfile
 import time
@@ -46,6 +47,7 @@ for suffix, permissions in [
     ("widgets", ["ManageLayers", "EditContent", "PublishContent", "ViewContent", "PreviewContent"]),
     ("widgets-editor", ["ManageLayers", "EditContent", "ViewContent", "PreviewContent"]),
     ("shortcodes", ["ManageShortcodeTemplates"]),
+    ("https", ["ManageHttps"]),
     ("placements", ["ManagePlacements"]),
     ("translator-fr", ["ViewDynamicTranslations", "ManageTranslations_fr"]),
     ("translation-reader", ["ViewDynamicTranslations"]),
@@ -67,23 +69,44 @@ with socket.socket() as sock:
     sock.bind(("127.0.0.1", 0))
     port = sock.getsockname()[1]
 url = f"http://127.0.0.1:{port}/"
+http_url = url
+listen_urls = url
+ssl_context = None
+certificate = None
 env = os.environ.copy()
 env.update({"ASPNETCORE_ENVIRONMENT": "Development", "ORCHARD_APP_DATA": str(root / "App_Data")})
+if os.environ.get("OC_FIXTURE_HTTPS") == "1":
+    # Use the already trusted development certificate; never change trust settings from a test.
+    subprocess.run(["dotnet", "dev-certs", "https", "--check", "--trust"], check=True, capture_output=True, timeout=30)
+    certificate = root / "certificate.pem"
+    subprocess.run(["dotnet", "dev-certs", "https", "--export-path", str(certificate), "--format", "PEM"],
+                   check=True, capture_output=True, timeout=30)
+    # This exports only the public certificate for Python's trust bundle.
+    # Kestrel uses the development certificate from its existing store.
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        https_port = sock.getsockname()[1]
+    url = f"https://localhost:{https_port}/"
+    http_url = f"http://localhost:{port}/"
+    listen_urls = http_url + ";" + url
+    ssl_context = ssl.create_default_context(cafile=str(certificate))
 setup = {"ShellName": "Default", "SiteName": "CLI review", "SiteTimeZone": "UTC",
          "AdminUsername": "admin", "AdminEmail": "admin@example.test", "AdminPassword": secrets.token_urlsafe(32) + "aA1!",
          "DatabaseProvider": "Sqlite", "RecipeName": "CliFixture"}
 for key, value in setup.items():
     env["OrchardCore__OrchardCore_AutoSetup__Tenants__0__" + key] = value
 log = (root / "host.log").open("w")
-host = subprocess.Popen(["dotnet", str(repo / "src/OrchardCore.Cms.Web/bin/Debug/net10.0/OrchardCore.Cms.Web.dll"), "--contentRoot", str(root), "--urls", url], env=env, stdout=log, stderr=log)
+host = subprocess.Popen(["dotnet", str(repo / "src/OrchardCore.Cms.Web/bin/Debug/net10.0/OrchardCore.Cms.Web.dll"), "--contentRoot", str(root), "--urls", listen_urls], env=env, stdout=log, stderr=log)
 state = {"url": url, "pid": host.pid, "root": str(root), "OC_CLIENT_ID": "cli-fixture", "OC_CLIENT_SECRET": secret,
          "OC_CONFIG_HOME": str(root / "cli"), "adminPassword": setup["AdminPassword"]}
+if certificate:
+    state.update(httpUrl=http_url, certificatePath=str(certificate))
 (root / "fixture.json").write_text(json.dumps(state))
 for attempt in range(90):
     if host.poll() is not None:
         raise SystemExit(f"Fixture host exited. Inspect {root / 'host.log'}")
     try:
-        with urllib.request.urlopen(url + ".well-known/orchardcore-management", timeout=20) as response:
+        with urllib.request.urlopen(url + ".well-known/orchardcore-management", timeout=20, context=ssl_context) as response:
             if response.status == 200:
                 print(root / "fixture.json", flush=True)
                 break
