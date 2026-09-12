@@ -167,3 +167,18 @@ These tests also verify that recipes do not directly call reset/synchronize logi
 
 Current CLI and MCP suites pass all 295 and 78 tests respectively. Admin-action
 regressions, final docs/package validation and PR/CI review remain before merge.
+
+## Admin caller verification and workflow update
+
+Nine admin cases pass after a strict build with zero warnings/errors. Single and
+bulk reset/rebuild/synchronize invoke the actual persisted runner; bulk IDs are
+deduplicated and missing profiles skipped. Denied actions (single and bulk) do not
+read profiles or queue work; missing single profiles return not-found. The real
+background execution records failure for the deliberately absent test profiles.
+
+Pomi skill package 0.10.25 documents lifecycle discovery, bounded status polling,
+reset/rebuild differences and the prohibition on blindly retrying uncertain work.
+The inventory now records the implemented lifecycle/status surface while keeping
+other provider adapters gated. Local plugin-link verification passes all 127 local
+and 49 versioned manual links. Final integrated tests, docs/distribution and PR/CI
+remain to be completed.
