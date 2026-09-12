@@ -166,13 +166,13 @@ public class TypedSettingsSectionTests
         await SetHttpsFeatureAsync(context, true);
         await context.UsingTenantScopeAsync(async scope =>
         {
-            var provider = Assert.Single(scope.ServiceProvider.GetServices<ISiteSettingsSectionProvider>());
+            var provider = Assert.Single(scope.ServiceProvider.GetServices<ISiteSettingsSectionProvider>(), provider => provider.Descriptor.Name == "https");
             var result = await provider.UpdateAsync(new JsonObject { ["sslPort"] = 8443, ["strictTransportSecurityMode"] = "FromConfiguration" });
             Assert.True(result.Changed);
         });
         await context.UsingTenantScopeAsync(async scope =>
         {
-            var provider = Assert.Single(scope.ServiceProvider.GetServices<ISiteSettingsSectionProvider>());
+            var provider = Assert.Single(scope.ServiceProvider.GetServices<ISiteSettingsSectionProvider>(), provider => provider.Descriptor.Name == "https");
             var result = await provider.GetAsync();
             Assert.Equal(8443, result.Values["sslPort"].GetValue<int>());
             Assert.Equal("FromConfiguration", result.Values["strictTransportSecurityMode"].GetValue<string>());
@@ -180,7 +180,7 @@ public class TypedSettingsSectionTests
         await SetHttpsFeatureAsync(context, false);
         await context.UsingTenantScopeAsync(scope =>
         {
-            Assert.Empty(scope.ServiceProvider.GetServices<ISiteSettingsSectionProvider>());
+            Assert.DoesNotContain(scope.ServiceProvider.GetServices<ISiteSettingsSectionProvider>(), provider => provider.Descriptor.Name == "https");
             return Task.CompletedTask;
         });
     }
