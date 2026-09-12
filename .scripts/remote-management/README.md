@@ -485,3 +485,10 @@ Run `python3 .scripts/remote-management/layer-zones-settings-smoke.py <fixture.j
 This checks shared admin normalization, complete list replacement, invalid values,
 no-op retries, existing widget-service readback, module permissions through HTTP/CLI/MCP,
 and independent feature lifecycle. It restores the disposable tenant's original zones.
+
+## Content culture picker settings
+
+Run `python3 .scripts/remote-management/culture-picker-settings-smoke.py <fixture.json>`.
+This checks partial updates, retries, permissions and feature lifecycle through HTTP/Pomi/MCP,
+plus real culture-cookie responses, localized redirects and homepage fallback. It creates a
+synthetic localized homepage in the disposable tenant and restores the original picker settings.

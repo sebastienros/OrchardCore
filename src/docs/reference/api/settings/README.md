@@ -361,3 +361,45 @@ placement reads the saved zones through its existing service. Changing the list
 does not create theme sections, move widgets, delete widgets or change their
 publication state. Preserve existing zones unless their removal is intended;
 widgets already assigned to removed zones retain their placement metadata.
+
+### Content culture picker section
+
+The `content-culture-picker` section is available only when
+`OrchardCore.ContentLocalization.ContentCulturePicker` is enabled. All four section
+operations require `AccessRemoteManagement` and `ManageContentCulturePicker`.
+Content localization permission alone does not grant settings administration.
+
+| Property | Type / initial default | Behavior |
+| --- | --- | --- |
+| `setCookie` | Boolean / `true` | Write the culture cookie when the picker switches to a supported culture. |
+| `redirectToHomepage` | Boolean / `false` | If the current item lacks a target-culture variant, try the localized homepage before returning to the current URL. |
+| `setCookieOnContentRequest` | Boolean / `false` | Write the culture cookie when visiting localized content. Request-culture selection still occurs when this flag is false. |
+
+```json
+{"setCookie": true, "redirectToHomepage": true, "setCookieOnContentRequest": false}
+```
+
+All values are tenant-owned. Omitted properties retain their stored values. Null,
+non-Boolean values and unknown properties return 400 without saving either settings
+object. An identical retry or empty patch returns 200 with `changed: false`; changes
+save both affected settings objects in the same site document with one update.
+The existing runtime reads settings per request, so `reloadRequested` remains false.
+Concurrent updates have no ETag precondition; read back the result after saving.
+
+The admin picker and request-culture editors share `ContentCultureSettingsEditor`
+with this section. `setCookieOnContentRequest` maps to
+`ContentRequestCultureProviderSettings.SetCookie`; the other two properties map to
+`ContentCulturePickerSettings`. Existing recipe imports keep their own contract.
+Cookie lifetime (`CulturePickerOptions.CookieLifeTime`), supported cultures and
+localized content are separate configuration/resources and are not exposed here.
+Disabling a cookie-writing flag does not delete a cookie already held by a visitor.
+
+```bash
+pomi settings sections schema content-culture-picker
+pomi settings sections show content-culture-picker
+pomi settings sections update content-culture-picker --body-file picker.json
+```
+
+Verify language-switch redirects and response cookies after updating. Disabling the
+picker feature removes this section (named requests return 404) while the separate
+content localization feature can remain enabled.
