@@ -53,6 +53,60 @@ public class IndexLifecycleServiceTests
         locking.Verify(value => value.TryAcquireLockAsync(It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<TimeSpan>()), Times.Once);
     }
 
+    [Theory]
+    [InlineData("rejected")]
+    [InlineData("provider-error")]
+    [InlineData("reset-error")]
+    public async Task Rebuild_FailedPreparation_ReleasesLockWithoutProcessingTasks(string failure)
+    {
+        var profile = new IndexProfile { Id = "index", Type = "Test", ProviderName = "Test", IndexFullName = "index" };
+        var profiles = new Mock<IIndexProfileManager>();
+        profiles.Setup(manager => manager.FindByIdAsync(profile.Id)).ReturnsAsync(profile);
+        var indexes = new Mock<IIndexManager>();
+        if (failure == "provider-error")
+        {
+            indexes.Setup(manager => manager.RebuildAsync(profile)).ThrowsAsync(new InvalidOperationException("Provider failed."));
+        }
+        else
+        {
+            indexes.Setup(manager => manager.RebuildAsync(profile)).ReturnsAsync(failure != "rejected");
+        }
+        if (failure == "reset-error")
+        {
+            profiles.Setup(manager => manager.ResetAsync(profile)).ThrowsAsync(new InvalidOperationException("Reset failed."));
+        }
+        var tasks = new Mock<IIndexingTaskManager>(MockBehavior.Strict);
+        var documents = new Mock<IDocumentIndexManager>(MockBehavior.Strict);
+        var locker = new Mock<ILocker>();
+        var locking = new Mock<IDistributedLock>();
+        locking.Setup(value => value.TryAcquireLockAsync("IndexingService-index", It.IsAny<TimeSpan>(), It.IsAny<TimeSpan>()))
+            .ReturnsAsync((locker.Object, true));
+        using var services = new ServiceCollection().AddSingleton(locking.Object)
+            .AddKeyedSingleton<IIndexManager>("Test", indexes.Object)
+            .AddKeyedSingleton<IDocumentIndexManager>("Test", documents.Object)
+            .AddKeyedSingleton<NamedIndexingService>("Test", (provider, _) => new Processor(Mock.Of<IIndexProfileStore>(), tasks.Object, provider))
+            .BuildServiceProvider();
+        var lifecycle = new IndexLifecycleService(profiles.Object, services);
+
+        if (failure == "rejected")
+        {
+            var result = await lifecycle.ExecuteAsync(profile.Id, IndexLifecycleAction.Rebuild);
+            Assert.Equal(IndexProcessingStatus.ProviderRejected, result.Status);
+            Assert.Null(result.LastTaskId);
+        }
+        else
+        {
+            await Assert.ThrowsAsync<InvalidOperationException>(() => lifecycle.ExecuteAsync(profile.Id, IndexLifecycleAction.Rebuild));
+        }
+
+        profiles.Verify(manager => manager.ResetAsync(profile), failure == "reset-error" ? Times.Once() : Times.Never());
+        profiles.Verify(manager => manager.UpdateAsync(It.IsAny<IndexProfile>(), It.IsAny<System.Text.Json.Nodes.JsonNode>()), Times.Never());
+        indexes.Verify(manager => manager.ExistsAsync(It.IsAny<string>()), Times.Never());
+        tasks.VerifyNoOtherCalls();
+        documents.VerifyNoOtherCalls();
+        locker.Verify(value => value.DisposeAsync(), Times.Once());
+    }
+
     private sealed class Processor : NamedIndexingService
     {
         public Processor(IIndexProfileStore store, IIndexingTaskManager tasks, IServiceProvider services)

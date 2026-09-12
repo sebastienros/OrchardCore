@@ -130,3 +130,40 @@ remote provider gate; discovery lists source lifecycle actions. Other remote
 provider/source pairs return 501 until verified. The strict build and all 23 focused discovery, permission/provider-gate and
 existing management tests pass. Live execution, caller regressions,
 interruption/feature lifecycle checks and final packaging/PR remain.
+
+## Live lifecycle evidence
+
+On `4b63d2619`, the strict full solution build passed with zero warnings/errors and
+the full server suite passed 3,381 tests with one CI-only skip. The committed
+`index-lifecycle-smoke.py` ran successfully against a fresh tenant fixture using
+that runtime. HTTP synchronization and Pomi reset reached completed state and
+preserved a real Lucene query result. Changing the selected content type followed
+by an MCP rebuild removed the old query result; restoring the definition and
+rebuilding through Pomi restored it. All operations were polled to their persisted
+terminal outcome rather than treating 202 as completion.
+
+The same run verified anonymous and insufficient-permission denials, lifecycle
+rejection while the Lucene provider feature was disabled, and continued access to
+the persisted operation status while that provider was disabled. The first MCP
+smoke attempt used a flat argument instead of the documented `query` object; the
+corrected test passed without changing production code.
+
+Existing admin/recipe invocation regressions, final packaging and independent
+PR/CI validation remain outstanding; these live checks do not substitute for them.
+
+## Preparation failures and legacy recipe execution
+
+The strict build passes with zero warnings/errors. All six lifecycle coordinator
+cases pass, including rejected provider rebuild, provider exception and reset
+exception: failed preparation releases the lock without reading the cursor,
+processing tasks or updating the profile after failure.
+
+Six real-tenant recipe integration cases pass for `ResetIndex` and `RebuildIndex`:
+case-insensitive selected names, include-all and empty selection. They invoke the
+actual recipe handlers, persist pending records through the shared runner, then
+allow the real HTTP background callback to execute. Deliberately absent stored
+profiles produce persisted `Failed`/`NotFound` outcomes, not successful completion.
+These tests also verify that recipes do not directly call reset/synchronize logic.
+
+Current CLI and MCP suites pass all 295 and 78 tests respectively. Admin-action
+regressions, final docs/package validation and PR/CI review remain before merge.

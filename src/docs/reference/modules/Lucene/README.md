@@ -446,3 +446,15 @@ as the admin and typed API, including compensation when provider creation is rej
 For an existing profile it preserves the legacy behavior: keep its definition, ensure
 its provider index exists, then schedule synchronization. That repair path does not
 replace the stored definition with the recipe's incoming settings.
+
+### Tracked lifecycle operations
+
+Lucene content indexes support the common `pomi indexes synchronize`, `reset`, and
+`rebuild` commands. Each returns an operation ID; poll `pomi indexes operations
+show OPERATION_ID` to observe its outcome. Use rebuild after changing the selected
+content types when previously indexed documents must be removed. Reset reprocesses
+content without recreating the provider index.
+
+See [tracked index lifecycle operations](../Indexing/README.md#remote-lifecycle-requests)
+for permissions, HTTP routes and completion semantics. Ongoing scheduled updates
+still require `OrchardCore.Indexing.Worker`.
