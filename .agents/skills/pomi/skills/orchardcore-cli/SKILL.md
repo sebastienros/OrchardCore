@@ -54,7 +54,7 @@ that approach. Report an installation blocker rather than silently bypassing Pom
 | Execute GraphQL documents or inspect its schema | [GraphQL](../orchardcore-cli-graphql/SKILL.md) |
 | Manage URL rewrite/redirect rules and their order | [URL rewrite rules](../orchardcore-cli-settings/SKILL.md#url-rewrite-rules) |
 | Manage Site Settings, typed module sections, Custom Settings, and cultures | [Settings](../orchardcore-cli-settings/SKILL.md) |
-| Inspect OpenID applications and scopes | [OpenID discovery](../orchardcore-cli-automation/SKILL.md#openid-application-and-scope-discovery) |
+| Manage OpenID scopes and inspect applications | [OpenID management](../orchardcore-cli-automation/SKILL.md#openid-applications-and-scope-management) |
 | Manage features, recipes, queries, workflows, users, and roles | [Administration](../orchardcore-cli-automation/SKILL.md) |
 
 ## Coordinate a site build

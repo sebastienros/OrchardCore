@@ -97,3 +97,18 @@ culture-picker verification now uses this existing command instead of a Settings
 recipe. A regression test confirmed that selecting a container already used by a
 contained homepage retained the old `JsonPath`. The shared home-route service
 compares the complete route so that this selection clears stale route values.
+
+## Scope recipe update regression
+
+On merged base `4d48d0e6b`, a real-manager recipe update without `Resources`
+clears an existing resource list. The recipe copied an empty descriptor into the
+stored object instead of copying the stored object into its update descriptor.
+The shared scope editor corrects the direction and preserves unedited custom
+properties. Admin edits retain their explicit-empty clearing behavior and current
+resource restriction. Scope API mutation work is still in progress.
+
+A separate fixture attempt found that nonempty localized scope display-name
+maps fail YesSql serialization because `CultureInfo` dictionary keys have no
+configured converter. This precedes these changes. The preservation regression
+uses supported string-key custom properties and resources; it does not claim
+that localized scope metadata persistence is fixed.

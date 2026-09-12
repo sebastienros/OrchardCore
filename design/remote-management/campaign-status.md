@@ -41,8 +41,9 @@ The [schedule](pr-schedule.md) and [plan](coverage-plan.md) define the work and 
 | P09 Content localization | Merged | [PR #12](https://github.com/sebastienros/OrchardCore/pull/12), merge `9d990f99d`; all CI checks passed. Shared admin/API workflow, existing localization handlers, draft retries and version-aware permission checks verified. |
 | P10 URL rewriting | Merged | [PR #15](https://github.com/sebastienros/OrchardCore/pull/15), merge `e8e6fda18`; all CI checks passed. Shared admin/recipe validation, lifecycle and native runtime rerouting verified. |
 | Content culture picker settings | Merged | [PR #17](https://github.com/sebastienros/OrchardCore/pull/17), merge `6e9f1f64f`; all CI checks passed. Shared admin mutations, typed section and runtime cookie/redirect checks. |
-| Application/scope discovery | In verification | Independent `codex/remote-openid-discovery`; existing managers, four redacted reads and separate permissions. |
-| Application/scope administration | Planned | Separate B06 mutation PRs after discovery. |
+| Application/scope discovery | Merged | [PR #19](https://github.com/sebastienros/OrchardCore/pull/19), merge `f28af3782`; all CI checks passed. Four redacted reads use existing managers and separate permissions. |
+| Scope administration | In verification | Independent `codex/remote-openid-scopes`; shared admin/recipe editor and scope create/update/delete. |
+| Application administration | Planned | B06 after scope administration. |
 | Application credential lifecycle | Planned | After application administration merges. |
 | Tenant feature-profile definitions | Planned | Independent B06 slice. |
 | Common index definitions and lifecycle | Planned | B07 with local Lucene verification. |
@@ -93,3 +94,13 @@ agreed slices are delivered and any remaining gaps have an explicit disposition.
   passed. Live restricted-client homepage selection, published rendering, draft
   preservation, MCP without CLI, and combined culture-picker workflow passed.
   Strict documentation build passed. Existing route, command and permissions retained.
+
+- Scope administration: real-manager recipe preservation failed on `4d48d0e6b`
+  and passes through the shared editor. Existing admin clearing, reserved-resource
+  rejection and restoration after manager validation failure are verified. On the
+  merged discovery baseline `f28af3782`, strict solution build has zero warnings/errors;
+  server 3,260 passed with one CI-only skip, CLI 291 and authentication/MCP 78 passed.
+  Live scope CRUD, schema help, semantic retries, conflicts, invalid/denied writes
+  and MCP without CLI passed. Resources omission is optional in OpenAPI and clears
+  the list; explicit null is rejected. Localized scope dictionary persistence remains
+  the separate pre-existing finding recorded in the baseline, not a claimed fix.
