@@ -523,3 +523,13 @@ to verify private one-time Pomi output, rejected destinations before mutation,
 rotation/revocation and actual rejection of retired secrets. It exercises HTTP,
 Pomi and MCP, preserves application settings, checks restricted principals and MCP
 with CLI disabled, and removes its synthetic application on completion.
+
+Run `python3 .scripts/remote-management/feature-profiles-smoke.py <fixture.json>`
+to check Default-tenant profile CRUD, schema discovery, retries, permission boundaries
+and feature lifecycle through HTTP, Pomi and MCP. The fixture has distinct profile
+and tenant-management clients; MCP is also exercised with the CLI feature disabled.
+The probe removes its synthetic profile on completion. Run
+`python3 .scripts/remote-management/feature-profiles-runtime-smoke.py <fixture.json>`
+for child provisioning without login, private administrator handoff, assignment,
+rule-order/dependency enforcement and fresh-request definition changes. It removes
+the synthetic assignment/profile and retains the disposable child in the fixture.

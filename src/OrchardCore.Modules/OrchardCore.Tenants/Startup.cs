@@ -118,13 +118,18 @@ public sealed class FeatureProfilesStartup : StartupBase
     public override void ConfigureServices(IServiceCollection services)
     {
         services.AddNavigationProvider<FeatureProfilesAdminMenu>();
+        services.AddPermissionProvider<Permissions>();
         services.AddScoped<FeatureProfilesManager>();
+        services.AddSingleton<IRemoteManagementCapabilityProvider, FeatureProfilesRemoteManagementCapabilityProvider>();
         services.AddScoped<IFeatureProfilesService, FeatureProfilesService>();
         services.AddScoped<IFeatureProfilesSchemaService, FeatureProfilesSchemaService>();
         services.AddShapeTableProvider<TenantFeatureProfileShapeTableProvider>();
 
         services.AddRecipeExecutionStep<FeatureProfilesStep>();
     }
+
+    public override void Configure(IApplicationBuilder app, IEndpointRouteBuilder routes, IServiceProvider serviceProvider)
+        => routes.AddFeatureProfileManagementEndpoints();
 }
 
 [RequireFeatures("OrchardCore.Deployment", "OrchardCore.Tenants.FeatureProfiles")]

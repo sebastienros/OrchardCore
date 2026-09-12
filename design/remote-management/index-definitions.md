@@ -1,8 +1,8 @@
 # Common index definitions and Lucene management
 
 Independent B07 branch `codex/remote-index-definitions` starts at merged credential
-PR #22 (`b9361a1bb`). Feature-profile PR #23 is independent and must merge before
-its changes are integrated here; no stacked PR dependency.
+PR #22 (`b9361a1bb`) and now includes merged feature-profile PR #23
+(`7e2a48e89`); no stacked PR dependency.
 
 ## Domain audit and planned contract
 
