@@ -1,6 +1,6 @@
 ---
 name: orchardcore-cli-automation
-description: Manages Orchard Core features, tenant feature profiles, recipes, queries, workflows, users, roles, and OpenID applications, scopes and shared-secret credentials through `pomi`. Use for enabling module capabilities, executing recipes, defining/executing SQL or other queries, managing workflow types and instances, and provisioning tenant-local security principals and permissions.
+description: Manages Orchard Core features, tenant feature profiles, recipes, queries, Lucene index definitions, workflows, users, roles, and OpenID applications, scopes and shared-secret credentials through `pomi`. Use for enabling module capabilities, executing recipes, defining/executing SQL or other queries, managing workflow types and instances, and provisioning tenant-local security principals and permissions.
 ---
 
 # Pomi CLI Automation
@@ -97,6 +97,62 @@ rather than duplicating them in Liquid.
 
 Query updates are full semantic replacements. Preserve `returnContentItems`
 explicitly: omitting this non-nullable boolean changes it to `false`.
+
+## Index discovery and Lucene definitions
+
+Select the exact tenant context. Common discovery requires `OrchardCore.Indexing`;
+typed content definitions require `OrchardCore.Lucene` and content support. Both
+require `AccessRemoteManagement` and `ManageIndexes`. Enable the necessary features
+and authorized dependencies, then refresh discovery. Do not infer provider write
+support merely from its appearance in the provider list.
+
+```bash
+pomi indexes providers list
+pomi indexes list --page 1 --page-size 50
+pomi indexes show INDEX_ID
+pomi indexes lucene analyzers
+pomi indexes lucene create --body-file index.json
+pomi indexes lucene show INDEX_ID
+pomi indexes lucene update INDEX_ID --body-file index.json
+pomi indexes lucene delete INDEX_ID --force
+```
+
+Minimal `index.json`, after defining the `Article` content type:
+
+```json
+{"name":"Articles","indexName":"articles","indexedContentTypes":["Article"]}
+```
+
+Responses contain `id` and `definition`. For updates, preserve the returned
+`definition` and change only intended fields: omitted optional values reset to
+their defaults, rather than preserving the old values. The administrative `name`
+is also referenced by named queries and search settings; renaming does not rewrite
+those references. The provider `indexName` is immutable and must be a single valid
+filename. Arbitrary private profile properties are not part of this contract.
+
+Discover analyzer names instead of guessing. Defaults are all cultures (`any`),
+published content, source storage off, `standardanalyzer` for indexing/querying,
+Lucene query syntax off, compatibility version `LUCENE_48`, and the full-text field.
+Defined legacy compatibility versions remain accepted. Explicit null/blank settings
+are rejected; an empty selected query-field list is allowed, but content types must
+be nonempty and unique.
+
+Equivalent create/update retries are no-ops; conflicting creates require inspection.
+Deletion of an already missing profile succeeds. `--force` confirms deletion locally;
+it does not force server-side removal after provider failure. Do not automatically
+retry uncertain provider or post-persistence handler failures.
+
+Creation schedules synchronization. It does not prove indexing has completed, and
+updating a definition does not automatically rebuild existing documents. Enable
+`OrchardCore.Indexing.Worker` for ongoing content updates. Verify results through an
+existing named Lucene query before claiming the index is ready; when testing content
+updates, verify changed indexed terms, not merely freshly loaded database content.
+Observable reset/rebuild/synchronize commands remain a later slice; inspect live
+help and do not invent those commands. Other providers' typed definitions are not
+yet covered by the Lucene command group.
+
+See the [Lucene definition contract](https://github.com/sebastienros/OrchardCore/blob/ff9239fac0d0a97bc38064c020979afbe5325513/src/docs/reference/modules/Lucene/README.md#remote-content-index-definitions)
+and [shared index coordination](https://github.com/sebastienros/OrchardCore/blob/ff9239fac0d0a97bc38064c020979afbe5325513/src/docs/reference/modules/Indexing/README.md#coordinating-profiles-and-provider-resources).
 
 ## Workflows
 

@@ -1,3 +1,7 @@
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Routing;
+using OrchardCore.Lucene.Endpoints.Management;
+using OrchardCore.RemoteManagement;
 using Lucene.Net.Analysis.Standard;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -59,6 +63,7 @@ public sealed class Startup : StartupBase
         services.AddDisplayDriver<IndexProfile, LuceneIndexProfileDisplayDriver>();
 
         services.AddIndexProfileHandler<LuceneIndexProfileHandler>();
+        services.AddIndexProfileHandler<LuceneIndexValidationHandler>();
     }
 }
 
@@ -85,6 +90,7 @@ public sealed class ContentsStartup : StartupBase
 
     public override void ConfigureServices(IServiceCollection services)
     {
+        services.AddSingleton<IRemoteManagementCapabilityProvider, LuceneIndexCapabilityProvider>();
         services.AddDataMigration<IndexingMigrations>();
 
         // Register after IndexingMigrations so its deferred task, which rewrites obsolete per-index role
@@ -99,6 +105,8 @@ public sealed class ContentsStartup : StartupBase
                 o.Description = S["Create an Lucene index based on site contents."];
             });
     }
+    public override void Configure(IApplicationBuilder app, IEndpointRouteBuilder routes, IServiceProvider serviceProvider)
+        => routes.AddLuceneIndexDefinitionEndpoints();
 }
 
 [RequireFeatures("OrchardCore.Search")]
