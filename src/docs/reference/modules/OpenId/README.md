@@ -594,11 +594,11 @@ All OpenID Connect settings can be configured using the generic `Settings` recip
 | `Tenant`                     | String  | The Orchard tenant for local server validation.                       |
 | `MetadataAddress`            | String  | Override the metadata discovery address (for non-standard providers). |
 
-## Remote application discovery and scope administration
+## Remote application and scope administration
 
-With `OrchardCore.OpenId.Management` enabled, authorized clients can inspect
+With `OrchardCore.OpenId.Management` enabled, authorized clients can manage
 applications through `pomi openid applications` and manage scope definitions through
 `pomi openid scopes`. Reads use the same managers as the admin UI and omit
-credentials, keys and private properties. Scope mutations share descriptor updates
-with the admin editor and recipe step. See the [OpenID management API](../../api/openid/README.md)
+credentials, keys and private properties. Application and scope mutations share
+descriptor updates with their admin editors and recipe steps. See the [OpenID management API](../../api/openid/README.md)
 for paging, permissions and response fields.
