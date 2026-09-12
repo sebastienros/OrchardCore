@@ -182,3 +182,20 @@ The inventory now records the implemented lifecycle/status surface while keeping
 other provider adapters gated. Local plugin-link verification passes all 127 local
 and 49 versioned manual links. Final integrated tests, docs/distribution and PR/CI
 remain to be completed.
+
+## Integrated validation and remaining compatibility review
+
+At `33d82137f`, the full server suite passes 3,399 tests with one CI-only skip.
+Strict docs and skill distribution validation pass: 19 raw/rendered Markdown
+files, both ZIPs, manifests, metadata, checksums, relative URLs and reproducibility.
+
+Source review identifies a compatibility gap that must be resolved before PR
+publication: the old `DefaultIndexProfileManager.SynchronizeAsync` dispatches
+`IIndexProfileHandler.SynchronizedAsync`, whereas the direct lifecycle coordinator
+currently calls the keyed processor without dispatching those extension handlers.
+It also returns Unsupported for unregistered custom sources where legacy handlers
+could previously provide processing. Built-in live success does not establish
+extension compatibility. Preserve the existing handler path without double-running
+the built-in content processor or reporting unobserved asynchronous work completed.
+The existing 15-minute distributed-lock lease also needs an explicit review of
+long-running operation semantics before claiming uninterrupted lock ownership.
