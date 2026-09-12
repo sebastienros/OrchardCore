@@ -66,7 +66,15 @@ If you need UI integration, you can:
 
 ### Create Index Profile step
 
-Index profile can be created during recipe execution using the `IndexProfile` step.
+Index profiles can be created or updated during recipe execution using the
+`CreateOrUpdateIndexProfile` step.
+
+For an existing profile, incoming content settings (`IndexLatest`, `Culture`, and
+`IndexedContentTypes`) and Lucene settings (`AnalyzerName` and `StoreSourceData`)
+use the same handlers as creation. Omitted values preserve the existing settings.
+An empty content-type list fails shared validation and leaves the stored profile
+unchanged. Updating a definition does not imply that existing documents have been
+reindexed; run the appropriate indexing operation when changing indexed data.
 
 Here is a sample step:
 
@@ -165,3 +173,69 @@ To reset all indices:
   ]
 }
 ```
+
+## Remote index discovery
+
+With `OrchardCore.Indexing` enabled, the tenant exposes the `indexes` remote-management
+capability. Discovery requires API bearer authentication, `AccessRemoteManagement`
+and `ManageIndexes`. The same permission checks apply to in-process MCP invocation.
+
+```bash
+pomi indexes providers list
+pomi indexes list --page 1 --page-size 50
+pomi indexes list --search Articles --page 1 --page-size 20
+pomi indexes show <id>
+```
+
+`GET api/indexes` uses the existing index store's one-based paging contract. `page`
+defaults to 1 and `pageSize` defaults to 50, with a maximum of 200. Negative/zero
+values and offsets beyond a 32-bit integer are rejected. `search` filters profile
+names using the configured store's comparison rules. Responses contain `page`,
+`pageSize`, `totalCount` and `items`; names determine ordering.
+
+`GET api/indexes/by-id?id=...` retrieves an index by its stable administrative ID,
+returning `404` when it is absent. Each index response contains `id`, `name`,
+`indexName`, `providerName`, `type` and `createdUtc`. It omits the properties bag,
+physical backend name, author and owner fields. The profile name, logical backend
+index name and administrative ID are distinct identifiers.
+
+`GET api/indexes/providers` describes registered providers and their source types.
+It returns provider names/display names and source types/display names/descriptions.
+Registration does not promise that every provider supports the same remote mutation
+or execution operations; inspect the live command catalog before invoking them.
+
+With tenant MCP enabled, these operations are available as `indexes_list`,
+`indexes_show` and `indexes_providers_list`. Reads use the existing profile manager
+and registered indexing options; they do not serialize backend configuration objects.
+
+## Coordinating profiles and provider resources
+
+`IIndexProfileManagementService` coordinates creation and deletion for the admin UI
+and recipe creation. Extensions that need both a local profile and a provider index
+can use this service instead of repeating the coordination around `IIndexProfileManager`.
+
+Creation validates the profile, saves it locally so creation handlers can populate
+metadata, then asks the keyed `IIndexManager` to create the provider index. A rejected
+provider creation removes the local profile. If that compensation fails, the result
+is `LocalDeleteFailed`. Provider exceptions propagate and retain the local profile
+because the provider outcome may be uncertain. Synchronization is scheduled only
+after successful creation; it is not a completion signal for indexing.
+
+Deletion checks whether the provider index exists, removes it if necessary, and then
+removes the local profile. Provider rejection preserves the local profile. The admin's
+force-delete option permits local removal when the provider is missing or rejects
+deletion, but provider exceptions still propagate. Results distinguish success,
+unavailable providers, provider rejection and failure to remove the local profile.
+
+The default profile manager propagates failures from initialization, mutation and
+validation handlers. It does not save after a creating/updating/validation handler
+fails. Failed updates restore the tracked values from before the updating handlers,
+including nested extension properties. A handler failure after persistence also
+propagates, but does not undo stored data or provider operations; inspect the result
+before retrying an uncertain operation. This behavior applies to admin, recipe and
+remote-management callers using the default manager.
+
+`IndexProfileIdentityValidator` supplies the required-name, length and uniqueness
+checks shared by the index editor and default profile handler. The editor maps these
+errors to its field prefixes; recipe and API callers receive the same domain checks.
+Provider index-name uniqueness is enforced for all registered providers, not only Lucene.

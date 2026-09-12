@@ -25,6 +25,13 @@ semantics, authorization and UI presentation in their appropriate callers. Revie
 validation, persistence, cache invalidation and lifecycle rules for duplication, and verify both
 the existing workflow and the new API. Do not leave an API-specific copy of domain logic.
 
+Each slice must list the existing callers of the extracted behavior and record which were
+migrated, which already use the service, and any intentional differences in semantics. A shared
+interface alone is not evidence of reuse: inspect the methods each caller invokes. In particular,
+review legacy recipe paths that still mutate documents directly, including the Layers recipe,
+and preserve their partial-update and extension-condition behavior when moving that logic.
+Add regression coverage for the existing caller as well as the endpoint before closing the gap.
+
 ## Initial milestone: compose a website through Pomi
 
 PR labels below are planning IDs, not GitHub PR numbers. This sequence follows the website-building

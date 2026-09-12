@@ -55,6 +55,7 @@ for suffix, permissions in [
     ("content-reader", ["ViewContent"]),
     ("widgets", ["ManageLayers", "EditContent", "PublishContent", "ViewContent", "PreviewContent"]),
     ("widgets-editor", ["ManageLayers", "EditContent", "ViewContent", "PreviewContent"]),
+    ("indexes", ["ManageIndexes"]),
     ("shortcodes", ["ManageShortcodeTemplates"]),
     ("https", ["ManageHttps"]),
     ("url-rewriting", ["ManageUrlRewritingRules"]),
@@ -102,6 +103,8 @@ if os.environ.get("OC_FIXTURE_HTTPS") == "1":
     http_url = f"http://localhost:{port}/"
     listen_urls = http_url + ";" + url
     ssl_context = ssl.create_default_context(cafile=str(certificate))
+if os.environ.get("OC_FIXTURE_TENANT_REMOVAL") == "1":
+    env["OrchardCore__OrchardCore_Tenants__TenantRemovalAllowed"] = "true"
 setup = {"ShellName": "Default", "SiteName": "CLI review", "SiteTimeZone": "UTC",
          "AdminUsername": "admin", "AdminEmail": "admin@example.test", "AdminPassword": secrets.token_urlsafe(32) + "aA1!",
          "DatabaseProvider": "Sqlite", "RecipeName": "CliFixture"}
