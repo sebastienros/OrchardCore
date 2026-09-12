@@ -283,3 +283,28 @@ After 30 minutes without a state transition, observed pending/running work becom
 `Uncertain`. This does not cancel work or prove it stopped. The original execution
 can still record its eventual result, but uncertain operations are not automatically
 restarted. Inspect the index before requesting new work after an uncertain outcome.
+
+### Remote lifecycle requests
+
+Remote lifecycle commands require API authentication, `AccessRemoteManagement` and
+`ManageIndexes`. Discover the `lifecycleActions` on each source from
+`pomi indexes providers list`. Lucene content indexes enable the current contract;
+unverified provider/source pairs return HTTP 501.
+
+```bash
+pomi indexes synchronize INDEX_ID
+pomi indexes reset INDEX_ID --force
+pomi indexes rebuild INDEX_ID --force
+pomi indexes operations show OPERATION_ID
+```
+
+Requests use `POST api/indexes/by-id:synchronize`, `:reset` or `:rebuild`, with the
+index identifier in the `id` query parameter. HTTP 202 returns the operation record
+and a Location header for `GET api/indexes/operations/by-id?id=OPERATION_ID`.
+Acceptance is not completion. Observe `state` until `Completed`, `Failed` or
+`Uncertain`, and inspect `outcome` for details such as provider contention. State and
+action values are serialized enum names. Reset/rebuild confirmation is local to
+Pomi and does not override server failures.
+
+Existing admin single/bulk actions and reset/rebuild recipes queue the same
+persisted operations. Their acknowledgement means work was queued, not completed.

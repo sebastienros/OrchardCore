@@ -116,3 +116,17 @@ automatically restarted. A lost post-request callback or host restart therefore
 cannot be reported as successful. The strict build and all seven runner/database tests pass, covering confirmed
 outcomes, exceptions, repeated invocation, overdue pending work, eventual completion
 after uncertainty, persistence and tenant isolation.
+
+## Caller and route checkpoint
+
+Admin single/bulk reset/rebuild/synchronize and both lifecycle recipes now use the
+shared operation runner. Duplicate provider/reset orchestration was removed;
+notifications acknowledge queueing rather than claiming completion. The obsolete
+admin service-provider dependency was removed and its test fixture updated.
+
+Remote routes request each action and read operation status, using existing API
+scheme and both management/index permissions. Lucene content startup opts into the
+remote provider gate; discovery lists source lifecycle actions. Other remote
+provider/source pairs return 501 until verified. The strict build and all 23 focused discovery, permission/provider-gate and
+existing management tests pass. Live execution, caller regressions,
+interruption/feature lifecycle checks and final packaging/PR remain.

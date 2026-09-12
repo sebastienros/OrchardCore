@@ -64,7 +64,7 @@ internal static class IndexDiscoveryEndpoints
     }
 
     internal static async Task<IResult> ProvidersAsync(HttpContext context, [FromServices] IAuthorizationService authorization,
-        [FromServices] IOptions<IndexingOptions> options)
+        [FromServices] IOptions<IndexingOptions> options, [FromServices] IOptions<IndexLifecycleOptions> lifecycle)
     {
         if (!await AuthorizedAsync(context, authorization)) { return context.ApiForbidProblem(); }
         var value = options.Value;
@@ -75,7 +75,10 @@ internal static class IndexDiscoveryEndpoints
                 Name = provider.ProviderName, DisplayName = provider.DisplayName?.Value ?? provider.ProviderName,
                 Sources = value.Sources.Values.Where(source => string.Equals(source.ProviderName, provider.ProviderName, StringComparison.OrdinalIgnoreCase))
                     .OrderBy(source => source.Type, StringComparer.OrdinalIgnoreCase)
-                    .Select(source => new IndexSourceResponse { Type = source.Type, DisplayName = source.DisplayName?.Value ?? source.Type, Description = source.Description?.Value }).ToArray(),
+                    .Select(source => new IndexSourceResponse { Type = source.Type, DisplayName = source.DisplayName?.Value ?? source.Type, Description = source.Description?.Value,
+                        LifecycleActions = source.Type == IndexingConstants.ContentsIndexSource && lifecycle.Value.RemoteProviders.Contains(provider.ProviderName)
+                            ? ["synchronize", "reset", "rebuild"] : [],
+                    }).ToArray(),
             }).ToArray());
     }
 
