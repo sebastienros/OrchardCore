@@ -99,7 +99,7 @@ public sealed class IndexLifecycleService : IIndexLifecycleService
                             ? IndexProcessingStatus.LockExpired : IndexProcessingStatus.ProviderRejected);
                     }
                 }
-                catch (IndexingLeaseExpiredException)
+                catch (Exception) when (lease.Expired)
                 {
                     return new IndexProcessingResult(profile.Id, IndexProcessingStatus.LockExpired);
                 }

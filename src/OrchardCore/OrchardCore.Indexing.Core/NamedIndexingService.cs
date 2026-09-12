@@ -182,7 +182,7 @@ public abstract class NamedIndexingService
                     lastTaskId = Math.Min(lastTaskId, taskId);
                     tracker.Add(indexProfile.Id, new IndexProfileEntryContext(indexProfile, documentIndexManager, taskId));
                 }
-                catch (IndexingLeaseExpiredException)
+                catch (Exception) when (lease.Expired)
                 {
                     results[indexProfile.Id].Status = IndexProcessingStatus.LockExpired;
                 }

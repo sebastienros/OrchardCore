@@ -162,7 +162,8 @@ Capture the returned operation ID and poll `operations show` with a bounded wait
 queued tasks were observed after successful processing; subsequent content changes
 can require another synchronization. Inspect `outcome` on `Failed` before deciding
 whether to retry. `Uncertain` means the server cannot confirm progress, not that
-work was cancelled: never automatically repeat it. Repeated requests create new
+work was cancelled: never automatically repeat it. `LockExpired` means a provider
+call may have outlived the lock lease; inspect the index before requesting more work. Repeated requests create new
 operations. No token refresh or successful HTTP 202 proves the index is ready.
 
 Reset reprocesses the queue without recreating the index. Rebuild recreates it;
@@ -171,9 +172,9 @@ These operations use the same coordinator as admin and recipe actions. Ongoing
 scheduled updates still require the worker feature. Other providers' typed
 definitions and lifecycle adapters are not covered by the Lucene contract.
 
-See the [Lucene definition contract](https://github.com/sebastienros/OrchardCore/blob/caac6971ac1f250d8e8019e4c4ffd3f6b4b4ddcd/src/docs/reference/modules/Lucene/README.md#remote-content-index-definitions)
-and [shared index coordination](https://github.com/sebastienros/OrchardCore/blob/caac6971ac1f250d8e8019e4c4ffd3f6b4b4ddcd/src/docs/reference/modules/Indexing/README.md#coordinating-profiles-and-provider-resources).
-See also the [operation status contract](https://github.com/sebastienros/OrchardCore/blob/caac6971ac1f250d8e8019e4c4ffd3f6b4b4ddcd/src/docs/reference/modules/Indexing/README.md#remote-lifecycle-requests).
+See the [Lucene definition contract](https://github.com/sebastienros/OrchardCore/blob/738a7c14b4e1ac8a0418fc11967c681b6ac444cd/src/docs/reference/modules/Lucene/README.md#remote-content-index-definitions)
+and [shared index coordination](https://github.com/sebastienros/OrchardCore/blob/738a7c14b4e1ac8a0418fc11967c681b6ac444cd/src/docs/reference/modules/Indexing/README.md#coordinating-profiles-and-provider-resources).
+See also the [operation status contract](https://github.com/sebastienros/OrchardCore/blob/738a7c14b4e1ac8a0418fc11967c681b6ac444cd/src/docs/reference/modules/Indexing/README.md#remote-lifecycle-requests).
 
 ## Workflows
 

@@ -247,3 +247,16 @@ coordinator and runner cases pass. Simulated expiry in document handlers, provid
 writes and an empty final queue read prevents cursor advancement/completed status.
 The runner persists uncertain lock-expired outcomes without repeating execution.
 Renewed integrated/live/docs/package verification and independent PR/CI remain.
+
+## Final validation checkpoint
+
+At `738a7c14b`, the strict solution build passed with zero warnings/errors, the
+full server suite passed 3,409 tests (one CI-only skip), CLI passed 295 and MCP
+passed 78. Strict docs and both skill distributions passed.
+
+Final review added four preparation-expiry regressions for tracked and legacy
+sources, including provider exceptions after expiry. Such exceptions now preserve
+`LockExpired`/uncertainty rather than reporting an ordinary failure. The corrected
+strict build and all 35 focused progress/coordinator/runner tests pass. Pomi manual
+links now pin the published `738a7c14b` documentation, including lease semantics.
+Fresh live verification and final package generation remain before PR publication.

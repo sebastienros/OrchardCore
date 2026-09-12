@@ -159,6 +159,51 @@ public class IndexLifecycleServiceTests
         Assert.Equal(expected, calls);
     }
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task Rebuild_LeaseExpiresInProvider_DoesNotResetOrNotify(bool legacy, bool throws)
+    {
+        long elapsed = 0;
+        var time = new Mock<TimeProvider>();
+        time.SetupGet(value => value.TimestampFrequency).Returns(TimeSpan.TicksPerSecond);
+        time.Setup(value => value.GetTimestamp()).Returns(() => elapsed);
+        var profile = new IndexProfile { Id = "index", Type = "Test", ProviderName = "Test" };
+        var profiles = new Mock<IIndexProfileManager>(MockBehavior.Strict);
+        profiles.Setup(value => value.FindByIdAsync(profile.Id)).ReturnsAsync(profile);
+        var indexes = new Mock<IIndexManager>(MockBehavior.Strict);
+        indexes.Setup(value => value.RebuildAsync(profile)).Returns(() =>
+        {
+            elapsed = TimeSpan.FromMinutes(16).Ticks;
+            return throws ? Task.FromException<bool>(new InvalidOperationException("Provider expired.")) : Task.FromResult(true);
+        });
+        var locker = new Mock<ILocker>();
+        var locking = new Mock<IDistributedLock>();
+        locking.Setup(value => value.TryAcquireLockAsync("IndexingService-index", It.IsAny<TimeSpan>(), It.IsAny<TimeSpan>()))
+            .ReturnsAsync((locker.Object, true));
+        var handler = new Mock<IIndexProfileHandler>(MockBehavior.Strict);
+        var services = new ServiceCollection().AddSingleton<TimeProvider>(time.Object).AddSingleton(locking.Object)
+            .AddSingleton(handler.Object).AddKeyedSingleton<IIndexManager>("Test", indexes.Object)
+            .AddKeyedSingleton<IDocumentIndexManager>("Test", Mock.Of<IDocumentIndexManager>());
+        if (!legacy)
+        {
+            services.AddKeyedSingleton<NamedIndexingService>("Test", (provider, _) =>
+                new Processor(Mock.Of<IIndexProfileStore>(), Mock.Of<IIndexingTaskManager>(), provider));
+        }
+        using var provider = services.BuildServiceProvider();
+
+        var result = await new IndexLifecycleService(profiles.Object, provider).ExecuteAsync(profile.Id, IndexLifecycleAction.Rebuild);
+
+        Assert.Equal(IndexProcessingStatus.LockExpired, result.Status);
+        Assert.Null(result.LastTaskId);
+        profiles.Verify(value => value.FindByIdAsync(profile.Id), Times.Once());
+        profiles.VerifyNoOtherCalls();
+        handler.VerifyNoOtherCalls();
+        locker.Verify(value => value.DisposeAsync(), Times.Once());
+    }
+
     [Fact]
     public async Task ContentHandler_AlreadyProcessed_DoesNotStartAnotherProcessor()
     {
