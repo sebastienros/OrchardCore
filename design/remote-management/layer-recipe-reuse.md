@@ -1,0 +1,32 @@
+# Layers recipe shared-service audit
+
+The legacy `Layers` recipe calls `ILayerService.LoadLayersAsync` and the document-level
+`UpdateAsync`, but bypasses the newer name validation and named mutation methods.
+It edits the mutable document while parsing subsequent entries, before rejecting
+unknown conditions. The “no changes” error therefore does not prove the loaded
+objects remain unchanged. JavaScript parsing already shared by the management API
+and editor is also absent from the recipe path.
+
+This follow-up is independent of the index-definition PR and starts from merged
+`7e2a48e89` on `sebros/remote-tenant-cli-plan`.
+
+## Required behavior
+
+- Prepare and validate every recipe entry before changing the layer document.
+- Reuse `ILayerService.ValidateName`, named create/update methods, and
+  `IRuleManagementService.ValidateCondition` for supported shared validation.
+- Preserve legacy recipe input and registered extension condition deserialization;
+  do not route recipes through the narrower public API condition allowlist.
+- Preserve omitted description/rule values and root/child identities; replace an
+  explicitly supplied condition list rather than merging it.
+- Cover invalid names, invalid scripts, unknown types after a valid entry, valid
+  create/update, and omitted fields in tests of the actual recipe caller.
+
+The individual-condition admin controller supports extension editors and incremental
+rule edits. Its traversal/reorder behavior is distinct from replacing a whole rule;
+this audit does not claim those methods have already been extracted or validated.
+
+## Evidence
+
+Regression tests added before production changes. Baseline build/test is running;
+results and final validation will be recorded after inspecting the completed run.
