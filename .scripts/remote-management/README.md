@@ -403,3 +403,36 @@ empty-array deletion, unique catalogs and independent CLI/feature gates.
 validation, ordering, published/draft separation, restricted edit/publish roles,
 MCP moves and feature transitions against real rendered pages. The disposable
 fixture configures Content and Footer zones and dedicated widget clients.
+
+## Typed HTTPS settings verification
+
+Use an already trusted development certificate for the optional dual HTTP/HTTPS fixture:
+
+```bash
+OC_FIXTURE_HTTPS=1 python3 .scripts/remote-management/start-fixture.py
+python3 .scripts/remote-management/https-settings-smoke.py <fixture.json>
+```
+
+The fixture checks existing certificate trust and exports only its public PEM certificate
+for Python's trust bundle. Kestrel uses the existing development certificate; the fixture
+does not export its private key or modify system trust. See the
+[SDK certificate export modes](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-dev-certs#options).
+The smoke suite verifies partial updates and null reset, no-op retries, module permissions,
+refusal over HTTP, real 307/308 redirects and HSTS headers, feature removal/restoration
+and MCP behavior with the CLI feature disabled. HTTPS certificate verification stays enabled.
+
+## Website composition milestone
+
+```bash
+python3 .scripts/remote-management/website-composition-smoke.py <fixture.json>
+```
+
+This creates a setup-only Blank tenant and a managed Blog tenant through
+`pomi tenants install`. The managed tenant uses its returned application context,
+without fixture credential overrides or `pomi login`, to create content and a widget,
+a conditional layer, a shape placement and a shortcode template. Public rendering
+proves their combined behavior. Existing current-context selection remains unchanged;
+setup-only installation creates no context. Administrator credentials are retained in
+owner-only files under the disposable fixture's composition directory. The Blog recipe
+supplies configured widget zones; the script does not claim zone-settings editing or
+local application scaffolding coverage.

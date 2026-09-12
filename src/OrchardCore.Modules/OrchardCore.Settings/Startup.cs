@@ -74,6 +74,7 @@ public sealed class Startup : StartupBase
     public override void Configure(IApplicationBuilder builder, IEndpointRouteBuilder routes, IServiceProvider serviceProvider)
     {
         routes.AddSiteSettingsManagementEndpoints();
+        routes.AddSiteSettingsSectionEndpoints();
     }
 }
 

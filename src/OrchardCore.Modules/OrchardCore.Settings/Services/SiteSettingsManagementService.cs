@@ -352,5 +352,11 @@ internal sealed class SiteSettingsRemoteManagementCapabilityProvider : IRemoteMa
                 Version = $"{RemoteManagementConstants.ProtocolMajorVersion}.{RemoteManagementConstants.ProtocolMinorVersion}",
                 DisplayName = "Settings",
             },
+            new RemoteManagementCapability
+            {
+                Id = SiteSettingsSectionEndpoints.Capability,
+                Version = $"{RemoteManagementConstants.ProtocolMajorVersion}.{RemoteManagementConstants.ProtocolMinorVersion}",
+                DisplayName = "Settings Sections",
+            },
         ]);
 }

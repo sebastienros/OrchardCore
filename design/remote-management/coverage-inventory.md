@@ -6,6 +6,7 @@ Implementation order and decision criteria are in the [delivery plan](coverage-p
 
 P03 adds stored shortcode-template coverage; P04 adds shape placements after the Shortcodes merge
 (`1408ff58f`). P05 adds widget placement after the Placements merge (`541f23b0d`).
+P06 adds typed section contracts and HTTPS after the widget merge (`19b7b75e6`).
 The campaign ledger records delivery state.
 
 ## Scope and interpretation
@@ -47,16 +48,16 @@ The categories are mutually exclusive planning classifications, not percentages 
 
 | Code | Classification | Feature count |
 | --- | --- | ---: |
-| D | Direct management OpenAPI and Pomi commands exist | 16 |
+| D | Direct management OpenAPI and Pomi commands exist | 17 |
 | P | Partial: important operations missing, or only helper/protocol/shared coverage | 27 |
 | A | Management OpenAPI exists; Pomi projection intentionally absent | 1 |
-| M | Dedicated management API and corresponding commands missing | 35 |
+| M | Dedicated management API and corresponding commands missing | 34 |
 | S | Shared API/commands or a built-in CLI workflow; validate the stated limits | 36 |
 | I | Infrastructure, rendering, protocol, provider or alias; no separate API proposed by default | 70 |
 | X | Sample; excluded from delivery priorities | 3 |
 
-There are **35 features with neither dedicated management APIs nor commands**, and **27 with
-partial coverage requiring a scope decision**. These are not 62 independent implementation tasks:
+There are **34 features with neither dedicated management APIs nor commands**, and **27 with
+partial coverage requiring a scope decision**. These are not 61 independent implementation tasks:
 the plan consolidates them into shared workflows. Another 36 features reuse existing transports
 or built-in commands. Nineteen production modules contribute direct `WithCliCommand` operation
 registrations; this does not imply all features in those modules are covered.
@@ -91,11 +92,12 @@ Backlog IDs refer to [the delivery plan](coverage-plan.md#work-packages).
 | [CustomSettings](../../src/OrchardCore.Modules/OrchardCore.CustomSettings/Manifest.cs) / `OrchardCore.CustomSettings` | Yes | `custom-settings` | Content-type-defined custom settings are supported. This does not expose arbitrary module site-settings sections. | — |
 | [Features](../../src/OrchardCore.Modules/OrchardCore.Features/Manifest.cs) / `OrchardCore.Features` | Yes | `features` | Existing management surface; preserve regression coverage. | — |
 | [HomeRoute](../../src/OrchardCore.Modules/OrchardCore.HomeRoute/Manifest.cs) / `OrchardCore.HomeRoute` | Yes | `settings set-home-content` | Existing management surface; preserve regression coverage. | — |
+| [Https](../../src/OrchardCore.Modules/OrchardCore.Https/Manifest.cs) / `OrchardCore.Https` | Typed section read/schema/update | `settings sections` (`https`) | P06: explicit tenant-owned HTTPS/HSTS settings, shared editor validation, secure-transport requirement, null/omission semantics, reloads and real redirect/HSTS behavior. Host TLS and HSTS options remain configuration. | B05 |
 | [Placements](../../src/OrchardCore.Modules/OrchardCore.Placements/Manifest.cs) / `OrchardCore.Placements` | Yes | `placements` | P04: rule CRUD/validation and registered filter discovery, shared admin validation, database/file ownership, rendered matching/order and feature gates verified. Theme/module placement files remain separate. | B02 |
 | [Queries](../../src/OrchardCore.Modules/OrchardCore.Queries/Manifest.cs) / `OrchardCore.Queries` | Yes | `queries`; `queries sources` | Definitions, validation, source discovery and execution exist. Backends require their feature to be enabled. | — |
 | [Recipes](../../src/OrchardCore.Modules/OrchardCore.Recipes/Manifest.cs) / `OrchardCore.Recipes` | Yes | `recipes` | List/show/execute existing non-setup recipes. Not arbitrary recipe upload, plan editing or deployment import. | — |
 | [Roles](../../src/OrchardCore.Modules/OrchardCore.Roles/Manifest.cs) / `OrchardCore.Roles` | Yes | `roles` | Existing management surface; preserve regression coverage. | — |
-| [Settings](../../src/OrchardCore.Modules/OrchardCore.Settings/Manifest.cs) / `OrchardCore.Settings` | Yes | `settings show`, `update`, `schema` | Safe core properties only. Schema contributions currently include CustomSettings; there is no arbitrary module-section read/write endpoint. | — |
+| [Settings](../../src/OrchardCore.Modules/OrchardCore.Settings/Manifest.cs) / `OrchardCore.Settings` | Yes | `settings show`, `update`, `schema`; `settings sections` | Safe core properties and explicit module-owned sections. P06 adds allowlisted read/schema/update providers; discovery-only schema contributions remain separate and arbitrary properties are not exposed. | — |
 | [Shortcodes](../../src/OrchardCore.Modules/OrchardCore.Shortcodes/Manifest.cs) / `OrchardCore.Shortcodes.Templates` | Yes | `shortcodes templates` | P03: stored template CRUD/validation and live schemas, shared admin/recipe services, normalized retries, sanitized usage, rendered output and feature gates verified. Code-defined providers remain separate. | B02 |
 | [Templates](../../src/OrchardCore.Modules/OrchardCore.Templates/Manifest.cs) / `OrchardCore.Templates` | Yes | `templates` | Frontend template document CRUD exists. It does not address the separate AdminTemplatesManager. | — |
 | [Tenants](../../src/OrchardCore.Modules/OrchardCore.Tenants/Manifest.cs) / `OrchardCore.Tenants` | Yes | `tenants` | Lifecycle/install and application provisioning exist; feature-profile definitions remain a separate gap. | — |
@@ -164,7 +166,6 @@ Backlog IDs refer to [the delivery plan](coverage-plan.md#work-packages).
 | [Google](../../src/OrchardCore.Modules/OrchardCore.Google/Manifest.cs) / `OrchardCore.Google.GoogleAuthentication` | No dedicated management API | None | Authentication/analytics/tag-manager settings lack management contracts; handle secrets separately from public identifiers. | B12 |
 | [Google](../../src/OrchardCore.Modules/OrchardCore.Google/Manifest.cs) / `OrchardCore.Google.Analytics` | No dedicated management API | None | Authentication/analytics/tag-manager settings lack management contracts; handle secrets separately from public identifiers. | B12 |
 | [Google](../../src/OrchardCore.Modules/OrchardCore.Google/Manifest.cs) / `OrchardCore.Google.TagManager` | No dedicated management API | None | Authentication/analytics/tag-manager settings lack management contracts; handle secrets separately from public identifiers. | B12 |
-| [Https](../../src/OrchardCore.Modules/OrchardCore.Https/Manifest.cs) / `OrchardCore.Https` | No dedicated management API | None | HTTPS/HSTS tenant settings lack a management section; validate transport and restart effects. | B05 |
 | [Indexing](../../src/OrchardCore.Modules/OrchardCore.Indexing/Manifest.cs) / `OrchardCore.Indexing` | No dedicated management API | None | Missing provider/index list, definitions, reset/synchronize/rebuild and status. Reuse common index management; do not implement one complete API per backend. | B07 |
 | [Media](../../src/OrchardCore.Modules/OrchardCore.Media/Manifest.cs) / `OrchardCore.Media.Cache` | No dedicated management API | None | Media cache purge/settings are admin-only; define a tenant-scoped operation. | B09 |
 | [Microsoft.Authentication](../../src/OrchardCore.Modules/OrchardCore.Microsoft.Authentication/Manifest.cs) / `OrchardCore.Microsoft.Authentication.MicrosoftAccount` | No dedicated management API | None | Microsoft Account/Azure AD provider configuration lacks a redacted management contract. | B12 |

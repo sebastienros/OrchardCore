@@ -221,15 +221,15 @@ public class SiteSettingsManagementTests
     }
 
     [Fact]
-    public async Task CapabilityProvider_AdvertisesStableSettingsCapability()
+    public async Task CapabilityProvider_AdvertisesStableSettingsAndSectionCapabilities()
     {
-        var capability = Assert.Single(await new SiteSettingsRemoteManagementCapabilityProvider().GetCapabilitiesAsync());
+        var capabilities = (await new SiteSettingsRemoteManagementCapabilityProvider().GetCapabilitiesAsync()).ToArray();
 
-        Assert.Equal("settings", capability.Id);
-        Assert.Equal("Settings", capability.DisplayName);
-        Assert.Equal(
+        Assert.Equal(["settings", "settings-sections"], capabilities.Select(capability => capability.Id));
+        Assert.Equal(["Settings", "Settings Sections"], capabilities.Select(capability => capability.DisplayName));
+        Assert.All(capabilities, capability => Assert.Equal(
             $"{RemoteManagementConstants.ProtocolMajorVersion}.{RemoteManagementConstants.ProtocolMinorVersion}",
-            capability.Version);
+            capability.Version));
     }
 
     [Fact]

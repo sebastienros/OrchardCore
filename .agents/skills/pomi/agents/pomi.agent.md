@@ -40,7 +40,7 @@ working directory. Load only the specialist and references needed next.
 | Configure conditional layers and verify widget visibility | [Conditional layers](../skills/orchardcore-cli-templates/SKILL.md#conditional-layers) |
 | Choose an installed theme | [Themes](../skills/orchardcore-cli-themes/SKILL.md) |
 | Build navigation | [Menus](../skills/orchardcore-cli-menus/SKILL.md) |
-| Configure site settings and cultures | [Settings](../skills/orchardcore-cli-settings/SKILL.md) |
+| Configure site settings, typed module sections and cultures | [Settings](../skills/orchardcore-cli-settings/SKILL.md) |
 | Configure features, queries, recipes, and roles | [Administration](../skills/orchardcore-cli-automation/SKILL.md) |
 | Query related content when appropriate | [GraphQL](../skills/orchardcore-cli-graphql/SKILL.md) |
 

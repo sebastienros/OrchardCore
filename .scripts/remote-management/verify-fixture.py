@@ -49,6 +49,9 @@ missing_resource_status = {
     'users delete': 204, 'users disable': 404, 'custom-settings show': 404,
     'custom-settings update': 404, 'custom-settings schema': 404,
     'custom-settings list': 200,  # Filters out settings the identity cannot access.
+    'settings sections list': 200,  # Filters providers by their read permission.
+    'settings sections show': 404, 'settings sections update': 404,
+    'settings sections schema': 404,
 }
 ids = set()
 capabilities = {capability['id'] for capability in manifest['capabilities']}
