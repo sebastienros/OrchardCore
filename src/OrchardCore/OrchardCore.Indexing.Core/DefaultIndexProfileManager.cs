@@ -156,8 +156,33 @@ public sealed class DefaultIndexProfileManager : IIndexProfileManager
     {
         ArgumentNullException.ThrowIfNull(index);
 
+        // Updating handlers apply incoming recipe/API data to the tracked instance.
+        // Keep a deep snapshot so a rejected update cannot leak into a later save.
+        var original = new IndexProfile
+        {
+            Id = index.Id, Name = index.Name, ProviderName = index.ProviderName, Type = index.Type,
+            IndexName = index.IndexName, IndexFullName = index.IndexFullName,
+            CreatedUtc = index.CreatedUtc, Author = index.Author, OwnerId = index.OwnerId,
+            Properties = index.Properties?.DeepClone().AsObject(),
+        };
         var updatingContext = new UpdatingContext<IndexProfile>(index, data);
         await _handlers.InvokeAsync((handler, ctx) => handler.UpdatingAsync(ctx), updatingContext, _logger);
+
+        var validation = await ValidateAsync(index);
+        if (!validation.Succeeded)
+        {
+            index.Id = original.Id;
+            index.Name = original.Name;
+            index.ProviderName = original.ProviderName;
+            index.Type = original.Type;
+            index.IndexName = original.IndexName;
+            index.IndexFullName = original.IndexFullName;
+            index.CreatedUtc = original.CreatedUtc;
+            index.Author = original.Author;
+            index.OwnerId = original.OwnerId;
+            index.Properties = original.Properties;
+            throw new IndexProfileValidationException(validation.Errors);
+        }
 
         await _store.UpdateAsync(index);
 

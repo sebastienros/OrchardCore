@@ -59,19 +59,18 @@ public sealed class CreateOrUpdateIndexProfileStep : NamedRecipeStepHandler
 
             if (indexProfile is not null)
             {
-                var validationResult = await _indexProfileManager.ValidateAsync(indexProfile);
-
-                if (!validationResult.Succeeded)
+                try
                 {
-                    foreach (var error in validationResult.Errors)
+                    // The manager validates after applying the incoming values.
+                    await _indexProfileManager.UpdateAsync(indexProfile, token);
+                }
+                catch (IndexProfileValidationException exception)
+                {
+                    foreach (var error in exception.Errors)
                     {
                         context.Errors.Add(error.ErrorMessage);
                     }
-
-                    continue;
                 }
-
-                await _indexProfileManager.UpdateAsync(indexProfile, token);
             }
             else
             {

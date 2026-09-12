@@ -83,7 +83,9 @@ public interface IIndexProfileManager
     ValueTask CreateAsync(IndexProfile indexProfile);
 
     /// <summary>
-    /// Asynchronously updates the specified model with optional additional data.
+    /// Applies optional additional data, validates the resulting model, and persists valid values.
+    /// Rejected values applied by updating handlers are restored before throwing an
+    /// <see cref="IndexProfileValidationException"/>.
     /// </summary>
     /// <param name="indexProfile">The model to be updated.</param>
     /// <param name="data">Optional additional data to update the model with. Defaults to <c>null</c>.</param>

@@ -62,3 +62,18 @@ The Lucene initialization handler currently applies analyzer/source settings onl
 when initializing, so recipe update parity needs explicit verification. The common
 handler dereferences optional data without a null guard; inspect the resulting
 logged failures in admin New/Update paths rather than assuming they are harmless.
+
+## Shared validation checkpoint
+
+The baseline strict server build passed with zero warnings/errors. Of two manager
+regressions, invalid incoming data failed because no validation exception was thrown;
+valid incoming data passed. The manager now validates after updating handlers, before
+store persistence, and restores every profile field plus a deep copy of properties
+on rejection. IndexProfileValidationException preserves validation members/errors.
+The general recipe reports those errors after incoming data is applied; the admin
+edit action maps post-update validation errors back to ModelState.
+
+The strict server rebuild passes with zero warnings/errors and both manager tests
+pass, including nested-property restoration. These are focused manager results,
+not proof of full index administration. Existing caller integration, null-data and
+provider metadata parity, full suites and live Lucene/query checks remain.

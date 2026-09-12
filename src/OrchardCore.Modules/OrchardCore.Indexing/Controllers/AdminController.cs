@@ -332,7 +332,21 @@ public sealed class AdminController : Controller
 
         if (ModelState.IsValid)
         {
-            await _indexProfileManager.UpdateAsync(indexProfile);
+            try
+            {
+                await _indexProfileManager.UpdateAsync(indexProfile);
+            }
+            catch (IndexProfileValidationException exception)
+            {
+                foreach (var error in exception.Errors)
+                {
+                    foreach (var member in error.MemberNames.DefaultIfEmpty(string.Empty))
+                    {
+                        ModelState.TryAddModelError(member, error.ErrorMessage);
+                    }
+                }
+                return View(model);
+            }
 
             await _notifier.SuccessAsync(H["An index has been updated successfully."]);
 
