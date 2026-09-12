@@ -265,3 +265,12 @@ This service executes work directly and returns an `IndexProcessingResult`. Call
 that need asynchronous HTTP operation tracking must schedule and track that work
 separately. A completed result describes the queue observed during that run; later
 content changes still require indexing.
+
+### Persisting lifecycle state
+
+`IndexOperationStore` stores lifecycle records in the tenant database with opaque
+operation identifiers. Status writes use independent transactions so they can be
+retained separately from indexing work. Expected-state transitions prevent a
+terminal record from being restarted, and a completed state requires a completed
+processing result for the same index. Records contain timestamps and confirmed
+progress rather than provider exception details.

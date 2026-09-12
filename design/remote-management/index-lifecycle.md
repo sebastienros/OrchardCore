@@ -86,3 +86,17 @@ handler failures now propagate. This executor does not itself schedule a job.
 The content indexing source is registered with the shared coordinator. The strict build passes with zero warnings/errors; all 21 focused processing,
 coordinator and handler tests pass, including operation ordering, single lock
 acquisition and reset-handler propagation. Existing admin/recipe migration, persistent status and endpoints remain.
+
+## Persistent operation records
+
+The tenant Indexing feature now registers a separate operation-record map index and
+migration. `IndexOperationStore` uses independent YesSql sessions and commits each
+creation/transition, rather than enlisting status updates in the indexing work's
+transaction. IDs are opaque GUIDs; lookup uses the tenant store and its index.
+
+Pending/running/terminal transitions are guarded by expected state and optimistic
+concurrency. Completion requires a completed processing result for the same index;
+terminal records cannot be restarted through a transition. Records contain action,
+state, timestamps, outcome and confirmed cursor, not provider exception text.
+The strict build and both real-tenant persistence/isolation tests pass. Scheduling, interruption detection,
+existing caller migration and endpoints remain incomplete.

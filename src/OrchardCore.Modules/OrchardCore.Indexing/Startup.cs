@@ -45,6 +45,8 @@ public sealed class Startup : StartupBase
         services.AddDataMigration<PreviewIndexingMigrations>();
 
         services
+            .AddIndexProvider<IndexOperationIndexProvider>()
+            .AddDataMigration<IndexOperationMigrations>()
             .AddIndexProvider<IndexProfileIndexProvider>()
             .AddDataMigration<IndexingMigrations>();
     }
