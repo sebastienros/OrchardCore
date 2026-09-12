@@ -1,11 +1,11 @@
 # Layers recipe shared-service audit
 
-The legacy `Layers` recipe calls `ILayerService.LoadLayersAsync` and the document-level
-`UpdateAsync`, but bypasses the newer name validation and named mutation methods.
-It edits the mutable document while parsing subsequent entries, before rejecting
+Before PR #25, the legacy `Layers` recipe called `ILayerService.LoadLayersAsync` and the document-level
+`UpdateAsync`, but bypassed the newer name validation and named mutation methods.
+It edited the mutable document while parsing subsequent entries, before rejecting
 unknown conditions. The “no changes” error therefore does not prove the loaded
 objects remain unchanged. JavaScript parsing already shared by the management API
-and editor is also absent from the recipe path.
+and editor was also absent from the recipe path.
 
 This follow-up is independent of the index-definition PR and starts from merged
 `7e2a48e89` on `sebros/remote-tenant-cli-plan`.
@@ -40,3 +40,23 @@ partial updates, root/child identity preservation, empty-list replacement,
 registered extension properties, legacy missing rules and immutable root safety.
 The branch now integrates merged index PR #24 (`d26b9888b`); combined validation is
 running before PR publication. No unmerged PR dependency is introduced.
+
+## Integrated result and caller inventory
+
+[PR #25](https://github.com/sebastienros/OrchardCore/pull/25) merged as
+`769dd97c951054650fc5598cc9f3444de1163b99`, with all CI checks passing.
+Integrated server validation passed 3,358 tests with one CI-only skip; strict
+build, docs and skill distribution checks passed.
+
+| Existing caller | Shared behavior now used | Intentional boundary |
+| --- | --- | --- |
+| Layers admin create/update/delete | Named `ILayerService` mutations, name checks, reference checks and persistence/cache updates | Model binding, authorization and notifications stay in the controller. |
+| JavaScript condition editor | `IRuleManagementService.ValidateCondition` | Editor binding and field error presentation stay in the display driver. |
+| Legacy Layers recipe | Name validation and named create/update through `ILayerService`; condition validation through `IRuleManagementService` | Recipe preparation preserves omitted fields, identities and registered extension conditions, and validates all entries before mutation. |
+| Individual-condition admin editor | Existing layer document persistence and shared JavaScript validation through the display driver | Incremental condition traversal/reordering and extension editors differ from whole-rule API replacement; they are not claimed as extracted operations. |
+
+Seven recipe regression cases cover invalid names/scripts, unknown conditions
+without partial mutation, successful partial updates, identity preservation,
+explicit empty lists, extension properties and legacy rule input. Future slices
+must record equivalent caller evidence rather than treating interface injection
+alone as reuse.
