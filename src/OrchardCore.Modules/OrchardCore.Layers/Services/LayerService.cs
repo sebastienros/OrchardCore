@@ -53,11 +53,7 @@ public class LayerService : ILayerService
         {
             return new LayerMutationResult { Status = LayerMutationStatus.Conflict, Layer = existing, Error = S["The layer name already exists."] };
         }
-        rule ??= new Rule();
-        if (string.IsNullOrEmpty(rule.ConditionId))
-        {
-            _conditionIds.GenerateUniqueId(rule);
-        }
+        rule = EnsureRuleIdentity(rule);
         var layer = new Layer { Name = name, Description = description, LayerRule = rule };
         document.Layers.Add(layer);
         await UpdateAsync(document);
@@ -77,9 +73,9 @@ public class LayerService : ILayerService
             return new LayerMutationResult { Status = LayerMutationStatus.NotFound };
         }
         layer.Description = description;
-        if (rule is not null)
+        if (rule is not null || layer.LayerRule is null)
         {
-            layer.LayerRule = rule;
+            layer.LayerRule = EnsureRuleIdentity(rule);
         }
         await UpdateAsync(document);
         return new LayerMutationResult { Status = LayerMutationStatus.Success, Layer = layer };
@@ -101,6 +97,16 @@ public class LayerService : ILayerService
         document.Layers.Remove(layer);
         await UpdateAsync(document);
         return new LayerMutationResult { Status = LayerMutationStatus.Success, Layer = layer };
+    }
+
+    private Rule EnsureRuleIdentity(Rule rule)
+    {
+        rule ??= new Rule();
+        if (string.IsNullOrEmpty(rule.ConditionId))
+        {
+            _conditionIds.GenerateUniqueId(rule);
+        }
+        return rule;
     }
 
     private static Layer Find(LayersDocument document, string name) => document.Layers
