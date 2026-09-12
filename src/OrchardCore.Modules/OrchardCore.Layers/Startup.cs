@@ -47,6 +47,7 @@ public sealed class Startup : StartupBase
         services.AddScoped<IContentDisplayDriver, LayerMetadataWelder>();
         services.AddNavigationProvider<AdminMenu>();
         services.AddScoped<ILayerService, LayerService>();
+        services.AddScoped<ILayerWidgetService, LayerWidgetService>();
         services.AddSingleton<IRemoteManagementCapabilityProvider, LayersRemoteManagementCapabilityProvider>();
         services.AddScoped<IContentHandler, LayerMetadataHandler>();
         services.AddIndexProvider<LayerMetadataIndexProvider>();
@@ -60,5 +61,6 @@ public sealed class Startup : StartupBase
     public override void Configure(IApplicationBuilder app, IEndpointRouteBuilder routes, IServiceProvider serviceProvider)
     {
         routes.AddLayerManagementEndpoints();
+        routes.AddLayerWidgetEndpoints();
     }
 }
