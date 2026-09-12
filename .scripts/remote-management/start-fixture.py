@@ -43,6 +43,7 @@ for suffix, permissions in [
     ("graphql-reader", ["ExecuteGraphQL"]),
     ("layers", ["ManageLayers"]),
     ("shortcodes", ["ManageShortcodeTemplates"]),
+    ("placements", ["ManagePlacements"]),
     ("translator-fr", ["ViewDynamicTranslations", "ManageTranslations_fr"]),
     ("translation-reader", ["ViewDynamicTranslations"]),
     ("media", ["ManageMediaContent", "ManageMediaFolder"]),

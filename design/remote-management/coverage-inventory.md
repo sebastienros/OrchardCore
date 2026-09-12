@@ -4,7 +4,8 @@ Initial source audit of `sebros/remote-tenant-cli-plan` at **`befe0e93c`**, 2026
 Updated for P02 layer definitions/conditions; the campaign ledger records delivery state.
 Implementation order and decision criteria are in the [delivery plan](coverage-plan.md).
 
-P03 adds verified stored shortcode-template coverage after the Layers merge (`79edeff6d`).
+P03 adds stored shortcode-template coverage; P04 adds shape placements after the Shortcodes merge
+(`1408ff58f`). The campaign ledger records delivery state.
 
 ## Scope and interpretation
 
@@ -45,18 +46,18 @@ The categories are mutually exclusive planning classifications, not percentages 
 
 | Code | Classification | Feature count |
 | --- | --- | ---: |
-| D | Direct management OpenAPI and Pomi commands exist | 15 |
+| D | Direct management OpenAPI and Pomi commands exist | 16 |
 | P | Partial: important operations missing, or only helper/protocol/shared coverage | 27 |
 | A | Management OpenAPI exists; Pomi projection intentionally absent | 1 |
-| M | Dedicated management API and corresponding commands missing | 36 |
+| M | Dedicated management API and corresponding commands missing | 35 |
 | S | Shared API/commands or a built-in CLI workflow; validate the stated limits | 36 |
 | I | Infrastructure, rendering, protocol, provider or alias; no separate API proposed by default | 70 |
 | X | Sample; excluded from delivery priorities | 3 |
 
-There are **36 features with neither dedicated management APIs nor commands**, and **27 with
-partial coverage requiring a scope decision**. These are not 63 independent implementation tasks:
+There are **35 features with neither dedicated management APIs nor commands**, and **27 with
+partial coverage requiring a scope decision**. These are not 62 independent implementation tasks:
 the plan consolidates them into shared workflows. Another 36 features reuse existing transports
-or built-in commands. Eighteen production modules contribute direct `WithCliCommand` operation
+or built-in commands. Nineteen production modules contribute direct `WithCliCommand` operation
 registrations; this does not imply all features in those modules are covered.
 
 ## Important operation-level distinctions
@@ -89,6 +90,7 @@ Backlog IDs refer to [the delivery plan](coverage-plan.md#work-packages).
 | [CustomSettings](../../src/OrchardCore.Modules/OrchardCore.CustomSettings/Manifest.cs) / `OrchardCore.CustomSettings` | Yes | `custom-settings` | Content-type-defined custom settings are supported. This does not expose arbitrary module site-settings sections. | — |
 | [Features](../../src/OrchardCore.Modules/OrchardCore.Features/Manifest.cs) / `OrchardCore.Features` | Yes | `features` | Existing management surface; preserve regression coverage. | — |
 | [HomeRoute](../../src/OrchardCore.Modules/OrchardCore.HomeRoute/Manifest.cs) / `OrchardCore.HomeRoute` | Yes | `settings set-home-content` | Existing management surface; preserve regression coverage. | — |
+| [Placements](../../src/OrchardCore.Modules/OrchardCore.Placements/Manifest.cs) / `OrchardCore.Placements` | Yes | `placements` | P04: rule CRUD/validation and registered filter discovery, shared admin validation, database/file ownership, rendered matching/order and feature gates verified. Theme/module placement files remain separate. | B02 |
 | [Queries](../../src/OrchardCore.Modules/OrchardCore.Queries/Manifest.cs) / `OrchardCore.Queries` | Yes | `queries`; `queries sources` | Definitions, validation, source discovery and execution exist. Backends require their feature to be enabled. | — |
 | [Recipes](../../src/OrchardCore.Modules/OrchardCore.Recipes/Manifest.cs) / `OrchardCore.Recipes` | Yes | `recipes` | List/show/execute existing non-setup recipes. Not arbitrary recipe upload, plan editing or deployment import. | — |
 | [Roles](../../src/OrchardCore.Modules/OrchardCore.Roles/Manifest.cs) / `OrchardCore.Roles` | Yes | `roles` | Existing management surface; preserve regression coverage. | — |
@@ -169,7 +171,6 @@ Backlog IDs refer to [the delivery plan](coverage-plan.md#work-packages).
 | [OpenId](../../src/OrchardCore.Modules/OrchardCore.OpenId/Manifest.cs) / `OrchardCore.OpenId.Client` | No dedicated management API | None | Client/provider settings lack a management contract; authentication callbacks remain protocol endpoints. | B06 |
 | [OpenId](../../src/OrchardCore.Modules/OrchardCore.OpenId/Manifest.cs) / `OrchardCore.OpenId.Management` | No dedicated management API | None | Application/scope CRUD, role/grant assignment, credential rotation/revocation and redacted status lack general management APIs. Bootstrap provisioning is narrower. | B06 |
 | [OpenId](../../src/OrchardCore.Modules/OrchardCore.OpenId/Manifest.cs) / `OrchardCore.OpenId.Validation` | No dedicated management API | None | Validation/authority configuration lacks management; may remain deployment-owned depending on scenario. | B06 |
-| [Placements](../../src/OrchardCore.Modules/OrchardCore.Placements/Manifest.cs) / `OrchardCore.Placements` | No dedicated management API | None | Shape placement CRUD/filtering lacks a management API; preserve storage and matching semantics. | B02 |
 | [RateLimits](../../src/OrchardCore.Modules/OrchardCore.RateLimits/Manifest.cs) / `OrchardCore.RateLimits` | No dedicated management API | None | Limiter definitions, ordering/validation and tenant settings are admin-only. | B05 |
 | [ReCaptcha](../../src/OrchardCore.Modules/OrchardCore.ReCaptcha/Manifest.cs) / `OrchardCore.ReCaptcha` | No dedicated management API | None | Tenant validation settings lack a redacted section; do not expose challenge bypass/validation as an admin command. | B12 |
 | [Search](../../src/OrchardCore.Modules/OrchardCore.Search/Manifest.cs) / `OrchardCore.Search` | No dedicated management API | None | Frontend search settings/default index selection lack typed management; query execution does not manage indexes. | B07 |
@@ -264,7 +265,7 @@ Backlog IDs refer to [the delivery plan](coverage-plan.md#work-packages).
 | [OpenApi](../../src/OrchardCore.Modules/OrchardCore.OpenApi/Manifest.cs) / `OrchardCore.OpenApi.ReDocUI` | No dedicated management API | No dedicated command | Documentation UI; shared OpenAPI document, no new command needed. | — |
 | [OpenApi](../../src/OrchardCore.Modules/OrchardCore.OpenApi/Manifest.cs) / `OrchardCore.OpenApi.ScalarUI` | No dedicated management API | No dedicated command | Documentation UI; shared OpenAPI document, no new command needed. | — |
 | [OpenId](../../src/OrchardCore.Modules/OrchardCore.OpenId/Manifest.cs) / `OrchardCore.OpenId` | No dedicated management API | No dedicated command | OpenId core is dependency infrastructure; application/scope management is a separate feature below. | — |
-| [Placements](../../src/OrchardCore.Modules/OrchardCore.Placements/Manifest.cs) / `OrchardCore.Placements.FileStorage` | No dedicated management API | No dedicated command | Placement storage provider; share B02 semantics and honor deployment-owned files. | — |
+| [Placements](../../src/OrchardCore.Modules/OrchardCore.Placements/Manifest.cs) / `OrchardCore.Placements.FileStorage` | Shared placements API | `placements` (selected store) | P04 verifies the existing tenant file-document provider. Switching stores is not migration; theme/module files and arbitrary paths are not edited. | — |
 | [Queries](../../src/OrchardCore.Modules/OrchardCore.Queries/Manifest.cs) / `OrchardCore.Queries.Core` | No dedicated management API | No dedicated command | Query service dependency. Enable Queries for its management surface; do not duplicate endpoints here. | — |
 | [ReCaptcha](../../src/OrchardCore.Modules/OrchardCore.ReCaptcha/Manifest.cs) / `OrchardCore.ReCaptcha.Users` | No dedicated management API | No dedicated command | User-flow integration; ReCaptcha settings contract is tracked in B12. | — |
 | [Recipes](../../src/OrchardCore.Modules/OrchardCore.Recipes/Manifest.cs) / `OrchardCore.Recipes.Core` | No dedicated management API | No dedicated command | Recipe execution infrastructure; management operations belong to Recipes. | — |

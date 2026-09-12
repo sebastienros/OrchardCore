@@ -43,7 +43,9 @@ that approach. Report an installation blocker rather than silently bypassing Pom
 | Author, validate, publish, or restore content versions | [Content items](../orchardcore-cli-content-items/SKILL.md) |
 | Upload images/files, obtain URLs, or manage custom CSS/JavaScript | [Media](../orchardcore-cli-media/SKILL.md) |
 | Create Liquid shape overrides and verify rendering | [Templates](../orchardcore-cli-templates/SKILL.md) |
-| Define shortcode templates and conditional layers and verify widget visibility | [Templates and layers](../orchardcore-cli-templates/SKILL.md#conditional-layers) |
+| Manage named Liquid shortcode snippets | [Shortcode templates](../orchardcore-cli-templates/SKILL.md#shortcode-templates) |
+| Manage shape placement and filtering | [Shape placements](../orchardcore-cli-templates/SKILL.md#shape-placements) |
+| Define conditional layers and verify widget visibility | [Conditional layers](../orchardcore-cli-templates/SKILL.md#conditional-layers) |
 | Select installed site/admin themes | [Themes](../orchardcore-cli-themes/SKILL.md) |
 | Create navigation with official menu content and shapes | [Menus](../orchardcore-cli-menus/SKILL.md) |
 | Execute GraphQL documents or inspect its schema | [GraphQL](../orchardcore-cli-graphql/SKILL.md) |
