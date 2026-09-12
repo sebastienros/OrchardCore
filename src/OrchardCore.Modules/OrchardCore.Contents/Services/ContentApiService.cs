@@ -32,6 +32,7 @@ internal sealed class ContentApiService
     private static readonly JsonMergeSettings s_updateJsonMergeSettings = new()
     {
         MergeArrayHandling = MergeArrayHandling.Replace,
+        MergeNullValueHandling = MergeNullValueHandling.Merge,
     };
 
     private static readonly string[] s_wellKnownContentItemProperties =
