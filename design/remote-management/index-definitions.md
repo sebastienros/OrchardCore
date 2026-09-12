@@ -37,10 +37,11 @@ it should reject persistence and restore tracked values, including nested proper
 A companion valid-update test preserves normal handler/store behavior. Run these on
 the unchanged baseline before selecting the shared fix and error handling in callers.
 
-Also inspect handler behavior for null data, provider metadata updates, immutable
-backend names and existing editor validation. Null-data handler failures and
-provider creation/deletion errors must not be silently treated as successful API
-mutations. Test actual Lucene indexing/query results, not just stored descriptors.
+Also inspect handler behavior for provider metadata updates, immutable backend names
+and existing editor validation. InitializingContext and UpdatingContext normalize null
+input to an empty JsonObject, protecting ordinary admin calls; a direct dereference in
+the handlers is not evidence of a null-input failure. Provider creation/deletion errors
+must not be silently treated as successful API mutations. Test actual Lucene indexing/query results, not just stored descriptors.
 
 ## Remaining gates
 
@@ -58,10 +59,10 @@ IndexLatest, IndexedContentTypes and Culture. Lucene edits AnalyzerName and
 StoreSourceData plus default-query analyzer, query syntax permission, Lucene version
 and selected search fields. Discover analyzers from LuceneAnalyzerManager; preserve
 provider-owned index mappings rather than exposing an arbitrary properties bag.
-The Lucene initialization handler currently applies analyzer/source settings only
-when initializing, so recipe update parity needs explicit verification. The common
-handler dereferences optional data without a null guard; inspect the resulting
-logged failures in admin New/Update paths rather than assuming they are harmless.
+The Lucene and content handlers previously applied incoming metadata only while
+initializing. Both now use the same population method during updates. Handler contexts
+normalize absent data before dispatch; the no-JSON regression preserves metadata
+already supplied by the admin editor.
 
 ## Shared validation checkpoint
 
@@ -75,7 +76,7 @@ edit action maps post-update validation errors back to ModelState.
 
 The strict server rebuild passes with zero warnings/errors and both manager tests
 pass, including nested-property restoration. These are focused manager results,
-not proof of full index administration. Existing caller integration, null-data and
+not proof of full index administration. Existing caller integration and
 provider metadata parity, full suites and live Lucene/query checks remain.
 
 ## Discovery checkpoint
@@ -85,3 +86,14 @@ returning explicit public fields without private profile properties or backend i
 The focused suite passes all ten manager, recipe and discovery tests; the strict server
 build reports zero warnings/errors. Typed definitions and the remaining gates above
 are still in progress; this checkpoint is not a completed B07 slice.
+
+## Metadata update checkpoint
+
+On the integrated base, two of three real-handler regressions failed: recipe updates
+ignored incoming content types, and an empty list escaped validation because it was
+never applied. The admin-style update without JSON passed. Content and Lucene handlers
+now share population between initialization and updates; duplicate analyzer/source
+assignment was removed from the Lucene content handler. A fourth regression verifies
+creation still populates metadata and mappings. Strict server build passes with zero
+warnings/errors, and all fourteen focused discovery/manager/recipe/metadata tests pass.
+These tests do not establish live backend reindexing or complete typed API behavior.

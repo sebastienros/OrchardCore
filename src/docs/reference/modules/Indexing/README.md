@@ -66,7 +66,15 @@ If you need UI integration, you can:
 
 ### Create Index Profile step
 
-Index profile can be created during recipe execution using the `IndexProfile` step.
+Index profiles can be created or updated during recipe execution using the
+`CreateOrUpdateIndexProfile` step.
+
+For an existing profile, incoming content settings (`IndexLatest`, `Culture`, and
+`IndexedContentTypes`) and Lucene settings (`AnalyzerName` and `StoreSourceData`)
+use the same handlers as creation. Omitted values preserve the existing settings.
+An empty content-type list fails shared validation and leaves the stored profile
+unchanged. Updating a definition does not imply that existing documents have been
+reindexed; run the appropriate indexing operation when changing indexed data.
 
 Here is a sample step:
 
