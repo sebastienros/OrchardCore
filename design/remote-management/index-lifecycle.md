@@ -20,7 +20,8 @@ Other provider adapters retain their demand gates.
   before a later successful batch advances the cursor. Document-handler exceptions
   are swallowed by the invocation helper. Batches with no selected documents do
   not persist their progress. Regression tests have been added before production
-  changes; baseline build/results are pending.
+  changes. The strict baseline build passed; all three regressions failed on the
+  unchanged worker (provider rejection, handler failure, and filtered progress).
 - Immediate content indexing separately handles deletes in `IndexingContentHandler`.
   The queued service's handling of filtered/deleted records must be verified together
   with that path; absence of a delete call in one class alone does not prove the
@@ -47,3 +48,13 @@ Other provider adapters retain their demand gates.
 The precise operation persistence and completion-boundary contract remains under
 implementation review. No lifecycle endpoint is implemented or claimed complete at
 this checkpoint.
+
+## Processing checkpoint
+
+The shared worker now stops an individual index on a failed document build,
+provider rejection or cursor-write failure, while other indexes may continue.
+A failure preparing/loading a whole batch stops the run. Successful filtered batches
+advance progress without a provider write, and indexes already ahead are not moved
+backwards. Required document-build handlers are awaited directly so failure is not
+silently treated as a complete document. Verification of this first fix is running;
+observable operation results and lifecycle endpoints are still pending.

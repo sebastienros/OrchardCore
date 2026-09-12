@@ -3,7 +3,6 @@ using Microsoft.Extensions.Logging;
 using OrchardCore.Indexing.Models;
 using OrchardCore.Locking;
 using OrchardCore.Locking.Distributed;
-using OrchardCore.Modules;
 
 namespace OrchardCore.Indexing.Core;
 
@@ -149,10 +148,9 @@ public abstract class NamedIndexingService
                 return;
             }
 
-            while (true)
+            while (tracker.Count > 0)
             {
                 List<RecordIndexingTask> currentBatch = null;
-                var batchProcessedSuccessfully = false;
 
                 try
                 {
@@ -167,13 +165,14 @@ public abstract class NamedIndexingService
                     // Group all DocumentIndex by index to batch update them.
                     var updatedDocumentsByIndex = tracker.Values.ToDictionary(x => x.IndexProfile.Id, b => new List<DocumentIndex>());
 
+                    var failedIndexes = new HashSet<string>();
                     await BeforeProcessingTasksAsync(currentBatch, tracker.Values);
 
                     foreach (var entry in tracker.Values)
                     {
                         foreach (var task in currentBatch)
                         {
-                            if (task.Id < entry.LastTaskId)
+                            if (task.Id <= entry.LastTaskId)
                             {
                                 continue;
                             }
@@ -187,7 +186,10 @@ public abstract class NamedIndexingService
                                     continue;
                                 }
 
-                                await _documentIndexHandlers.InvokeAsync(x => x.BuildIndexAsync(buildIndexContext), Logger);
+                                foreach (var handler in _documentIndexHandlers)
+                                {
+                                    await handler.BuildIndexAsync(buildIndexContext);
+                                }
 
                                 if (await ShouldTrackDocumentAsync(buildIndexContext, entry, task))
                                 {
@@ -196,18 +198,19 @@ public abstract class NamedIndexingService
                             }
                             catch (Exception ex)
                             {
-                                // Log the error but continue processing remaining tasks
-                                Logger.LogError(ex, "Error processing indexing task {TaskId} for index {IndexName}. Continuing with remaining tasks.", task.Id, entry.IndexProfile.Name);
+                                // Keep this index at its previous cursor so the failed batch can be retried.
+                                Logger.LogError(ex, "Error processing indexing task {TaskId} for index {IndexName}. Stopping this index until the next run.", task.Id, entry.IndexProfile.Name);
+                                failedIndexes.Add(entry.IndexProfile.Id);
+                                break;
                             }
                         }
                     }
 
                     lastTaskId = currentBatch.Last().Id;
-                    batchProcessedSuccessfully = true;
 
                     foreach (var indexEntry in updatedDocumentsByIndex)
                     {
-                        if (indexEntry.Value.Count == 0)
+                        if (failedIndexes.Contains(indexEntry.Key))
                         {
                             continue;
                         }
@@ -218,34 +221,37 @@ public abstract class NamedIndexingService
                         {
                             // AddOrUpdateDocumentsAsync is an upsert operation that handles both adding new documents
                             // and updating existing ones. Implementations should handle any necessary deletions internally.
-                            if (await trackerEntry.DocumentIndexManager.AddOrUpdateDocumentsAsync(trackerEntry.IndexProfile, indexEntry.Value))
+                            if (indexEntry.Value.Count == 0 || await trackerEntry.DocumentIndexManager.AddOrUpdateDocumentsAsync(trackerEntry.IndexProfile, indexEntry.Value))
                             {
-                                // We know none of the previous batches failed to update this index.
-                                await trackerEntry.DocumentIndexManager.SetLastTaskIdAsync(trackerEntry.IndexProfile, lastTaskId);
+                                // Successfully filtered records also count as processed, without regressing ahead indexes.
+                                if (lastTaskId > trackerEntry.LastTaskId)
+                                {
+                                    await trackerEntry.DocumentIndexManager.SetLastTaskIdAsync(trackerEntry.IndexProfile, lastTaskId);
+                                }
+                            }
+                            else
+                            {
+                                failedIndexes.Add(indexEntry.Key);
+                                Logger.LogWarning("The provider rejected documents for index {IndexName}. Stopping this index until the next run.", trackerEntry.IndexProfile.Name);
                             }
                         }
                         catch (Exception ex)
                         {
-                            // Log the error but continue processing remaining indexes
-                            Logger.LogError(ex, "Error updating documents for index {IndexName}. Continuing with remaining indexes.", trackerEntry.IndexProfile.Name);
+                            failedIndexes.Add(indexEntry.Key);
+                            Logger.LogError(ex, "Error updating documents for index {IndexName}. Stopping this index until the next run.", trackerEntry.IndexProfile.Name);
                         }
+                    }
+
+                    foreach (var id in failedIndexes)
+                    {
+                        tracker.Remove(id);
                     }
                 }
                 catch (Exception ex)
                 {
-                    // Log batch processing error and continue with next batch if possible
-                    Logger.LogError(ex, "Error processing batch of indexing tasks. Attempting to continue with next batch.");
-
-                    // Move to next batch only if we haven't already updated lastTaskId and we successfully loaded tasks
-                    if (!batchProcessedSuccessfully && currentBatch != null && currentBatch.Count > 0)
-                    {
-                        lastTaskId = currentBatch.Last().Id;
-                    }
-                    else if (currentBatch == null || currentBatch.Count == 0)
-                    {
-                        // If we couldn't load tasks, break the loop to avoid infinite retry
-                        break;
-                    }
+                    // Do not skip a failed batch and later advance a cursor past it.
+                    Logger.LogError(ex, "Error processing a batch of indexing tasks. Stopping until the next run.");
+                    break;
                 }
             }
         }

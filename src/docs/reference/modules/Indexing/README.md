@@ -239,3 +239,15 @@ remote-management callers using the default manager.
 checks shared by the index editor and default profile handler. The editor maps these
 errors to its field prefixes; recipe and API callers receive the same domain checks.
 Provider index-name uniqueness is enforced for all registered providers, not only Lucene.
+
+### Indexing batch failures
+
+The shared background indexer keeps an index's cursor before a failed batch. A
+failed document handler, provider rejection, or cursor update stops that index for
+the current run; other indexes may continue. A subsequent run retries from its last
+saved cursor, so provider mutations in an incomplete batch may be repeated. A batch
+read/preparation failure stops the run rather than skipping ahead.
+
+Records successfully excluded by an index's selection still advance its cursor.
+They do not require a provider write. These progress rules do not make a scheduled
+synchronization request proof that indexing has completed.
