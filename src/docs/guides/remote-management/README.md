@@ -214,6 +214,55 @@ Other project templates remain available through `dotnet new`.
    foreground server. Use `--urls https://localhost:5080` to select another
    listening address.
 
+### Optional unattended remote management
+
+Add `--enable-remote-management` when the installed site should be managed by Pomi:
+
+```bash
+pomi install ./MyOrchardSite --site-name "My Orchard Site" \
+  --email admin@example.com --recipe-name Blank --enable-remote-management --run
+```
+
+The option enables **Remote Management CLI** and its OpenID dependencies after
+setup, creates a dedicated confidential application with the tenant administrator
+role, and saves a uniquely named Pomi context with its client credentials. Pomi
+obtains an access token automatically when the site is running and an authenticated
+command is issued. No browser or device login is needed. An existing current
+context is preserved; use the context name returned by the command.
+
+Without the option, setup follows the selected recipe and creates the normal
+administrator account. Pomi does not enable additional remote management features
+or save application credentials. A recipe such as SaaS may already include those
+features. Both modes keep the administrator's supplied password unchanged.
+
+The same option is available on `pomi tenants install`:
+
+```bash
+pomi --context host tenants install Blog --site-name Blog --user-name admin \
+  --email admin@example.com --recipe-name Blog --request-url-prefix blog \
+  --enable-remote-management
+```
+
+For a tenant that is already running, use:
+
+```bash
+pomi --context host tenants enable-remote-management Blog --provision-client
+```
+
+Without `--provision-client`, that command only enables and configures remote
+management. Feature profiles must allow the required features. If provisioning
+fails after installation, the installed site is preserved; fix the feature or
+OpenID configuration and provision through `enable-remote-management` rather than
+repeating installation.
+
+Application secrets are stored using Pomi's credential store: Windows Credential
+Manager on Windows, and an owner-only plaintext credentials file on macOS/Linux.
+They are omitted from normal Pomi output and `config.json`. Treat the credential
+store as administrative access to the tenant. `pomi logout` deletes these local
+credentials; delete the application in the tenant's OpenID administration to revoke
+its ability to obtain tokens. Repeating `--provision-client` creates a new application
+and a new context; it does not rotate or remove previous applications.
+
 HTTPS requires a certificate. For local development, create and trust the
 .NET development certificate before using `--run`:
 

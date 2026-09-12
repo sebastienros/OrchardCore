@@ -464,6 +464,26 @@ Location: /api/tenants/TenantA
 
 ## Install a tenant
 
+The optional JSON boolean `enableRemoteManagement` (default `false`) enables
+Remote Management CLI and its OpenID dependencies after setup, then creates a
+confidential application with the target tenant's administrator role. It works
+with recipes that do not enable remote management, provided the tenant's feature
+profile permits the dependencies. The initial administrator account is still
+created with the supplied password.
+
+An opted-in successful response includes `clientCredentials`, containing `clientId`
+and `clientSecret`, and uses `Cache-Control: no-store`. The secret is returned only
+in this response; ordinary tenant reads never expose it. Store it as a secret and
+use the tenant's token endpoint with `grant_type=client_credentials` and scope
+`orchardcore.management`. Pomi's `--enable-remote-management` switch saves the
+credentials and a unique tenant context, then removes `clientCredentials` from
+its output. Omission of the switch preserves normal recipe-driven setup.
+
+If the tenant was installed but a feature profile prevents provisioning, the API
+returns `409` with `stage: "remote-management"` and the tenant name. Correct the
+profile and call the enable endpoint below; do not reinstall the tenant.
+
+
 ```http
 POST /api/tenants/{tenantName}:install
 Content-Type: application/json
@@ -515,7 +535,7 @@ is accepted through `--stdin` or `--body-file`, and inline secret values are
 not exposed as command options.
 
 The human response reports success, the running state, and the full site URL.
-It suggests `pomi tenants enable-remote-management Blog` as a separate next step.
+Without `--enable-remote-management`, it suggests `pomi tenants enable-remote-management Blog` as a separate next step.
 Installation does not create a CLI context or acquire credentials for the new
 administrator. Remote Management is enabled only if the selected recipe does
 so or you explicitly enable it later. Use `--output json` for structured output.
@@ -972,6 +992,14 @@ When the removal pipeline itself fails, the response title is
 pipeline's error message.
 
 ## Enable Remote Management for a tenant
+
+The optional query boolean `provisionClient=true` also creates a new administrative
+confidential application and returns its `clientCredentials` once, with
+`Cache-Control: no-store`. Omission preserves the enable/configure-only behavior.
+Pomi exposes this as `--provision-client`, stores the credentials in a new context,
+and omits the secret from its output. Each request creates a separate application;
+it never overwrites a public CLI client or a previously provisioned application.
+
 
 ```http
 POST /api/tenants/{tenantName}:enable-remote-management

@@ -140,7 +140,7 @@ with tempfile.TemporaryDirectory(prefix='pomi-install-smoke-') as scratch:
     output_path = root / 'run.json'
     error_path = root / 'run.log'
     with output_path.open('w') as output, error_path.open('w') as errors:
-        process = subprocess.Popen([pomi, 'install', str(root / 'running-site'), '--site-name', 'Running CMS', '--email', 'admin@example.com', '--recipe-name', 'SaaS', '--request-url-prefix', 'news', '--password-stdin', '--run', '--urls', run_url + ';' + second_url, '--output', 'json', *source_args], env=env, stdin=subprocess.PIPE, stdout=output, stderr=errors, text=True, start_new_session=os.name != 'nt', creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == 'nt' else 0)
+        process = subprocess.Popen([pomi, 'install', str(root / 'running-site'), '--site-name', 'Running CMS', '--email', 'admin@example.com', '--recipe-name', 'SaaS', '--request-url-prefix', 'news', '--enable-remote-management', '--password-stdin', '--run', '--urls', run_url + ';' + second_url, '--output', 'json', *source_args], env=env, stdin=subprocess.PIPE, stdout=output, stderr=errors, text=True, start_new_session=os.name != 'nt', creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == 'nt' else 0)
         try:
             process.stdin.write(password + '\n')
             process.stdin.close()
@@ -149,7 +149,32 @@ with tempfile.TemporaryDirectory(prefix='pomi-install-smoke-') as scratch:
                 assert process.poll() is None, error_path.read_text()
                 assert time.monotonic() < deadline, error_path.read_text()
                 time.sleep(0.25)
-            assert json.loads(output_path.read_text())['url'].rstrip('/') == run_url + '/news'
+            installed = json.loads(output_path.read_text())
+            assert installed['url'].rstrip('/') == run_url + '/news'
+            context = installed['context']
+            assert context
+            # First use obtains a client-credentials token without a browser or device login.
+            features = subprocess.run([pomi, '--context', context, 'api', 'invoke', 'GET',
+                                       'api/features', '--output', 'json'], env=env,
+                                      capture_output=True, text=True, timeout=30)
+            assert features.returncode == 0, features.stderr
+            tenant = subprocess.run([pomi, '--context', context, 'tenants', 'install', 'Managed',
+                                     '--site-name', 'Managed', '--user-name', 'admin',
+                                     '--email', 'admin@example.com', '--recipe-name', 'Blank',
+                                     '--request-url-prefix', 'managed', '--password-env', 'OC_INSTALL_PASSWORD',
+                                     '--enable-remote-management', '--output', 'json'], env=env,
+                                    capture_output=True, text=True, timeout=120)
+            assert tenant.returncode == 0, tenant.stderr
+            managed = json.loads(tenant.stdout)
+            assert 'clientCredentials' not in managed, managed
+            child_context = managed['context']
+            assert child_context != context
+            child_features = subprocess.run([pomi, '--context', child_context, 'api', 'invoke', 'GET',
+                                             'api/features', '--output', 'json'], env=env,
+                                            capture_output=True, text=True, timeout=30)
+            assert child_features.returncode == 0, child_features.stderr
+            assert password not in tenant.stdout + tenant.stderr
+
             run_logs = error_path.read_text()
             assert run_logs.count('Now listening on:') == 2, run_logs
             assert run_logs.count('Application started.') == 1, run_logs
@@ -177,5 +202,5 @@ with tempfile.TemporaryDirectory(prefix='pomi-install-smoke-') as scratch:
             process.wait()
 
     print(json.dumps({'version': result['packageVersion'], 'embeddedTemplate': True, 'autoSetup': True,
-                      'foregroundRun': True, 'cancellationStopsServer': True, 'missingSdkWarning': True,
+                      'foregroundRun': True, 'applicationContexts': True, 'tenantProvisioning': True, 'cancellationStopsServer': True, 'missingSdkWarning': True,
                       'existingFilesProtected': True, 'setupFailureReported': True, 'noPlaintextAdminPassword': True}))

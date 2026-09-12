@@ -192,3 +192,20 @@ Lock configuration parameters are optional and can be set via environment variab
 Please refer to separate sections for additional information on setup:
 
 - [OrchardCore.Setup - setting up an empty site](../Setup/README.md)
+
+## Optional remote management application
+
+Set both `RemoteManagementClientId` and `RemoteManagementClientSecret` in a tenant's
+Auto Setup options to enable Remote Management CLI and its OpenID dependencies
+after successful setup, and register a new confidential application with that
+tenant's administrator role. Supply a unique identifier and a cryptographically
+random secret through a secret configuration provider, not committed settings.
+Existing application identifiers are rejected rather than overwritten.
+
+Both settings are optional and must be supplied together. When omitted, Auto Setup
+keeps the selected recipe's normal behavior. The administrator account is created
+in either case, using the supplied administrator password. Feature profiles must
+allow the required remote management features. `pomi install
+--enable-remote-management` supplies these settings through the temporary setup
+process environment and saves the application credentials locally for subsequent
+commands.

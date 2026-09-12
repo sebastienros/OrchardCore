@@ -33,9 +33,21 @@ or setting up a site or tenant, follow the [setup password policy](setup-passwor
 and its compliant generator when password generation is authorized.
 
 Reuse an authenticated context when intentionally managing that existing site.
-For a newly initialized site or tenant, follow the unique naming rules below. Human access uses `pomi login`
-(browser with PKCE, or device authorization); unattended access uses a dedicated
-confidential client with injected `OC_CLIENT_ID` and `OC_CLIENT_SECRET`.
+For automated creation followed by Pomi management, use `--enable-remote-management`
+on `install` or `tenants install`. This enables the CLI/OpenID features and saves
+a unique context with a dedicated administrative application's credentials.
+Use the successful result's `context` directly; no `context add`, `login`, or
+device approval is needed. Pomi obtains and renews access tokens automatically.
+The user account and password are separate: always complete the
+[administrator credential file handoff](setup-password.md#credential-handoff).
+Omit the flag when only recipe-driven setup and an administrator account are wanted.
+
+Human access to an existing site can use `pomi login` (browser with PKCE or device
+authorization). Existing automation can use a confidential application with injected
+`OC_CLIENT_ID` and `OC_CLIENT_SECRET`. These environment variables override stored
+credentials: do not carry a host's injected credentials into a provisioned child
+context. Omit those overrides from the child command's environment; preserve them
+for any host commands that need them.
 Never use the public `orchardcore-cli` client for client credentials. Read
 [authentication and contexts](authentication.md) when onboarding, changing
 identities, handling device approval, or diagnosing authentication. Never print
@@ -45,8 +57,15 @@ tokens, client secrets, passwords, or unredacted connection strings.
 
 Context names are shared across sessions and working directories. The Orchard
 `Default` tenant is not a requirement to name its CLI context `default`.
-After `pomi install` or `pomi tenants install` and any required Remote Management
-configuration:
+With `--enable-remote-management`, Pomi creates the unique context. Read `context`
+from the successful JSON response, verify its URL with `pomi context list --output
+json`, and use `pomi --context "$CONTEXT" ...`. Keep the existing current context
+and record the returned name in the site's handoff. A local server must be running
+before `api refresh` or another authenticated operation; cached `--help` and `doctor`
+do not prove authentication. Do not recreate the context or run login afterward.
+
+For manual connection to an existing site or setup without automatic provisioning,
+after any required Remote Management configuration:
 
 1. Run `pomi context list --output json` and inspect `contexts[].name` and
    `contexts[].tenantUrl` before choosing a name.

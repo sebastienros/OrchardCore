@@ -376,7 +376,7 @@ internal sealed partial class CliApplication
 
     private Command CreateLogoutCommand()
     {
-        var command = new Command("logout", "Remove stored human credentials for a context");
+        var command = new Command("logout", "Remove stored credentials for a context");
         var contextArgument = new Argument<string?>("context") { Description = "Context name (defaults to the current context)" };
         contextArgument.DefaultValueFactory = _ => null;
         command.Arguments.Add(contextArgument);
@@ -386,7 +386,7 @@ internal sealed partial class CliApplication
             var context = RequireContext(parseResult.GetValue(contextArgument) ?? parseResult.GetValue(_contextOption));
             var token = await _credentialStore.GetAsync(GetCredentialKey(context), cancellationToken);
             var revoked = false;
-            if (token is not null)
+            if (token is not null && token.ClientSecret is null)
             {
                 var discovery = await _oauthClient.GetDiscoveryAsync(GetAuthority(context), cancellationToken);
                 if (!string.IsNullOrWhiteSpace(discovery.RevocationEndpoint))
@@ -911,6 +911,26 @@ internal sealed partial class CliApplication
             command.Aliases.Add(alias);
         }
 
+        var provisioningProperty = operation.OperationId switch
+        {
+            "ApiInstallTenantManagement" => "enableRemoteManagement",
+            "ApiEnableTenantRemoteManagement" => "provisionClient",
+            _ => null,
+        };
+        var provisioningSupported = provisioningProperty is not null &&
+            (operation.Parameters.Any(parameter => parameter.Name == provisioningProperty) ||
+             operation.RequestBodyProperties.Any(property => property.Name == provisioningProperty));
+        var provisionOption = provisioningSupported
+            ? new Option<bool>("--" + CliUtilities.ToCliName(provisioningProperty!))
+            {
+                Description = "Enable Remote Management CLI and OpenID, and save a context with credentials for a new administrative application",
+            }
+            : null;
+        if (provisionOption is not null)
+        {
+            command.Options.Add(provisionOption);
+        }
+
         var positionalArguments = new List<(OpenApiParameterDefinition Parameter, Argument<string> Argument)>();
         var options = new List<(OpenApiParameterDefinition Parameter, Option<string?> Option)>();
         var bodyPropertyOptions = new List<(RequestBodyPropertyDefinition Property, Option<string?> Option)>();
@@ -918,6 +938,11 @@ internal sealed partial class CliApplication
 
         foreach (var parameter in operation.Parameters.OrderBy(parameter => parameter.ArgumentPosition ?? int.MaxValue).ThenBy(parameter => parameter.Name, StringComparer.Ordinal))
         {
+            if (provisionOption is not null && parameter.Name == provisioningProperty)
+            {
+                continue;
+            }
+
             if (parameter.ArgumentPosition.HasValue)
             {
                 var argument = new Argument<string>(CliUtilities.ToCliName(parameter.Name)) { Description = parameter.Description };
@@ -966,6 +991,11 @@ internal sealed partial class CliApplication
         {
             foreach (var property in operation.RequestBodyProperties)
             {
+                if (provisionOption is not null && property.Name == provisioningProperty)
+                {
+                    continue;
+                }
+
                 if (operation.CliMetadata.SecretProperties.Contains(property.Name, StringComparer.OrdinalIgnoreCase))
                 {
                     var propertyName = CliUtilities.ToCliName(property.Name);
@@ -1060,10 +1090,26 @@ internal sealed partial class CliApplication
                 ? await ResolveBinaryBodyAsync(parseResult.GetValue(fileOption), parseResult.GetValue(stdinOption), cancellationToken)
                 : await ResolveDynamicJsonBodyAsync(parseResult, operation, bodyOption, bodyFileOption, stdinOption, bodyPropertyOptions, secretBodyPropertyOptions, cancellationToken);
 
+            if (provisionOption is not null && parseResult.GetValue(provisionOption))
+            {
+                if (operation.HasJsonRequestBody)
+                {
+                    var document = body is null ? new JsonObject() : JsonNode.Parse(await body.ReadAsStringAsync(cancellationToken))!.AsObject();
+                    document[provisioningProperty!] = true;
+                    body?.Dispose();
+                    body = new StringContent(document.ToJsonString(), Encoding.UTF8, "application/json");
+                }
+                else
+                {
+                    query[provisioningProperty!] = "true";
+                }
+            }
+
             var accessToken = await ResolveAccessTokenAsync(context, null, null, false, cancellationToken);
             var response = await SendApiRequestAsync(context, operation.Method, routePath, query, headers, body, accessToken, cancellationToken);
+            var outputJson = provisioningSupported ? await CaptureProvisionedContextAsync(response.Json, cancellationToken) : response.Json;
             IReadOnlyList<CliTableColumnMetadata>? tableColumns = operation.CliMetadata.TableColumns.Count > 0 ? [.. operation.CliMetadata.TableColumns] : null;
-            return await WriteOutputAsync(parseResult, response.Json, cancellationToken, tableColumns, response.HttpMethod, response.StatusCode);
+            return await WriteOutputAsync(parseResult, outputJson, cancellationToken, tableColumns, response.HttpMethod, response.StatusCode);
         });
     }
 
@@ -1360,6 +1406,11 @@ internal sealed partial class CliApplication
         if (stored is null)
         {
             return null;
+        }
+
+        if (stored.ClientId is not null && stored.ClientSecret is not null)
+        {
+            return await ResolveApplicationTokenAsync(context, stored, cancellationToken);
         }
 
         var discoveryDocument = await _oauthClient.GetDiscoveryAsync(GetAuthority(context), cancellationToken);

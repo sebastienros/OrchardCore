@@ -100,8 +100,16 @@ files, or hand-written Auto Setup configuration unless the user explicitly
 requests manual scaffolding. For a tenant on an existing
 SaaS host, use `pomi tenants install` through an authorized Default-tenant
 context. These are different workflows; tenant creation does not install a
-new host or automatically authenticate its users. If Pomi is missing, follow
-the CLI installation skill before provisioning.
+new host. If Pomi is missing, follow the CLI installation skill before provisioning.
+
+For automated site building, pass `--enable-remote-management` to either install
+command. It enables the CLI feature and OpenID dependencies, creates a dedicated
+administrative application, and saves a unique context with client credentials.
+Read `context` from the successful JSON result and use it explicitly for subsequent
+commands. Start a locally installed server before remote work; `api refresh` obtains
+a token automatically. Do not run `pomi context add`, `pomi login`, or a device flow
+for this provisioned context. If the user only wants setup and an administrator
+account without additional remote management, omit the option and honor the recipe.
 
 Prefer **SQLite** (`Sqlite`) and the **Blank** setup recipe for an unspecified
 new site. A request for a **SaaS host** selects `--recipe-name SaaS` instead;
@@ -114,9 +122,13 @@ provider or recipe. For other database providers, recommend a unique table
 prefix according to the shared database rules.
 
 Apply the setup password policy and safe secret inputs before provisioning.
-Whenever you generate credentials, save the administrator username and password
+For each new site or tenant, save the administrator username, email, and password
 together in a persistent private file **before** starting setup, so the user can
-retrieve them afterward. Include the site or tenant name and its URL when known.
+retrieve them afterward. This handoff is still required with application-based
+Pomi authentication: the user account and password remain independent and unchanged.
+Include the site or tenant name, then record the actual URL and returned context
+after successful setup. Keep Pomi's application secrets and tokens in its credential
+store; do not copy them into the administrator handoff file.
 Use the user's chosen secure location; otherwise use a unique site-specific
 directory under `~/.config/pomi/site-credentials/` on macOS/Linux or
 `%LOCALAPPDATA%\\Pomi\\site-credentials\\` on Windows. Keep it outside source
@@ -135,13 +147,14 @@ documentation, content, or assets. Report the file's absolute path to the user
 at handover; if execution is remote, establish a private location the user can
 access before relying on that file as the credential handoff.
 
-After installing a site or tenant, run `pomi context list --output json` and
-choose an unused site-specific context name before `pomi context add`.
-Contexts are shared across sessions; `Default` is the host tenant, not a CLI
-context naming convention. Follow the [unique context naming rules](../skills/orchardcore-cli/references/shared-rules.md#unique-context-names-after-setup),
-check names case-insensitively, and append a suffix on conflict. Do not overwrite
-an existing context even when a newly initialized site reuses its URL. Use the
-chosen name explicitly with `--context` for login and subsequent agent work.
+Verify that the returned context targets the new tenant using `pomi context list
+--output json`. Pomi chooses an unused name and preserves an existing current
+context; use the returned name with `--context` rather than guessing or changing
+another session's selection. For a tenant already set up without provisioning,
+use `tenants enable-remote-management <tenant> --provision-client` through its
+authorized host context and use the newly returned context. Each invocation creates
+a separate application: do not repeat it merely to refresh tokens. Manual connection
+to existing sites follows the [context and authentication rules](../skills/orchardcore-cli/references/shared-rules.md#unique-context-names-after-setup).
 
 For SaaS work, keep an explicit mapping of tenant names, URLs, contexts, and
 branding. Provision only the requested tenants; authenticate to each child
@@ -210,7 +223,8 @@ Finish with the site or preview URL, what was built, verification results, and
 a short editor guide: where to edit each page, add sections or related items,
 replace media, manage navigation, and publish. Distinguish completed work from
 sample content, missing facts, and any remaining deployment or access steps.
-If credentials were generated, include the absolute path to their private file
-so the user can read them, without including the password itself.
+For newly created sites or tenants, include the absolute path to each private
+administrator credential file and the saved Pomi context name. Share the file
+path, without including the password or application credentials in the response.
 Keep reusable design notes and content-model decisions in the user's workspace
 when appropriate, without including secrets.

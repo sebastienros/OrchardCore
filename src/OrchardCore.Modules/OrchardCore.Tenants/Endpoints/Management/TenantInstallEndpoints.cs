@@ -17,6 +17,7 @@ using OrchardCore.Locking.Distributed;
 using OrchardCore.Modules;
 using OrchardCore.Mvc.ModelBinding;
 using OrchardCore.Setup.Services;
+using OrchardCore.RemoteManagement;
 using OrchardCore.Tenants.Controllers;
 using OrchardCore.Tenants.Services;
 
@@ -80,6 +81,21 @@ internal static partial class TenantManagementEndpoints
             if (setup is IStatusCodeHttpResult { StatusCode: StatusCodes.Status200OK } &&
                 setup is IValueHttpResult { Value: TenantResponse tenant })
             {
+                if (request.EnableRemoteManagement)
+                {
+                    var credentials = RemoteManagementClientCredentials.Generate();
+                    if (!shellHost.TryGetSettings(tenantName, out var settings) ||
+                        !await RemoteManagementProvisioning.ConfigureAsync(shellHost, settings, credentials))
+                    {
+                        return TypedResults.Problem(statusCode: StatusCodes.Status409Conflict,
+                            detail: localizer["The tenant was installed, but remote management could not be enabled. Check its feature profile, then use enable-remote-management with provisionClient=true."],
+                            extensions: new Dictionary<string, object> { ["tenantName"] = tenantName, ["stage"] = "remote-management" });
+                    }
+
+                    tenant.ClientCredentials = credentials;
+                    httpContext.Response.Headers.CacheControl = "no-store";
+                }
+
                 return TypedResults.Created($"/{RoutePrefix}/{Uri.EscapeDataString(tenantName)}", tenant);
             }
 
@@ -160,6 +176,9 @@ internal static partial class TenantManagementEndpoints
 
     internal sealed class TenantInstallRequest
     {
+        [Description("Enable Remote Management CLI and its OpenID dependencies, and return credentials for a new administrative application once.")]
+        public bool EnableRemoteManagement { get; init; }
+
         [Required]
         [Description("The site name.")]
         public string SiteName { get; init; }

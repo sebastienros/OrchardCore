@@ -345,6 +345,7 @@ public sealed class RemoteManagementCliStartup : StartupBase
     public override void ConfigureServices(IServiceCollection services)
     {
         services.AddScoped<IRemoteManagementCliConfigurationService, RemoteManagementCliConfigurationService>();
+        services.AddScoped<IRemoteManagementClientProvisioningService, RemoteManagementClientProvisioningService>();
         services.AddRecipeExecutionStep<RemoteManagementCliConfigurationStep>();
     }
 }

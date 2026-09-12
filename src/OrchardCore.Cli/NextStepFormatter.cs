@@ -7,6 +7,13 @@ internal static class NextStepFormatter
     public static string? Format(CommandOutput output)
     {
         var path = string.Join(' ', output.CommandPath);
+        if (path is "install" or "tenants install" or "tenants enable-remote-management" &&
+            Read(output.Json, "context") is { } provisionedContext && CanQuote(provisionedContext))
+        {
+            var readiness = path == "install" ? " Once the site is running," : string.Empty;
+            return $"Next:{readiness} use the saved application credentials to explore this tenant.\n  {ContextCommand(provisionedContext, output.CurrentContextName)} --help";
+        }
+
         var name = Read(output.Json, "name");
         if (path == "install" && Read(output.Json, "directory") is { } directory)
         {
@@ -77,7 +84,7 @@ internal static class NextStepFormatter
         || string.Equals(context, currentContext, StringComparison.OrdinalIgnoreCase)
         ? "pomi" : $"pomi --context={QuoteArgument(context)}";
 
-    private static string ChooseContextName(string name, IReadOnlyList<TenantContextRecord> contexts)
+    internal static string ChooseContextName(string name, IReadOnlyList<TenantContextRecord> contexts)
     {
         var candidate = name;
         var suffix = 2;

@@ -11,7 +11,9 @@ These rules apply even when this specialist is selected directly.
 
 Use `pomi graphql` to send documents directly to the existing GraphQL endpoint.
 These are built-in commands, independent of OpenAPI discovery. They reuse the
-selected context and `pomi login` credentials or `OC_CLIENT_ID`/`OC_CLIENT_SECRET`.
+selected context with stored provisioned application credentials, human login
+credentials, or explicit `OC_CLIENT_ID`/`OC_CLIENT_SECRET`. A provisioned context
+needs no `pomi login`; follow the shared rules for credential override precedence.
 The tenant needs `OrchardCore.Apis.GraphQL`; command visibility alone does not
 prove the feature is enabled. Read `pomi graphql --help` first.
 

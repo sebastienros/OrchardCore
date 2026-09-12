@@ -179,6 +179,12 @@ to each specialist and shared references. This nested layout keeps the package
 directly installable; agents that only discover immediate child skill folders
 should follow these links or install `pomi@orchardcore`.
 
+For automated website or tenant creation followed by Pomi management, use
+`--enable-remote-management` on the install command and select its returned
+context; it needs no `pomi login`. Preserve setup-only requests without the flag.
+Always hand over the administrator credentials in a private file according to
+the [credential handoff procedure](.agents/skills/pomi/skills/orchardcore-cli/references/setup-password.md#credential-handoff).
+
 These skills provide step-by-step guidance, code templates, and references for common tasks.
 
 ## Frontend Assets

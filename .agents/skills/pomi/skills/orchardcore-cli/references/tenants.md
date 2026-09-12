@@ -21,7 +21,8 @@ pomi --context "$HOST_CONTEXT" tenants install News \
   --user-name admin \
   --email admin@example.com \
   --password-env OC_TENANT_ADMIN_PASSWORD \
-  --output json
+  --enable-remote-management \
+  --output json > ./News.install.json
 ```
 
 Recommend SQLite when no database provider is requested; `Sqlite` is the default
@@ -29,8 +30,28 @@ unless the host supplies a database preset. For a non-SQLite provider, recommend
 a unique `--table-prefix`, respecting host presets and prefix patterns; follow
 the [database choice rules](shared-rules.md#database-choice-for-new-sites-and-tenants).
 This differs from local `pomi install`: tenant installation uses the existing server and
-creates no local application. It creates neither a context nor a login token.
-After success, follow the Remote Management and child-tenant login steps below.
+creates no local application. For automated site building, `--enable-remote-management`
+enables the target tenant's CLI feature and OpenID dependencies and creates a
+dedicated administrative application. It works with Blank as well as SaaS when
+feature profiles permit the dependencies. Omit the option for recipe-driven setup
+without additional remote management; no context is then created automatically.
+
+After successful provisioned installation, use the returned `context` and verify
+its `primaryUrl` against the saved context:
+
+```bash
+TENANT_CONTEXT="$(python3 -c 'import json; print(json.load(open("News.install.json"))["context"])')"
+pomi context list --output json
+pomi --context "$TENANT_CONTEXT" api refresh --output json
+```
+
+Require a nonempty context and use it explicitly. Pomi obtains a client-credentials
+token automatically; do not run `context add`, `login`, or a device flow. Remove
+host-only `OC_CLIENT_ID`/`OC_CLIENT_SECRET` overrides from these child commands'
+environment so they use the saved application credentials. The current host context
+is preserved. Keep the initial administrator credentials in a private handoff file
+and record the actual tenant URL and context there; the application does not replace
+the human account or change its password.
 If creation succeeds but setup fails, inspect `pomi tenants show News`. For an
 uninitialized tenant, correct the setup inputs and use `tenants setup News`;
 do not blindly repeat installation or delete the partially created tenant.
@@ -102,6 +123,11 @@ For `tenants install` and `tenants setup`, the JSON/CLI mappings include:
 | `password` | `--password-env VARIABLE`, `--password-file PATH`, or `--password-stdin` |
 | `connectionString` | `--connection-string-env VARIABLE`, `--connection-string-file PATH`, or `--connection-string-stdin` |
 
+For `tenants install` only, JSON `enableRemoteManagement: true` maps to the
+`--enable-remote-management` boolean switch. Add it to the install examples below
+when continuing with automated Pomi management; it is independent of the secret
+input method.
+
 `connectionString` remains the correct JSON property name, but **there is no
 `--connection-string` option** for these commands. The same applies to
 `password` versus the unsupported inline `--password`. An `-env` option takes
@@ -167,23 +193,36 @@ host database presets and values saved during tenant creation take precedence.
 
 ## Enable management after setup
 
-After setup, configure direct management and authenticate to the child tenant.
-Follow the [unique context naming rules](shared-rules.md#unique-context-names-after-setup)
-and set `TENANT_CONTEXT` to a fresh name, for example `my-saas-news` if unused.
-Set `TENANT_URL` to the exact URL returned by enable-remote-management:
+Skip this step when installation with `--enable-remote-management` already returned
+a context. For an existing running tenant or a tenant created with separate
+`tenants create` / `tenants setup` commands, provision an application through the
+authorized Default-tenant context:
 
 ```bash
-pomi --context "$HOST_CONTEXT" tenants enable-remote-management News
+pomi --context "$HOST_CONTEXT" tenants enable-remote-management News \
+  --provision-client --output json > ./News.management.json
+# Continue only after the command succeeds.
+TENANT_CONTEXT="$(python3 -c 'import json; print(json.load(open("News.management.json"))["context"])')"
 pomi context list --output json
-# Choose TENANT_CONTEXT from this fresh list; do not overwrite an existing name.
-pomi context add "$TENANT_CONTEXT" "$TENANT_URL" --current
-pomi --context "$TENANT_CONTEXT" login
-pomi --context "$TENANT_CONTEXT" api compatibility
-pomi --context "$TENANT_CONTEXT" api refresh
+pomi --context "$TENANT_CONTEXT" api refresh --output json
+pomi --context "$TENANT_CONTEXT" api compatibility --output json
 ```
 
-Do not proxy a Default-tenant identity into a child tenant. Direct
-authentication preserves tenant-local roles, ownership, and authorship.
+Use the returned nonempty context with its saved credentials, without host-only
+credential overrides or interactive login. Each `--provision-client` call creates
+a new application and context; do not repeat it to renew tokens or retry an
+ambiguous response. Inspect the tenant and local contexts first. If a profile
+blocks dependencies, correct the profile within the authorized task before retrying.
+
+`tenants setup` has no `--enable-remote-management` option. If install completed but
+provisioning failed, inspect the persisted tenant and use the enable command after
+fixing the cause, instead of installing again. Without `--provision-client`, the
+enable command only configures remote management. Manual human access then follows
+[authentication and contexts](authentication.md#connect-to-an-existing-tenant).
+
+Each application is tenant-local. Do not proxy the Default-tenant identity into a
+child; use its own returned context for content and design work. The administrator
+user remains available for human sign-in with the password in the handoff file.
 
 For host presets, validation, permissions, and complete DTOs, read the versioned
 [tenant API reference](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/api/tenants/README.md).

@@ -9,6 +9,7 @@ namespace OrchardCore.Cli;
 [JsonSerializable(typeof(CliConfiguration))]
 [JsonSerializable(typeof(CachedContentRecord))]
 [JsonSerializable(typeof(StoredToken))]
+[JsonSerializable(typeof(System.Text.Json.Nodes.JsonObject))]
 [JsonSerializable(typeof(ContextListOutput))]
 [JsonSerializable(typeof(ContextOutput))]
 [JsonSerializable(typeof(ContextClearOutput))]

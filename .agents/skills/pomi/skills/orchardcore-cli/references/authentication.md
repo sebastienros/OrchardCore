@@ -3,11 +3,49 @@
 Apply the [shared operating rules](shared-rules.md). Read only the flow needed
 for the target tenant; existing authenticated contexts do not need a new login.
 
+- [Automatically provisioned application contexts](#automatically-provisioned-application-contexts)
 - [Connect, browser login, and device authorization](#connect-to-an-existing-tenant)
 - [Manage saved contexts](#manage-contexts)
 - [Client credentials configuration](#client-credentials-configuration)
 
+## Automatically provisioned application contexts
+
+For automated website or tenant creation, use `--enable-remote-management` on
+`pomi install` or `pomi tenants install`. For an existing running tenant, use
+`pomi --context "$HOST_CONTEXT" tenants enable-remote-management <tenant> --provision-client`.
+These flows enable CLI/OpenID dependencies, register a dedicated administrative
+application, and return a unique `context`. Select that name explicitly and run
+`pomi --context "$CONTEXT" api refresh --output json` once the server is running.
+Pomi discovers the authority, obtains an application token, and renews it when
+needed. No `context add`, `pomi login`, or device approval is required.
+
+Do not supply a host's `OC_CLIENT_ID`/`OC_CLIENT_SECRET` to a child command:
+explicit environment credentials take precedence over the saved credentials.
+Keep the administrator username/password in the separate
+[private handoff file](setup-password.md#credential-handoff) for the user.
+The application represents itself, not that administrator, and retains its own
+access even if the user's password changes. Provisioned applications have the
+tenant administrator role; use a separately configured limited application for
+jobs that only need narrower permissions.
+
+Pomi stores application secrets in Windows Credential Manager on Windows or
+owner-only plaintext credential files on macOS/Linux, following the existing
+credential-store policy. Do not copy them into site files or the human handoff.
+`pomi logout` removes the local stored application credentials; it does not delete
+the server application. Delete the application in OpenID administration to stop
+future token issuance when revocation is authorized. Reprovisioning creates another
+application and context, not a token refresh or secret rotation.
+
+If provisioning flags are missing, check live help and matching CLI/server versions.
+If setup partly succeeds, inspect the tenant before retrying and retain the user
+credential file. Do not silently switch an unattended task to interactive login.
+For a setup-only request without additional remote management, omit the install
+flag; ordinary recipe behavior and administrator-account creation still apply.
+
 ## Connect to an existing tenant
+
+Use this manual flow when human sign-in is wanted and no provisioned application
+context applies. Existing valid contexts need no new login.
 
 First run `pomi context list --output json`. Reuse an existing context only for
 an intentionally selected existing site. When adding one, follow the

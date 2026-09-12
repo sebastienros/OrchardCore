@@ -11,11 +11,48 @@ using OrchardCore.OpenId.Abstractions.Managers;
 using OrchardCore.OpenId.Services;
 using OrchardCore.OpenId.Settings;
 using OrchardCore.OpenId.ViewModels;
+using OrchardCore.Roles;
+using OrchardCore.Security;
 
 namespace OrchardCore.RemoteManagement.Tests;
 
 public class ClientConfigurationTests
 {
+    [Fact]
+    public async Task Provision_NewApplication_UsesOnlyClientCredentialsAndCustomAdminRole()
+    {
+        var manager = new Mock<IOpenIdApplicationManager>();
+        var roles = new Mock<ISystemRoleProvider>();
+        roles.Setup(value => value.GetAdminRole()).Returns(new Role { RoleName = "SiteOwners" });
+        OpenIdApplicationDescriptor created = null;
+        manager.Setup(value => value.CreateAsync(It.IsAny<OpenIdApplicationDescriptor>(), It.IsAny<CancellationToken>()))
+            .Callback<OpenIddictApplicationDescriptor, CancellationToken>((value, _) => created = (OpenIdApplicationDescriptor)value);
+        var credentials = RemoteManagementClientCredentials.Generate();
+
+        await new RemoteManagementClientProvisioningService(manager.Object, roles.Object).CreateAsync(credentials);
+
+        Assert.Equal(credentials.ClientId, created.ClientId);
+        Assert.Equal(credentials.ClientSecret, created.ClientSecret);
+        Assert.Equal(OpenIddictConstants.ClientTypes.Confidential, created.ClientType);
+        Assert.Equal("SiteOwners", Assert.Single(created.Roles));
+        Assert.Equal(3, created.Permissions.Count);
+        Assert.Contains(OpenIddictConstants.Permissions.GrantTypes.ClientCredentials, created.Permissions);
+        Assert.Empty(created.RedirectUris);
+        manager.Verify(value => value.FindByClientIdAsync("orchardcore-cli", It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Provision_ExistingApplication_IsNeverOverwritten()
+    {
+        var credentials = RemoteManagementClientCredentials.Generate();
+        var manager = new Mock<IOpenIdApplicationManager>();
+        manager.Setup(value => value.FindByClientIdAsync(credentials.ClientId, It.IsAny<CancellationToken>())).ReturnsAsync(new object());
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            new RemoteManagementClientProvisioningService(manager.Object, Mock.Of<ISystemRoleProvider>()).CreateAsync(credentials));
+        manager.Verify(value => value.CreateAsync(It.IsAny<OpenIdApplicationDescriptor>(), It.IsAny<CancellationToken>()), Times.Never);
+        manager.Verify(value => value.UpdateAsync(It.IsAny<object>(), It.IsAny<OpenIdApplicationDescriptor>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     [Theory]
     [InlineData(false, null)]
     [InlineData(true, "orchardcore-cli")]

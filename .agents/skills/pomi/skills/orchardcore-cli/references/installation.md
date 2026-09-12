@@ -19,7 +19,13 @@ sources; it leaves nuget.org and an explicit `--source`.
 ## Choose the site to create
 
 Use the same installer for these two new-host workflows. The password variable
-in these examples must already be populated securely as described below.
+in these examples must already be populated securely and saved for the user as
+described below. For automated site building, use `--enable-remote-management`:
+it enables CLI/OpenID dependencies even with Blank, registers an administrative
+application, and saves a context with client credentials. Omit the option for
+setup-only work without additional remote management; the recipe remains authoritative.
+Check live help for the flag and use matching CLI/server packages. An older build
+without provisioning support is not a reason to silently switch to interactive login.
 
 For a new site without a requested recipe, prefer SQLite and Blank:
 
@@ -27,7 +33,7 @@ For a new site without a requested recipe, prefer SQLite and Blank:
 pomi install ./MySite \
   --recipe-name Blank --database-provider Sqlite \
   --site-name "My Site" --user-name admin --email admin@example.com \
-  --password-env OC_SITE_PASSWORD --output json
+  --password-env OC_SITE_PASSWORD --enable-remote-management --output json > ./MySite.install.json
 ```
 
 For a new SaaS host, create and initialize its **Default tenant** with SaaS:
@@ -36,30 +42,29 @@ For a new SaaS host, create and initialize its **Default tenant** with SaaS:
 pomi install ./MySaaS \
   --recipe-name SaaS --database-provider Sqlite \
   --site-name "My SaaS" --user-name admin --email admin@example.com \
-  --password-env OC_SITE_PASSWORD --output json > ./MySaaS.install.json
+  --password-env OC_SITE_PASSWORD --enable-remote-management --output json > ./MySaaS.install.json
 ```
 
 SaaS is the setup recipe, not a different .NET project template. The SaaS
 recipe enables tenant management; it does not create the requested child tenants.
-The bundled SaaS recipe also enables and configures Pomi Remote Management.
-After starting the host, add a context for its root URL and authenticate, then
-use [tenant installation](tenants.md) for each requested child. Follow the
-[unique context naming rules](shared-rules.md#unique-context-names-after-setup):
-inspect the list, then set `CONTEXT` to an unused site-specific name (`my-saas-host`
-only if available). Do not use a generic `default` context name:
+After the install command succeeds, use its `context` and `url` fields. Pomi
+chooses an unused context name and preserves an existing current context. The
+JSON result contains no application secret. Start the host using the process
+lifecycle guidance below before issuing remote commands:
 
 ```bash
 SITE_URL="$(python3 -c 'import json; print(json.load(open("MySaaS.install.json"))["url"])')"
+CONTEXT="$(python3 -c 'import json; print(json.load(open("MySaaS.install.json"))["context"])')"
 pomi context list --output json
-# Set CONTEXT to the unused name chosen from the result before continuing.
-pomi context add "$CONTEXT" "$SITE_URL" --current
-pomi --context "$CONTEXT" login
-pomi --context "$CONTEXT" api refresh
+pomi --context "$CONTEXT" api refresh --output json
 pomi --context "$CONTEXT" tenants install --help
 ```
 
-Use the actual host URL. This login is interactive; follow
-[authentication](authentication.md) for browser or device approval.
+Use `MySite.install.json` for the standalone example. Require a nonempty returned
+context and verify its tenant URL; do not guess a name or fall back to the current
+context. `api refresh` obtains an application token automatically. Do not add
+another context or run `pomi login` or device authorization. Update the private
+administrator credential record with the actual URL and context name.
 A child tenant can use Blank or Blog independently of the host's SaaS recipe.
 Do not attempt `pomi tenants install` before a host exists.
 
@@ -75,7 +80,7 @@ do not silently switch to a manual installation.
 The password must meet the [setup password policy](setup-password.md). That
 reference includes a cryptographic generator guaranteed to meet the standard
 policy. The password environment variable must already be provided by the user,
-secret manager, or an authorized generation step. Save generated administrator
+secret manager, or an authorized generation step. Save administrator
 credentials in a private file accessible to the user before setup, following
 [credential handoff](setup-password.md#credential-handoff). The masked interactive prompt, `--password-file`, and
 `--password-stdin` are alternatives. Connection strings use the analogous
@@ -123,9 +128,12 @@ waiting for requests as a failed installation. Existing nonempty destinations ar
 the preserved project and output before deciding how to proceed; do not blindly
 retry setup against a partly initialized database. Administrator passwords are
 not persisted in configuration, but Orchard persists database connection settings.
-The bundled SaaS recipe configures Remote Management for Pomi. For other
-recipes/builds, check their capabilities and follow the linked setup guide if
-Remote Management is absent; do not recreate or reset the installed site.
+With `--enable-remote-management`, Pomi requires confirmation of application
+provisioning before saving the context. If provisioning fails after setup, inspect
+the installed site's state and fix its feature profile or configuration. Follow
+[management after setup](tenants.md#enable-management-after-setup) for existing
+tenants; do not recreate or reset the installed site. Without the flag, recipe
+behavior is unchanged and no automatic context is created.
 
 After installation, see [tenant management and Remote Management setup](tenants.md)
 and the versioned [Remote Management reference](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/modules/RemoteManagement/README.md).

@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
+using OrchardCore.RemoteManagement;
 
 namespace OrchardCore.Cli;
 
@@ -26,6 +27,7 @@ internal sealed class LocalSiteInstallOptions
     public string? Urls { get; set; }
     public int SetupTimeoutSeconds { get; init; } = 300;
     public bool Verbose { get; init; }
+    public RemoteManagementClientCredentials? ClientCredentials { get; init; }
     public string Password { get; set; } = string.Empty;
     public string? ConnectionString { get; set; }
     public string[] SecretEnvironmentVariables { get; init; } = [];
@@ -33,6 +35,8 @@ internal sealed class LocalSiteInstallOptions
 
 internal sealed class LocalSiteInstallOutput
 {
+    public string? Context { get; set; }
+
     public string Directory { get; init; } = string.Empty;
     public string Project { get; init; } = string.Empty;
     public string PackageVersion { get; init; } = string.Empty;
@@ -316,6 +320,12 @@ internal static partial class LocalSiteInstaller
             ["DatabaseTablePrefix"] = options.TablePrefix ?? string.Empty, ["DatabaseSchema"] = options.Schema ?? string.Empty,
             ["RequestUrlPrefix"] = options.RequestUrlPrefix ?? string.Empty, ["RequestUrlHost"] = options.RequestUrlHost ?? string.Empty,
         };
+        if (options.ClientCredentials is { } credentials)
+        {
+            values["RemoteManagementClientId"] = credentials.ClientId;
+            values["RemoteManagementClientSecret"] = credentials.ClientSecret;
+        }
+
         var environment = values.ToDictionary(pair => AutoSetupPrefix + "Tenants__0__" + pair.Key, pair => pair.Value);
         environment[AutoSetupPrefix + "AutoSetupPath"] = setupPath;
         return environment;
@@ -337,7 +347,7 @@ internal static partial class LocalSiteInstaller
         await log.WriteLineAsync("Auto Setup uses a temporary local-only server; it stops before the requested site URL starts.");
         using var process = DotnetEnvironment.Start([ApplicationPath(project), "--urls", url], options.Directory,
             CreateSetupEnvironment(options, setupPath), options.SecretEnvironmentVariables);
-        string[] secrets = [options.Password, options.ConnectionString ?? string.Empty];
+        string[] secrets = [options.Password, options.ConnectionString ?? string.Empty, options.ClientCredentials?.ClientSecret ?? string.Empty];
         var stdout = DotnetEnvironment.DrainAsync(process.StandardOutput, log, secrets: secrets);
         var stderr = DotnetEnvironment.DrainAsync(process.StandardError, log, secrets: secrets);
         try
@@ -364,6 +374,13 @@ internal static partial class LocalSiteInstaller
                     if (response.StatusCode != HttpStatusCode.Redirect || !await IsInitializedAsync(options.Directory, timeout.Token))
                     {
                         throw new CliException($"Auto Setup did not complete (HTTP {(int)response.StatusCode}). Check the recipe, database settings, and password requirements in the application output above. The project is preserved.");
+                    }
+
+                    if (options.ClientCredentials is { } credentials &&
+                        (!response.Headers.TryGetValues("X-OrchardCore-Provisioned-Client", out var provisioned) ||
+                         !provisioned.Contains(credentials.ClientId, StringComparer.Ordinal)))
+                    {
+                        throw new CliException("The site was installed, but its Auto Setup module did not confirm application provisioning. Use matching server packages that support --enable-remote-management. The project is preserved.");
                     }
 
                     return;

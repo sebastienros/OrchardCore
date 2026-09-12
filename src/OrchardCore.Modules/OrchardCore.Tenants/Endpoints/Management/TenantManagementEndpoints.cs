@@ -217,7 +217,8 @@ internal static partial class TenantManagementEndpoints
         [FromServices] IShellHost shellHost,
         [FromServices] ShellSettings currentShellSettings,
         [FromServices] IAuthorizationService authorizationService,
-        [FromServices] IStringLocalizer<TenantApiController> localizer)
+        [FromServices] IStringLocalizer<TenantApiController> localizer,
+        [FromQuery] bool provisionClient = false)
     {
         if (await AuthorizeManageTenantsAsync(httpContext, authorizationService, currentShellSettings, localizer) is { } authError)
         {
@@ -237,49 +238,22 @@ internal static partial class TenantManagementEndpoints
                 statusCode: StatusCodes.Status409Conflict);
         }
 
-        var scope = await shellHost.GetScopeAsync(settings);
-        await scope.UsingAsync(async childScope =>
-        {
-            var featureManager = childScope.ServiceProvider.GetRequiredService<IShellFeaturesManager>();
-            var feature = (await featureManager.GetAvailableFeaturesAsync())
-                .FirstOrDefault(feature => feature.Id == "OrchardCore.RemoteManagement.Cli");
-
-            if (feature is not null &&
-                !(await featureManager.GetEnabledFeaturesAsync()).Any(candidate => candidate.Id == feature.Id))
-            {
-                _ = await featureManager.EnableFeaturesAsync([feature], force: true);
-            }
-        });
-
-        var verificationScope = await shellHost.GetScopeAsync(settings);
-        var enabled = false;
-        await verificationScope.UsingAsync(async childScope =>
-        {
-            enabled = (await childScope.ServiceProvider.GetRequiredService<IShellFeaturesManager>().GetEnabledFeaturesAsync())
-                .Any(candidate => candidate.Id == "OrchardCore.RemoteManagement.Cli");
-
-            if (enabled)
-            {
-                await childScope.ServiceProvider
-                    .GetRequiredService<IRemoteManagementTenantConfigurationService>()
-                    .ConfigureAsync();
-                await childScope.ServiceProvider
-                    .GetRequiredService<IRemoteManagementCliConfigurationService>()
-                    .ConfigureAsync();
-            }
-        });
-
-        if (!enabled)
+        var credentials = provisionClient ? RemoteManagementClientCredentials.Generate() : null;
+        if (!await RemoteManagementProvisioning.ConfigureAsync(shellHost, settings, credentials))
         {
             return httpContext.ApiBadRequestProblem(detail: localizer["Remote management could not be enabled for tenant '{0}'. Check its active feature profile.", tenantName]);
         }
 
-        await shellHost.ReloadShellContextAsync(settings);
+        if (credentials is not null)
+        {
+            httpContext.Response.Headers.CacheControl = "no-store";
+        }
 
         return TypedResults.Ok(new TenantOperationResponse
         {
             Name = settings.Name,
             Action = "enable-remote-management",
+            ClientCredentials = credentials,
             State = settings.State.ToString(),
             Url = GetTenantUrls(httpContext, settings).FirstOrDefault(),
         });
@@ -1179,6 +1153,9 @@ internal static partial class TenantManagementEndpoints
 
     internal sealed class TenantResponse
     {
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+        public RemoteManagementClientCredentials ClientCredentials { get; set; }
+
         public string Name { get; init; } = string.Empty;
         public string TenantId { get; init; }
         public string State { get; init; }
@@ -1202,6 +1179,9 @@ internal static partial class TenantManagementEndpoints
 
     internal sealed class TenantOperationResponse
     {
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+        public RemoteManagementClientCredentials ClientCredentials { get; init; }
+
         public string Name { get; init; } = string.Empty;
         public string Action { get; init; } = string.Empty;
         public string State { get; init; } = string.Empty;

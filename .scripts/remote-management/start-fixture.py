@@ -20,10 +20,11 @@ blank = (repo / "src/OrchardCore.Themes/TheAdmin/Recipes/blank.recipe.json").rea
 recipe = json.loads("\n".join(line for line in blank.splitlines() if not line.lstrip().startswith("//")))
 recipe["name"] = "CliFixture"
 # Keep tenant static serving enabled to prove it exposes no management API.
-recipe["steps"][0]["enable"] += ["OrchardCore.RemoteManagement", "OrchardCore.Tenants", "OrchardCore.Tenants.FileProvider", "OrchardCore.Workflows", "OrchardCore.Queries.Sql", "OrchardCore.Localization", "OrchardCore.DataLocalization", "OrchardCore.Apis.GraphQL"]
+recipe["steps"][0]["enable"] += ["OrchardCore.RemoteManagement.Cli", "OrchardCore.Tenants", "OrchardCore.Tenants.FileProvider", "OrchardCore.Workflows", "OrchardCore.Queries.Sql", "OrchardCore.Localization", "OrchardCore.DataLocalization", "OrchardCore.Apis.GraphQL"]
 secret = secrets.token_urlsafe(32)
 recipe["steps"] += [
     {"name": "RemoteManagementConfiguration"},
+    {"name": "RemoteManagementCliConfiguration"},
     {"name": "Roles", "Roles": [{"Name": "CliDiscovery", "Permissions": ["AccessRemoteManagement"]}]},
     {"name": "OpenIdApplication", "ClientId": "cli-discovery", "ClientSecret": secret,
      "DisplayName": "Disposable discovery-only client", "Type": "confidential", "ConsentType": "implicit",

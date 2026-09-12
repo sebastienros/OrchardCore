@@ -1,11 +1,35 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Text.Json;
+using OrchardCore.RemoteManagement;
 
 namespace OrchardCore.Cli.Tests;
 
 public class LocalSiteInstallerTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SetupEnvironment_ApplicationProvisioning_IsOptInAndUsesOnlyEnvironment(bool enable)
+    {
+        var credentials = enable ? RemoteManagementClientCredentials.Generate() : null;
+        var options = new LocalSiteInstallOptions
+        {
+            Directory = "unused", SiteName = "Test", UserName = "admin", Email = "admin@example.com",
+            ClientCredentials = credentials,
+        };
+        var environment = LocalSiteInstaller.CreateSetupEnvironment(options, "/setup");
+        const string prefix = "OrchardCore__OrchardCore_AutoSetup__Tenants__0__RemoteManagement";
+        Assert.Equal(enable, environment.ContainsKey(prefix + "ClientId"));
+        Assert.Equal(enable, environment.ContainsKey(prefix + "ClientSecret"));
+        var process = DotnetEnvironment.CreateStartInfo(["site.dll"], "unused", environment);
+        Assert.DoesNotContain(process.ArgumentList, argument => argument.Contains("pomi-", StringComparison.Ordinal));
+        if (enable)
+        {
+            Assert.Equal(credentials!.ClientSecret, process.Environment[prefix + "ClientSecret"]);
+        }
+    }
+
     [Fact]
     public void InstallDefaults_UseNugetOrgAndHttps()
     {

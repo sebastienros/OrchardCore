@@ -150,6 +150,19 @@ pomi content items list
 
 Direct authentication ensures tenant-local roles and permissions are enforced and newly created content is associated with the authenticated tenant user. Each context stores separate credentials. Discovery caches are keyed by tenant URL, so aliases for the same URL share metadata; `--help` reflects that tenant's enabled features.
 
+## Provision application credentials during installation
+
+`pomi install` and `pomi tenants install` accept `--enable-remote-management` to
+opt into enabling the CLI/OpenID features and saving a new context with dedicated
+administrative application credentials. No interactive login is needed. Without
+the flag, installation follows the recipe and creates the administrator account
+as usual. Existing running tenants can use
+`pomi tenants enable-remote-management <tenant> --provision-client`.
+
+See [optional unattended remote management](../../../guides/remote-management/README.md#optional-unattended-remote-management)
+for examples, credential storage, and revocation. The administrator user and its
+password are independent of the application credentials.
+
 ## Client credentials for automation
 
 Use client credentials when a CI job, scheduled script, or service needs to run

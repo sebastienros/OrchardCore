@@ -55,7 +55,10 @@ It also verifies valid partial-update validation still succeeds.
 `tenant-install-smoke.py` verifies the dynamically discovered install command,
 password environment/stdin input, human and JSON results, complete tenant URLs,
 duplicate-name rejection, creation validation, setup failure/recovery, and
-unchanged local contexts. It creates tenants only inside the disposable host.
+unchanged local contexts when provisioning is omitted. It also verifies opt-in
+application provisioning, authorization denial, automatic context authentication,
+and provisioning additional clients for existing tenants. It creates tenants only
+inside the disposable host.
 
 `localization-smoke.py` exercises six culture/settings CLI operations and the
 dedicated Media label command. It also verifies that the five string-related

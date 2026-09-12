@@ -1,4 +1,5 @@
 using System.CommandLine;
+using OrchardCore.RemoteManagement;
 
 namespace OrchardCore.Cli;
 
@@ -20,12 +21,13 @@ internal sealed partial class CliApplication
         var host = new Option<string?>("--request-url-host") { Description = "Optional single site host name" };
         var source = new Option<string?>("--source") { Description = "Additional NuGet source for Orchard dependencies; inherited sources remain available" };
         var clearSources = new Option<bool>("--clear-sources") { Description = "Clear inherited NuGet package sources; use only nuget.org and an explicit --source" };
+        var enableRemoteManagement = new Option<bool>("--enable-remote-management") { Description = "Enable Remote Management CLI and OpenID, and save a context with credentials for a new administrative application" };
         var run = new Option<bool>("--run") { Description = "Start the completed site in the foreground; Ctrl+C stops it" };
         var verbose = new Option<bool>("--verbose") { Description = "Show template, build, and temporary setup logs as they happen" };
         var urls = new Option<string?>("--urls") { Description = "Listen URLs (default: HTTPS on an available random localhost port); quote multiple addresses separated by semicolons, e.g. \"https://localhost:5001;http://localhost:5000\". HTTPS requires a certificate" };
         var timeout = new Option<int>("--setup-timeout") { Description = "Setup timeout in seconds", DefaultValueFactory = _ => 300 };
         command.Arguments.Add(directory);
-        foreach (var option in new Option[] { siteName, userName, email, recipe, provider, tablePrefix, schema, timeZone, urlPrefix, host, source, clearSources, run, verbose, urls, timeout })
+        foreach (var option in new Option[] { siteName, userName, email, recipe, provider, tablePrefix, schema, timeZone, urlPrefix, host, source, clearSources, enableRemoteManagement, run, verbose, urls, timeout })
         {
             command.Options.Add(option);
         }
@@ -57,6 +59,7 @@ internal sealed partial class CliApplication
                 Urls = parsed.GetValue(urls),
                 SetupTimeoutSeconds = parsed.GetValue(timeout),
                 Verbose = parsed.GetValue(verbose),
+                ClientCredentials = parsed.GetValue(enableRemoteManagement) ? RemoteManagementClientCredentials.Generate() : null,
                 SecretEnvironmentVariables = new[] { parsed.GetValue(password.EnvironmentVariableOption), parsed.GetValue(connection.EnvironmentVariableOption) }
                     .Where(name => !string.IsNullOrWhiteSpace(name)).Select(name => name!).ToArray(),
             };
@@ -72,6 +75,12 @@ internal sealed partial class CliApplication
             options.ConnectionString = await ResolveSecretValueAsync(parsed, connection, cancellationToken);
             LocalSiteInstaller.ValidateSecrets(options);
             var output = await LocalSiteInstaller.InstallAsync(options, sdk, Console.Error, cancellationToken);
+            if (options.ClientCredentials is { } credentials)
+            {
+                output.Context = await SaveProvisionedContextAsync(Path.GetFileName(Path.TrimEndingDirectorySeparator(output.Directory)), output.Url,
+                    credentials.ClientId, credentials.ClientSecret, cancellationToken);
+            }
+
             var exitCode = await WriteOutputAsync(parsed, CliUtilities.ToJsonElement(output, CliJsonContext.Default.LocalSiteInstallOutput), cancellationToken);
             if (parsed.GetValue(run))
             {

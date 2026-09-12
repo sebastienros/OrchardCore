@@ -18,6 +18,12 @@ tenant without a context or login. Read [local installation](references/installa
 before creating files. For a requested SaaS host, pass `--recipe-name SaaS`;
 otherwise prefer `--recipe-name Blank` unless the user selects another recipe.
 Use `pomi tenants install` only to add a tenant to an **existing, running host**.
+For automated building after setup, add `--enable-remote-management` to either
+install command and use the returned `context`; it authenticates using stored
+application credentials without `pomi login` or manual context creation. Omit
+the option for setup-only work that should follow the recipe without additional
+remote management. In both modes, hand over the administrator credentials in a
+[private file](references/setup-password.md#credential-handoff).
 
 If Pomi is unavailable, follow [CLI installation](references/cli-installation.md)
 first. Do not substitute manual `dotnet new`, project scaffolding, or hand-written

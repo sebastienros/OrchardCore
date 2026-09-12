@@ -9,8 +9,11 @@ Before issuing commands, read the [shared context, authentication, and output ru
 For first-time access or login problems, follow [authentication and contexts](../orchardcore-cli/references/authentication.md).
 These rules apply even when this specialist is selected directly.
 
-Use this skill after selecting the exact tenant context. Refresh OpenAPI after
-feature changes because commands and schemas are dynamic.
+Use this skill after selecting the exact tenant context. For automated creation,
+follow the main CLI skill's installation flow with `--enable-remote-management`
+and use its returned context without `pomi login`. Retain the separate private
+administrator credential file for the user. Refresh OpenAPI after feature changes
+because commands and schemas are dynamic.
 
 ## Features
 

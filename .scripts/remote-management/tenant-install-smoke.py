@@ -16,9 +16,11 @@ password = secrets.token_urlsafe(32) + 'aA1!'
 env = {**os.environ, 'OC_INSTALL_TEST_PASSWORD': password}
 
 
-def pomi(*args, stdin=None, status=None, output='json', client=None):
+def pomi(*args, stdin=None, status=None, output='json', client=None, stored=False):
     command = [sys.executable, str(wrapper), str(state_path), *args, '--output', output]
     run_env = {**env, **({'OC_FIXTURE_CLIENT_ID': client} if client else {})}
+    if stored:
+        run_env['OC_FIXTURE_HUMAN'] = '1'  # Use stored application credentials, without fixture credential overrides.
     result = subprocess.run(command, input=stdin, text=True, capture_output=True, timeout=180, env=run_env)
     assert password not in result.stdout + result.stderr, 'Password leaked into command output'
     if status is not None:
@@ -77,4 +79,28 @@ human = pomi('tenants', 'setup', bad, '--site-name', 'Recovered', '--user-name',
            '--password-env', 'OC_INSTALL_TEST_PASSWORD', output='human')
 assert 'successfully' in human
 assert pomi('context', 'list') == before, 'Installation unexpectedly changed local contexts'
-print('Tenant install smoke passed: dynamic discovery, secret inputs, running tenant URLs, duplicate rejection, validation, partial failure/recovery, unchanged contexts.')
+
+managed_name = prefix + 'Managed'
+managed_args = ['tenants', 'install', managed_name, '--request-url-prefix', managed_name.lower(),
+                '--recipe-name', 'Blank', '--site-name', 'Managed', '--user-name', 'admin',
+                '--email', 'admin@example.com', '--password-env', 'OC_INSTALL_TEST_PASSWORD',
+                '--enable-remote-management']
+pomi('api', 'invoke', 'POST', f'api/tenants/{managed_name}:install', '--stdin',
+     stdin=json.dumps({'siteName': 'Managed', 'userName': 'admin', 'email': 'admin@example.com',
+                       'password': password, 'recipeName': 'Blank', 'requestUrlPrefix': managed_name.lower(),
+                       'enableRemoteManagement': True}), client='cli-discovery', status=403)
+pomi('tenants', 'show', managed_name, status=404)
+managed = pomi(*managed_args)
+assert 'clientCredentials' not in managed, managed
+managed_context = managed['context']
+assert managed_context and managed['clientId'].startswith('pomi-'), managed
+pomi('--context', managed_context, 'api', 'invoke', 'GET', 'api/features', stored=True)
+assert pomi('context', 'list')['currentContext'] == before['currentContext']
+# Existing tenants can opt in later, using a separate application each time.
+enabled = pomi('tenants', 'enable-remote-management', name, '--provision-client')
+assert 'clientCredentials' not in enabled, enabled
+pomi('--context', enabled['context'], 'api', 'invoke', 'GET', 'api/features', stored=True)
+again = pomi('tenants', 'enable-remote-management', name, '--provision-client')
+assert again['context'] != enabled['context'] and again['clientId'] != enabled['clientId']
+pomi('--context', enabled['context'], 'api', 'invoke', 'GET', 'api/features', stored=True)
+print('Tenant install smoke passed: dynamic discovery, secret inputs, running tenant URLs, duplicate rejection, validation, partial failure/recovery, optional provisioning, application authentication, unchanged existing contexts.')
