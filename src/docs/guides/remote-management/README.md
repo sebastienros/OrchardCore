@@ -10,12 +10,14 @@ validates an unpublished article.
 
 ## 1. Download or build the CLI
 
-The fork's [Remote management CLI workflow](https://github.com/sebastienros/OrchardCore/actions/workflows/remote_cli.yml)
-builds downloadable native binaries on every branch push and on PR updates
-targeting the fork.
+The fork's [Remote management CI and optional packages workflow](https://github.com/sebastienros/OrchardCore/actions/workflows/remote_cli.yml)
+runs checks on ordinary pushes and PRs without producing native binaries or
+NuGet packages. Downloadable builds require a manual workflow run with
+`publish_packages` enabled. This option also publishes the package set to Feedz.
 
-1. Open the workflow run for the commit you want to try. For a PR targeting
-   the fork, open **Checks**, then the **Remote management CLI** run.
+1. Open a completed manual packaging run for the commit you want to try. A
+   maintainer can start one with **Run workflow**, select the desired branch,
+   and enable **Build native binaries and publish the complete package set to Feedz**.
 2. Once the platform job succeeds, use its summary's **Download** link or
    select an artifact in the run's **Artifacts** section:
 
@@ -34,10 +36,9 @@ targeting the fork.
 4. Put the extracted directory on your `PATH` and run `pomi --version`.
 
 You must be signed into GitHub to download workflow artifacts. These builds
-are retained for 30 days and are unsigned development artifacts. For PR runs,
-the built commit is GitHub's test merge commit; push runs build the pushed
-commit. A newer PR update cancels its superseded PR build; push builds continue
-so each pushed commit can publish its own packages.
+are retained for 30 days and are unsigned development artifacts. The run summary
+identifies the selected commit. Superseded ordinary checks can be cancelled;
+explicitly requested publication runs continue to completion.
 
 ### Install as a .NET tool
 
@@ -72,7 +73,7 @@ that install command. A registered feed needs no extra argument. Use
 installation, with the same optional `--add-source`. Without
 `--prerelease`, an unpinned install selects a stable version. For a reproducible
 installation, use the exact discovered version, or copy the version of a
-specific push build from its **Published to Feedz** workflow summary:
+specific manual packaging run from its **Published to Feedz** workflow summary:
 
 
 ```bash
@@ -85,7 +86,7 @@ version to upgrade. All packages from a build share a version such as
 `4.0.0-cli.25`: Orchard's version prefix and the workflow run number.
 The native implementation is selected automatically for your computer.
 
-To use a downloadable artifact instead (also available for PR builds):
+To use a downloadable artifact from a manual packaging run instead:
 
 1. From the same workflow run, download `pomi-tool-<rid>` for your computer,
    such as **pomi-tool-osx-arm64** for an Apple Silicon Mac.
@@ -124,7 +125,7 @@ an update selects the new executable.
 
 ### Test matching project templates and libraries
 
-Install templates from the same successful push build:
+Install templates from the same successful manual packaging run:
 
 ```bash
 dotnet new install OrchardCore.ProjectTemplates@<version> --add-source https://f.feedz.io/sebastienros/orchardcore/nuget/index.json

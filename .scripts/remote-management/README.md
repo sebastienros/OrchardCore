@@ -76,7 +76,7 @@ without an explicit refresh. Run it with the current CLI build.
 variables/stdin, errors, and permissions against Orchard without refreshing
 OpenAPI. `graphql-native-smoke.py <native-pomi-path>` additionally tests partial
 results on HTTP 200/400/401, JSON and human output, redirects, and input handling
-against an isolated loopback server; it runs in every native CI build.
+against an isolated loopback server; it runs in every opt-in native build.
 
 The wrapper supplies credentials only through the child process environment:
 
@@ -126,17 +126,20 @@ binaries with completions, a verification record, and SHA-256 checksums.
 Budgets are 30 MiB for the executable and 2 seconds median process startup;
 the latter is a regression guard, not a cold-machine performance guarantee.
 
-The `Remote management CLI` workflow performs this on native Linux, Windows,
-and macOS runners for x64 and Arm64. It creates workflow artifacts and does
-not publish releases. Every push to the review or `codex/**` branches triggers
-a build, including documentation-only commits. PR creation and updates in the
-fork also trigger builds; a newer event cancels an unfinished run for the same
-source branch. Each successful platform job uploads an artifact retained for
-30 days and adds a direct download link and built commit SHA to its summary.
-It also uploads `pomi-tool-<rid>` with the installer and native implementation
-NuGet packages, an exact installation command, and a verification record.
-Both standalone and tool binaries use the run's `1.0.0-ci.<run>.<attempt>`
-version. The workflow does not push packages to a NuGet feed.
+The `Remote management CI and optional packages` workflow runs server and CLI
+checks on pushes. PRs run the strict solution build, server, CLI, authentication,
+MCP and functional tests through `PR - CI`. Regular pushes and PR updates do not
+build, pack, upload or publish native binaries or NuGet packages.
+
+To produce packages, manually dispatch `remote_cli.yml` on the desired branch
+with `publish_packages` enabled. This opt-in runs the six-platform NativeAOT
+builds and native smoke/install checks, creates downloadable artifacts retained
+for 30 days, and publishes the complete package set to Feedz after checks pass.
+Each platform summary links to its native archive and `pomi-tool-<rid>` packages,
+with the built commit and common `4.0.0-cli.<run>` version (using the current
+repository version prefix). Native-specific smoke checks run only in this
+opt-in path; managed CLI tests continue to run in ordinary CI.
+
 Download instructions and platform names are in the
 [getting-started guide](../../src/docs/guides/remote-management/README.md#1-download-or-build-the-cli).
 Runner labels follow the
@@ -298,10 +301,14 @@ This is a local-store check; it does not claim Azure/S3 or multi-node coverage.
 
 ## Feedz publishing
 
-The fork's `remote_cli.yml` publishes on every branch push and on manual runs.
-PR builds only produce native artifacts. New push builds do not cancel older
-push builds. Publishing runs only in `sebastienros/OrchardCore`, after the server
-build/tests and all six native builds/tests/install checks pass.
+The fork's `remote_cli.yml` publishes only when manually dispatched with
+`publish_packages` enabled (default: disabled). Branch pushes, PR updates and
+manual runs without that option run checks without package or native-binary
+publication. Superseded regular checks are cancelled; explicitly requested
+publication runs are allowed to finish. Publishing runs only in
+`sebastienros/OrchardCore`, after the checks and all six native builds/tests/install
+checks pass. A manual packaging run also publishes to Feedz; it is not an
+artifact-only mode.
 
 Only outputs under `src` are collected, excluding test/sample packages.
 The solution pack includes libraries, modules, themes, targets, and
@@ -329,8 +336,7 @@ ordinary restore inherit that feed. Its explicit `--clear-sources` case checks
 that an inherited-only source is excluded while nuget.org and `--source` remain.
 
 Versions use the repository's `VersionPrefix` plus
-`-cli.<workflow-run-number>` (for example `4.0.0-cli.25`). A new push or manual
-run gets the next number. Rerunning the same workflow run keeps its version;
+`-cli.<workflow-run-number>` (for example `4.0.0-cli.25`). Each explicitly requested publication uses its workflow run number. Rerunning the same workflow run keeps its version;
 `--skip-duplicate` allows a partial publication to resume without replacing
 immutable packages.
 
@@ -350,4 +356,4 @@ Run `python3 .scripts/remote-management/force-confirmation-smoke.py <pomi-path>`
 to check that `--force` confirms destructive commands without prompting, that
 API `force` values use `--api-force` independently, and that context deletion
 uses the same flag. The test uses a synthetic loopback API and isolated context
-storage; it runs in every native CI build.
+storage; it runs in every opt-in native build.
