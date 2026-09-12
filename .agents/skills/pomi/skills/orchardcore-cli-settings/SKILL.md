@@ -1,6 +1,6 @@
 ---
 name: orchardcore-cli-settings
-description: Reads and updates Orchard Core Site Settings, Custom Settings, and cultures through `pomi`. Use for tenant-wide configuration, schema-safe partial settings updates, custom-settings content types, feature-contributed settings, and validating settings without overwriting protected or unknown values.
+description: Reads and updates Orchard Core Site Settings, typed module sections, Custom Settings, and cultures through `pomi`. Use for tenant-wide configuration, schema-safe partial settings updates, custom-settings content types, feature-contributed settings, and validating settings without overwriting protected or unknown values.
 ---
 
 # Pomi CLI Settings
@@ -11,6 +11,8 @@ These rules apply even when this specialist is selected directly.
 
 Site Settings are one tenant document with a safe management projection. Custom
 Settings are named content-type-backed sections embedded in that document.
+Typed module sections have explicit providers and their own permissions; they are
+not arbitrary site properties or Custom Settings content types.
 
 ## Site Settings
 
@@ -42,6 +44,51 @@ pomi settings show > current-settings.json
 pomi settings update --body-file desired-settings.json
 pomi settings show
 ```
+
+## Typed module settings sections
+
+Discover the enabled sections available to this identity, then read the selected
+section's values, ownership and actual update schema:
+
+```bash
+pomi settings sections list
+pomi settings sections show https
+pomi settings sections schema https
+pomi settings sections update https --body-file https-settings.json
+```
+
+Send only the fields to change, without a `values` wrapper. Omission preserves
+existing values; arrays replace the supplied field. Use null only when the live
+section schema explicitly permits reset/clear. Do not copy redacted or read-only
+properties into an update. `source`, `isReadOnly`, `readOnlyReason`,
+`redactedProperties` and `readOnlyProperties` describe what this API can manage.
+An omitted secret is not evidence that no secret is configured.
+
+The `https` section requires `OrchardCore.Https` and `ManageHttps`, plus remote
+management access. Select a working HTTPS context before changing it. The API
+preserves the admin editor's refusal to make HTTPS changes over HTTP; it does not
+configure host certificates, listeners or proxy trust. An explicit redirect port
+must be 1–65535. For example, this changes HSTS mode and restores automatic port
+detection while retaining the current redirection flags:
+
+```json
+{
+  "strictTransportSecurityMode": "Disabled",
+  "sslPort": null
+}
+```
+
+Use `Enabled` to enable HSTS or `FromConfiguration` to follow the environment
+(enabled in Production). `requireHttps` controls redirects;
+`requireHttpsPermanent` selects 308 rather than 307. Read back the result and
+verify actual HTTPS/HTTP responses. The update reports `changed` and
+`reloadRequested`; an equivalent retry should report both false. A tenant reload
+rebuilds its pipeline and does not restart the host process.
+
+Treat missing/disabled sections as unavailable. Do not fall back to writing
+arbitrary settings JSON or modifying configuration owned by the host. The core
+`settings schema` provider list is discovery-only and does not grant write access
+to a module section.
 
 ## Custom Settings
 
@@ -112,7 +159,7 @@ does not add translation commands to Pomi.
 
 Versioned references (live tenant schemas take precedence):
 [localization API](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/api/localization/README.md),
-[settings API](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/api/settings/README.md),
+[settings API](https://github.com/sebastienros/OrchardCore/blob/51df236c83538aef0a593445ba581f128617d46b/src/docs/reference/api/settings/README.md),
 [custom-settings API](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/api/custom-settings/README.md),
 [Settings module](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/modules/Settings/README.md), and
 [CustomSettings module](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/modules/CustomSettings/README.md).
