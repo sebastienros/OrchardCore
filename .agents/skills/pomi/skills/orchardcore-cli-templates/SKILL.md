@@ -1,6 +1,6 @@
 ---
 name: orchardcore-cli-templates
-description: Creates and manages Orchard Core custom Liquid templates through `pomi`. Use for content, summary, widget, field, and layout shape overrides; rendering content models; registering CSS/media; and validating template output for remotely managed tenants.
+description: Creates and manages Orchard Core custom Liquid templates and conditional layers through `pomi`. Use for content, summary, widget, field, and layout shape overrides; layer definitions and visibility rules; rendering content models; registering CSS/media; and validating output for remotely managed tenants.
 ---
 
 # Pomi CLI Templates
@@ -111,6 +111,42 @@ Create uses a stable case-insensitive name. An identical retry converges;
 different content under the same name conflicts. Update is a complete
 replacement and the route/body names must match exactly.
 
+## Conditional layers
+
+Use `OrchardCore.Layers` for rules that control the visibility of widgets placed
+in theme zones. A layer definition does not place a widget. Refresh discovery
+and inspect `pomi layers --help` and `pomi layers conditions --output json`.
+Use only conditions marked `canWrite`, with properties matching their live
+schemas. Prefer the built-in URL, culture, role and authentication conditions
+when they express the requested behavior.
+
+```bash
+pomi layers list --output json
+pomi layers conditions --output json
+pomi layers schema --operation create
+pomi layers validate --body-file layer.json --output json
+pomi layers create --body-file layer.json --output json
+pomi layers show News --output json
+pomi layers update News --body-file layer.json --output json
+```
+
+Layer JSON contains `name`, `description` and `conditions`. Each condition has
+`name`, `properties`, optional `conditionId` and group-only `conditions` children.
+For an always-matching layer, use
+`{"name":"Always","conditions":[{"name":"BooleanCondition","properties":{"value":true}}]}`.
+An empty conditions array does not match. All root conditions must match;
+All/Any groups express nested logic. JavaScript validation checks syntax without
+running the script, so verify its behavior on the actual page.
+
+Updates replace the complete description and conditions. Read back first,
+preserve returned condition IDs and retain every condition that should remain.
+Identical creates converge; a different definition under an existing name
+conflicts. Names cannot be renamed through update. Deletion requires explicit
+confirmation and is refused while widgets reference the layer; do not delete
+widgets merely to bypass that refusal. Verify public output for the intended
+URL and visitor identity after saving, including a case that should hide the
+widget. A successful validation or save does not prove visibility.
+
 ## Naming
 
 Common alternates include:
@@ -182,6 +218,7 @@ URLs, missing shapes, stylesheet requests, and responsive behavior. Require:
 - layout works at approximately 375px, 768px, and 1440px viewport widths.
 
 Versioned references (live tenant schemas take precedence):
+[Layers API](https://github.com/sebastienros/OrchardCore/blob/7f72e464016c79f39c108f9c746ab716bff9137b/src/docs/reference/api/layers/README.md),
 [templates API](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/api/templates/README.md),
 [Templates module](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/modules/Templates/README.md), and
 [Liquid module](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/modules/Liquid/README.md).

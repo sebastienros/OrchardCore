@@ -41,6 +41,7 @@ recipe["steps"] += [
 # Separate identities verify resource permissions without the admin wildcard.
 for suffix, permissions in [
     ("graphql-reader", ["ExecuteGraphQL"]),
+    ("layers", ["ManageLayers"]),
     ("translator-fr", ["ViewDynamicTranslations", "ManageTranslations_fr"]),
     ("translation-reader", ["ViewDynamicTranslations"]),
     ("media", ["ManageMediaContent", "ManageMediaFolder"]),

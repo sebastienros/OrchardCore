@@ -19,6 +19,12 @@ Separate service refactoring only when it is substantial, behavior-preserving, a
 reviewable. Include a new shared abstraction with its first working consumer; establish its
 extension model with a second consumer before treating it as a framework for all modules.
 
+When extracting logic for an API, migrate the existing admin, recipe or other callers that own
+that same behavior to the shared service in the same slice. Keep request binding, HTTP retry
+semantics, authorization and UI presentation in their appropriate callers. Review existing
+validation, persistence, cache invalidation and lifecycle rules for duplication, and verify both
+the existing workflow and the new API. Do not leave an API-specific copy of domain logic.
+
 ## Initial milestone: compose a website through Pomi
 
 PR labels below are planning IDs, not GitHub PR numbers. This sequence follows the website-building
@@ -135,7 +141,7 @@ Base and prerequisites: Target branch, required merged PRs.
 Owned files: Module, tests and docs; list coordinated shared files.
 Scope: Resource operations and transport coverage included in this PR.
 Exclusions: Closely related operations explicitly deferred.
-Reuse: Existing services, permission providers and schema contracts.
+Reuse: Existing services, permission providers and schema contracts; existing callers migrated to shared logic.
 Before evidence: Missing/failing workflow on the recorded base commit.
 Acceptance: Successful workflow, denied operations, feature gates and retry behavior.
 Compatibility: Existing Pomi commands, optional setup, OpenAPI/command uniqueness,

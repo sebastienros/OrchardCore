@@ -56,7 +56,9 @@ owners or dates. Site/fleet values are provisional H/M/L rankings for the two ou
 
 Proposed command names in this plan are design candidates, not commands available today.
 Each package should reuse the existing module services and permission model and contribute the
-same endpoint metadata used by Pomi and eligible MCP tools.
+same endpoint metadata used by Pomi and eligible MCP tools. If a slice extracts a new service,
+move matching logic from existing code paths into it and migrate those callers too. Include
+regression evidence for existing admin/recipe behavior alongside API, CLI and MCP checks.
 
 | ID | Package and first useful slice | Site value | Fleet value | Effort | Main dependencies / decisions |
 | --- | --- | --- | --- | --- | --- |

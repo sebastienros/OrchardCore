@@ -1,6 +1,7 @@
 # Remote management coverage inventory
 
-Source audit of `sebros/remote-tenant-cli-plan` at **`befe0e93c`**, 2026-09-11.
+Initial source audit of `sebros/remote-tenant-cli-plan` at **`befe0e93c`**, 2026-09-11.
+Updated for P02 layer definitions/conditions; the campaign ledger records delivery state.
 Implementation order and decision criteria are in the [delivery plan](coverage-plan.md).
 
 ## Scope and interpretation
@@ -43,17 +44,17 @@ The categories are mutually exclusive planning classifications, not percentages 
 | Code | Classification | Feature count |
 | --- | --- | ---: |
 | D | Direct management OpenAPI and Pomi commands exist | 14 |
-| P | Partial: important operations missing, or only helper/protocol/shared coverage | 26 |
+| P | Partial: important operations missing, or only helper/protocol/shared coverage | 27 |
 | A | Management OpenAPI exists; Pomi projection intentionally absent | 1 |
-| M | Dedicated management API and corresponding commands missing | 38 |
+| M | Dedicated management API and corresponding commands missing | 37 |
 | S | Shared API/commands or a built-in CLI workflow; validate the stated limits | 36 |
 | I | Infrastructure, rendering, protocol, provider or alias; no separate API proposed by default | 70 |
 | X | Sample; excluded from delivery priorities | 3 |
 
-There are **38 features with neither dedicated management APIs nor commands**, and **26 with
+There are **37 features with neither dedicated management APIs nor commands**, and **27 with
 partial coverage requiring a scope decision**. These are not 64 independent implementation tasks:
 the plan consolidates them into shared workflows. Another 36 features reuse existing transports
-or built-in commands. Sixteen production modules contribute direct `WithCliCommand` operation
+or built-in commands. Seventeen production modules contribute direct `WithCliCommand` operation
 registrations; this does not imply all features in those modules are covered.
 
 ## Important operation-level distinctions
@@ -104,6 +105,7 @@ Backlog IDs refer to [the delivery plan](coverage-plan.md#work-packages).
 | [Deployment.Remote](../../src/OrchardCore.Modules/OrchardCore.Deployment.Remote/Manifest.cs) / `OrchardCore.Deployment.Remote` | Private API-key import protocol | None | Remote clients/instances/targets remain admin-only; existing import authentication is not the shared OAuth management contract. | B08 |
 | [Elasticsearch](../../src/OrchardCore.Modules/OrchardCore.Elasticsearch/Manifest.cs) / `OrchardCore.Elasticsearch` | Content/documents query API | Shared `queries` | Direct query endpoints lack CLI metadata; named-query execution is shared. Index lifecycle remains missing; avoid duplicating query transports. | B07 |
 | [Facebook](../../src/OrchardCore.Modules/OrchardCore.Facebook/Manifest.cs) / `OrchardCore.Facebook` | SDK helper; no management contract | None | Provider/widget/pixel settings are not managed through OpenAPI/Pomi. Authentication callbacks are not administration APIs. | B12 |
+| [Layers](../../src/OrchardCore.Modules/OrchardCore.Layers/Manifest.cs) / `OrchardCore.Layers` | Layer CRUD and condition descriptor/validation APIs | `layers` | P02 provides definitions, normalized retries, restricted OAuth principals and eligible MCP tools; live rendering and feature gates verified. Widget attachment/movement/order remains P05. | B01 |
 | [Localization](../../src/OrchardCore.Modules/OrchardCore.Localization/Manifest.cs) / `OrchardCore.Localization` | Culture/settings APIs plus 2 string APIs | `localization cultures`; `localization settings` | Culture management has parity. String-group discovery and translated strings intentionally lack CLI metadata. | B14 |
 | [Lucene](../../src/OrchardCore.Modules/OrchardCore.Lucene/Manifest.cs) / `OrchardCore.Lucene` | Content/documents query API | Shared `queries` | Direct query endpoints lack CLI metadata; named-query execution is shared. Index lifecycle remains missing; avoid duplicating query transports. | B07 |
 | [Media](../../src/OrchardCore.Modules/OrchardCore.Media/Manifest.cs) / `OrchardCore.Media` | File/folder/metadata management APIs | `media` groups | Files/folders, metadata, constraints and UI labels have commands. Media profile CRUD and media settings remain gaps. | B09 |
@@ -158,7 +160,6 @@ Backlog IDs refer to [the delivery plan](coverage-plan.md#work-packages).
 | [Google](../../src/OrchardCore.Modules/OrchardCore.Google/Manifest.cs) / `OrchardCore.Google.TagManager` | No dedicated management API | None | Authentication/analytics/tag-manager settings lack management contracts; handle secrets separately from public identifiers. | B12 |
 | [Https](../../src/OrchardCore.Modules/OrchardCore.Https/Manifest.cs) / `OrchardCore.Https` | No dedicated management API | None | HTTPS/HSTS tenant settings lack a management section; validate transport and restart effects. | B05 |
 | [Indexing](../../src/OrchardCore.Modules/OrchardCore.Indexing/Manifest.cs) / `OrchardCore.Indexing` | No dedicated management API | None | Missing provider/index list, definitions, reset/synchronize/rebuild and status. Reuse common index management; do not implement one complete API per backend. | B07 |
-| [Layers](../../src/OrchardCore.Modules/OrchardCore.Layers/Manifest.cs) / `OrchardCore.Layers` | No dedicated management API | None | Layer definitions, rules and widget placement/order lack APIs. Widget content CRUD alone cannot manage layer documents. | B01 |
 | [Media](../../src/OrchardCore.Modules/OrchardCore.Media/Manifest.cs) / `OrchardCore.Media.Cache` | No dedicated management API | None | Media cache purge/settings are admin-only; define a tenant-scoped operation. | B09 |
 | [Microsoft.Authentication](../../src/OrchardCore.Modules/OrchardCore.Microsoft.Authentication/Manifest.cs) / `OrchardCore.Microsoft.Authentication.MicrosoftAccount` | No dedicated management API | None | Microsoft Account/Azure AD provider configuration lacks a redacted management contract. | B12 |
 | [Microsoft.Authentication](../../src/OrchardCore.Modules/OrchardCore.Microsoft.Authentication/Manifest.cs) / `OrchardCore.Microsoft.Authentication.AzureAD` | No dedicated management API | None | Microsoft Account/Azure AD provider configuration lacks a redacted management contract. | B12 |
@@ -274,7 +275,7 @@ Backlog IDs refer to [the delivery plan](coverage-plan.md#work-packages).
 | [ResponseCompression](../../src/OrchardCore.Modules/OrchardCore.ResponseCompression/Manifest.cs) / `OrchardCore.ResponseCompression` | No dedicated management API | No dedicated command | Host/tenant pipeline option; no dedicated resource API proposed. | — |
 | [ReverseProxy](../../src/OrchardCore.Modules/OrchardCore.ReverseProxy/Manifest.cs) / `OrchardCore.ReverseProxy` | No dedicated management API | No dedicated command | Proxy/pipeline configuration; preserve deployment ownership unless an explicit tenant scenario justifies an adapter. | — |
 | [Roles](../../src/OrchardCore.Modules/OrchardCore.Roles/Manifest.cs) / `OrchardCore.Roles.Core` | No dedicated management API | No dedicated command | Role/permission service dependency; full management endpoints belong to Roles. | — |
-| [Rules](../../src/OrchardCore.Modules/OrchardCore.Rules/Manifest.cs) / `OrchardCore.Rules` | No dedicated management API | No dedicated command | Reusable condition engine. Expose condition descriptors/validation through owning features (B01/B05), not free-standing arbitrary script execution. | — |
+| [Rules](../../src/OrchardCore.Modules/OrchardCore.Rules/Manifest.cs) / `OrchardCore.Rules` | No dedicated management API | No dedicated command | Reusable condition engine. Layers exposes built-in condition descriptors/validation through IRuleManagementService; JavaScript validation parses without executing. Extend through other owning features (B01/B05). | — |
 | [Scripting](../../src/OrchardCore.Modules/OrchardCore.Scripting/Manifest.cs) / `OrchardCore.Scripting` | No dedicated management API | No dedicated command | Script engine dependency; existing recipes/workflows own execution. No generic remote eval command proposed. | — |
 | [Shortcodes](../../src/OrchardCore.Modules/OrchardCore.Shortcodes/Manifest.cs) / `OrchardCore.Shortcodes` | No dedicated management API | No dedicated command | Shortcode parser/providers. Content/template values can contain shortcodes; database templates are the separate feature below. | — |
 | [SignalR](../../src/OrchardCore.Modules/OrchardCore.SignalR/Manifest.cs) / `OrchardCore.SignalR` | Realtime protocol | No dedicated command | Messaging infrastructure; do not project hubs into CRUD commands. | — |

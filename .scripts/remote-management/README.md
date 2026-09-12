@@ -31,6 +31,7 @@ python3 .scripts/remote-management/shared-content-smoke.py <fixture.json>
 python3 .scripts/remote-management/tenant-install-smoke.py <fixture.json>
 python3 .scripts/remote-management/graphql-smoke.py <fixture.json>
 python3 .scripts/remote-management/catalog-smoke.py <fixture.json>
+python3 .scripts/remote-management/layers-smoke.py <fixture.json>
 ```
 
 `verify-fixture.py` checks discovery, command/operation ID uniqueness, every
@@ -98,6 +99,14 @@ features restored, and MCP enabled without the CLI feature. It restores the
 explicit feature states it toggles; newly enabled dependencies can remain on
 the disposable fixture. Its `catalog-smoke.json` records names and IDs without
 credentials. It checks discovery, not every tool's execution or resource permissions.
+
+`layers-smoke.py` checks layer definitions, normalized retries, invalid rules,
+all HTTP permission gates, and MCP read/update equivalence using a restricted
+Layers application principal. It composes a page/widget through existing content
+APIs and verifies public output changes when the layer condition changes. It
+also checks referenced deletion, unique catalogs, module disable/restore, and
+MCP invocation with CLI disabled. It cleans up its items/types/layer and isolated
+CLI context; feature and theme changes remain on the disposable fixture.
 
 The wrapper supplies credentials only through the child process environment:
 
