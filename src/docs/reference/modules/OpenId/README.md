@@ -289,6 +289,12 @@ OpenID Connect Scopes require the following configuration.
 | Tenants              | Build the audience based on tenants names.                        |
 | Additional resources | Build the audience based on the space separated strings provided. |
 
+Admin scope edits replace the resources list, so an empty field clears it. A scope
+recipe update that omits `Resources` or supplies an empty string preserves the
+existing resources; a nonempty value replaces them. Both paths preserve custom
+properties they do not edit and skip saving when their editable values already
+match. The recipe step uses the same descriptor update as the admin editor.
+
 A sample of OpenID Connect Scope recipe step:
 
 ```json
