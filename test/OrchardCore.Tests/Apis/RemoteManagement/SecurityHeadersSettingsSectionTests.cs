@@ -136,19 +136,20 @@ public class SecurityHeadersSettingsSectionTests
         await SetFeatureAsync(context, true);
         await context.UsingTenantScopeAsync(async scope =>
         {
-            var provider = Assert.Single(scope.ServiceProvider.GetServices<ISiteSettingsSectionProvider>());
+            var provider = Assert.Single(scope.ServiceProvider.GetServices<ISiteSettingsSectionProvider>(), provider => provider.Descriptor.Name == "security-headers");
             var result = await provider.UpdateAsync(new JsonObject { ["referrerPolicy"] = "strict-origin" });
             Assert.True(result.Changed);
         });
         await context.UsingTenantScopeAsync(async scope =>
         {
-            var provider = Assert.Single(scope.ServiceProvider.GetServices<ISiteSettingsSectionProvider>());
+            var provider = Assert.Single(scope.ServiceProvider.GetServices<ISiteSettingsSectionProvider>(), provider => provider.Descriptor.Name == "security-headers");
             Assert.Equal("strict-origin", (await provider.GetAsync()).Values["referrerPolicy"].GetValue<string>());
         });
         await SetFeatureAsync(context, false);
         await context.UsingTenantScopeAsync(scope =>
         {
-            Assert.Empty(scope.ServiceProvider.GetServices<ISiteSettingsSectionProvider>());
+            Assert.DoesNotContain(scope.ServiceProvider.GetServices<ISiteSettingsSectionProvider>(), provider => provider.Descriptor.Name == "security-headers");
+            Assert.Contains(scope.ServiceProvider.GetServices<ISiteSettingsSectionProvider>(), provider => provider.Descriptor.Name == "layer-zones");
             return Task.CompletedTask;
         });
     }
