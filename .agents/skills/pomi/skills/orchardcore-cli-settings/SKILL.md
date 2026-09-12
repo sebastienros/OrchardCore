@@ -182,6 +182,25 @@ response headers from the expected browser origin. A changed policy reloads the
 tenant; an equivalent retry does not. This section does not enumerate host-added
 CORS options. CORS does not grant authentication or API permissions.
 
+## Layer zones
+
+With `OrchardCore.Layers` enabled, discover `layer-zones` through `settings sections`.
+Read the existing list before replacing it; preserve zones unless removal is intended.
+
+```bash
+pomi settings sections show layer-zones
+pomi settings sections schema layer-zones
+pomi settings sections update layer-zones --body-file zones.json
+pomi layers widgets zones
+```
+
+Use `{"zones":["Content","Footer"]}` to replace the list. Omission preserves it;
+`[]` clears it; null is invalid. Names follow the admin editor's space/comma splitting,
+with order, case and duplicates preserved. Equivalent retries do not save or reload.
+Changing available zones neither creates theme sections nor moves/deletes existing
+widgets. Verify the theme provides the corresponding sections before placing widgets.
+Requires `ManageLayers` and remote-management access.
+
 ## Custom Settings
 
 Discover only sections the current identity is authorized to manage:
@@ -250,6 +269,7 @@ does not add translation commands to Pomi.
 - Read back after updates and verify user-facing behavior separately.
 
 Versioned references (live tenant schemas take precedence):
+[Layer zone settings](https://github.com/sebastienros/OrchardCore/blob/6b6a83808e1eb19800c99734869cd8474d0d695b/src/docs/reference/api/settings/README.md#layer-zones-section),
 [localization API](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/api/localization/README.md),
 [settings API](https://github.com/sebastienros/OrchardCore/blob/5bb6c301c6fa9b795717d6a7906d7cb8626fe33c/src/docs/reference/api/settings/README.md),
 [custom-settings API](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/api/custom-settings/README.md),

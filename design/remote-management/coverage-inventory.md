@@ -52,16 +52,16 @@ The categories are mutually exclusive planning classifications, not percentages 
 
 | Code | Classification | Feature count |
 | --- | --- | ---: |
-| D | Direct management OpenAPI and Pomi commands exist | 21 |
-| P | Partial: important operations missing, or only helper/protocol/shared coverage | 25 |
+| D | Direct management OpenAPI and Pomi commands exist | 22 |
+| P | Partial: important operations missing, or only helper/protocol/shared coverage | 24 |
 | A | Management OpenAPI exists; Pomi projection intentionally absent | 1 |
 | M | Dedicated management API and corresponding commands missing | 32 |
 | S | Shared API/commands or a built-in CLI workflow; validate the stated limits | 36 |
 | I | Infrastructure, rendering, protocol, provider or alias; no separate API proposed by default | 70 |
 | X | Sample; excluded from delivery priorities | 3 |
 
-There are **32 features with neither dedicated management APIs nor commands**, and **25 with
-partial coverage requiring a scope decision**. These are not 57 independent implementation tasks:
+There are **32 features with neither dedicated management APIs nor commands**, and **24 with
+partial coverage requiring a scope decision**. These are not 56 independent implementation tasks:
 the plan consolidates them into shared workflows. Another 36 features reuse existing transports
 or built-in commands. Twenty-one production modules contribute direct `WithCliCommand` operation
 registrations; this does not imply all features in those modules are covered.
@@ -113,6 +113,8 @@ Backlog IDs refer to [the delivery plan](coverage-plan.md#work-packages).
 | [Security](../../src/OrchardCore.Modules/OrchardCore.Security/Manifest.cs) / `OrchardCore.Security` | Typed `security-headers` settings section | `settings sections` | Shared admin/API validation and no-op change detection; CSP, permissions and referrer policies with configuration ownership and emitted-header checks. | B05 |
 | [UrlRewriting](../../src/OrchardCore.Modules/OrchardCore.UrlRewriting/Manifest.cs) / `OrchardCore.UrlRewriting` | Eight bearer management operations | `url-rewriting rules` | Built-in Rewrite/Redirect list/show/CRUD/validate, source discovery and ordering; shared admin/recipe manager validation, reloads and endpoint rerouting. Extension metadata stays opaque. | B10 |
 
+| [Layers](../../src/OrchardCore.Modules/OrchardCore.Layers/Manifest.cs) / `OrchardCore.Layers` | Layer and widget placement APIs | `layers`; `layers widgets`; `settings sections` | P02 definitions/conditions and P05 widget attachment/movement/order share admin services. Widget reads and writes enforce content permissions and preserve draft bodies. Configured zones are discoverable and editable through the `layer-zones` typed settings section, sharing normalization with the admin editor. | B01 |
+
 ### P — Partial: important operations missing, or only helper/protocol/shared coverage
 
 | Module / feature ID | OpenAPI or HTTP surface | Existing Pomi coverage | Scope, gap and next action | Plan |
@@ -120,7 +122,6 @@ Backlog IDs refer to [the delivery plan](coverage-plan.md#work-packages).
 | [Deployment.Remote](../../src/OrchardCore.Modules/OrchardCore.Deployment.Remote/Manifest.cs) / `OrchardCore.Deployment.Remote` | Private API-key import protocol | None | Remote clients/instances/targets remain admin-only; existing import authentication is not the shared OAuth management contract. | B08 |
 | [Elasticsearch](../../src/OrchardCore.Modules/OrchardCore.Elasticsearch/Manifest.cs) / `OrchardCore.Elasticsearch` | Content/documents query API | Shared `queries` | Direct query endpoints lack CLI metadata; named-query execution is shared. Index lifecycle remains missing; avoid duplicating query transports. | B07 |
 | [Facebook](../../src/OrchardCore.Modules/OrchardCore.Facebook/Manifest.cs) / `OrchardCore.Facebook` | SDK helper; no management contract | None | Provider/widget/pixel settings are not managed through OpenAPI/Pomi. Authentication callbacks are not administration APIs. | B12 |
-| [Layers](../../src/OrchardCore.Modules/OrchardCore.Layers/Manifest.cs) / `OrchardCore.Layers` | Layer and widget placement APIs | `layers`; `layers widgets` | P02 definitions/conditions and P05 widget attachment/movement/order share admin services. Widget reads and writes enforce content permissions and preserve draft bodies. Configured zones are discoverable; zone settings editing remains a typed-settings follow-up. | B01 |
 | [Localization](../../src/OrchardCore.Modules/OrchardCore.Localization/Manifest.cs) / `OrchardCore.Localization` | Culture/settings APIs plus 2 string APIs | `localization cultures`; `localization settings` | Culture management has parity. String-group discovery and translated strings intentionally lack CLI metadata. | B14 |
 | [Lucene](../../src/OrchardCore.Modules/OrchardCore.Lucene/Manifest.cs) / `OrchardCore.Lucene` | Content/documents query API | Shared `queries` | Direct query endpoints lack CLI metadata; named-query execution is shared. Index lifecycle remains missing; avoid duplicating query transports. | B07 |
 | [Media](../../src/OrchardCore.Modules/OrchardCore.Media/Manifest.cs) / `OrchardCore.Media` | File/folder/metadata management APIs | `media` groups | Files/folders, metadata, constraints and UI labels have commands. Media profile CRUD and media settings remain gaps. | B09 |

@@ -45,6 +45,7 @@ that approach. Report an installation blocker rather than silently bypassing Pom
 | Create Liquid shape overrides and verify rendering | [Templates](../orchardcore-cli-templates/SKILL.md) |
 | Manage named Liquid shortcode snippets | [Shortcode templates](../orchardcore-cli-templates/SKILL.md#shortcode-templates) |
 | Manage shape placement and filtering | [Shape placements](../orchardcore-cli-templates/SKILL.md#shape-placements) |
+| Configure available layer zones | [Layer zones](../orchardcore-cli-settings/SKILL.md#layer-zones) |
 | Attach and move existing widgets in layers | [Widget placement](../orchardcore-cli-templates/SKILL.md#widget-placement-in-layers) |
 | Define conditional layers and verify widget visibility | [Conditional layers](../orchardcore-cli-templates/SKILL.md#conditional-layers) |
 | Select installed site/admin themes | [Themes](../orchardcore-cli-themes/SKILL.md) |

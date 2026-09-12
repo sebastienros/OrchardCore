@@ -106,3 +106,8 @@ configured zones and authorized widget placements through OpenAPI, Pomi and MCP.
 The admin editor and drag-and-drop action share its validation and persistence
 service. Moving a published widget requires content edit and publish permission;
 draft body changes remain unpublished.
+
+Available zones can also be edited through the
+[`layer-zones` settings section](../../api/settings/README.md#layer-zones-section).
+The admin editor and remote settings share normalization and mutation logic.
+Existing widgets retain their placements when the available-zone list changes.
