@@ -72,11 +72,18 @@ internal static class OpenIdApplicationExtensions
             return;
         }
 
+        await manager.UpdateWithValidationRollbackAsync(application,
+            () => manager.UpdateAsync(application, descriptor, cancellationToken), cancellationToken);
+    }
+
+    internal static async Task UpdateWithValidationRollbackAsync(this IOpenIdApplicationManager manager, object application,
+        Func<ValueTask> update, CancellationToken cancellationToken)
+    {
         var original = new OpenIdApplicationDescriptor();
         await manager.PopulateAsync(original, application, cancellationToken);
         try
         {
-            await manager.UpdateAsync(application, descriptor, cancellationToken);
+            await update();
         }
         catch (OpenIddictExceptions.ValidationException)
         {
@@ -85,6 +92,15 @@ internal static class OpenIdApplicationExtensions
             await manager.PopulateAsync(application, original, CancellationToken.None);
             throw;
         }
+    }
+
+    internal static async Task<object> FindByClientIdForUpdateAsync(this IOpenIdApplicationManager manager, string clientId, CancellationToken cancellationToken)
+    {
+        var application = await manager.FindByClientIdAsync(clientId, cancellationToken);
+        // Natural-key lookup can return a cached object. Like the admin editor,
+        // load the store's tracked instance before mutating or deleting it.
+        return application is null ? null : await manager.FindByPhysicalIdAsync(
+            await manager.GetPhysicalIdAsync(application, cancellationToken), cancellationToken);
     }
 
     internal static async Task<OpenIdApplicationDescriptor> BuildDescriptorFromSettingsAsync(this IOpenIdApplicationManager _applicationManager,

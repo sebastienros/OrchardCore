@@ -62,6 +62,11 @@ public sealed class CliOperationMetadata
     public IList<string> SecretProperties { get; init; } = [];
 
     /// <summary>
+    /// Gets or sets whether the JSON response contains one-time secrets and must be saved through private CLI output.
+    /// </summary>
+    public bool SecretResponse { get; set; }
+
+    /// <summary>
     /// Gets or sets how the request body is supplied.
     /// </summary>
     public CliInputMode InputMode { get; set; } = CliInputMode.Options;

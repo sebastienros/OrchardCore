@@ -601,4 +601,6 @@ applications through `pomi openid applications` and manage scope definitions thr
 `pomi openid scopes`. Reads use the same managers as the admin UI and omit
 credentials, keys and private properties. Application and scope mutations share
 descriptor updates with their admin editors and recipe steps. See the [OpenID management API](../../api/openid/README.md)
-for paging, permissions and response fields.
+for paging, permissions and response fields. Confidential application secrets can be
+rotated or revoked through `pomi openid applications credentials`. Rotation requires
+a new private `--secret-output-file` and immediately replaces the previous secret.

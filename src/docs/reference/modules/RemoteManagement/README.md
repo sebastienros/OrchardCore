@@ -536,6 +536,14 @@ endpoints.MapGet("/api/example/widgets", ListWidgetsAsync)
 
 The Remote Management OpenAPI transformer emits this metadata as `x-oc-cli`. Use `Arguments` for positional ordering, `InputMode` for complex bodies, `DefaultJsonBody` when a command should send a default body if none is supplied, `RequiresConfirmation` for destructive operations, aliases for compatibility, and `TableColumns` for optional table output.
 
+Set `SecretResponse = true` for a JSON response containing one-time credentials.
+The transformer emits `secretResponse: true`, and Pomi requires
+`--secret-output-file <new-path>`. It reserves an owner-only file before sending
+the operation, refuses existing paths, saves the complete JSON response privately,
+and returns only `secretOutputFile` in normal output. This applies to all output
+formats, including `--output none`. HTTP and MCP clients still receive the one-time
+response and must store it privately. This flag does not replace endpoint authorization.
+
 Register an `IRemoteManagementCapabilityProvider` when the feature also needs to report a versioned capability in the authenticated manifest. CLI metadata describes discoverability only; endpoint authorization remains mandatory.
 
 ## Endpoint and credential boundaries

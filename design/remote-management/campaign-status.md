@@ -43,9 +43,9 @@ The [schedule](pr-schedule.md) and [plan](coverage-plan.md) define the work and 
 | Content culture picker settings | Merged | [PR #17](https://github.com/sebastienros/OrchardCore/pull/17), merge `6e9f1f64f`; all CI checks passed. Shared admin mutations, typed section and runtime cookie/redirect checks. |
 | Application/scope discovery | Merged | [PR #19](https://github.com/sebastienros/OrchardCore/pull/19), merge `f28af3782`; all CI checks passed. |
 | Scope administration | Merged | [PR #20](https://github.com/sebastienros/OrchardCore/pull/20), merge `1e1774933`; all CI checks passed. Shared admin/recipe editing and scope CRUD verified. |
-| Application administration | In verification | Independent `codex/remote-openid-applications`, integrated with merged scope commit `1e1774933`; [contract and existing-path audit](openid-applications.md). Local server/CLI/MCP and live checks passed. |
-| Application credential lifecycle | Planned | After application administration merges. |
-| Tenant feature-profile definitions | In development | Independent `codex/remote-tenant-feature-profiles` from merged `3ca2febc9`; [contract and baseline](feature-profiles.md). Shared manager no-op regressions fail before and pass after; admin edits reuse the update path. Six endpoints and shared admin/recipe validation are implemented; strict server build and 14 focused tests pass. Full suites, feature lifecycle, live Pomi/MCP and docs/skills gates remain. |
+| Application administration | Merged | [PR #21](https://github.com/sebastienros/OrchardCore/pull/21), merge `3ca2febc9`; all required CI checks passed. Shared editor settings, application CRUD and live client-credentials checks verified. |
+| Application credential lifecycle | Merged | [PR #22](https://github.com/sebastienros/OrchardCore/pull/22), merge `b9361a1bb`; all CI checks passed, including Windows/Ubuntu and the private-file ACL assertions. Shared manager updates and one-time credential output verified locally and live. |
+| Tenant feature-profile definitions | In development | Independent `codex/remote-tenant-feature-profiles`, integrating merged `b9361a1bb`; [contract and baseline](feature-profiles.md). Strict solution build, server 3,278 (one CI-only skip), CLI 291 and MCP 78 passed before integration. Live CRUD/discovery/permissions/feature lifecycle pass. Assigned-child runtime behavior, integrated-target validation, docs/skills and PR CI remain. |
 | Common index definitions and lifecycle | Planned | B07 with local Lucene verification. |
 | Deployment plans, export and import | Planned | Separate B08 resource/execution PRs. |
 | Media profiles/cache/settings | Planned | Separate B09 PRs. |
@@ -116,3 +116,24 @@ agreed slices are delivered and any remaining gaps have an explicit disposition.
   least-privilege client authentication, omitted-secret preservation, role/grant
   replacement on new authentication, deletion and MCP without CLI. Strict docs,
   plugin links and reproducible skill distribution passed; Pomi skills are 0.10.21.
+
+- Credential output baseline: on merged `1e1774933`, the proposed `secretResponse`
+  metadata is ignored and a synthetic rotation proceeds without a private output
+  destination. The failing-before CLI test now passes. New metadata requires a
+  destination before mutation, creates an owner-only file without overwriting,
+  and exposes only its path in normal output. Strict CLI test-project build has
+  zero warnings/errors; all 295 CLI tests pass locally. Windows ACL runtime
+  verification and the full server/credential workflow remain future CI/slice gates.
+
+- Credential lifecycle verification: baseline OpenAPI on merged application PR #21
+  exposes application CRUD but no credential operations. New rotation/revocation
+  uses the existing manager, shared tracked lookup, random-secret generator and
+  admin/recipe validation rollback. Strict solution build passes with zero warnings
+  and errors after a terminal compiler crash in unrelated KeyVault and a successful
+  retry. Server 3,267 passed (one CI-only skip), CLI 295, authentication/MCP 78.
+  Live HTTP/Pomi/MCP checks passed for retired-secret rejection, settings preservation,
+  denied callers, destination gating and MCP with CLI disabled. Windows file ACLs
+  remain a Windows CI gate. Canonical docs and Pomi skills 0.10.22 are updated.
+
+- Credential canonical documentation, plugin link verification and reproducible skill
+  distribution pass. The next gate is the independent PR CI, including Windows ACLs.

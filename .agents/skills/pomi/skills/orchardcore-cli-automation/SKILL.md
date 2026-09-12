@@ -1,6 +1,6 @@
 ---
 name: orchardcore-cli-automation
-description: Manages Orchard Core features, recipes, queries, workflows, users, roles, and OpenID scopes through `pomi`, and inspects OpenID applications. Use for enabling module capabilities, executing recipes, defining/executing SQL or other queries, managing workflow types and instances, and provisioning tenant-local security principals and permissions.
+description: Manages Orchard Core features, recipes, queries, workflows, users, roles, and OpenID applications, scopes and shared-secret credentials through `pomi`. Use for enabling module capabilities, executing recipes, defining/executing SQL or other queries, managing workflow types and instances, and provisioning tenant-local security principals and permissions.
 ---
 
 # Pomi CLI Automation
@@ -148,10 +148,23 @@ and redirect URIs clear them, and omitted grant/endpoint flags are false. Use
 registered role/scope names and inspect the live schema before replacing settings.
 The body client ID must match the update target. Equivalent creation retries
 succeed; differing definitions or credentials conflict. Responses omit credentials,
-keys, custom properties and private settings. Dedicated credential lifecycle
-operations follow separately. Registered grants do not establish which flows the
+keys, custom properties and private settings. Registered grants do not establish which flows the
 server currently permits. Deletion prevents new client authentication; it does not
 promise immediate invalidation of every previously issued token.
+
+For confidential clients, use `pomi openid applications credentials rotate <client-id>
+--secret-output-file <new-private-path> --force` or `credentials revoke <client-id>
+--force`. Rotation immediately retires the old secret, with no overlap. The destination
+is required even with `--output none`; existing files are refused before mutation.
+Pomi writes the one-time JSON response privately and prints only its path. Never
+print the file or put its contents in logs, prompts or source control. Update the
+application's credential source privately; other saved contexts are not changed.
+Do not automatically retry rotation after an uncertain response. Recover with an
+explicit new rotation using another authorized identity or a still-valid token.
+Revocation retires the shared secret while retaining the confidential client and
+its settings; it does not disable other authentication methods or necessarily
+invalidate issued tokens. MCP callers receive the secret directly and must keep it
+out of transcripts and store it securely. Public clients reject both operations.
 
 Application provisioning does not alter the independent administrator account.
 Unattended installation still saves its application context automatically. For an
@@ -189,4 +202,4 @@ Versioned API references (live tenant schemas take precedence):
 - [Users](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/api/users/README.md)
 - [Roles](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/api/roles/README.md)
 
-- [OpenID management](https://github.com/sebastienros/OrchardCore/blob/3721329714164f675a354ab6f375e82f999fc504/src/docs/reference/api/openid/README.md)
+- [OpenID management](https://github.com/sebastienros/OrchardCore/blob/80579b862fb369b8366fe220ab2b6f4df80300fa/src/docs/reference/api/openid/README.md)

@@ -514,9 +514,20 @@ invalid/denied writes, full field replacement, HTTP/Pomi/MCP readback and MCP
 with CLI disabled. It deletes the synthetic scope after checking repeated deletion.
 
 
+`openid-applications-smoke.py` checks application CRUD, private secret inputs,
+configuration replacement, permission enforcement and actual client authentication.
+It also checks equivalent retries and MCP with the CLI feature disabled.
+
+Run `python3 .scripts/remote-management/openid-credentials-smoke.py <fixture.json>`
+to verify private one-time Pomi output, rejected destinations before mutation,
+rotation/revocation and actual rejection of retired secrets. It exercises HTTP,
+Pomi and MCP, preserves application settings, checks restricted principals and MCP
+with CLI disabled, and removes its synthetic application on completion.
+
 Run `python3 .scripts/remote-management/feature-profiles-smoke.py <fixture.json>`
 to check Default-tenant profile CRUD, schema discovery, retries, permission boundaries
 and feature lifecycle through HTTP, Pomi and MCP. The fixture has distinct profile
 and tenant-management clients; MCP is also exercised with the CLI feature disabled.
 The probe removes its synthetic profile on completion. Assigned-child runtime
 enforcement requires additional verification beyond this resource probe.
+

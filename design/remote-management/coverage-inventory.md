@@ -52,16 +52,16 @@ The categories are mutually exclusive planning classifications, not percentages 
 
 | Code | Classification | Feature count |
 | --- | --- | ---: |
-| D | Direct management OpenAPI and Pomi commands exist | 23 |
-| P | Partial: important operations missing, or only helper/protocol/shared coverage | 25 |
+| D | Direct management OpenAPI and Pomi commands exist | 24 |
+| P | Partial: important operations missing, or only helper/protocol/shared coverage | 24 |
 | A | Management OpenAPI exists; Pomi projection intentionally absent | 1 |
 | M | Dedicated management API and corresponding commands missing | 30 |
 | S | Shared API/commands or a built-in CLI workflow; validate the stated limits | 36 |
 | I | Infrastructure, rendering, protocol, provider or alias; no separate API proposed by default | 70 |
 | X | Sample; excluded from delivery priorities | 3 |
 
-There are **30 features with neither dedicated management APIs nor commands**, and **25 with
-partial coverage requiring a scope decision**. These are not 55 independent implementation tasks:
+There are **30 features with neither dedicated management APIs nor commands**, and **24 with
+partial coverage requiring a scope decision**. These are not 54 independent implementation tasks:
 the plan consolidates them into shared workflows. Another 36 features reuse existing transports
 or built-in commands. Twenty-one production modules contribute direct `WithCliCommand` operation
 registrations; this does not imply all features in those modules are covered.
@@ -75,7 +75,7 @@ registrations; this does not imply all features in those modules are covered.
 | Site settings | Safe core settings and separate content-type-defined CustomSettings | No generic read/write access to all module settings. The schema contribution interface is not such an API (B05/B12). | [Core service](../../src/OrchardCore.Modules/OrchardCore.Settings/Services/SiteSettingsManagementService.cs), [CustomSettings](../../src/OrchardCore.Modules/OrchardCore.CustomSettings/Endpoints/CustomSettingsManagementEndpoints.cs) |
 | Content parts/fields | Generic content JSON and definition CRUD; explicit settings-schema providers in Autoroute, Flows and ContentFields | Validate field/part schemas and lifecycle behavior rather than creating a command family for every part (B03). | [Definition service](../../src/OrchardCore.Modules/OrchardCore.ContentTypes/Services/ContentDefinitionApiService.cs), [ContentPicker settings provider](../../src/OrchardCore.Modules/OrchardCore.ContentFields/Services/ContentFieldsContentDefinitionManagementSchemaProvider.cs) |
 | Templates | Frontend TemplatesManager CRUD | AdminTemplates uses a separate manager/document and is not covered (B02). | [Endpoints](../../src/OrchardCore.Modules/OrchardCore.Templates/Endpoints/Management/TemplateManagementEndpoints.cs), [feature startup](../../src/OrchardCore.Modules/OrchardCore.Templates/Startup.cs) |
-| Tenants / OpenID | Tenant installation, feature-profile assignment, opt-in application provisioning and automatic context acquisition | Feature-profile definitions and general application/scope/credential lifecycle remain missing (B06). OAuth tokens and MCP public-client registration are not those APIs. | [Tenant endpoints](../../src/OrchardCore.Modules/OrchardCore.Tenants/Endpoints/Management/TenantManagementEndpoints.cs), [OpenID applications](../../src/OrchardCore.Modules/OrchardCore.OpenId/Controllers/ApplicationController.cs), [MCP registration](../../src/OrchardCore.Modules/OrchardCore.OpenId/Controllers/McpClientRegistrationController.cs) |
+| Tenants / OpenID | Tenant installation, feature-profile assignment, opt-in application provisioning and automatic context acquisition | Feature-profile definitions remain missing (B06); application/scope CRUD and shared-secret lifecycle are covered by OpenID Management. OAuth tokens and MCP public-client registration are not those APIs. | [Tenant endpoints](../../src/OrchardCore.Modules/OrchardCore.Tenants/Endpoints/Management/TenantManagementEndpoints.cs), [OpenID applications](../../src/OrchardCore.Modules/OrchardCore.OpenId/Controllers/ApplicationController.cs), [MCP registration](../../src/OrchardCore.Modules/OrchardCore.OpenId/Controllers/McpClientRegistrationController.cs) |
 | Notifications | Mark-as-read AJAX endpoint | Still requires a management contract and principal semantics (B12). URL rewriting now has dedicated bearer management operations alongside its admin sorting helper. | [Notification helper](../../src/OrchardCore.Modules/OrchardCore.Notifications/Endpoints/Management/MarkAsReadEndpoints.cs), [rewrite management](../../src/OrchardCore.Modules/OrchardCore.UrlRewriting/Endpoints/Management/RewriteManagementEndpoints.cs) |
 | GraphQL | Built-in Pomi query/introspection commands | No OpenAPI projection is needed for the existing protocol workflow. | [CLI transport](../../src/OrchardCore.Cli/CliApplication.GraphQL.cs) |
 | Media | File/folder CRUD, metadata, constraints, labels and Tus upload-info | Profiles/cache/configuration and a complete resumable-transfer workflow are separate gaps (B09). | [API endpoints](../../src/OrchardCore.Modules/OrchardCore.Media/Endpoints/Api), [Tus registration](../../src/OrchardCore.Modules/OrchardCore.Media/Startup.cs) |
@@ -99,6 +99,7 @@ Backlog IDs refer to [the delivery plan](coverage-plan.md#work-packages).
 | [Features](../../src/OrchardCore.Modules/OrchardCore.Features/Manifest.cs) / `OrchardCore.Features` | Yes | `features` | Existing management surface; preserve regression coverage. | — |
 | [HomeRoute](../../src/OrchardCore.Modules/OrchardCore.HomeRoute/Manifest.cs) / `OrchardCore.HomeRoute` | Yes | `settings set-home-content` | Existing management surface; preserve regression coverage. | — |
 | [Https](../../src/OrchardCore.Modules/OrchardCore.Https/Manifest.cs) / `OrchardCore.Https` | Typed section read/schema/update | `settings sections` (`https`) | P06: explicit tenant-owned HTTPS/HSTS settings, shared editor validation, secure-transport requirement, null/omission semantics, reloads and real redirect/HSTS behavior. Host TLS and HSTS options remain configuration. | B05 |
+| [OpenId](../../src/OrchardCore.Modules/OrchardCore.OpenId/Manifest.cs) / `OrchardCore.OpenId.Management` | Application/scope CRUD and shared-secret rotation/revocation | `openid applications`; `openid scopes`; `openid applications credentials` | Shared admin/recipe settings builders, redacted readback, role/grant replacement and credential-preserving edits. Immediate shared-secret replacement uses the existing manager; Pomi saves one-time responses privately. | B06 |
 | [Placements](../../src/OrchardCore.Modules/OrchardCore.Placements/Manifest.cs) / `OrchardCore.Placements` | Yes | `placements` | P04: rule CRUD/validation and registered filter discovery, shared admin validation, database/file ownership, rendered matching/order and feature gates verified. Theme/module placement files remain separate. | B02 |
 | [Queries](../../src/OrchardCore.Modules/OrchardCore.Queries/Manifest.cs) / `OrchardCore.Queries` | Yes | `queries`; `queries sources` | Definitions, validation, source discovery and execution exist. Backends require their feature to be enabled. | — |
 | [Recipes](../../src/OrchardCore.Modules/OrchardCore.Recipes/Manifest.cs) / `OrchardCore.Recipes` | Yes | `recipes` | List/show/execute existing non-setup recipes. Not arbitrary recipe upload, plan editing or deployment import. | — |
@@ -121,7 +122,6 @@ Backlog IDs refer to [the delivery plan](coverage-plan.md#work-packages).
 
 | Module / feature ID | OpenAPI or HTTP surface | Existing Pomi coverage | Scope, gap and next action | Plan |
 | --- | --- | --- | --- | --- |
-| [OpenId](../../src/OrchardCore.Modules/OrchardCore.OpenId/Manifest.cs) / `OrchardCore.OpenId.Management` | Application and scope CRUD | `openid applications`; `openid scopes` | Shared admin/recipe settings builders, redacted readback, role/grant replacement and credential-preserving edits. Dedicated credential lifecycle remains B06. | B06 |
 | [Deployment.Remote](../../src/OrchardCore.Modules/OrchardCore.Deployment.Remote/Manifest.cs) / `OrchardCore.Deployment.Remote` | Private API-key import protocol | None | Remote clients/instances/targets remain admin-only; existing import authentication is not the shared OAuth management contract. | B08 |
 | [Elasticsearch](../../src/OrchardCore.Modules/OrchardCore.Elasticsearch/Manifest.cs) / `OrchardCore.Elasticsearch` | Content/documents query API | Shared `queries` | Direct query endpoints lack CLI metadata; named-query execution is shared. Index lifecycle remains missing; avoid duplicating query transports. | B07 |
 | [Facebook](../../src/OrchardCore.Modules/OrchardCore.Facebook/Manifest.cs) / `OrchardCore.Facebook` | SDK helper; no management contract | None | Provider/widget/pixel settings are not managed through OpenAPI/Pomi. Authentication callbacks are not administration APIs. | B12 |
