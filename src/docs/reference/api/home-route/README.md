@@ -40,8 +40,10 @@ safe route contract:
 }
 ```
 
-Repeating the request for the current item returns the same response without
-writing site settings again. An unknown, draft-only, or unpublished item
+The operation replaces all previous route values, including a contained item
+`JsonPath`. Selecting its container makes the container itself the homepage.
+Repeating the request when the complete route already matches returns the same
+response without writing site settings again. An unknown, draft-only, or unpublished item
 returns `404`; authentication or permission failures return `401` or `403`.
 
 This endpoint replaces the need to submit the privileged transient

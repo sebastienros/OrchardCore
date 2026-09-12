@@ -40,7 +40,7 @@ The [schedule](pr-schedule.md) and [plan](coverage-plan.md) define the work and 
 | P08 Security headers | Merged | [PR #14](https://github.com/sebastienros/OrchardCore/pull/14), merge `5be2b82df`; all CI checks passed. Shared admin/API validation, ownership and live response headers verified. |
 | P09 Content localization | Merged | [PR #12](https://github.com/sebastienros/OrchardCore/pull/12), merge `9d990f99d`; all CI checks passed. Shared admin/API workflow, existing localization handlers, draft retries and version-aware permission checks verified. |
 | P10 URL rewriting | Merged | [PR #15](https://github.com/sebastienros/OrchardCore/pull/15), merge `e8e6fda18`; all CI checks passed. Shared admin/recipe validation, lifecycle and native runtime rerouting verified. |
-| Content culture picker settings | In verification | Independent `codex/remote-culture-picker-settings` from merged target `76bf74d92`; shared existing admin mutations, typed section and runtime cookie/redirect checks. |
+| Content culture picker settings | Merged | [PR #17](https://github.com/sebastienros/OrchardCore/pull/17), merge `6e9f1f64f`; all CI checks passed. Shared admin mutations, typed section and runtime cookie/redirect checks. |
 | Application/scope discovery and administration | Planned | Separate B06 resource PRs. |
 | Application credential lifecycle | Planned | After application administration merges. |
 | Tenant feature-profile definitions | Planned | Independent B06 slice. |
@@ -52,7 +52,7 @@ The [schedule](pr-schedule.md) and [plan](coverage-plan.md) define the work and 
 | SMTP configuration/test | Planned | B12 following settings conventions. |
 | Admin menus and dashboard layout | Planned | B13 after shared-content audit. |
 | Admin templates | Planned | Remaining B02 slice. |
-| Homepage assignment | Planned | B03 observed gap: editor-only SetHomepage is ignored by JSON content updates; see baseline evidence. |
+| Homepage assignment | In verification | `settings set-home-content` already provides assignment. Share route persistence with the Autoroute editor and clear stale contained paths; see baseline correction. |
 | Remaining tenant policy/settings gaps | Refine after baseline | Size demonstrated gaps individually; retain deliberate exclusions. |
 
 Provider-specific integrations, notification principal semantics, user MFA/recovery policy,
@@ -77,3 +77,10 @@ agreed slices are delivered and any remaining gaps have an explicit disposition.
 - Shared-service requirement: API service extractions must also replace equivalent logic in
   existing callers. P02 migrates layer admin mutations and JavaScript editor syntax validation;
   regression checks cover metadata edits preserving rule identities and editor evaluation.
+
+- Home route shared-service refactor: two stale-route regression cases fail on merged
+  base `6e9f1f64f` and pass after the fix. Strict solution build: zero warnings/errors;
+  server: 3,244 passed and one CI-only skip; CLI: 291 passed; authentication/MCP: 78
+  passed. Live restricted-client homepage selection, published rendering, draft
+  preservation, MCP without CLI, and combined culture-picker workflow passed.
+  Strict documentation build passed. Existing route, command and permissions retained.

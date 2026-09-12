@@ -31,6 +31,7 @@ python3 .scripts/remote-management/shared-content-smoke.py <fixture.json>
 python3 .scripts/remote-management/tenant-install-smoke.py <fixture.json>
 python3 .scripts/remote-management/graphql-smoke.py <fixture.json>
 python3 .scripts/remote-management/catalog-smoke.py <fixture.json>
+python3 .scripts/remote-management/home-route-smoke.py <fixture.json>
 python3 .scripts/remote-management/layers-smoke.py <fixture.json>
 python3 .scripts/remote-management/widgets-smoke.py <fixture.json>
 python3 .scripts/remote-management/shortcodes-smoke.py <fixture.json>
@@ -492,3 +493,9 @@ Run `python3 .scripts/remote-management/culture-picker-settings-smoke.py <fixtur
 This checks partial updates, retries, permissions and feature lifecycle through HTTP/Pomi/MCP,
 plus real culture-cookie responses, localized redirects and homepage fallback. It creates a
 synthetic localized homepage in the disposable tenant and restores the original picker settings.
+
+`home-route-smoke.py` exercises the existing `settings set-home-content` command
+with a restricted `SetHomeRoute` application. It verifies denied access, missing
+content, retries, public rendering, preserved unpublished drafts, unique discovery
+and MCP operation with the CLI feature disabled. Synthetic content remains in the
+disposable tenant. Culture-picker verification uses this same homepage command.

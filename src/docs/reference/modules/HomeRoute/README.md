@@ -39,3 +39,16 @@ The home route is part of the site settings, so it can be set with the `settings
 ```
 
 See [Settings](../Settings/README.md) for the site settings infrastructure.
+
+## Updating the route from code
+
+Inject `IHomeRouteService` from `OrchardCore.Settings` and call
+`UpdateAsync(Action<RouteValueDictionary>)`. The callback receives a copy of the
+current route. Clear it to replace the route, or modify selected values to retain
+the others. The service saves through `ISiteService` and refreshes cached settings
+only when the complete route changes; its return value indicates whether it saved.
+
+The Home Route API and the Autoroute publication handler use this service. The
+API replaces the route with its fixed content-display values. Autoroute retains
+its configured global route values and custom content and contained-path keys.
+Callers remain responsible for authorization and selecting valid content.

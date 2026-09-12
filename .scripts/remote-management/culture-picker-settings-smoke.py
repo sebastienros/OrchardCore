@@ -150,20 +150,7 @@ with tempfile.TemporaryDirectory(prefix='culture-picker-cli-', dir=state_path.pa
         source = pomi('content', 'items', 'save', client='cli-fixture', body={'ContentType': name,
             'TitlePart': {'Title': name}, 'HtmlBodyPart': {'Html': '<p>' + marker + '</p>'},
             'AutoroutePart': {'Path': name.lower()}})
-        # SetHomepage is an editor-only flag ignored by JSON content updates.
-        # Install a test-only harvested recipe to establish the disposable homepage.
-        fixture_root = Path(state['root']).resolve()
-        assert fixture_root == state_path.parent.resolve()
-        recipe_file = fixture_root / 'Areas' / 'TheTheme' / 'Recipes' / (name + '.recipe.json')
-        recipe_file.parent.mkdir(parents=True, exist_ok=True)
-        recipe_file.write_text(json.dumps({'name': name, 'displayName': name, 'issetuprecipe': False,
-            'steps': [{'name': 'Settings', 'HomeRoute': {'area': 'OrchardCore.Contents', 'controller': 'Item',
-                'action': 'Display', 'contentItemId': source['ContentItemId']}}]}))
-        try:
-            recipe = next(item for item in request('api/recipes?take=200')['items'] if item['name'] == name)
-            request('api/recipes/' + urllib.parse.quote(recipe['id'], safe='') + ':execute', 'POST', {})
-        finally:
-            recipe_file.unlink()
+        pomi('settings', 'set-home-content', source['ContentItemId'], client='cli-fixture')
         translated = pomi('content', 'localizations', 'create', source['ContentItemId'], client='cli-content-localizer', body={'culture': 'fr'})
         target_id = translated['item']['contentItemId']
         target_path = name.lower() + '-fr'
