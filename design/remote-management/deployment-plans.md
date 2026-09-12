@@ -1,0 +1,78 @@
+# Deployment plans and typed steps
+
+This independent B08 branch starts at merged `8bb1ff436` and does not depend on
+search settings PR #27. Plan and step management precede artifact export/import;
+remote target orchestration remains demand-gated. This document records the whole
+plan/step slice, not completion of B08 based on discovery alone.
+
+## Contract
+
+Expose `deployment plans` list/show/create/update/delete and ordered `deployment
+plans steps` list/show/add/update/delete/order. Expose `deployment step-types`
+discovery and explicit schemas. Use the API authentication scheme and require
+AccessRemoteManagement plus ManageDeploymentPlan. Plan editing does not execute
+an export or import and does not grant those permissions. Preserve the admin list's
+additional Export permission where already required by its navigation workflow.
+
+Use existing numeric plan IDs and opaque step IDs. Lists have stable ordering and
+bounded paging. Plan names must be nonempty and unique according to the existing
+store semantics. Renaming preserves step IDs, order and configuration. Equivalent
+writes report unchanged; API deletes support safe retries, while existing admin
+missing-resource responses remain unchanged. Validate reorder requests completely
+before touching the stored list.
+
+Do not reflect arbitrary CLR types or return raw serialized step properties.
+Discovery returns allowlisted identity/type information. Resolve the factory name using
+the existing export rule: a registered step.Name takes precedence, otherwise use
+the concrete step type name. Generic site-settings factories cannot be identified
+by CLR type alone. Explicit per-type adapters
+own configuration schemas, validation and safe readback. Registered extension steps
+without an adapter remain discoverable and are preserved by plan edits, but are
+not silently projected as editable schemas. Preserve unknown step placeholders and
+their stored data across unrelated changes. The initial typed adapter set must
+support a representative content/settings export plan and the built-in Deployment
+steps; review sensitive embedded JSON/file semantics before exposing them.
+
+## Caller audit
+
+| Existing caller | Actual current behavior | Shared boundary / intended migration |
+| --- | --- | --- |
+| DeploymentPlanController Index | Direct YesSql search/count/order/page; requires ManageDeploymentPlan and Export | Shared plan query, preserving UI authorization and pager presentation. |
+| DeploymentPlanController Create/Edit | Local name validation and direct save; edit keeps steps | Shared plan validation/mutation, retaining localized ModelState and notification handling. |
+| DeploymentPlanController Delete/Bulk | Direct session deletion | Shared delete operation with existing admin missing-item behavior. |
+| StepController Create/Edit | Factory construction, display-driver binding and direct list/save | Retain UI binding; shared step identity/persistence and typed validation for supported steps. |
+| StepController Delete/UpdateOrder | Direct list removal/insertion; new order index is not checked before removal | Shared complete validation before mutation; verify invalid order cannot damage tracked state. |
+| DeploymentPlansRecipeStep | Resolves factories and deserializes explicit recipe types; aborts unknown types before saving | Preserve recipe shape/extension support, share plan validation and persistence. Recipe replacement is deliberately different from API metadata patch. |
+| DeploymentPlanService | Request-cached name dictionary plus recipe create/replace; mutation does not invalidate dictionary | Extend existing domain boundary; regression-test reads after writes instead of adding a competing plan store. |
+| DeploymentPlanDeploymentSource | Reads plans through IDeploymentPlanService and emits recipe representation | Keep consuming shared service; preserve export format. |
+| Contents AddToDeploymentPlanController single/bulk | Direct DeploymentSteps.Add followed by session save; content/export authorization is separate | Shared append/persistence must preserve content authorization, extension steps and notification/redirect behavior. Artifact execution remains subsequent B08 slices. |
+
+## Required evidence
+
+Failing-before/passing-after existing caller regressions; service/API/admin/recipe
+behavior, invalid-write atomicity, no-op retries, extension-step preservation,
+permissions, feature lifecycle and tenant isolation. Validate the generated Pomi
+commands and MCP tools with real persisted plans. Add canonical docs, Pomi workflow
+and package updates, then run full local integration and independent PR CI. Export
+and import completion require a later real cross-tenant artifact round trip.
+
+## Status
+
+Source audit and contract are in progress. No discovery or mutation endpoint has
+shipped yet. Do not move Deployment out of the inventory's missing category until
+the agreed plan/step work is verified, and retain its export/import gaps afterward.
+
+## Shared service baseline and correction
+
+Two real-tenant regressions fail on merged `8bb1ff436`: creation after a cached
+name lookup remains invisible to the same service, and replacement using a plan
+returned by the service clears that tracked plan's own steps. Both fail at their
+behavior assertions, after a strict build with zero warnings/errors.
+
+The service now snapshots incoming steps before replacing the tracked list and
+invalidates request-local discovery after writes. It also materializes the incoming
+plan sequence once, avoiding multiple enumeration. Both regressions pass after the
+fix, including persisted step readback in a fresh tenant scope. The strict test
+project build passes with zero warnings/errors. Endpoints, admin/recipe mutation
+unification, typed step adapters, broader tests, live checks, docs/skills and PR/CI
+remain; these two regressions do not establish completion of the plan/step slice.

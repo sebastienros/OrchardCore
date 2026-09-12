@@ -86,21 +86,28 @@ public class DeploymentPlanService : IDeploymentPlanService
         }
     }
 
+    /// <summary>
+    /// Creates or replaces plans while preserving steps when a caller passes a tracked plan.
+    /// Invalidates request-local discovery after writes so subsequent callers see the changes.
+    /// </summary>
+    /// <param name="deploymentPlans">The plans whose names and steps should be saved.</param>
     public async Task CreateOrUpdateDeploymentPlansAsync(IEnumerable<DeploymentPlan> deploymentPlans)
     {
-        var names = deploymentPlans.Select(x => x.Name);
+        var plans = deploymentPlans.ToArray();
+        var names = plans.Select(x => x.Name);
 
         var existingDeploymentPlans = (await _session.Query<DeploymentPlan, DeploymentPlanIndex>(x => x.Name.IsIn(names))
             .ListAsync())
             .ToDictionary(x => x.Name, StringComparer.OrdinalIgnoreCase);
 
-        foreach (var deploymentPlan in deploymentPlans)
+        foreach (var deploymentPlan in plans)
         {
             if (existingDeploymentPlans.TryGetValue(deploymentPlan.Name, out var existingDeploymentPlan))
             {
+                var steps = deploymentPlan.DeploymentSteps.ToArray();
                 existingDeploymentPlan.Name = deploymentPlan.Name;
                 existingDeploymentPlan.DeploymentSteps.Clear();
-                existingDeploymentPlan.DeploymentSteps.AddRange(deploymentPlan.DeploymentSteps);
+                existingDeploymentPlan.DeploymentSteps.AddRange(steps);
 
                 await _session.SaveAsync(existingDeploymentPlan);
             }
@@ -109,5 +116,7 @@ public class DeploymentPlanService : IDeploymentPlanService
                 await _session.SaveAsync(deploymentPlan);
             }
         }
+
+        _deploymentPlans = null;
     }
 }
