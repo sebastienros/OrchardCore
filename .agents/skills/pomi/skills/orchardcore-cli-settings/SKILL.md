@@ -201,6 +201,26 @@ Changing available zones neither creates theme sections nor moves/deletes existi
 widgets. Verify the theme provides the corresponding sections before placing widgets.
 Requires `ManageLayers` and remote-management access.
 
+## Content culture picker
+
+With `OrchardCore.ContentLocalization.ContentCulturePicker` enabled, discover the
+`content-culture-picker` section. It requires `ManageContentCulturePicker` and
+remote-management access; content-localization permission alone is insufficient.
+
+```bash
+pomi settings sections show content-culture-picker
+pomi settings sections schema content-culture-picker
+pomi settings sections update content-culture-picker --body-file picker.json
+```
+
+The Boolean fields are `setCookie` (cookie on language selection),
+`redirectToHomepage` (fallback when the current item has no target-culture variant),
+and `setCookieOnContentRequest` (cookie when visiting localized content). Omission
+preserves values; null is invalid. Equivalent retries do not save, and changes do
+not reload the tenant. Turning off cookie writing does not delete visitors' existing
+cookies. Cookie lifetime remains host configuration. Verify actual redirect targets
+and response cookies after changing these settings.
+
 ## Custom Settings
 
 Discover only sections the current identity is authorized to manage:
@@ -269,6 +289,7 @@ does not add translation commands to Pomi.
 - Read back after updates and verify user-facing behavior separately.
 
 Versioned references (live tenant schemas take precedence):
+[Content culture picker settings](https://github.com/sebastienros/OrchardCore/blob/3ab81c560b073f2c5d51d14af5c7b66bca01a1d1/src/docs/reference/api/settings/README.md#content-culture-picker-section),
 [Layer zone settings](https://github.com/sebastienros/OrchardCore/blob/6b6a83808e1eb19800c99734869cd8474d0d695b/src/docs/reference/api/settings/README.md#layer-zones-section),
 [localization API](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/api/localization/README.md),
 [settings API](https://github.com/sebastienros/OrchardCore/blob/5bb6c301c6fa9b795717d6a7906d7cb8626fe33c/src/docs/reference/api/settings/README.md),

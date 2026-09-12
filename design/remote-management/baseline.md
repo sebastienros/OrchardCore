@@ -87,3 +87,12 @@ until clearing and execution semantics have been verified.
 Fixture state, tokens, passwords, databases and raw logs remain outside the repository in an
 owner-only temporary directory. Reports record command names, counts and outcomes only.
 Reproduce with the verification toolkit; do not copy the private fixture state into a PR.
+
+## Homepage assignment follow-up
+
+Culture-picker runtime verification confirmed that `AutoroutePart.SetHomepage` is
+`[JsonIgnore]`: JSON content updates do not perform the admin editor's homepage action.
+The disposable test uses a harvested Settings recipe to establish a homepage; that is
+fixture preparation, not evidence of a Pomi homepage command. Track an explicit,
+permission-aware homepage assignment operation as a B03 follow-up, reusing the existing
+homepage mutation path. Do not claim editor parity from the shared content payload alone.

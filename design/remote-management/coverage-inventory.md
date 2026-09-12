@@ -52,16 +52,16 @@ The categories are mutually exclusive planning classifications, not percentages 
 
 | Code | Classification | Feature count |
 | --- | --- | ---: |
-| D | Direct management OpenAPI and Pomi commands exist | 22 |
+| D | Direct management OpenAPI and Pomi commands exist | 23 |
 | P | Partial: important operations missing, or only helper/protocol/shared coverage | 24 |
 | A | Management OpenAPI exists; Pomi projection intentionally absent | 1 |
-| M | Dedicated management API and corresponding commands missing | 32 |
+| M | Dedicated management API and corresponding commands missing | 31 |
 | S | Shared API/commands or a built-in CLI workflow; validate the stated limits | 36 |
 | I | Infrastructure, rendering, protocol, provider or alias; no separate API proposed by default | 70 |
 | X | Sample; excluded from delivery priorities | 3 |
 
-There are **32 features with neither dedicated management APIs nor commands**, and **24 with
-partial coverage requiring a scope decision**. These are not 56 independent implementation tasks:
+There are **31 features with neither dedicated management APIs nor commands**, and **24 with
+partial coverage requiring a scope decision**. These are not 55 independent implementation tasks:
 the plan consolidates them into shared workflows. Another 36 features reuse existing transports
 or built-in commands. Twenty-one production modules contribute direct `WithCliCommand` operation
 registrations; this does not imply all features in those modules are covered.
@@ -91,7 +91,7 @@ Backlog IDs refer to [the delivery plan](coverage-plan.md#work-packages).
 
 | Module / feature ID | OpenAPI or HTTP surface | Existing Pomi coverage | Scope, gap and next action | Plan |
 | --- | --- | --- | --- | --- |
-| [ContentLocalization](../../src/OrchardCore.Modules/OrchardCore.ContentLocalization/Manifest.cs) / `OrchardCore.ContentLocalization` | Variant discovery and draft localization | `content localizations` | P09: existing manager clones through shared admin/API authorization, configured cultures and editable-target retries; version-aware reads filter each variant. Picker settings remain a separate feature gap. | B04 |
+| [ContentLocalization](../../src/OrchardCore.Modules/OrchardCore.ContentLocalization/Manifest.cs) / `OrchardCore.ContentLocalization` | Variant discovery and draft localization | `content localizations` | P09: existing manager clones through shared admin/API authorization, configured cultures and editable-target retries; version-aware reads filter each variant. Picker settings are exposed by the separate ContentCulturePicker feature. | B04 |
 | [ContentTypes](../../src/OrchardCore.Modules/OrchardCore.ContentTypes/Manifest.cs) / `OrchardCore.ContentTypes` | Yes | `content types`, `parts`, `fields`, `part-types`, `field-types`, `settings` | Definition CRUD/discovery exists; extension settings-schema completeness belongs to B03. | — |
 | [Contents](../../src/OrchardCore.Modules/OrchardCore.Contents/Manifest.cs) / `OrchardCore.Contents` | Yes | `content items`; `content versions` | CRUD, drafts, validation/schema, rendering and version operations exist; extension lifecycle parity belongs to B03. | — |
 | [Cors](../../src/OrchardCore.Modules/OrchardCore.Cors/Manifest.cs) / `OrchardCore.Cors` | Typed policy section read/schema/update | `settings sections` (`cors`) | P07: complete policy replacement, shared admin/API/runtime validation, source ownership, default selection, no-op reload behavior and actual CORS headers. | B05 |
@@ -114,6 +114,8 @@ Backlog IDs refer to [the delivery plan](coverage-plan.md#work-packages).
 | [UrlRewriting](../../src/OrchardCore.Modules/OrchardCore.UrlRewriting/Manifest.cs) / `OrchardCore.UrlRewriting` | Eight bearer management operations | `url-rewriting rules` | Built-in Rewrite/Redirect list/show/CRUD/validate, source discovery and ordering; shared admin/recipe manager validation, reloads and endpoint rerouting. Extension metadata stays opaque. | B10 |
 
 | [Layers](../../src/OrchardCore.Modules/OrchardCore.Layers/Manifest.cs) / `OrchardCore.Layers` | Layer and widget placement APIs | `layers`; `layers widgets`; `settings sections` | P02 definitions/conditions and P05 widget attachment/movement/order share admin services. Widget reads and writes enforce content permissions and preserve draft bodies. Configured zones are discoverable and editable through the `layer-zones` typed settings section, sharing normalization with the admin editor. | B01 |
+
+| [ContentLocalization](../../src/OrchardCore.Modules/OrchardCore.ContentLocalization/Manifest.cs) / `OrchardCore.ContentLocalization.ContentCulturePicker` | Typed `content-culture-picker` section | `settings sections` | Cookie selection/request behavior and homepage fallback share existing admin mutation logic; permission, persistence and runtime checks. Cookie lifetime remains host-owned. | B04 |
 
 ### P — Partial: important operations missing, or only helper/protocol/shared coverage
 
@@ -158,7 +160,6 @@ Backlog IDs refer to [the delivery plan](coverage-plan.md#work-packages).
 | [AuditTrail](../../src/OrchardCore.Modules/OrchardCore.AuditTrail/Manifest.cs) / `OrchardCore.AuditTrail` | No dedicated management API | None | Missing paged event search/show/export and retention settings; reuse the audit query/filter model. | B11 |
 | [AzureAI](../../src/OrchardCore.Modules/OrchardCore.AzureAI/Manifest.cs) / `OrchardCore.AzureAI` | No dedicated management API | None | Index lifecycle/configuration is missing from management APIs. Start with the common Indexing abstraction, then provider-specific settings. | B07 |
 | [BackgroundTasks](../../src/OrchardCore.Modules/OrchardCore.BackgroundTasks/Manifest.cs) / `OrchardCore.BackgroundTasks` | No dedicated management API | None | Task listing, schedule/configuration and enable/disable are admin-only. Decide whether run-now has a supported service contract. | B11 |
-| [ContentLocalization](../../src/OrchardCore.Modules/OrchardCore.ContentLocalization/Manifest.cs) / `OrchardCore.ContentLocalization.ContentCulturePicker` | No dedicated management API | None | Culture picker/request-culture settings lack management; this is separate from culture list/settings APIs. | B04 |
 | [Contents](../../src/OrchardCore.Modules/OrchardCore.Contents/Manifest.cs) / `OrchardCore.Contents.VersionPruning` | No dedicated management API | None | Version list/delete exists in base Contents, but automated pruning policy/settings lack management. | B11 |
 | [Contents](../../src/OrchardCore.Modules/OrchardCore.Contents/Manifest.cs) / `OrchardCore.Contents.Deployment.ExportContentToDeploymentTarget` | No dedicated management API | None | Admin export/add-to-plan/download action; define shared deployment operations and artifact handling. | B08 |
 | [Contents](../../src/OrchardCore.Modules/OrchardCore.Contents/Manifest.cs) / `OrchardCore.Contents.Deployment.AddToDeploymentPlan` | No dedicated management API | None | Admin export/add-to-plan/download action; define shared deployment operations and artifact handling. | B08 |

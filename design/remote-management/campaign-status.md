@@ -52,6 +52,7 @@ The [schedule](pr-schedule.md) and [plan](coverage-plan.md) define the work and 
 | SMTP configuration/test | Planned | B12 following settings conventions. |
 | Admin menus and dashboard layout | Planned | B13 after shared-content audit. |
 | Admin templates | Planned | Remaining B02 slice. |
+| Homepage assignment | Planned | B03 observed gap: editor-only SetHomepage is ignored by JSON content updates; see baseline evidence. |
 | Remaining tenant policy/settings gaps | Refine after baseline | Size demonstrated gaps individually; retain deliberate exclusions. |
 
 Provider-specific integrations, notification principal semantics, user MFA/recovery policy,
