@@ -35,7 +35,15 @@ public class IndexLifecycleServiceTests
         var locking = new Mock<IDistributedLock>();
         locking.Setup(value => value.TryAcquireLockAsync("IndexingService-index", It.IsAny<TimeSpan>(), It.IsAny<TimeSpan>()))
             .Callback(() => calls.Add("lock")).ReturnsAsync((locker.Object, true));
-        using var services = new ServiceCollection().AddSingleton(locking.Object)
+        var handler = new Mock<IIndexProfileHandler>();
+        handler.Setup(value => value.SynchronizedAsync(It.IsAny<IndexProfileSynchronizedContext>()))
+            .Callback<IndexProfileSynchronizedContext>(context =>
+            {
+                Assert.True(context.IsIndexingCompleted);
+                Assert.Same(profile, context.IndexProfile);
+                calls.Add("synchronized");
+            });
+        using var services = new ServiceCollection().AddSingleton(handler.Object).AddSingleton(locking.Object)
             .AddKeyedSingleton<IIndexManager>("Test", indexes.Object)
             .AddKeyedSingleton<IDocumentIndexManager>("Test", documents.Object)
             .AddKeyedSingleton<NamedIndexingService>("Test", (provider, _) => new Processor(store.Object, tasks.Object, provider))
@@ -48,7 +56,7 @@ public class IndexLifecycleServiceTests
         var expected = new List<string> { "lock" };
         if (action == IndexLifecycleAction.Rebuild) { expected.Add("rebuild"); }
         if (action != IndexLifecycleAction.Synchronize) { expected.AddRange(["reset", "update"]); }
-        expected.AddRange(["exists", "cursor", "tasks", "release"]);
+        expected.AddRange(["exists", "cursor", "tasks", "release", "synchronized"]);
         Assert.Equal(expected, calls);
         locking.Verify(value => value.TryAcquireLockAsync(It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<TimeSpan>()), Times.Once);
     }
@@ -105,6 +113,17 @@ public class IndexLifecycleServiceTests
         tasks.VerifyNoOtherCalls();
         documents.VerifyNoOtherCalls();
         locker.Verify(value => value.DisposeAsync(), Times.Once());
+    }
+
+    [Fact]
+    public async Task ContentHandler_AlreadyProcessed_DoesNotStartAnotherProcessor()
+    {
+        // A missing processor makes accidental re-entry fail instead of masking a second run.
+        var handler = new global::OrchardCore.Indexing.Core.Handlers.ContentIndexProfileHandler(null, null, null);
+        await handler.SynchronizedAsync(new IndexProfileSynchronizedContext(new IndexProfile
+        {
+            Id = "index", Type = IndexingConstants.ContentsIndexSource,
+        }) { IsIndexingCompleted = true });
     }
 
     private sealed class Processor : NamedIndexingService

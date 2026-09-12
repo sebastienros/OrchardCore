@@ -199,3 +199,19 @@ extension compatibility. Preserve the existing handler path without double-runni
 the built-in content processor or reporting unobserved asynchronous work completed.
 The existing 15-minute distributed-lock lease also needs an explicit review of
 long-running operation semantics before claiming uninterrupted lock ownership.
+
+## Restoring synchronization callbacks
+
+Three coordinator regressions failed before the callback fix: synchronize, reset
+and rebuild each omitted `IIndexProfileHandler.SynchronizedAsync`. The coordinator
+now dispatches those handlers after successful processing and lock release, before
+returning its completed result. The context exposes `IsIndexingCompleted`; its
+legacy default is false. The built-in content handler skips duplicate processing
+when the shared processor has already completed, while extension handlers continue
+to receive the callback. Handler exceptions propagate to the tracked runner.
+
+The strict build passes with zero warnings/errors and all seven focused cases
+pass, including callback ordering/context and prevention of duplicate content
+processing. Custom sources lacking a keyed processor still require a compatibility
+fallback with an explicitly unverified outcome. Lock-expiry semantics and renewed
+integrated/live verification remain before PR publication.

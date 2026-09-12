@@ -266,6 +266,14 @@ that need asynchronous HTTP operation tracking must schedule and track that work
 separately. A completed result describes the queue observed during that run; later
 content changes still require indexing.
 
+After successful processing, the coordinator invokes the registered
+`IIndexProfileHandler.SynchronizedAsync` callbacks with
+`IndexProfileSynchronizedContext.IsIndexingCompleted` set to `true`. Extension
+handlers still perform their synchronization work. The built-in content handler
+uses this flag to avoid indexing the same queue again. Legacy synchronization
+contexts default to `false` and retain the built-in processing behavior. Callback
+exceptions prevent the tracked operation from being recorded as completed.
+
 ### Persisting lifecycle state
 
 `IndexOperationStore` stores lifecycle records in the tenant database with opaque

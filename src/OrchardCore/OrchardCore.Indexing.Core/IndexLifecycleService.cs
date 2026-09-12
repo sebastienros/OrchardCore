@@ -52,7 +52,7 @@ public sealed class IndexLifecycleService : IIndexLifecycleService
         {
             return new IndexProcessingResult { IndexId = indexId, Status = IndexProcessingStatus.Unsupported };
         }
-        return await processor.ProcessIndexWithPreparationAsync(profile, async (index, provider) =>
+        var result = await processor.ProcessIndexWithPreparationAsync(profile, async (index, provider) =>
         {
             if (action == IndexLifecycleAction.Synchronize)
             {
@@ -66,5 +66,14 @@ public sealed class IndexLifecycleService : IIndexLifecycleService
             await _profiles.UpdateAsync(index);
             return true;
         });
+        if (result.Status == IndexProcessingStatus.Completed)
+        {
+            var context = new IndexProfileSynchronizedContext(profile) { IsIndexingCompleted = true };
+            foreach (var handler in _services.GetServices<IIndexProfileHandler>())
+            {
+                await handler.SynchronizedAsync(context);
+            }
+        }
+        return result;
     }
 }
