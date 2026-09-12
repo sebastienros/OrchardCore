@@ -36,9 +36,9 @@ The [schedule](pr-schedule.md) and [plan](coverage-plan.md) define the work and 
 | Website composition gate | Verified locally | `website-composition-smoke.py`: `tenants install --enable-remote-management`, stored application context without login, private administrator files, content/widget/layer/placement/shortcode rendering and setup-only context preservation on the merged presentation baseline. |
 | P06 Typed settings + HTTPS | Merged | [PR #11](https://github.com/sebastienros/OrchardCore/pull/11), merge `60236178c`; all CI checks passed. Explicit section contracts, shared HTTPS editor validation, trusted HTTPS/Pomi/MCP checks. Layers zone-settings editing remains a follow-up adapter. |
 | P07 CORS | Merged | [PR #13](https://github.com/sebastienros/OrchardCore/pull/13), merge `fbdb30285`; all CI checks passed. Shared admin/API/runtime validation, typed policies and real preflight checks. |
-| P08 Security headers | In verification | Independent `codex/remote-security-header-settings` from merged target `fbdb30285`. Shared admin/API validation and change detection; typed policies, configuration ownership and live response headers verified. |
+| P08 Security headers | Merged | [PR #14](https://github.com/sebastienros/OrchardCore/pull/14), merge `5be2b82df`; all CI checks passed. Shared admin/API validation, configuration ownership and live response headers verified. |
 | P09 Content localization | Merged | [PR #12](https://github.com/sebastienros/OrchardCore/pull/12), merge `9d990f99d`; all CI checks passed. Shared admin/API workflow, existing localization handlers, draft retries and version-aware permission checks verified. |
-| P10 URL rewriting | Planned | B10. |
+| P10 URL rewriting | In verification | Independent `codex/remote-url-rewrite-rules` from merged target `5be2b82df`; shared manager/admin validation and lifecycle, CRUD/order endpoints and runtime rerouting checks. Final verification pending. |
 | Application/scope discovery and administration | Planned | Separate B06 resource PRs. |
 | Application credential lifecycle | Planned | After application administration merges. |
 | Tenant feature-profile definitions | Planned | Independent B06 slice. |

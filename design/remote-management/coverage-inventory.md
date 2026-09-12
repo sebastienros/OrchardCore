@@ -10,6 +10,7 @@ P06 adds typed section contracts and HTTPS after the widget merge (`19b7b75e6`).
 P09 adds content localization after the typed settings merge (`60236178c`).
 P07 adds the CORS settings adapter after the localization merge (`9d990f99d`).
 P08 adds security header settings after the CORS merge (`fbdb30285`).
+P10 adds URL rewrite management after the security-header merge (`5be2b82df`).
 The campaign ledger records delivery state.
 
 ## Scope and interpretation
@@ -51,18 +52,18 @@ The categories are mutually exclusive planning classifications, not percentages 
 
 | Code | Classification | Feature count |
 | --- | --- | ---: |
-| D | Direct management OpenAPI and Pomi commands exist | 20 |
-| P | Partial: important operations missing, or only helper/protocol/shared coverage | 26 |
+| D | Direct management OpenAPI and Pomi commands exist | 21 |
+| P | Partial: important operations missing, or only helper/protocol/shared coverage | 25 |
 | A | Management OpenAPI exists; Pomi projection intentionally absent | 1 |
 | M | Dedicated management API and corresponding commands missing | 32 |
 | S | Shared API/commands or a built-in CLI workflow; validate the stated limits | 36 |
 | I | Infrastructure, rendering, protocol, provider or alias; no separate API proposed by default | 70 |
 | X | Sample; excluded from delivery priorities | 3 |
 
-There are **32 features with neither dedicated management APIs nor commands**, and **26 with
-partial coverage requiring a scope decision**. These are not 58 independent implementation tasks:
+There are **32 features with neither dedicated management APIs nor commands**, and **25 with
+partial coverage requiring a scope decision**. These are not 57 independent implementation tasks:
 the plan consolidates them into shared workflows. Another 36 features reuse existing transports
-or built-in commands. Twenty production modules contribute direct `WithCliCommand` operation
+or built-in commands. Twenty-one production modules contribute direct `WithCliCommand` operation
 registrations; this does not imply all features in those modules are covered.
 
 ## Important operation-level distinctions
@@ -75,7 +76,7 @@ registrations; this does not imply all features in those modules are covered.
 | Content parts/fields | Generic content JSON and definition CRUD; explicit settings-schema providers in Autoroute, Flows and ContentFields | Validate field/part schemas and lifecycle behavior rather than creating a command family for every part (B03). | [Definition service](../../src/OrchardCore.Modules/OrchardCore.ContentTypes/Services/ContentDefinitionApiService.cs), [ContentPicker settings provider](../../src/OrchardCore.Modules/OrchardCore.ContentFields/Services/ContentFieldsContentDefinitionManagementSchemaProvider.cs) |
 | Templates | Frontend TemplatesManager CRUD | AdminTemplates uses a separate manager/document and is not covered (B02). | [Endpoints](../../src/OrchardCore.Modules/OrchardCore.Templates/Endpoints/Management/TemplateManagementEndpoints.cs), [feature startup](../../src/OrchardCore.Modules/OrchardCore.Templates/Startup.cs) |
 | Tenants / OpenID | Tenant installation, feature-profile assignment, opt-in application provisioning and automatic context acquisition | Feature-profile definitions and general application/scope/credential lifecycle remain missing (B06). OAuth tokens and MCP public-client registration are not those APIs. | [Tenant endpoints](../../src/OrchardCore.Modules/OrchardCore.Tenants/Endpoints/Management/TenantManagementEndpoints.cs), [OpenID applications](../../src/OrchardCore.Modules/OrchardCore.OpenId/Controllers/ApplicationController.cs), [MCP registration](../../src/OrchardCore.Modules/OrchardCore.OpenId/Controllers/McpClientRegistrationController.cs) |
-| Notifications / URL rewriting | Mark-as-read and rule-reorder AJAX endpoints | These are incomplete management surfaces; establish explicit bearer authorization, resource contracts and principal semantics (B12/B10). | [Notification helper](../../src/OrchardCore.Modules/OrchardCore.Notifications/Endpoints/Management/MarkAsReadEndpoints.cs), [reorder helper](../../src/OrchardCore.Modules/OrchardCore.UrlRewriting/Endpoints/Rules/SortRulesEndpoint.cs) |
+| Notifications | Mark-as-read AJAX endpoint | Still requires a management contract and principal semantics (B12). URL rewriting now has dedicated bearer management operations alongside its admin sorting helper. | [Notification helper](../../src/OrchardCore.Modules/OrchardCore.Notifications/Endpoints/Management/MarkAsReadEndpoints.cs), [rewrite management](../../src/OrchardCore.Modules/OrchardCore.UrlRewriting/Endpoints/Management/RewriteManagementEndpoints.cs) |
 | GraphQL | Built-in Pomi query/introspection commands | No OpenAPI projection is needed for the existing protocol workflow. | [CLI transport](../../src/OrchardCore.Cli/CliApplication.GraphQL.cs) |
 | Media | File/folder CRUD, metadata, constraints, labels and Tus upload-info | Profiles/cache/configuration and a complete resumable-transfer workflow are separate gaps (B09). | [API endpoints](../../src/OrchardCore.Modules/OrchardCore.Media/Endpoints/Api), [Tus registration](../../src/OrchardCore.Modules/OrchardCore.Media/Startup.cs) |
 | Deployment | Admin plans/steps/export/import plus a private API-key remote-import protocol | Recipe execution does not replace these management contracts (B08). | [Deployment controllers](../../src/OrchardCore.Modules/OrchardCore.Deployment/Controllers), [remote import](../../src/OrchardCore.Modules/OrchardCore.Deployment.Remote/Controllers/ImportRemoteInstanceController.cs) |
@@ -110,6 +111,7 @@ Backlog IDs refer to [the delivery plan](coverage-plan.md#work-packages).
 | [Users](../../src/OrchardCore.Modules/OrchardCore.Users/Manifest.cs) / `OrchardCore.Users` | Yes | `users` | Basic account lifecycle, roles and password fields exist. Custom-user settings and MFA administration are separate gaps. | — |
 | [Workflows](../../src/OrchardCore.Modules/OrchardCore.Workflows/Manifest.cs) / `OrchardCore.Workflows` | Yes | `workflow types`, `activity-types`, `instances` | Definition CRUD/validation, activity schemas, execution and instance list/show/cancel exist; extensions share these operations. | — |
 | [Security](../../src/OrchardCore.Modules/OrchardCore.Security/Manifest.cs) / `OrchardCore.Security` | Typed `security-headers` settings section | `settings sections` | Shared admin/API validation and no-op change detection; CSP, permissions and referrer policies with configuration ownership and emitted-header checks. | B05 |
+| [UrlRewriting](../../src/OrchardCore.Modules/OrchardCore.UrlRewriting/Manifest.cs) / `OrchardCore.UrlRewriting` | Eight bearer management operations | `url-rewriting rules` | Built-in Rewrite/Redirect list/show/CRUD/validate, source discovery and ordering; shared admin/recipe manager validation, reloads and endpoint rerouting. Extension metadata stays opaque. | B10 |
 
 ### P — Partial: important operations missing, or only helper/protocol/shared coverage
 
@@ -130,7 +132,6 @@ Backlog IDs refer to [the delivery plan](coverage-plan.md#work-packages).
 | [Sitemaps](../../src/OrchardCore.Modules/OrchardCore.Sitemaps/Manifest.cs) / `OrchardCore.Sitemaps` | Public sitemap XML | None | Sitemap/source definitions, enablement and cache controls lack management APIs. | B10 |
 | [Tenants](../../src/OrchardCore.Modules/OrchardCore.Tenants/Manifest.cs) / `OrchardCore.Tenants.FeatureProfiles` | Profile assignment through tenant APIs | Shared tenant create/update/install | Tenant requests accept profile names, but profile definition list/show/CRUD is admin-only. | B06 |
 | [Twitter](../../src/OrchardCore.Modules/OrchardCore.Twitter/Manifest.cs) / `OrchardCore.Twitter` | Shared workflow activity contracts | Shared `workflow` commands | Integration activities use Workflows when enabled; Twitter client/provider settings lack management. | B12 |
-| [UrlRewriting](../../src/OrchardCore.Modules/OrchardCore.UrlRewriting/Manifest.cs) / `OrchardCore.UrlRewriting` | Rule-reordering AJAX helper | None | Missing rule list/show/CRUD and condition/ordering validation under shared OAuth authorization. | B10 |
 | [Users](../../src/OrchardCore.Modules/OrchardCore.Users/Manifest.cs) / `OrchardCore.Users.ExternalAuthentication` | User web/authentication flows | Base `users` only | Feature-specific settings/security administration lacks a management contract. Preserve user-consent/challenge semantics; do not project send-code or recovery endpoints blindly. | B06 |
 | [Users](../../src/OrchardCore.Modules/OrchardCore.Users/Manifest.cs) / `OrchardCore.Users.ChangeEmail` | User web/authentication flows | Base `users` only | Feature-specific settings/security administration lacks a management contract. Preserve user-consent/challenge semantics; do not project send-code or recovery endpoints blindly. | B06 |
 | [Users](../../src/OrchardCore.Modules/OrchardCore.Users/Manifest.cs) / `OrchardCore.Users.Registration` | User web/authentication flows | Base `users` only | Feature-specific settings/security administration lacks a management contract. Preserve user-consent/challenge semantics; do not project send-code or recovery endpoints blindly. | B06 |

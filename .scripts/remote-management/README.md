@@ -470,3 +470,11 @@ Run `python3 .scripts/remote-management/security-headers-settings-smoke.py <fixt
 against a disposable fixture from `start-fixture.py`. It verifies policy replacement,
 validation, retries, emitted response headers, source permissions through HTTP/CLI/MCP,
 and feature lifecycle with another settings section enabled.
+
+## URL rewriting
+
+Run `python3 .scripts/remote-management/url-rewriting-smoke.py <fixture.json>` on a
+disposable fixture. It checks stable-ID creation retries, complete replacement,
+source validation, runtime ordering, redirect captures/status/query policies,
+in-process rewriting, permission denials, feature lifecycle and MCP without CLI.
+It creates uniquely named rules and removes them when successful.

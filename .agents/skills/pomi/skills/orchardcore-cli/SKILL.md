@@ -50,6 +50,7 @@ that approach. Report an installation blocker rather than silently bypassing Pom
 | Select installed site/admin themes | [Themes](../orchardcore-cli-themes/SKILL.md) |
 | Create navigation with official menu content and shapes | [Menus](../orchardcore-cli-menus/SKILL.md) |
 | Execute GraphQL documents or inspect its schema | [GraphQL](../orchardcore-cli-graphql/SKILL.md) |
+| Manage URL rewrite/redirect rules and their order | [URL rewrite rules](../orchardcore-cli-settings/SKILL.md#url-rewrite-rules) |
 | Manage Site Settings, typed module sections, Custom Settings, and cultures | [Settings](../orchardcore-cli-settings/SKILL.md) |
 | Manage features, recipes, queries, workflows, users, and roles | [Administration](../orchardcore-cli-automation/SKILL.md) |
 
