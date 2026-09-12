@@ -9,6 +9,7 @@ P03 adds stored shortcode-template coverage; P04 adds shape placements after the
 P06 adds typed section contracts and HTTPS after the widget merge (`19b7b75e6`).
 P09 adds content localization after the typed settings merge (`60236178c`).
 P07 adds the CORS settings adapter after the localization merge (`9d990f99d`).
+P08 adds security header settings after the CORS merge (`fbdb30285`).
 The campaign ledger records delivery state.
 
 ## Scope and interpretation
@@ -50,16 +51,16 @@ The categories are mutually exclusive planning classifications, not percentages 
 
 | Code | Classification | Feature count |
 | --- | --- | ---: |
-| D | Direct management OpenAPI and Pomi commands exist | 19 |
+| D | Direct management OpenAPI and Pomi commands exist | 20 |
 | P | Partial: important operations missing, or only helper/protocol/shared coverage | 26 |
 | A | Management OpenAPI exists; Pomi projection intentionally absent | 1 |
-| M | Dedicated management API and corresponding commands missing | 33 |
+| M | Dedicated management API and corresponding commands missing | 32 |
 | S | Shared API/commands or a built-in CLI workflow; validate the stated limits | 36 |
 | I | Infrastructure, rendering, protocol, provider or alias; no separate API proposed by default | 70 |
 | X | Sample; excluded from delivery priorities | 3 |
 
-There are **33 features with neither dedicated management APIs nor commands**, and **26 with
-partial coverage requiring a scope decision**. These are not 59 independent implementation tasks:
+There are **32 features with neither dedicated management APIs nor commands**, and **26 with
+partial coverage requiring a scope decision**. These are not 58 independent implementation tasks:
 the plan consolidates them into shared workflows. Another 36 features reuse existing transports
 or built-in commands. Twenty production modules contribute direct `WithCliCommand` operation
 registrations; this does not imply all features in those modules are covered.
@@ -108,6 +109,7 @@ Backlog IDs refer to [the delivery plan](coverage-plan.md#work-packages).
 | [Themes](../../src/OrchardCore.Modules/OrchardCore.Themes/Manifest.cs) / `OrchardCore.Themes` | Yes | `themes` | Theme discovery and activation exist; source-code/theme asset editing is not theme activation. | — |
 | [Users](../../src/OrchardCore.Modules/OrchardCore.Users/Manifest.cs) / `OrchardCore.Users` | Yes | `users` | Basic account lifecycle, roles and password fields exist. Custom-user settings and MFA administration are separate gaps. | — |
 | [Workflows](../../src/OrchardCore.Modules/OrchardCore.Workflows/Manifest.cs) / `OrchardCore.Workflows` | Yes | `workflow types`, `activity-types`, `instances` | Definition CRUD/validation, activity schemas, execution and instance list/show/cancel exist; extensions share these operations. | — |
+| [Security](../../src/OrchardCore.Modules/OrchardCore.Security/Manifest.cs) / `OrchardCore.Security` | Typed `security-headers` settings section | `settings sections` | Shared admin/API validation and no-op change detection; CSP, permissions and referrer policies with configuration ownership and emitted-header checks. | B05 |
 
 ### P — Partial: important operations missing, or only helper/protocol/shared coverage
 
@@ -178,7 +180,6 @@ Backlog IDs refer to [the delivery plan](coverage-plan.md#work-packages).
 | [RateLimits](../../src/OrchardCore.Modules/OrchardCore.RateLimits/Manifest.cs) / `OrchardCore.RateLimits` | No dedicated management API | None | Limiter definitions, ordering/validation and tenant settings are admin-only. | B05 |
 | [ReCaptcha](../../src/OrchardCore.Modules/OrchardCore.ReCaptcha/Manifest.cs) / `OrchardCore.ReCaptcha` | No dedicated management API | None | Tenant validation settings lack a redacted section; do not expose challenge bypass/validation as an admin command. | B12 |
 | [Search](../../src/OrchardCore.Modules/OrchardCore.Search/Manifest.cs) / `OrchardCore.Search` | No dedicated management API | None | Frontend search settings/default index selection lack typed management; query execution does not manage indexes. | B07 |
-| [Security](../../src/OrchardCore.Modules/OrchardCore.Security/Manifest.cs) / `OrchardCore.Security` | No dedicated management API | None | Security header/CSP settings lack a typed management section. | B05 |
 | [Sms](../../src/OrchardCore.Modules/OrchardCore.Sms/Manifest.cs) / `OrchardCore.Sms` | No dedicated management API | None | SMS configuration and test-send lack a management contract; use redacted settings and bounded checks. | B12 |
 | [Templates](../../src/OrchardCore.Modules/OrchardCore.Templates/Manifest.cs) / `OrchardCore.AdminTemplates` | No dedicated management API | None | Separate admin template document is not exposed by the frontend templates API. | B02 |
 | [Twitter](../../src/OrchardCore.Modules/OrchardCore.Twitter/Manifest.cs) / `OrchardCore.Twitter.Signin` | No dedicated management API | None | Provider settings lack a redacted management contract; sign-in is an authentication protocol. | B12 |

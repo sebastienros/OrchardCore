@@ -90,6 +90,27 @@ arbitrary settings JSON or modifying configuration owned by the host. The core
 `settings schema` provider list is discovery-only and does not grant write access
 to a module section.
 
+### Security headers
+
+Discover `security-headers` using `settings sections list` after enabling
+`OrchardCore.Security`. Read the schema and existing values before updating. The
+application needs `ManageSecurityHeadersSettings`; the section may be read-only
+when host configuration owns it. A read-only update returns 409.
+
+Use `settings sections update security-headers --stdin` with optional
+`contentSecurityPolicy`, `permissionsPolicy` and `referrerPolicy` properties.
+Supplied policy maps replace the whole map; omission preserves it and `{}` clears
+it. Null maps are invalid. For CSP, null removes a directive except `sandbox` and
+`upgrade-insecure-requests`, where it enables the flag. The existing Permissions
+Policy editor's `()` sentinel removes a directive; it does not explicitly deny
+that permission in the emitted header. Inspect the schema's supported referrer
+policy names. The module always emits `X-Content-Type-Options: nosniff`.
+
+Confirm readback and real response headers after changes. The policy applies to
+admin and API responses too. Successful unchanged retries do not reload the tenant.
+The admin editor and API share validation; do not bypass it with a recipe to work
+around an invalid value.
+
 ### CORS policies
 
 The `cors` section requires `OrchardCore.Cors` and `ManageCorsSettings` in addition
@@ -197,8 +218,9 @@ does not add translation commands to Pomi.
 
 Versioned references (live tenant schemas take precedence):
 [localization API](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/api/localization/README.md),
-[settings API](https://github.com/sebastienros/OrchardCore/blob/4020c67d5b920d7a26ca175420683793b033fb08/src/docs/reference/api/settings/README.md),
+[settings API](https://github.com/sebastienros/OrchardCore/blob/5bb6c301c6fa9b795717d6a7906d7cb8626fe33c/src/docs/reference/api/settings/README.md),
 [custom-settings API](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/api/custom-settings/README.md),
 [CORS module](https://github.com/sebastienros/OrchardCore/blob/4020c67d5b920d7a26ca175420683793b033fb08/src/docs/reference/modules/Cors/README.md),
+[Security module](https://github.com/sebastienros/OrchardCore/blob/5bb6c301c6fa9b795717d6a7906d7cb8626fe33c/src/docs/reference/modules/Security/README.md),
 [Settings module](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/modules/Settings/README.md), and
 [CustomSettings module](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/modules/CustomSettings/README.md).

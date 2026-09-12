@@ -463,3 +463,10 @@ policies, origins, methods, headers and credentials. Restricted CORS, HTTPS-only
 discovery-only applications verify section permissions. It checks feature lifecycle and
 MCP with the CLI feature disabled, then leaves the disposable tenant's CORS policies empty.
 The unit suite also verifies the existing admin editor and invalid recipe-import defenses.
+
+## Security header settings
+
+Run `python3 .scripts/remote-management/security-headers-settings-smoke.py <fixture.json>`
+against a disposable fixture from `start-fixture.py`. It verifies policy replacement,
+validation, retries, emitted response headers, source permissions through HTTP/CLI/MCP,
+and feature lifecycle with another settings section enabled.

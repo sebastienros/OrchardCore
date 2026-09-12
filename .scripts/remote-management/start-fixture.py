@@ -52,6 +52,7 @@ for suffix, permissions in [
     ("shortcodes", ["ManageShortcodeTemplates"]),
     ("https", ["ManageHttps"]),
     ("cors", ["ManageCorsSettings"]),
+    ("security-headers", ["ManageSecurityHeadersSettings"]),
     ("placements", ["ManagePlacements"]),
     ("translator-fr", ["ViewDynamicTranslations", "ManageTranslations_fr"]),
     ("translation-reader", ["ViewDynamicTranslations"]),

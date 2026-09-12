@@ -317,3 +317,11 @@ a successful change. Return redacted readback after updates as well as reads.
 Do not infer a settings contract from CLR properties or deserialize arbitrary
 `ISite.Properties` entries. Establish adapter-specific tests for the existing
 workflow and the API before adding a provider to discovery.
+
+### Security header section
+
+Enable `OrchardCore.Security` to manage `security-headers` with
+`ManageSecurityHeadersSettings`. Its CSP, Permissions Policy and Referrer Policy
+settings reuse the admin editor's validation. Supplied maps replace the full map;
+omitted properties remain unchanged. Configuration-owned sections are read-only.
+See the [security header contract and example](../../modules/Security/README.md#remote-management).
