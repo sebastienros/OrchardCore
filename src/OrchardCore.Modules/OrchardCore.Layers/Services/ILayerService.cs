@@ -15,7 +15,7 @@ public interface ILayerService
     Task<Layer> GetLayerAsync(string name);
     /// <summary>Creates a uniquely named layer, generating a root rule identity when needed.</summary>
     Task<LayerMutationResult> CreateAsync(string name, string description, Rule rule = null);
-    /// <summary>Updates metadata and optionally replaces the rule. A null rule preserves the existing rule and its identities.</summary>
+    /// <summary>Updates metadata and optionally replaces the rule, generating a missing root identity. A null rule preserves the existing rule and its identities, or initializes a rule for a legacy layer without one.</summary>
     Task<LayerMutationResult> UpdateAsync(string name, string description, Rule rule = null);
     /// <summary>Deletes a layer only when no latest or published widget references it.</summary>
     Task<LayerMutationResult> DeleteAsync(string name);
