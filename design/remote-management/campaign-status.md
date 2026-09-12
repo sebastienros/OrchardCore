@@ -43,8 +43,8 @@ The [schedule](pr-schedule.md) and [plan](coverage-plan.md) define the work and 
 | Content culture picker settings | Merged | [PR #17](https://github.com/sebastienros/OrchardCore/pull/17), merge `6e9f1f64f`; all CI checks passed. Shared admin mutations, typed section and runtime cookie/redirect checks. |
 | Application/scope discovery | Merged | [PR #19](https://github.com/sebastienros/OrchardCore/pull/19), merge `f28af3782`; all CI checks passed. |
 | Scope administration | Merged | [PR #20](https://github.com/sebastienros/OrchardCore/pull/20), merge `1e1774933`; all CI checks passed. Shared admin/recipe editing and scope CRUD verified. |
-| Application administration | In verification | Independent `codex/remote-openid-applications`, integrated with merged scope commit `1e1774933`; [contract and existing-path audit](openid-applications.md). Local server/CLI/MCP and live checks passed. |
-| Application credential lifecycle | Planned | After application administration merges. |
+| Application administration | Merged | [PR #21](https://github.com/sebastienros/OrchardCore/pull/21), merge `3ca2febc9`; all required CI checks passed. Shared editor settings, application CRUD and live client-credentials checks verified. |
+| Application credential lifecycle | In development | Independent `codex/remote-openid-credentials`, integrated with merged `3ca2febc9`; [contract](openid-credentials.md). Private one-time output is implemented; credential endpoints and integrated verification remain. |
 | Tenant feature-profile definitions | Planned | Independent B06 slice. |
 | Common index definitions and lifecycle | Planned | B07 with local Lucene verification. |
 | Deployment plans, export and import | Planned | Separate B08 resource/execution PRs. |
@@ -116,3 +116,11 @@ agreed slices are delivered and any remaining gaps have an explicit disposition.
   least-privilege client authentication, omitted-secret preservation, role/grant
   replacement on new authentication, deletion and MCP without CLI. Strict docs,
   plugin links and reproducible skill distribution passed; Pomi skills are 0.10.21.
+
+- Credential output baseline: on merged `1e1774933`, the proposed `secretResponse`
+  metadata is ignored and a synthetic rotation proceeds without a private output
+  destination. The failing-before CLI test now passes. New metadata requires a
+  destination before mutation, creates an owner-only file without overwriting,
+  and exposes only its path in normal output. Strict CLI test-project build has
+  zero warnings/errors; all 295 CLI tests pass locally. Windows ACL runtime
+  verification and the full server/credential workflow remain future CI/slice gates.

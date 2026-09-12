@@ -1,7 +1,7 @@
 # OpenID application shared-secret lifecycle
 
-This independent B06 branch starts at merged scope commit `1e1774933`. Integrate
-application administration after PR #21 merges, then verify the combined workflow.
+This independent B06 branch starts at merged scope commit `1e1774933`. Application administration is now integrated from merged PR #21 (`3ca2febc9`);
+verify the combined workflow before publishing this credential slice.
 Application resource management and credential lifecycle remain separate PRs.
 
 ## Contract decisions
@@ -60,3 +60,16 @@ continues to save its original application context without interactive login.
   Run HTTP, generated Pomi and eligible in-process MCP checks.
 - Integrate the merged application baseline, run strict build/local full suites and
   docs/skills checks, then review and merge only after required CI passes.
+
+## Current state
+
+The `secretResponse` metadata, transformer/parser support and private output writer
+are committed. A failing-before baseline reproduces the missing destination gate;
+after implementation the strict CLI build is clean and all 295 CLI tests pass.
+The writer is exercised for file permissions, preserving the JSON response, returning
+only the file path, cleanup of unused reservations, and refusing existing files
+before another mutation. Windows ACL assertions await Windows CI.
+
+Next: implement the rotation/revocation endpoints with shared generator and manager
+rollback, then run server/CLI/MCP/live credential verification, update the canonical
+OpenID docs and skills, and publish an independent PR. This slice is not complete.
