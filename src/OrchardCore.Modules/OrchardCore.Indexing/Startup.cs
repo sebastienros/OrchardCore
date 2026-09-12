@@ -45,12 +45,17 @@ public sealed class Startup : StartupBase
         services.AddDataMigration<PreviewIndexingMigrations>();
 
         services
+            .AddIndexProvider<IndexOperationIndexProvider>()
+            .AddDataMigration<IndexOperationMigrations>()
             .AddIndexProvider<IndexProfileIndexProvider>()
             .AddDataMigration<IndexingMigrations>();
     }
 
     public override void Configure(IApplicationBuilder app, IEndpointRouteBuilder routes, IServiceProvider serviceProvider)
-        => routes.AddIndexDiscoveryEndpoints();
+    {
+        routes.AddIndexDiscoveryEndpoints();
+        routes.AddIndexLifecycleEndpoints();
+    }
 }
 
 [RequireFeatures("OrchardCore.Contents")]
@@ -61,6 +66,8 @@ public sealed class ContentStartup : StartupBase
         services.TryAddEnumerable(ServiceDescriptor.Scoped<IContentHandler, IndexingContentHandler>());
         services.AddScoped<IContentHandler, CreateIndexingTaskContentHandler>();
         services.TryAddScoped<ContentIndexingService>();
+        services.AddKeyedScoped<NamedIndexingService>(IndexingConstants.ContentsIndexSource,
+            (provider, _) => provider.GetRequiredService<ContentIndexingService>());
         services.AddIndexProfileHandler<ContentIndexProfileHandler>();
         services.AddDisplayDriver<IndexProfile, ContentIndexProfileDisplayDriver>();
         services.TryAddEnumerable(ServiceDescriptor.Scoped<IModularTenantEvents, ContentIndexInitializerService>());

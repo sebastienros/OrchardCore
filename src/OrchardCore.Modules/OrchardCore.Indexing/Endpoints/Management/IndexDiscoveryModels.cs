@@ -61,6 +61,9 @@ public sealed class IndexProviderResponse
 /// <summary>Describes a provider's registered source without internal service types.</summary>
 public sealed class IndexSourceResponse
 {
+    /// <summary>Gets remote lifecycle actions verified for this provider/source pair.</summary>
+    public IReadOnlyList<string> LifecycleActions { get; init; } = [];
+
     /// <summary>Gets the stable source type.</summary>
     public string Type { get; init; }
     /// <summary>Gets its localized display name.</summary>

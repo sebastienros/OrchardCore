@@ -183,7 +183,7 @@ public class IndexProfileManagementTests
         var authorization = new Mock<IAuthorizationService>();
         authorization.Setup(value => value.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<object>(), It.IsAny<IEnumerable<IAuthorizationRequirement>>()))
             .ReturnsAsync(AuthorizationResult.Success());
-        return new AdminController(authorization.Object, null, profiles, management, null, Options.Create(new IndexingOptions()), null,
+        return new AdminController(authorization.Object, null, profiles, management, null, null, Options.Create(new IndexingOptions()),
             Mock.Of<INotifier>(), Mock.Of<IHtmlLocalizer<AdminController>>(), Mock.Of<IStringLocalizer<AdminController>>())
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() },

@@ -25,7 +25,7 @@ public class IndexDiscoveryTests
         var authorization = Authorize(denied);
         Assert.Equal(403, Status(await IndexDiscoveryEndpoints.ListAsync(http, authorization, manager.Object, new())));
         Assert.Equal(403, Status(await IndexDiscoveryEndpoints.GetAsync(http, authorization, manager.Object, "index")));
-        Assert.Equal(403, Status(await IndexDiscoveryEndpoints.ProvidersAsync(http, authorization, null)));
+        Assert.Equal(403, Status(await IndexDiscoveryEndpoints.ProvidersAsync(http, authorization, null, null)));
         manager.VerifyNoOtherCalls();
     }
 
@@ -67,15 +67,19 @@ public class IndexDiscoveryTests
     public async Task Providers_UsesRegisteredProviderSourcePairs()
     {
         var options = new IndexingOptions();
-        options.AddIndexingSource("Lucene", "Contents");
+        options.AddIndexingSource("Lucene", IndexingConstants.ContentsIndexSource);
+        var lifecycle = new IndexLifecycleOptions();
+        lifecycle.RemoteProviders.Add("Lucene");
         options.AddIndexingSource("custom", "Documents");
         options.AddIndexingSource("LUCENE", "Media");
         var result = Assert.IsType<Ok<IReadOnlyList<IndexProviderResponse>>>(await IndexDiscoveryEndpoints.ProvidersAsync(
-            new DefaultHttpContext(), Authorize(), Options.Create(options)));
+            new DefaultHttpContext(), Authorize(), Options.Create(options), Options.Create(lifecycle)));
         Assert.Equal(2, result.Value.Count);
         Assert.Equal("custom", result.Value[0].Name);
         var lucene = result.Value[1];
-        Assert.Equal(new[] { "Contents", "Media" }, lucene.Sources.Select(source => source.Type));
+        Assert.Equal(new[] { IndexingConstants.ContentsIndexSource, "Media" }, lucene.Sources.Select(source => source.Type));
+        Assert.Equal(new[] { "synchronize", "reset", "rebuild" }, lucene.Sources[0].LifecycleActions);
+        Assert.Empty(lucene.Sources[1].LifecycleActions);
     }
 
     private static int? Status(IResult result) => Assert.IsAssignableFrom<IStatusCodeHttpResult>(result).StatusCode;
