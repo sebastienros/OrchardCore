@@ -77,4 +77,5 @@ the unrelated KeyVault project and a successful retry). Targeted server tests an
 live Pomi/HTTP/MCP checks pass, including retired-secret rejection, private output,
 preserved configuration, restricted callers and MCP with CLI disabled. Full suites pass: server 3,267 (one CI-only skip), CLI 295 and authentication/MCP 78.
 Strict documentation, plugin links and reproducible skill distribution pass.
-The independent PR still requires green CI, including Windows ACL verification.
+[PR #22](https://github.com/sebastienros/OrchardCore/pull/22) is open and still requires
+green CI, including Windows ACL verification.
