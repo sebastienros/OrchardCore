@@ -154,9 +154,11 @@ with tempfile.TemporaryDirectory(prefix='widgets-cli-', dir=state_path.parent) a
         assert draft['LayerMetadata'] == published['LayerMetadata']
         listing = pomi('layers', 'widgets', 'list', '--layer', name, '--take', '1')
         assert listing['totalCount'] == 2 and listing['items'][0]['contentItemId'] == second
-        for invalid in [{**placement, 'layer': 'missing-layer'}, {**placement, 'zone': 'content'},
-                {'layer': name, 'zone': 'Content'}, {**placement, 'unknown': True}]:
+        for invalid in [{**placement, 'layer': 'missing-layer'}, {**placement, 'zone': 'content'}]:
             pomi('layers', 'widgets', 'update', first, body=invalid, status=400)
+        for invalid in [{'layer': name, 'zone': 'Content'}, {**placement, 'unknown': True}]:
+            pomi('layers', 'widgets', 'update', first, body=invalid, failure=True)
+            request('api/layer-widgets/' + first, 'PUT', invalid, client='cli-widgets', status=400, raw=True)
         assert pomi('layers', 'widgets', 'show', first)['placement'] == placement
         pomi('layers', 'widgets', 'update', page['ContentItemId'], body=placement, status=400)
         moved = {**placement, 'zone': 'Footer', 'position': -1}

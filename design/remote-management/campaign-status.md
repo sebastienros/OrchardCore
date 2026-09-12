@@ -31,9 +31,9 @@ The [schedule](pr-schedule.md) and [plan](coverage-plan.md) define the work and 
 | B03 Explicit-null content updates | Merged | [PR #6](https://github.com/sebastienros/OrchardCore/pull/6); merged as `f727f9379`; failing-before/passing-after integration and live CLI checks. |
 | P02 Layer definitions/conditions | Merged | [PR #7](https://github.com/sebastienros/OrchardCore/pull/7), merge `79edeff6d`; all CI checks passed. Shared admin/API mutations and editor syntax validation verified. Widget placement remains P05. |
 | P03 Shortcode templates | Merged | [PR #8](https://github.com/sebastienros/OrchardCore/pull/8), merge `1408ff58f`; all CI checks passed. Shared admin/recipe services, six operations/commands/tools, live rendering and feature gates verified. |
-| P04 Shape placements | In verification | Independent `codex/remote-placements` branch from merged target `1408ff58f`; shared admin validation, seven operations/commands/tools, database/file storage and rendered matching/order verified. |
-| P05 Widget placement | Ready | P02 merged; next composition slice after P04 verification. |
-| P06 Typed settings + HTTPS | Planned | B05. |
+| P04 Shape placements | Merged | [PR #9](https://github.com/sebastienros/OrchardCore/pull/9), merge `541f23b0d`; all CI checks passed. Shared admin validation, seven operations/commands/tools, database/file storage and rendered matching/order verified. |
+| P05 Widget placement | In verification | Independent `codex/remote-layer-widgets` branch rebased onto merged target `541f23b0d`; shared admin/editor service, four operations and content permission/version checks. |
+| P06 Typed settings + HTTPS | Planned | B05. Track Layers zone-settings editing as a small follow-up adapter; P05 discovers configured zones. |
 | P07 CORS | Planned | After P06 merges. |
 | P08 Security headers | Planned | After P06 merges. |
 | P09 Content localization | Planned | B04. |

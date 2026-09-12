@@ -1,6 +1,6 @@
 ---
 name: orchardcore-cli-templates
-description: Creates and manages Orchard Core custom Liquid templates, shortcode templates, shape placements and conditional layers through `pomi`. Use for content, summary, widget, field, and layout shape overrides; layer definitions and visibility rules; rendering content models; registering CSS/media; and validating output for remotely managed tenants.
+description: Creates and manages Orchard Core custom Liquid templates, shortcode templates, shape placements and conditional layers through `pomi`. Use for content, summary, widget, field, and layout shape overrides; layer definitions, widget placement and visibility rules; rendering content models; registering CSS/media; and validating output for remotely managed tenants.
 ---
 
 # Pomi CLI Templates
@@ -221,6 +221,49 @@ widgets merely to bypass that refusal. Verify public output for the intended
 URL and visitor identity after saving, including a case that should hide the
 widget. A successful validation or save does not prove visibility.
 
+## Widget placement in layers
+
+Use `layers widgets` to attach or move existing widget content. Create its type
+with the `Widget` stereotype and use content commands for its body and publication.
+Enable Layers, configure remote management and refresh discovery first.
+
+```bash
+pomi layers widgets zones
+pomi layers widgets list --version latest --layer Always
+pomi layers widgets show <widget-id> --version published
+pomi layers widgets schema --operation update
+pomi layers widgets update <widget-id> --file widget-placement.json
+```
+
+Read the existing placement before replacing all four fields:
+
+```json
+{
+  "layer": "Always",
+  "zone": "Content",
+  "position": 2.5,
+  "renderTitle": false
+}
+```
+
+Use an existing layer and an exact zone returned by `zones`; do not invent a zone
+from a theme name. If no suitable zone is configured, resolve the tenant's Layers
+zone settings first. Zone discovery does not change settings or guarantee that
+the active theme renders the zone. Use finite, distinct numeric positions for
+predictable ordering within a zone; negative and fractional positions are valid.
+
+Updates require `ManageLayers` and content edit permission on every affected
+version, plus publish permission when a published version exists. A full update
+applies placement to the latest and published versions without publishing draft
+body edits or creating versions. Repeating an identical update is a no-op. Show
+and list apply resource view/preview permissions; lists count only visible items.
+Use the content lifecycle commands explicitly when publication is intended.
+
+Verify the public route after attachment or moving. Check visibility conditions,
+zone placement and ordering, and ensure any unrelated draft text remains absent
+from public output. Layer deletion also protects references from published
+widgets whose newer draft points to a different layer.
+
 ## Naming
 
 Common alternates include:
@@ -294,7 +337,7 @@ URLs, missing shapes, stylesheet requests, and responsive behavior. Require:
 Versioned references (live tenant schemas take precedence):
 [Placements API](https://github.com/sebastienros/OrchardCore/blob/48e9565ed0507eca9891c249fe6bdbd95ecb9c3a/src/docs/reference/api/placements/README.md),
 [Shortcode templates API](https://github.com/sebastienros/OrchardCore/blob/b52b013b456dac853ff9a41f3fa23e2036a39c30/src/docs/reference/api/shortcode-templates/README.md),
-[Layers API](https://github.com/sebastienros/OrchardCore/blob/7f72e464016c79f39c108f9c746ab716bff9137b/src/docs/reference/api/layers/README.md),
+[Layers API](https://github.com/sebastienros/OrchardCore/blob/9ac4196b9c911244e346d6447eae10ff8c74b535/src/docs/reference/api/layers/README.md),
 [templates API](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/api/templates/README.md),
 [Templates module](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/modules/Templates/README.md), and
 [Liquid module](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/modules/Liquid/README.md).
