@@ -77,3 +77,11 @@ The strict server rebuild passes with zero warnings/errors and both manager test
 pass, including nested-property restoration. These are focused manager results,
 not proof of full index administration. Existing caller integration, null-data and
 provider metadata parity, full suites and live Lucene/query checks remain.
+
+## Discovery checkpoint
+
+Bounded index discovery delegates to the existing manager and provider/source options,
+returning explicit public fields without private profile properties or backend identity.
+The focused suite passes all ten manager, recipe and discovery tests; the strict server
+build reports zero warnings/errors. Typed definitions and the remaining gates above
+are still in progress; this checkpoint is not a completed B07 slice.

@@ -165,3 +165,37 @@ To reset all indices:
   ]
 }
 ```
+
+## Remote index discovery
+
+With `OrchardCore.Indexing` enabled, the tenant exposes the `indexes` remote-management
+capability. Discovery requires API bearer authentication, `AccessRemoteManagement`
+and `ManageIndexes`. The same permission checks apply to in-process MCP invocation.
+
+```bash
+pomi indexes providers list
+pomi indexes list --page 1 --page-size 50
+pomi indexes list --search Articles --page 1 --page-size 20
+pomi indexes show <id>
+```
+
+`GET api/indexes` uses the existing index store's one-based paging contract. `page`
+defaults to 1 and `pageSize` defaults to 50, with a maximum of 200. Negative/zero
+values and offsets beyond a 32-bit integer are rejected. `search` filters profile
+names using the configured store's comparison rules. Responses contain `page`,
+`pageSize`, `totalCount` and `items`; names determine ordering.
+
+`GET api/indexes/by-id?id=...` retrieves an index by its stable administrative ID,
+returning `404` when it is absent. Each index response contains `id`, `name`,
+`indexName`, `providerName`, `type` and `createdUtc`. It omits the properties bag,
+physical backend name, author and owner fields. The profile name, logical backend
+index name and administrative ID are distinct identifiers.
+
+`GET api/indexes/providers` describes registered providers and their source types.
+It returns provider names/display names and source types/display names/descriptions.
+Registration does not promise that every provider supports the same remote mutation
+or execution operations; inspect the live command catalog before invoking them.
+
+With tenant MCP enabled, these operations are available as `indexes_list`,
+`indexes_show` and `indexes_providers_list`. Reads use the existing profile manager
+and registered indexing options; they do not serialize backend configuration objects.

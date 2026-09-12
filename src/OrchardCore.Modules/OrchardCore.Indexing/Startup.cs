@@ -1,3 +1,7 @@
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Routing;
+using OrchardCore.Indexing.Endpoints.Management;
+using OrchardCore.RemoteManagement;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using OrchardCore.BackgroundTasks;
@@ -28,6 +32,7 @@ public sealed class Startup : StartupBase
     public override void ConfigureServices(IServiceCollection services)
     {
         services.AddIndexingCore();
+        services.AddSingleton<IRemoteManagementCapabilityProvider, IndexRemoteManagementCapabilityProvider>();
         services.AddDataMigration<RecordIndexingTaskMigrations>();
 
 #pragma warning disable CS0618 // Type or member is obsolete
@@ -43,6 +48,9 @@ public sealed class Startup : StartupBase
             .AddIndexProvider<IndexProfileIndexProvider>()
             .AddDataMigration<IndexingMigrations>();
     }
+
+    public override void Configure(IApplicationBuilder app, IEndpointRouteBuilder routes, IServiceProvider serviceProvider)
+        => routes.AddIndexDiscoveryEndpoints();
 }
 
 [RequireFeatures("OrchardCore.Contents")]
