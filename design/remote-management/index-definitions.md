@@ -97,3 +97,7 @@ assignment was removed from the Lucene content handler. A fourth regression veri
 creation still populates metadata and mappings. Strict server build passes with zero
 warnings/errors, and all fourteen focused discovery/manager/recipe/metadata tests pass.
 These tests do not establish live backend reindexing or complete typed API behavior.
+
+The full server suite also passes: 3,295 passed and one CI-only skip. Strict MkDocs
+validation passes on the committed canonical documentation. Shared-handler checkpoint
+`cd4ef4cf3` remains local; no index implementation PR has been opened yet.
