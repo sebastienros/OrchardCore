@@ -209,8 +209,11 @@ internal static class LayerManagementEndpoints
         $"{context.Request.PathBase}/{RoutePrefix}/by-name?name={Uri.EscapeDataString(name)}";
 }
 
+/// <summary>Reports layer definition validation without mutation or condition execution.</summary>
 public sealed class RuleValidationResponse
 {
+    /// <summary>Gets whether the complete definition is valid.</summary>
     public bool IsValid { get; init; }
+    /// <summary>Gets validation errors keyed by request property path.</summary>
     public IDictionary<string, string[]> Errors { get; init; } = new Dictionary<string, string[]>();
 }
