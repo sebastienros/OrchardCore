@@ -90,6 +90,44 @@ arbitrary settings JSON or modifying configuration owned by the host. The core
 `settings schema` provider list is discovery-only and does not grant write access
 to a module section.
 
+### CORS policies
+
+The `cors` section requires `OrchardCore.Cors` and `ManageCorsSettings` in addition
+to remote-management access. Read its current policies and schema before updating:
+
+```bash
+pomi settings sections show cors
+pomi settings sections schema cors
+pomi settings sections update cors --body-file cors.json
+```
+
+```json
+{
+  "policies": [
+    {
+      "name": "Frontend",
+      "allowedOrigins": ["https://frontend.example.com"],
+      "allowedMethods": ["GET"],
+      "allowedHeaders": ["Authorization"],
+      "isDefaultPolicy": true
+    }
+  ]
+}
+```
+
+A supplied `policies` array replaces the complete collection; preserve other
+policies that should remain. Omission preserves it, `[]` removes all tenant
+policies, and null is invalid. Each supplied policy is complete: omitted flags
+are false and lists empty. Names must be unique and at most one policy can be
+default; otherwise the first policy is used. Use HTTP(S) origins without paths
+or trailing slashes and HTTP tokens for methods/headers. Do not combine any
+origin (including literal `*`) with credentials.
+
+Read back the stored tenant policy fields and verify actual preflight/simple
+response headers from the expected browser origin. A changed policy reloads the
+tenant; an equivalent retry does not. This section does not enumerate host-added
+CORS options. CORS does not grant authentication or API permissions.
+
 ## Custom Settings
 
 Discover only sections the current identity is authorized to manage:
@@ -159,7 +197,8 @@ does not add translation commands to Pomi.
 
 Versioned references (live tenant schemas take precedence):
 [localization API](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/api/localization/README.md),
-[settings API](https://github.com/sebastienros/OrchardCore/blob/51df236c83538aef0a593445ba581f128617d46b/src/docs/reference/api/settings/README.md),
+[settings API](https://github.com/sebastienros/OrchardCore/blob/4020c67d5b920d7a26ca175420683793b033fb08/src/docs/reference/api/settings/README.md),
 [custom-settings API](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/api/custom-settings/README.md),
+[CORS module](https://github.com/sebastienros/OrchardCore/blob/4020c67d5b920d7a26ca175420683793b033fb08/src/docs/reference/modules/Cors/README.md),
 [Settings module](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/modules/Settings/README.md), and
 [CustomSettings module](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/modules/CustomSettings/README.md).

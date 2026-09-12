@@ -153,6 +153,8 @@ with tempfile.TemporaryDirectory(prefix='cors-cli-', dir=state_path.parent) as c
         request(route, 'PUT', patch, client=client, status=expected)
     for invalid in [{'policies': None}, {'policies': [dict(policy, allowAnyOrigin=True)]},
             {'policies': [dict(policy, allowedOrigins=['*'])]}, {'policies': [dict(policy, allowedOrigins=[origin + '/'])]},
+            {'policies': [dict(policy, allowedOrigins=[origin + '/a/..'])]},
+            {'policies': [dict(policy, allowedOrigins=['https://*.example.test'])]},
             {'policies': [dict(policy, allowedHeaders=['X-Bad:Value'])]}, {'policies': [policy, policy]},
             {'policies': [dict(policy, isDefaultPolicy=True), dict(policy, name='Other', isDefaultPolicy=True)]},
             {'policies': [dict(policy, secretValue='not-a-property')]}]:

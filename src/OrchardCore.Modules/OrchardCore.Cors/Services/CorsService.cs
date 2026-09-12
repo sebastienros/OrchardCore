@@ -123,11 +123,24 @@ public class CorsService
         }).ToArray(),
     };
 
-    private static bool IsOrigin(string origin) => origin == "*" || (!string.IsNullOrEmpty(origin)
-        && !origin.Any(char.IsWhiteSpace) && !origin.Any(char.IsControl) && !origin.EndsWith('/')
-        && Uri.TryCreate(origin, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https"
-        && !string.IsNullOrEmpty(uri.Host) && string.IsNullOrEmpty(uri.UserInfo)
-        && uri.AbsolutePath == "/" && string.IsNullOrEmpty(uri.Query) && string.IsNullOrEmpty(uri.Fragment));
+    private static bool IsOrigin(string origin)
+    {
+        if (origin == "*")
+        {
+            return true;
+        }
+        if (string.IsNullOrEmpty(origin) || origin.Any(char.IsWhiteSpace) || origin.Any(char.IsControl)
+            || !Uri.TryCreate(origin, UriKind.Absolute, out var uri) || !uri.IsWellFormedOriginalString()
+            || uri.Scheme is not ("http" or "https") || string.IsNullOrEmpty(uri.Host)
+            || uri.Host.Contains('*') || !string.IsNullOrEmpty(uri.UserInfo))
+        {
+            return false;
+        }
+        var prefix = uri.Scheme + "://";
+        // Check the original authority boundary, not a canonicalized path that can erase dot segments.
+        return origin.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+            && origin[prefix.Length..].IndexOfAny(['/', '\\', '?', '#']) < 0;
+    }
 
     private static bool IsToken(string value) => !string.IsNullOrEmpty(value)
         && value.All(character => char.IsAsciiLetterOrDigit(character) || "!#$%&'*+-.^_`|~".Contains(character));

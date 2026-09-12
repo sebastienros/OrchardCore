@@ -92,6 +92,8 @@ public class CorsSettingsSectionTests
     [InlineData("{\"policies\":[{\"name\":\"A\",\"allowedHeaders\":[\"X-Bad:Value\"]}]}")]
     [InlineData("{\"policies\":[{\"name\":\"A\",\"allowedOrigins\":[\"https://example.test/path\"]}]}")]
     [InlineData("{\"policies\":[{\"name\":\"A\",\"allowedOrigins\":[\"https://example.test/\"]}]}")]
+    [InlineData("{\"policies\":[{\"name\":\"A\",\"allowedOrigins\":[\"https://example.test/a/..\"]}]}")]
+    [InlineData("{\"policies\":[{\"name\":\"A\",\"allowedOrigins\":[\"https://*.example.test\"]}]}")]
     [InlineData("{\"policies\":[{\"name\":\"A\",\"allowedOrigins\":[\"*\"],\"allowCredentials\":true}]}")]
     [InlineData("{\"policies\":[{\"name\":\"A\"},{\"name\":\"A\"}]}")]
     [InlineData("{\"policies\":[{\"name\":\"A\",\"isDefaultPolicy\":true},{\"name\":\"B\",\"isDefaultPolicy\":true}]}")]
