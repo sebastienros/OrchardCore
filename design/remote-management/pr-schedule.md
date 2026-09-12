@@ -1,7 +1,8 @@
 # Remote management task and PR schedule
 
 Based on the [coverage plan](coverage-plan.md) and [inventory](coverage-inventory.md).
-This is a proposed schedule. It does not create tasks, issues, branches or pull requests.
+This schedule is the basis for the authorized campaign. The
+[campaign status](campaign-status.md) records implementation decisions and delivery.
 
 ## Unit of work
 
@@ -111,8 +112,8 @@ the existing unattended installation workflow.
   branch and worktree per implementation task, such as `codex/remote-layers` or
   `codex/remote-shortcode-templates`.
 - Keep the integration branch green and merge PRs individually. Once a prerequisite merges,
-  create its dependent task branch from the updated base. Use stacked PRs only when work on a
-  concrete prerequisite cannot reasonably wait; document the parent and retarget after it merges.
+  create its dependent task branch from the updated base. Do not use stacked PRs. Work on an
+  independent slice while waiting for a prerequisite to pass its merge gate.
 - Give each task ownership of its module, tests and corresponding documentation. Coordinate
   shared-file edits with the integration owner instead of duplicating changes across branches.
 - Rebase or merge the latest base before final verification. Run checks against the actual
