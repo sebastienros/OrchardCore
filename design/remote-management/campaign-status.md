@@ -45,8 +45,8 @@ The [schedule](pr-schedule.md) and [plan](coverage-plan.md) define the work and 
 | Scope administration | Merged | [PR #20](https://github.com/sebastienros/OrchardCore/pull/20), merge `1e1774933`; all CI checks passed. Shared admin/recipe editing and scope CRUD verified. |
 | Application administration | Merged | [PR #21](https://github.com/sebastienros/OrchardCore/pull/21), merge `3ca2febc9`; all required CI checks passed. Shared editor settings, application CRUD and live client-credentials checks verified. |
 | Application credential lifecycle | PR open / CI running | [PR #22](https://github.com/sebastienros/OrchardCore/pull/22). Independent `codex/remote-openid-credentials`, integrated with merged `3ca2febc9`; [contract](openid-credentials.md). Private one-time output and manager-backed endpoints are implemented; live HTTP/Pomi/MCP checks and strict solution build pass. Server 3,267 passed (one CI-only skip), CLI 295 and authentication/MCP 78 passed; Strict docs, plugin links and reproducible skill distribution pass; CI remains. |
-| Tenant feature-profile definitions | Planned | Independent B06 slice. |
-| Common index definitions and lifecycle | Planned | B07 with local Lucene verification. |
+| Tenant feature-profile definitions | PR open / CI running | [PR #23](https://github.com/sebastienros/OrchardCore/pull/23); independent feature-profile implementation is locally verified and awaiting CI. |
+| Common index definitions and lifecycle | In development | Independent `codex/remote-index-definitions` from merged `b9361a1bb`; [domain audit and baseline](index-definitions.md). Validation regression build is running before production changes. Definitions/discovery and lifecycle remain separate B07 PRs. |
 | Deployment plans, export and import | Planned | Separate B08 resource/execution PRs. |
 | Media profiles/cache/settings | Planned | Separate B09 PRs. |
 | Robots and sitemap/source management | Planned | Separate B10 PRs. |
