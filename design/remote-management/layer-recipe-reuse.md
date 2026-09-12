@@ -33,3 +33,10 @@ recipe: whitespace names and invalid scripts report no error, and an unknown
 condition after a valid entry leaves the loaded document mutated. After refactoring, the strict build passes with zero warnings/errors and all 22
 recipe, layer API and rule-service tests pass. Additional successful recipe and
 extension compatibility coverage, full-suite validation, docs and PR/CI remain.
+
+The completed full server suite on `c8e574ef3` passed 3,288 tests with one CI-only
+skip; strict build and docs passed. Seven recipe cases now include successful
+partial updates, root/child identity preservation, empty-list replacement,
+registered extension properties, legacy missing rules and immutable root safety.
+The branch now integrates merged index PR #24 (`d26b9888b`); combined validation is
+running before PR publication. No unmerged PR dependency is introduced.
