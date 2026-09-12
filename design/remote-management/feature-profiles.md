@@ -77,3 +77,24 @@ restoration, and MCP with CLI disabled. Generated MCP names retain the hyphen in
 Transport-level MCP denial and framework non-JSON binding errors are tested separately.
 Assigned-child runtime enforcement, integrated merged-target validation, skills and
 strict docs remain before opening the independent profile PR.
+
+## Integrated verification
+
+Integrated merged credential PR #22 (`b9361a1bb`) without stacking. Strict full solution
+build has zero warnings/errors; server 3,281 passed (one CI-only skip), CLI 295 and
+MCP 78. Strict MkDocs, plugin links and reproducible skill distribution pass. Pomi
+skills are 0.10.23, with the profile workflow and a commit-pinned API manual.
+
+A fresh fixture provisioned a child through `tenants install --enable-remote-management`,
+used its saved context without login and saved a private administrator handoff file.
+Assignment through the existing tenant update contract preserved the tenant fields.
+The child rejected excluded Markdown, accepted it after a later Include rule, rejected
+it when order was reversed, and rejected it when its Shortcodes dependency was excluded.
+These were fresh requests with no explicit child reload between definition edits.
+Deleting the profile preserved its assignment and restored eligibility, matching the
+existing missing-profile behavior. Cleanup removed the synthetic assignment/profile.
+The first probe needed the CLI's `--force` confirmation flag on feature disable;
+production behavior was correct and the completed probe passed after that test fix.
+
+The resource smoke also passes against the fresh integrated fixture after the child
+runtime probe. Local verification is complete; independent PR review/CI remain.

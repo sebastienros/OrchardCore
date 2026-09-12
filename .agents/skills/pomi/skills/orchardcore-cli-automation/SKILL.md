@@ -1,6 +1,6 @@
 ---
 name: orchardcore-cli-automation
-description: Manages Orchard Core features, recipes, queries, workflows, users, roles, and OpenID applications, scopes and shared-secret credentials through `pomi`. Use for enabling module capabilities, executing recipes, defining/executing SQL or other queries, managing workflow types and instances, and provisioning tenant-local security principals and permissions.
+description: Manages Orchard Core features, tenant feature profiles, recipes, queries, workflows, users, roles, and OpenID applications, scopes and shared-secret credentials through `pomi`. Use for enabling module capabilities, executing recipes, defining/executing SQL or other queries, managing workflow types and instances, and provisioning tenant-local security principals and permissions.
 ---
 
 # Pomi CLI Automation
@@ -31,6 +31,39 @@ dependents (disable); use it only when those additional changes are authorized.
 For example, `pomi features disable OrchardCore.Media --force` keeps dependency
 checks enabled. Never add `--api-force true` merely to avoid a prompt.
 Re-read the feature state after mutation.
+
+## Tenant feature profiles
+
+Manage definitions from the Default tenant with `OrchardCore.Tenants.FeatureProfiles`
+enabled and both `AccessRemoteManagement` and `ManageTenantFeatureProfiles` permissions.
+Tenant lifecycle permission alone is insufficient. Refresh the host OpenAPI first.
+
+```bash
+pomi tenants feature-profiles list --take 200
+pomi tenants feature-profiles schema
+pomi tenants feature-profiles show standard
+pomi tenants feature-profiles create --body-file profile.json
+pomi tenants feature-profiles update standard --body-file profile.json
+pomi tenants feature-profiles delete standard --force
+```
+
+Bodies contain `id`, `name` and ordered `featureRules` objects with `rule` and
+`expression`. IDs are case-insensitive assignment keys and cannot change or contain
+commas/surrounding whitespace. Names are editable and must be unique. Discover rule
+names through `schema`; preserve order because later matching rules take precedence.
+Updates replace all editable values; omitted rules or `[]` clears them, while null
+and unknown rule names are rejected. Equivalent create retries succeed; a different
+definition under the same ID conflicts. Repeated deletion succeeds.
+
+Assign existing IDs through the tenant API's `featureProfiles` field, using the
+[tenant update workflow](../orchardcore-cli/references/tenants.md) and preserving the
+other tenant fields. Do not assume `tenants install` has a profile flag: inspect live
+help. Profile edits/deletion do not rewrite assignments or disable installed features.
+A missing assigned profile removes its restriction on future feature selection;
+deleting a profile is not tenant shutdown. Read back both the host definition and
+the child's feature eligibility after a policy change.
+
+See the [profile API contract](https://github.com/sebastienros/OrchardCore/blob/d36ce61633a7ed819773f07744b9314066bb599f/src/docs/reference/api/tenants/README.md#feature-profile-definitions).
 
 ## Recipes
 
