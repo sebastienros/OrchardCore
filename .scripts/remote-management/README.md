@@ -1,5 +1,8 @@
 # Remote management verification toolkit
 
+See the [module/feature coverage inventory](../../design/remote-management/coverage-inventory.md)
+and [prioritized delivery plan](../../design/remote-management/coverage-plan.md) for API and command gaps.
+
 Run these scripts from a checkout of the feature branch. Python 3 and the
 repository's .NET SDK are required. These tools create disposable loopback
 tenants with synthetic credentials; do not point them at real tenant data.
