@@ -478,3 +478,10 @@ disposable fixture. It checks stable-ID creation retries, complete replacement,
 source validation, runtime ordering, redirect captures/status/query policies,
 in-process rewriting, permission denials, feature lifecycle and MCP without CLI.
 It creates uniquely named rules and removes them when successful.
+
+## Layer zone settings
+
+Run `python3 .scripts/remote-management/layer-zones-settings-smoke.py <fixture.json>`.
+This checks shared admin normalization, complete list replacement, invalid values,
+no-op retries, existing widget-service readback, module permissions through HTTP/CLI/MCP,
+and independent feature lifecycle. It restores the disposable tenant's original zones.

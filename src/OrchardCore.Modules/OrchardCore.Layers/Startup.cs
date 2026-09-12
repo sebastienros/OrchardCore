@@ -25,6 +25,7 @@ using OrchardCore.Recipes;
 using OrchardCore.RemoteManagement;
 using OrchardCore.Scripting;
 using OrchardCore.Security.Permissions;
+using OrchardCore.Settings;
 
 namespace OrchardCore.Layers;
 
@@ -43,6 +44,7 @@ public sealed class Startup : StartupBase
         });
 
         services.AddSiteDisplayDriver<LayerSiteSettingsDisplayDriver>();
+        services.AddScoped<ISiteSettingsSectionProvider, LayerSettingsSectionProvider>();
         services.AddContentPart<LayerMetadata>();
         services.AddScoped<IContentDisplayDriver, LayerMetadataWelder>();
         services.AddNavigationProvider<AdminMenu>();

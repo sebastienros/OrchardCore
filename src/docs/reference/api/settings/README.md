@@ -325,3 +325,39 @@ Enable `OrchardCore.Security` to manage `security-headers` with
 settings reuse the admin editor's validation. Supplied maps replace the full map;
 omitted properties remain unchanged. Configuration-owned sections are read-only.
 See the [security header contract and example](../../modules/Security/README.md#remote-management).
+
+### Layer zones section
+
+The `layer-zones` section is contributed by `OrchardCore.Layers`. All four section
+operations require `AccessRemoteManagement` and `ManageLayers`. When Layers is
+disabled the section disappears and named requests return 404.
+
+Its only property is `zones`, a tenant-owned array of strings. An omitted property
+preserves the list; a supplied array replaces the complete list; `[]` clears it.
+Null, null array entries, non-string entries and unknown properties return 400
+without saving. No arbitrary site properties are exposed.
+
+```json
+{"zones": ["Content", "Footer"]}
+```
+
+Names use the existing admin editor's normalization: each string is split on spaces
+and commas and empty names are discarded. Order, case and duplicates are preserved.
+For example, `["Content, Footer", "Content"]` stores three entries. An identical
+normalized list is a successful 200 no-op (`changed: false`), including an empty
+patch. A changed list is saved through `ISiteService`; no tenant reload is needed
+(`reloadRequested: false`). These are complete-list updates without an ETag;
+concurrent editors should read back the resulting list.
+
+```bash
+pomi settings sections schema layer-zones
+pomi settings sections show layer-zones
+pomi settings sections update layer-zones --body-file zones.json
+pomi layers widgets zones
+```
+
+The admin zone editor and section provider share `LayerSettingsEditor`. Widget
+placement reads the saved zones through its existing service. Changing the list
+does not create theme sections, move widgets, delete widgets or change their
+publication state. Preserve existing zones unless their removal is intended;
+widgets already assigned to removed zones retain their placement metadata.
