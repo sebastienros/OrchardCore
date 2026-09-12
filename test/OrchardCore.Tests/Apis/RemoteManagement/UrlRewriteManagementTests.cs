@@ -1,5 +1,12 @@
 using System.Text.Json.Nodes;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Rewrite;
+using Microsoft.AspNetCore.TestHost;
+using OrchardCore.UrlRewriting.Extensions;
 using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Hosting;
 using OrchardCore.Entities;
 using OrchardCore.UrlRewriting;
 using OrchardCore.Environment.Shell;
@@ -13,6 +20,33 @@ namespace OrchardCore.Tests.Apis.RemoteManagement;
 
 public class UrlRewriteManagementTests
 {
+    [Fact]
+    public async Task RuntimeRewrite_ReselectsAnEndpointAfterInitialRouting()
+    {
+        var rule = new RewriteRule { Source = "Rewrite" };
+        rule.Put(new UrlRewriteSourceMetadata { Pattern = "^/source$", SubstitutionPattern = "/target", SkipFurtherRules = true });
+        using var host = await new HostBuilder().ConfigureWebHost(web => web.UseTestServer()
+            .ConfigureServices(services =>
+            {
+                services.AddRouting();
+                services.Configure<RewriteOptions>(options => new UrlRewriteRuleSource(
+                    new StringLocalizer<UrlRewriteRuleSource>(new NullStringLocalizerFactory())).Configure(options, rule));
+            })
+            .Configure(app =>
+            {
+                app.UseRouting();
+                app.UseUrlRewriting(app.ApplicationServices);
+                Assert.False(app.Properties.ContainsKey("__GlobalEndpointRouteBuilder"));
+                app.UseEndpoints(routes =>
+                {
+                    routes.MapGet("/source", () => "original endpoint");
+                    routes.MapGet("/target", () => "rewritten endpoint");
+                });
+            })).StartAsync(TestContext.Current.CancellationToken);
+        using var client = host.GetTestClient();
+        Assert.Equal("rewritten endpoint", await client.GetStringAsync("/source", TestContext.Current.CancellationToken));
+    }
+
     [Fact]
     public async Task ManagerValidation_ConstructsTheRegisteredRuntimeSource()
     {
