@@ -32,6 +32,6 @@ public enum IndexOperationState
     Completed,
     /// <summary>The operation did not complete successfully.</summary>
     Failed,
-    /// <summary>The execution was interrupted and must not be assumed successful.</summary>
-    Interrupted,
+    /// <summary>Completion is not confirmed after the observation deadline; work may still be running.</summary>
+    Uncertain,
 }

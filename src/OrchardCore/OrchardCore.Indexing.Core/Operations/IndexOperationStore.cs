@@ -47,8 +47,9 @@ public sealed class IndexOperationStore
         IndexProcessingResult result = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(operationId);
-        var valid = expected == IndexOperationState.Pending && next is IndexOperationState.Running or IndexOperationState.Failed or IndexOperationState.Interrupted
-            || expected == IndexOperationState.Running && next is IndexOperationState.Completed or IndexOperationState.Failed or IndexOperationState.Interrupted;
+        var valid = expected == IndexOperationState.Pending && next is IndexOperationState.Running or IndexOperationState.Failed or IndexOperationState.Uncertain
+            || expected == IndexOperationState.Running && next is IndexOperationState.Completed or IndexOperationState.Failed or IndexOperationState.Uncertain
+            || expected == IndexOperationState.Uncertain && next is IndexOperationState.Completed or IndexOperationState.Failed;
         if (!valid || (next == IndexOperationState.Completed && result?.Status != IndexProcessingStatus.Completed))
         {
             throw new InvalidOperationException("Invalid indexing operation transition.");
@@ -65,8 +66,15 @@ public sealed class IndexOperationStore
         operation.UpdatedUtc = _clock.UtcNow;
         operation.Outcome = result?.Status;
         operation.LastTaskId = result?.LastTaskId;
-        await session.SaveAsync(operation, checkConcurrency: true);
-        await session.SaveChangesAsync();
-        return true;
+        try
+        {
+            await session.SaveAsync(operation, checkConcurrency: true);
+            await session.SaveChangesAsync();
+            return true;
+        }
+        catch (ConcurrencyException)
+        {
+            return false;
+        }
     }
 }

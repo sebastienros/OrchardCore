@@ -274,3 +274,12 @@ retained separately from indexing work. Expected-state transitions prevent a
 terminal record from being restarted, and a completed state requires a completed
 processing result for the same index. Records contain timestamps and confirmed
 progress rather than provider exception details.
+
+`IndexOperationRunner` records requests before scheduling post-request work. It
+claims each pending operation once and records completion after the execution scope
+returns. Exceptions are logged on the server and produce failed operation status.
+
+After 30 minutes without a state transition, observed pending/running work becomes
+`Uncertain`. This does not cancel work or prove it stopped. The original execution
+can still record its eventual result, but uncertain operations are not automatically
+restarted. Inspect the index before requesting new work after an uncertain outcome.

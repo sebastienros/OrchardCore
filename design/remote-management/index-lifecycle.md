@@ -100,3 +100,19 @@ terminal records cannot be restarted through a transition. Records contain actio
 state, timestamps, outcome and confirmed cursor, not provider exception text.
 The strict build and both real-tenant persistence/isolation tests pass. Scheduling, interruption detection,
 existing caller migration and endpoints remain incomplete.
+
+## Background execution and uncertainty
+
+The runner records pending work before scheduling an HTTP background job, claims
+pending state with optimistic concurrency, and executes the shared coordinator in
+a child shell scope. Completion is recorded after that scope returns, including
+transaction disposal; exceptions become failed outcomes with details logged only
+on the server. A repeated invocation does not restart running or terminal work.
+
+Status observation marks pending/running records uncertain after 30 minutes without
+a transition. This is not cancellation and does not prove provider work stopped.
+The original execution may still record its eventual result; uncertain work is never
+automatically restarted. A lost post-request callback or host restart therefore
+cannot be reported as successful. The strict build and all seven runner/database tests pass, covering confirmed
+outcomes, exceptions, repeated invocation, overdue pending work, eventual completion
+after uncertainty, persistence and tenant isolation.

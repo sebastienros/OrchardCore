@@ -3,6 +3,21 @@ namespace OrchardCore.Indexing.Core;
 /// <summary>Reports a single index's observed processing outcome without exposing provider exception details.</summary>
 public sealed class IndexProcessingResult
 {
+    /// <summary>Creates a result whose default outcome is failure until confirmed by a processor.</summary>
+    public IndexProcessingResult()
+    {
+    }
+
+    /// <summary>Creates an explicit processing outcome for a tenant-local index.</summary>
+    public IndexProcessingResult(string indexId, IndexProcessingStatus status, long? lastTaskId = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(indexId);
+        if (!Enum.IsDefined(status)) { throw new ArgumentOutOfRangeException(nameof(status)); }
+        IndexId = indexId;
+        Status = status;
+        LastTaskId = lastTaskId;
+    }
+
     /// <summary>Gets the tenant-local index profile identifier.</summary>
     public string IndexId { get; init; }
 
