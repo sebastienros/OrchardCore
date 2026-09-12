@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+using Microsoft.Extensions.Localization;
 using OpenIddict.Abstractions;
 using OrchardCore.OpenId.Abstractions.Descriptors;
 using OrchardCore.OpenId.Abstractions.Managers;
@@ -34,13 +36,65 @@ internal static class OpenIdApplicationExtensions
 {
     internal static readonly string[] s_separator = [" ", ","];
 
-    public static async Task UpdateDescriptorFromSettings(this IOpenIdApplicationManager _applicationManager, OpenIdApplicationSettings model, object application = null)
+    internal static IEnumerable<ValidationResult> ValidateClientSettings(string clientType, string applicationType,
+        string clientSecret, IStringLocalizer S, bool isNew, bool wasPublic = false)
+    {
+        var isPublic = string.Equals(clientType, OpenIddictConstants.ClientTypes.Public, StringComparison.OrdinalIgnoreCase);
+        if (!string.IsNullOrEmpty(clientSecret) && isPublic)
+        {
+            yield return new ValidationResult(S["No client secret can be set for public applications."], [nameof(OpenIdApplicationSettings.ClientSecret)]);
+        }
+        else if (string.IsNullOrEmpty(clientSecret))
+        {
+            if (isNew && string.Equals(clientType, OpenIddictConstants.ClientTypes.Confidential, StringComparison.OrdinalIgnoreCase))
+            {
+                yield return new ValidationResult(S["The client secret is required for confidential applications."], [nameof(OpenIdApplicationSettings.ClientSecret)]);
+            }
+            else if (!isNew && wasPublic && !isPublic)
+            {
+                yield return new ValidationResult(S["Setting a new client secret is required."], [nameof(OpenIdApplicationSettings.ClientSecret)]);
+            }
+        }
+
+        if (string.Equals(applicationType, OpenIddictConstants.ApplicationTypes.Native, StringComparison.OrdinalIgnoreCase) && !isPublic)
+        {
+            yield return new ValidationResult(S["Native applications must be public clients."], [nameof(OpenIdApplicationSettings.Type)]);
+        }
+    }
+
+    public static async Task UpdateDescriptorFromSettings(this IOpenIdApplicationManager manager, OpenIdApplicationSettings model,
+        object application = null, CancellationToken cancellationToken = default)
+    {
+        var descriptor = await manager.BuildDescriptorFromSettingsAsync(model, application, cancellationToken);
+        if (application is null)
+        {
+            await manager.CreateAsync(descriptor, cancellationToken);
+            return;
+        }
+
+        var original = new OpenIdApplicationDescriptor();
+        await manager.PopulateAsync(original, application, cancellationToken);
+        try
+        {
+            await manager.UpdateAsync(application, descriptor, cancellationToken);
+        }
+        catch (OpenIddictExceptions.ValidationException)
+        {
+            // OpenIddict populates the tracked entity before validating the descriptor.
+            // Restore the previous values so rejected edits cannot contaminate readback.
+            await manager.PopulateAsync(application, original, CancellationToken.None);
+            throw;
+        }
+    }
+
+    internal static async Task<OpenIdApplicationDescriptor> BuildDescriptorFromSettingsAsync(this IOpenIdApplicationManager _applicationManager,
+        OpenIdApplicationSettings model, object application = null, CancellationToken cancellationToken = default)
     {
         var descriptor = new OpenIdApplicationDescriptor();
 
         if (application != null)
         {
-            await _applicationManager.PopulateAsync(descriptor, application);
+            await _applicationManager.PopulateAsync(descriptor, application, cancellationToken);
         }
 
         descriptor.ClientId = model.ClientId;
@@ -272,14 +326,6 @@ internal static class OpenIdApplicationExtensions
             descriptor.RedirectUris.Add(uri);
         }
 
-        if (application == null)
-        {
-            await _applicationManager.CreateAsync(descriptor);
-        }
-        else
-        {
-            await _applicationManager.UpdateAsync(application, descriptor);
-        }
-
+        return descriptor;
     }
 }

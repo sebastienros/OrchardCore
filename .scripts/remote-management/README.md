@@ -33,6 +33,7 @@ python3 .scripts/remote-management/graphql-smoke.py <fixture.json>
 python3 .scripts/remote-management/catalog-smoke.py <fixture.json>
 python3 .scripts/remote-management/openid-discovery-smoke.py <fixture.json>
 python3 .scripts/remote-management/openid-scopes-smoke.py <fixture.json>
+python3 .scripts/remote-management/openid-applications-smoke.py <fixture.json>
 python3 .scripts/remote-management/home-route-smoke.py <fixture.json>
 python3 .scripts/remote-management/layers-smoke.py <fixture.json>
 python3 .scripts/remote-management/widgets-smoke.py <fixture.json>
