@@ -182,4 +182,4 @@ pomi content items list --content-type Article --status published
 Inspect public URLs separately; a successful API save does not prove template,
 media, navigation, or CSS correctness.
 
-Versioned reference (live tenant schemas take precedence): [content-items API](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/api/content-items/README.md).
+Versioned reference (live tenant schemas take precedence): [content-items API](https://github.com/sebastienros/OrchardCore/blob/907ffbbb9ad29b950316e4971caecf532ffbb80a/src/docs/reference/api/content-items/README.md).

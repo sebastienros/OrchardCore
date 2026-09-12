@@ -234,4 +234,4 @@ anchor targets, role-varying visibility, mobile/desktop layouts, script/CSS
 requests, and browser console.
 
 Versioned reference (live tenant schemas take precedence):
-[Menu module](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/modules/Menu/README.md).
+[Menu module](https://github.com/sebastienros/OrchardCore/blob/907ffbbb9ad29b950316e4971caecf532ffbb80a/src/docs/reference/modules/Menu/README.md).
