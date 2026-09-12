@@ -298,6 +298,7 @@ public sealed class ManagementStartup : StartupBase
     {
         routes.AddOpenIdDiscoveryEndpoints();
         routes.AddOpenIdApplicationManagementEndpoints();
+        routes.AddOpenIdScopeManagementEndpoints();
     }
 }
 

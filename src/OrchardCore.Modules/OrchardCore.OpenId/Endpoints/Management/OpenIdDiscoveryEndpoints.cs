@@ -150,7 +150,7 @@ internal static class OpenIdDiscoveryEndpoints
             PostLogoutRedirectUris = await manager.GetPostLogoutRedirectUrisAsync(item, cancellationToken),
         };
 
-    private static async Task<OpenIdScopeResponse> DescribeAsync(IOpenIdScopeManager manager, object item, CancellationToken cancellationToken) =>
+    internal static async Task<OpenIdScopeResponse> DescribeAsync(IOpenIdScopeManager manager, object item, CancellationToken cancellationToken) =>
         new()
         {
             Id = await manager.GetPhysicalIdAsync(item, cancellationToken),

@@ -1,6 +1,6 @@
 ---
 name: orchardcore-cli-automation
-description: Automates Orchard Core feature, recipe, query, workflow, user, role, and OpenID discovery through `pomi`. Use for enabling module capabilities, executing recipes, defining/executing SQL or other queries, managing workflow types and instances, and provisioning tenant-local security principals and permissions.
+description: Manages Orchard Core features, recipes, queries, workflows, users, roles, and OpenID scopes through `pomi`, and inspects OpenID applications. Use for enabling module capabilities, executing recipes, defining/executing SQL or other queries, managing workflow types and instances, and provisioning tenant-local security principals and permissions.
 ---
 
 # Pomi CLI Automation
@@ -116,13 +116,17 @@ User create/update exposes `--password-env`, `--password-file`, and
 in a protected `--body-file`/`--stdin`. Inline `--body` and `--password` are
 not exposed for secret-bearing operations. Inspect live help on older servers.
 
-## OpenID application and scope discovery
+## OpenID applications and scope management
 
 ```bash
 pomi openid applications list --skip 0 --take 50
 pomi openid applications show <client-id>
 pomi openid scopes list --skip 0 --take 50
 pomi openid scopes show orchardcore.management
+pomi openid scopes schema --operation create
+pomi openid scopes create --body-file scope.json
+pomi openid scopes update reporting --body-file scope.json
+pomi openid scopes delete reporting --force
 ```
 
 Requires `OrchardCore.OpenId.Management` and `AccessRemoteManagement`, plus
@@ -131,10 +135,18 @@ ID for application lookup and the scope name for scope lookup. The returned `id`
 is an administrative storage identifier. Page through results using `totalCount`,
 `skip` and `take`; the maximum page size is 200.
 
-These are discovery reads. Responses omit credentials, keys, custom properties
-and private settings. Registered grants and requirements do not establish which
-flows the server currently permits. Do not infer that reading an application can
-recover its secret or that these commands support credential rotation.
+Application operations are discovery reads; they do not recover a secret or rotate
+credentials. Responses omit credentials, keys, custom properties and private
+settings. Registered grants and requirements do not establish which flows the
+server currently permits.
+
+Scope create/update bodies require `name` and `displayName`. Updates replace the
+editable fields: omitted `description` is cleared, and omitted `resources` or
+`[]` clears resources. Explicit null resources are invalid. The body name must
+match the update target; scope renaming is not supported through this API.
+Equivalent create retries return the existing scope; a different definition under
+that name conflicts. Unedited properties are preserved. Deleting a scope does not
+revoke existing tokens or remove application permission strings.
 
 ## Automation sequence
 
@@ -158,4 +170,4 @@ Versioned API references (live tenant schemas take precedence):
 - [Users](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/api/users/README.md)
 - [Roles](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/api/roles/README.md)
 
-- [OpenID discovery](https://github.com/sebastienros/OrchardCore/blob/e790e4c06a4fddb49d160de80880d4719f9c93c1/src/docs/reference/api/openid/README.md)
+- [OpenID management](https://github.com/sebastienros/OrchardCore/blob/7cf2e51e94128d53426f025387a7e011347011d0/src/docs/reference/api/openid/README.md)

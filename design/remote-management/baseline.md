@@ -112,3 +112,18 @@ and exposes the existing settings builder for reuse by the planned API.
 The regression passes after the fix, together with all 14 targeted application editor,
 admin controller and recipe tests. The test-project build with analyzers and warnings
 as errors has zero warnings/errors; broader validation remains part of the API slice.
+
+## Scope recipe update regression
+
+On merged base `4d48d0e6b`, a real-manager recipe update without `Resources`
+clears an existing resource list. The recipe copied an empty descriptor into the
+stored object instead of copying the stored object into its update descriptor.
+The shared scope editor corrects the direction and preserves unedited custom
+properties. Admin edits retain their explicit-empty clearing behavior and current
+resource restriction. Scope API mutations were delivered in PR #20.
+
+A separate fixture attempt found that nonempty localized scope display-name
+maps fail YesSql serialization because `CultureInfo` dictionary keys have no
+configured converter. This precedes these changes. The preservation regression
+uses supported string-key custom properties and resources; it does not claim
+that localized scope metadata persistence is fixed.

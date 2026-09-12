@@ -35,14 +35,17 @@ public class OpenIdDiscoveryFeatureTests
             {
                 var endpoints = scope.ServiceProvider.GetRequiredService<EndpointDataSource>().Endpoints.OfType<RouteEndpoint>()
                     .Where(endpoint => endpoint.Metadata.GetMetadata<CliOperationMetadata>()?.Capability == "openid-management").ToArray();
-                Assert.Equal(enabled ? 7 : 0, endpoints.Length);
+                Assert.Equal(enabled ? 10 : 0, endpoints.Length);
                 foreach (var endpoint in endpoints)
                 {
                     var cli = endpoint.Metadata.GetRequiredMetadata<CliOperationMetadata>();
                     Assert.Equal("openid", cli.CommandGroup[0]);
+                    var method = cli.Verb switch
+                    {
+                        "create" => "POST", "update" => "PUT", "delete" => "DELETE", _ => "GET",
+                    };
+                    Assert.Equal(method, Assert.Single(endpoint.Metadata.GetRequiredMetadata<IHttpMethodMetadata>().HttpMethods));
                     Assert.Contains(cli.Verb, new[] { "list", "show", "create", "update", "delete" });
-                    var method = cli.Verb switch { "create" => "POST", "update" => "PUT", "delete" => "DELETE", _ => "GET" };
-                    Assert.Equal([method], endpoint.Metadata.GetRequiredMetadata<IHttpMethodMetadata>().HttpMethods);
                 }
                 var capabilities = new List<RemoteManagementCapability>();
                 foreach (var provider in scope.ServiceProvider.GetServices<IRemoteManagementCapabilityProvider>())
