@@ -260,3 +260,15 @@ sources, including provider exceptions after expiry. Such exceptions now preserv
 strict build and all 35 focused progress/coordinator/runner tests pass. Pomi manual
 links now pin the published `738a7c14b` documentation, including lease semantics.
 Fresh live verification and final package generation remain before PR publication.
+
+## Ready for independent PR
+
+Fresh tenant verification on `5e8b48165` passes HTTP synchronization, Pomi reset,
+MCP/Pomi rebuilds with actual Lucene query changes, authorization denials, provider
+feature gating and persisted status reads. Strict docs and both package archives
+pass distribution validation. All 315 skill examples across 244 live help pages
+pass after enabling their fixture feature dependencies and refreshing metadata.
+
+Local verification is complete for PR publication. The latest strict build and
+35 focused regression cases pass; the preceding integrated solution/server/CLI/MCP
+results are recorded above. CI must validate the published head before merge.
