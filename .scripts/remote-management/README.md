@@ -26,6 +26,7 @@ python3 .scripts/remote-management/content-versions-smoke.py <fixture.json>
 python3 .scripts/remote-management/content-validation-smoke.py <fixture.json>
 python3 .scripts/remote-management/tenant-install-smoke.py <fixture.json>
 python3 .scripts/remote-management/graphql-smoke.py <fixture.json>
+python3 .scripts/remote-management/catalog-smoke.py <fixture.json>
 ```
 
 `verify-fixture.py` checks discovery, command/operation ID uniqueness, every
@@ -74,9 +75,17 @@ without an explicit refresh. Run it with the current CLI build.
 
 `graphql-smoke.py` verifies direct queries, full and single-type introspection,
 variables/stdin, errors, and permissions against Orchard without refreshing
-OpenAPI. `graphql-native-smoke.py <native-pomi-path>` additionally tests partial
+OpenAPI. It uses a fresh temporary CLI configuration, so earlier smoke tests
+can safely populate the fixture's shared OpenAPI cache. `graphql-native-smoke.py <native-pomi-path>` additionally tests partial
 results on HTTP 200/400/401, JSON and human output, redirects, and input handling
 against an isolated loopback server; it runs in every opt-in native build.
+
+`catalog-smoke.py` checks operation IDs, command paths and MCP tool names for
+uniqueness with CLI/MCP enabled together, Tus disabled, Templates disabled,
+features restored, and MCP enabled without the CLI feature. It restores the
+explicit feature states it toggles; newly enabled dependencies can remain on
+the disposable fixture. Its `catalog-smoke.json` records names and IDs without
+credentials. It checks discovery, not every tool's execution or resource permissions.
 
 The wrapper supplies credentials only through the child process environment:
 
