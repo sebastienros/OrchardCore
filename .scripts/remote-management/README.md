@@ -512,3 +512,11 @@ disposable tenant. Culture-picker verification uses this same homepage command.
 `openid-scopes-smoke.py` verifies scope mutations, semantic retries, conflicts,
 invalid/denied writes, full field replacement, HTTP/Pomi/MCP readback and MCP
 with CLI disabled. It deletes the synthetic scope after checking repeated deletion.
+
+
+Run `python3 .scripts/remote-management/feature-profiles-smoke.py <fixture.json>`
+to check Default-tenant profile CRUD, schema discovery, retries, permission boundaries
+and feature lifecycle through HTTP, Pomi and MCP. The fixture has distinct profile
+and tenant-management clients; MCP is also exercised with the CLI feature disabled.
+The probe removes its synthetic profile on completion. Assigned-child runtime
+enforcement requires additional verification beyond this resource probe.

@@ -67,3 +67,13 @@ handling/rejection. A prefixed creation-location regression exposed a missing sl
 the production URL is fixed and the regression now passes. Full suite, feature
 lifecycle/catalog, live tenant enforcement, Pomi/MCP, skills and CI remain required.
 Canonical API/module documentation is drafted, not yet verified by strict docs build.
+
+Full local validation before integrating credential PR #22: strict solution build
+zero warnings/errors; server 3,278 passed (one CI-only skip), CLI 291 and MCP 78.
+The live Default-tenant fixture passes CRUD/retries, schema discovery, restricted
+principals, unknown/null input rejection, omitted-rule clearing, feature removal and
+restoration, and MCP with CLI disabled. Generated MCP names retain the hyphen in
+`tenants_feature-profiles_*`; the canonical docs and probe use the observed names.
+Transport-level MCP denial and framework non-JSON binding errors are tested separately.
+Assigned-child runtime enforcement, integrated merged-target validation, skills and
+strict docs remain before opening the independent profile PR.

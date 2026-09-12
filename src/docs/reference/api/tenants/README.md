@@ -1196,10 +1196,10 @@ features. A missing assigned profile does not restrict feature selection in the 
 validator. Deleting a profile can therefore remove its restriction on future feature
 selection; it is not a way to disable a tenant or its installed features.
 
-With MCP enabled, these operations project to `tenants_feature_profiles_list`,
-`tenants_feature_profiles_show`, `tenants_feature_profiles_schema`,
-`tenants_feature_profiles_create`, `tenants_feature_profiles_update` and
-`tenants_feature_profiles_delete`, using the same handlers and permissions.
+With MCP enabled, these operations project to `tenants_feature-profiles_list`,
+`tenants_feature-profiles_show`, `tenants_feature-profiles_schema`,
+`tenants_feature-profiles_create`, `tenants_feature-profiles_update` and
+`tenants_feature-profiles_delete`, using the same handlers and permissions.
 
 ## Endpoint coverage and sources
 
