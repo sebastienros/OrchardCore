@@ -115,3 +115,6 @@ tests pass, including 14 new coordination/caller cases covering operation order,
 provider rejection, failed compensation, invalid profiles, missing providers,
 uncertain exceptions, recipe creation, and admin single/bulk deletion. Typed Lucene
 endpoints and full slice validation remain; this is an implementation checkpoint.
+
+Coordinator checkpoint `9d66ee241`: full server suite passes with 3,309 passed and
+one CI-only skip; strict documentation validation passes. No index PR is open yet.
