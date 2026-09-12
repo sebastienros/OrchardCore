@@ -232,7 +232,7 @@ pomi layers widgets zones
 pomi layers widgets list --version latest --layer Always
 pomi layers widgets show <widget-id> --version published
 pomi layers widgets schema --operation update
-pomi layers widgets update <widget-id> --file widget-placement.json
+pomi layers widgets update <widget-id> --body-file widget-placement.json
 ```
 
 Read the existing placement before replacing all four fields:
