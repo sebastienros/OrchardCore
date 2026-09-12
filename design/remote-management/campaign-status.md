@@ -29,7 +29,7 @@ The [schedule](pr-schedule.md) and [plan](coverage-plan.md) define the work and 
 | P00 Inventory, plan and schedule | Merged | [PR #4](https://github.com/sebastienros/OrchardCore/pull/4), merge `d81badf94`; all CI checks passed. |
 | P01 Shared-content/discovery baseline | Merged | [PR #5](https://github.com/sebastienros/OrchardCore/pull/5), merge `6332bce93`; all CI checks passed. See [baseline evidence](baseline.md). |
 | B03 Explicit-null content updates | Merged | [PR #6](https://github.com/sebastienros/OrchardCore/pull/6); merged as `f727f9379`; failing-before/passing-after integration and live CLI checks. |
-| P02 Layer definitions/conditions | In review | Independent `codex/remote-layers` branch from merged target `d81badf94`; seven operations/commands/tools, rule validation, live rendering and feature gates verified. Widget placement remains P05. |
+| P02 Layer definitions/conditions | In review | Independent `codex/remote-layers` branch from merged target `f727f9379`; seven operations/commands/tools, rule validation, live rendering and feature gates verified. Widget placement remains P05. |
 | P03 Shortcode templates | Planned | B02. |
 | P04 Shape placements | Planned | B02. |
 | P05 Widget placement | Planned | After P02 merges. |

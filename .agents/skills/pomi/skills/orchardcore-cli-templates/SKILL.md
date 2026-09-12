@@ -218,7 +218,7 @@ URLs, missing shapes, stylesheet requests, and responsive behavior. Require:
 - layout works at approximately 375px, 768px, and 1440px viewport widths.
 
 Versioned references (live tenant schemas take precedence):
-[Layers API](https://github.com/sebastienros/OrchardCore/blob/fa5d091e6ec67dc3e4b2ccafb0af49db45298e23/src/docs/reference/api/layers/README.md),
+[Layers API](https://github.com/sebastienros/OrchardCore/blob/7f72e464016c79f39c108f9c746ab716bff9137b/src/docs/reference/api/layers/README.md),
 [templates API](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/api/templates/README.md),
 [Templates module](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/modules/Templates/README.md), and
 [Liquid module](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/modules/Liquid/README.md).
