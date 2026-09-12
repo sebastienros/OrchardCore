@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Jint;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
 using OrchardCore.Rules.Models;
 
@@ -16,12 +17,15 @@ public sealed class RuleManagementService : IRuleManagementService
     private readonly ConditionOperatorOptions _operators;
     private readonly IConditionIdGenerator _ids;
 
+    internal readonly IStringLocalizer S;
+
     public RuleManagementService(IEnumerable<IConditionFactory> factories,
-        IOptions<ConditionOperatorOptions> operators, IConditionIdGenerator ids)
+        IOptions<ConditionOperatorOptions> operators, IConditionIdGenerator ids, IStringLocalizer<RuleManagementService> localizer)
     {
         _factories = factories.ToDictionary(factory => factory.Name, StringComparer.Ordinal);
         _operators = operators.Value;
         _ids = ids;
+        S = localizer;
     }
 
     public IReadOnlyList<RuleConditionDescriptor> GetDescriptors() => _factories.Values
@@ -40,6 +44,34 @@ public sealed class RuleManagementService : IRuleManagementService
 
     public IReadOnlyList<RuleConditionDefinition> Describe(Rule rule) =>
         rule?.Conditions.Select(DescribeCondition).ToArray() ?? [];
+
+    public IReadOnlyList<RuleConditionValidationFailure> ValidateCondition(Condition condition)
+    {
+        var errors = new List<RuleConditionValidationFailure>();
+        if (condition is JavascriptCondition javascript)
+        {
+            if (string.IsNullOrWhiteSpace(javascript.Script))
+            {
+                errors.Add(new() { Property = "script", Message = S["Please provide a script."] });
+            }
+            else
+            {
+                try
+                {
+                    _ = Engine.PrepareScript(javascript.Script);
+                }
+                catch (ScriptPreparationException exception)
+                {
+                    errors.Add(new()
+                    {
+                        Property = "script",
+                        Message = S["The script couldn't be parsed. Details: {0}", (exception.InnerException ?? exception).Message],
+                    });
+                }
+            }
+        }
+        return errors;
+    }
 
     public RuleManagementResult CreateRule(IReadOnlyList<RuleConditionDefinition> conditions, string ruleId = null)
     {
@@ -90,12 +122,15 @@ public sealed class RuleManagementService : IRuleManagementService
             {
                 Populate(condition, properties);
             }
-            catch (Exception exception) when (exception is InvalidOperationException or FormatException or JsonException or ScriptPreparationException)
+            catch (Exception exception) when (exception is InvalidOperationException or FormatException or JsonException)
             {
-                errors[itemPath + ".properties"] = [exception is ScriptPreparationException
-                    ? "The JavaScript condition has invalid syntax."
-                    : "The condition properties do not match the live schema."];
+                errors[itemPath + ".properties"] = ["The condition properties do not match the live schema."];
                 continue;
+            }
+
+            foreach (var error in ValidateCondition(condition))
+            {
+                errors[itemPath + ".properties." + error.Property] = [error.Message];
             }
 
             condition.ConditionId = definition.ConditionId;
@@ -132,11 +167,6 @@ public sealed class RuleManagementService : IRuleManagementService
                 break;
             case JavascriptCondition javascript:
                 javascript.Script = properties["script"]?.GetValue<string>();
-                if (string.IsNullOrWhiteSpace(javascript.Script))
-                {
-                    throw new FormatException();
-                }
-                _ = Engine.PrepareScript(javascript.Script);
                 break;
             case DisplayTextConditionGroup group:
                 group.DisplayText = properties["displayText"]?.GetValue<string>();

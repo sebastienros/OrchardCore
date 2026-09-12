@@ -24,16 +24,16 @@ Paths are relative to the tenant URL, including any tenant prefix.
 | Method and path | Pomi command | Result |
 | --- | --- | --- |
 | `GET /api/layers` | `layers list` | Paged definitions with `skip`, `take`, `totalCount`, `items`. |
-| `GET /api/layers/{name}` | `layers show <name>` | Complete stored definition; 404 when absent. |
+| `GET /api/layers/by-name?name={name}` | `layers show <name>` | Complete stored definition; 404 when absent. |
 | `GET /api/layer-conditions` | `layers conditions` | Registered condition descriptors and property schemas. |
 | `POST /api/layers/validate` | `layers validate` | `isValid` and path-keyed `errors`; never saves or evaluates conditions. |
 | `POST /api/layers` | `layers create` | 201 with the saved definition and tenant-relative Location; 409 on a different existing definition. |
-| `PUT /api/layers/{name}` | `layers update <name>` | 200 with the replacement; 404 when absent. |
-| `DELETE /api/layers/{name}` | `layers delete <name> --force` | 204, including an absent layer; 409 while any latest widget references it. |
+| `PUT /api/layers/by-name?name={name}` | `layers update <name>` | 200 with the replacement; 404 when absent. |
+| `DELETE /api/layers/by-name?name={name}` | `layers delete <name> --force` | 204, including an absent layer; 409 while any latest widget references it. |
 
 List accepts a case-insensitive `search` over names/descriptions, nonnegative `skip` (default 0),
 and `take` from 1 to 200 (default 50). Results are sorted by name. Invalid paging returns 400.
-Names match case-insensitively. Updates require the body name to match the route exactly and
+Names match case-insensitively. A query parameter preserves names containing slashes, spaces or percent signs without route decoding ambiguities. Updates require the body name to match the name query parameter exactly and
 preserve the stored name's spelling. Renaming is not supported because widgets reference names.
 
 ## Definitions and conditions
@@ -113,3 +113,14 @@ pomi layers update "News visitors" --body-file news-layer.json --output json
 Verify the saved definition and the rendered pages for the intended URL, culture and visitor
 identity. A successful save alone does not establish visibility. See the
 [Layers module](../../modules/Layers/README.md) and [Rules module](../../modules/Rules/README.md).
+
+## Shared module services
+
+`ILayerService` provides name validation, lookup, creation, metadata/rule updates and guarded
+deletion for both the API and the existing layer admin actions. Names must be nonblank, at most
+256 characters and contain no surrounding whitespace or control characters. Metadata-only admin
+edits preserve the existing rule and condition IDs. HTTP retry responses remain an API concern.
+
+`IRuleManagementService` describes and builds condition trees and exposes non-executing condition
+validation. The JavaScript editor uses the same required-value and syntax checks, then retains
+its execution preview in the current user/request context. API validation does not run scripts.

@@ -2,12 +2,14 @@ using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
-using OrchardCore.ContentManagement.Records;
+using OrchardCore.ContentManagement;
+using OrchardCore.ContentManagement.Metadata;
 using OrchardCore.Layers.Endpoints.Management;
 using OrchardCore.Layers.Models;
 using OrchardCore.Layers.Services;
 using OrchardCore.Rules.Services;
 using OrchardCore.Tests.Apis.Context;
+using ISession = YesSql.ISession;
 
 namespace OrchardCore.Tests.Apis.RemoteManagement;
 
@@ -50,7 +52,7 @@ public class LayerManagementApiTests
                 new LayerDefinitionDto { Name = name, Description = "conflict" });
             Assert.Equal(409, Assert.IsAssignableFrom<IStatusCodeHttpResult>(conflict).StatusCode);
             var invalid = new LayerDefinitionDto { Name = name, Conditions = [new RuleConditionDefinition { Name = "NoSuchCondition" }] };
-            var validation = await LayerManagementEndpoints.ValidateAsync(new DefaultHttpContext(), Authorize(true), rules, invalid);
+            var validation = await LayerManagementEndpoints.ValidateAsync(new DefaultHttpContext(), Authorize(true), rules, layers, invalid);
             Assert.False(Assert.IsType<Ok<RuleValidationResponse>>(validation).Value.IsValid);
             var update = await LayerManagementEndpoints.UpdateAsync(new DefaultHttpContext(), Authorize(true), layers, rules, name, invalid);
             Assert.Equal(400, Assert.IsAssignableFrom<IStatusCodeHttpResult>(update).StatusCode);
@@ -87,7 +89,7 @@ public class LayerManagementApiTests
             await LayerManagementEndpoints.ListAsync(http, auth, layers, rules, new()),
             await LayerManagementEndpoints.GetAsync(http, auth, layers, rules, "name"),
             await LayerManagementEndpoints.ConditionsAsync(http, auth, rules),
-            await LayerManagementEndpoints.ValidateAsync(http, auth, rules, new()),
+            await LayerManagementEndpoints.ValidateAsync(http, auth, rules, layers, new()),
             await LayerManagementEndpoints.CreateAsync(http, auth, layers, rules, new()),
             await LayerManagementEndpoints.UpdateAsync(http, auth, layers, rules, "name", new()),
             await LayerManagementEndpoints.DeleteAsync(http, auth, layers, "name"),
@@ -98,14 +100,56 @@ public class LayerManagementApiTests
     [Fact]
     public async Task ReferencedLayer_CannotBeDeleted()
     {
-        var layers = new Mock<ILayerService>(MockBehavior.Strict);
-        var document = new LayersDocument { Layers = [new Layer { Name = "Referenced" }] };
-        layers.Setup(service => service.LoadLayersAsync()).ReturnsAsync(document);
-        layers.Setup(service => service.GetLayerWidgetsMetadataAsync(It.IsAny<System.Linq.Expressions.Expression<Func<ContentItemIndex, bool>>>()))
-            .ReturnsAsync([new LayerMetadata { Layer = "referenced" }]);
-        var result = await LayerManagementEndpoints.DeleteAsync(new DefaultHttpContext(), Authorize(true), layers.Object, "Referenced");
-        Assert.Equal(409, Assert.IsAssignableFrom<IStatusCodeHttpResult>(result).StatusCode);
-        Assert.Single(document.Layers);
+        using var context = new SiteContext();
+        await context.InitializeAsync();
+        await context.UsingTenantScopeAsync(async scope =>
+        {
+            await scope.ServiceProvider.GetRequiredService<ILayerService>().CreateAsync("Referenced", "Test layer");
+            // Load definitions before the session flush invokes content index providers.
+            await scope.ServiceProvider.GetRequiredService<IContentDefinitionManager>().GetTypeDefinitionAsync("LayerReferenceProbe");
+            var item = new ContentItem { ContentItemId = Guid.NewGuid().ToString("N"), ContentType = "LayerReferenceProbe", Latest = true, Published = true };
+            item.Weld(new LayerMetadata { Layer = "referenced", Zone = "Content" });
+            await scope.ServiceProvider.GetRequiredService<ISession>().SaveAsync(item);
+        });
+        await context.UsingTenantScopeAsync(async scope =>
+        {
+            var layers = scope.ServiceProvider.GetRequiredService<ILayerService>();
+            var result = await LayerManagementEndpoints.DeleteAsync(new DefaultHttpContext(), Authorize(true), layers, "Referenced");
+            Assert.Equal(409, Assert.IsAssignableFrom<IStatusCodeHttpResult>(result).StatusCode);
+            Assert.NotNull(await layers.GetLayerAsync("Referenced"));
+        });
+    }
+
+    [Fact]
+    public async Task MetadataEdits_UseTheSharedServiceWithoutReplacingTheRule()
+    {
+        using var context = new SiteContext();
+        await context.InitializeAsync();
+        string ruleId = null;
+        string conditionId = null;
+        await context.UsingTenantScopeAsync(async scope =>
+        {
+            var rules = scope.ServiceProvider.GetRequiredService<IRuleManagementService>();
+            var rule = rules.CreateRule([new RuleConditionDefinition { Name = "HomepageCondition" }]).Rule;
+            var result = await scope.ServiceProvider.GetRequiredService<ILayerService>().CreateAsync("SharedEdit", "Original", rule);
+            Assert.Equal(LayerMutationStatus.Success, result.Status);
+            ruleId = result.Layer.LayerRule.ConditionId;
+            conditionId = result.Layer.LayerRule.Conditions[0].ConditionId;
+        });
+        await context.UsingTenantScopeAsync(async scope =>
+        {
+            var service = scope.ServiceProvider.GetRequiredService<ILayerService>();
+            // The admin metadata editor deliberately supplies no replacement rule.
+            Assert.Equal(LayerMutationStatus.Success, (await service.UpdateAsync("SharedEdit", "Edited by admin")).Status);
+            Assert.Equal(LayerMutationStatus.Conflict, (await service.CreateAsync("sharededit", "Duplicate")).Status);
+        });
+        await context.UsingTenantScopeAsync(async scope =>
+        {
+            var layer = await scope.ServiceProvider.GetRequiredService<ILayerService>().GetLayerAsync("SharedEdit");
+            Assert.Equal("Edited by admin", layer.Description);
+            Assert.Equal(ruleId, layer.LayerRule.ConditionId);
+            Assert.Equal(conditionId, Assert.Single(layer.LayerRule.Conditions).ConditionId);
+        });
     }
 
     private static IAuthorizationService Authorize(bool success)

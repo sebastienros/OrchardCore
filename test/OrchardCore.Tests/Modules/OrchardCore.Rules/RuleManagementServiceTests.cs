@@ -1,5 +1,7 @@
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Localization;
+using OrchardCore.Localization;
 using OrchardCore.Rules;
 using OrchardCore.Rules.Models;
 using OrchardCore.Rules.Services;
@@ -123,6 +125,6 @@ public class RuleManagementServiceTests
             .Callback<Condition>(condition => condition.ConditionId = Guid.NewGuid().ToString("N"));
         var operators = new ConditionOperatorOptions();
         operators.Operators.Add(new ConditionOperatorOption(_ => default, null, typeof(StringStartsWithOperator), new ConditionOperatorFactory<StringStartsWithOperator>()));
-        return new RuleManagementService(factories, Options.Create(operators), ids.Object);
+        return new RuleManagementService(factories, Options.Create(operators), ids.Object, new StringLocalizer<RuleManagementService>(new NullStringLocalizerFactory()));
     }
 }

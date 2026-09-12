@@ -17,7 +17,6 @@ using OrchardCore.Layers.Models;
 using OrchardCore.Layers.Services;
 using OrchardCore.Layers.ViewModels;
 using OrchardCore.Rules;
-using OrchardCore.Rules.Services;
 using OrchardCore.Settings;
 using YesSql;
 
@@ -37,7 +36,6 @@ public sealed class AdminController : Controller
     private readonly IVolatileDocumentManager<LayerState> _layerStateManager;
     private readonly IDisplayManager<Condition> _conditionDisplayManager;
     private readonly IDisplayManager<Rule> _ruleDisplayManager;
-    private readonly IConditionIdGenerator _conditionIdGenerator;
     private readonly IEnumerable<IConditionFactory> _conditionFactories;
     private readonly INotifier _notifier;
     private readonly ILogger _logger;
@@ -57,7 +55,6 @@ public sealed class AdminController : Controller
         IVolatileDocumentManager<LayerState> layerStateManager,
         IDisplayManager<Condition> conditionDisplayManager,
         IDisplayManager<Rule> ruleDisplayManager,
-        IConditionIdGenerator conditionIdGenerator,
         IEnumerable<IConditionFactory> conditionFactories,
         IStringLocalizer<AdminController> stringLocalizer,
         IHtmlLocalizer<AdminController> htmlLocalizer,
@@ -75,7 +72,6 @@ public sealed class AdminController : Controller
         _layerStateManager = layerStateManager;
         _conditionDisplayManager = conditionDisplayManager;
         _ruleDisplayManager = ruleDisplayManager;
-        _conditionIdGenerator = conditionIdGenerator;
         _conditionFactories = conditionFactories;
         _notifier = notifier;
         S = stringLocalizer;
@@ -142,26 +138,14 @@ public sealed class AdminController : Controller
             return Forbid();
         }
 
-        var layers = await _layerService.LoadLayersAsync();
-
-        ValidateViewModel(model, layers, isNew: true);
-
         if (ModelState.IsValid)
         {
-            var layer = new Layer
+            var result = await _layerService.CreateAsync(model.Name, model.Description);
+            if (result.Status == LayerMutationStatus.Success)
             {
-                Name = model.Name,
-                Description = model.Description,
-                LayerRule = new Rule(),
-            };
-
-            _conditionIdGenerator.GenerateUniqueId(layer.LayerRule);
-
-            layers.Layers.Add(layer);
-
-            await _layerService.UpdateAsync(layers);
-
-            return RedirectToAction(nameof(Edit), new { name = layer.Name, });
+                return RedirectToAction(nameof(Edit), new { name = result.Layer.Name });
+            }
+            ModelState.AddModelError(nameof(LayerEditViewModel.Name), result.Error);
         }
 
         return View(model);
@@ -174,9 +158,7 @@ public sealed class AdminController : Controller
             return Forbid();
         }
 
-        var layers = await _layerService.GetLayersAsync();
-
-        var layer = layers.Layers.FirstOrDefault(x => string.Equals(x.Name, name, StringComparison.Ordinal));
+        var layer = await _layerService.GetLayerAsync(name);
 
         if (layer == null)
         {
@@ -215,25 +197,19 @@ public sealed class AdminController : Controller
             return Forbid();
         }
 
-        var layers = await _layerService.LoadLayersAsync();
-
-        ValidateViewModel(model, layers, isNew: false);
-
         if (ModelState.IsValid)
         {
-            var layer = layers.Layers.FirstOrDefault(x => string.Equals(x.Name, model.Name, StringComparison.Ordinal));
-
-            if (layer == null)
+            // Editing the layer's metadata leaves its rule and condition identities intact.
+            var result = await _layerService.UpdateAsync(model.Name, model.Description);
+            if (result.Status == LayerMutationStatus.NotFound)
             {
                 return NotFound();
             }
-
-            layer.Name = model.Name;
-            layer.Description = model.Description;
-
-            await _layerService.UpdateAsync(layers);
-
-            return RedirectToAction(nameof(Index));
+            if (result.Status == LayerMutationStatus.Success)
+            {
+                return RedirectToAction(nameof(Index));
+            }
+            ModelState.AddModelError(nameof(LayerEditViewModel.Name), result.Error);
         }
 
         return View(model);
@@ -247,21 +223,13 @@ public sealed class AdminController : Controller
             return Forbid();
         }
 
-        var layers = await _layerService.LoadLayersAsync();
-
-        var layer = layers.Layers.FirstOrDefault(x => string.Equals(x.Name, name, StringComparison.Ordinal));
-
-        if (layer == null)
+        var result = await _layerService.DeleteAsync(name);
+        if (result.Status == LayerMutationStatus.NotFound)
         {
             return NotFound();
         }
-
-        var widgets = await _layerService.GetLayerWidgetsMetadataAsync(c => c.Latest == true);
-
-        if (!widgets.Any(x => string.Equals(x.Layer, name, StringComparison.OrdinalIgnoreCase)))
+        if (result.Status == LayerMutationStatus.Success)
         {
-            layers.Layers.Remove(layer);
-            await _layerService.UpdateAsync(layers);
             await _notifier.SuccessAsync(H["Layer deleted successfully."]);
         }
         else
@@ -331,18 +299,6 @@ public sealed class AdminController : Controller
         else
         {
             return RedirectToAction(nameof(Index));
-        }
-    }
-
-    private void ValidateViewModel(LayerEditViewModel model, LayersDocument layers, bool isNew)
-    {
-        if (string.IsNullOrWhiteSpace(model.Name))
-        {
-            ModelState.AddModelError(nameof(LayerEditViewModel.Name), S["The layer name is required."]);
-        }
-        else if (isNew && layers.Layers.Any(x => string.Equals(x.Name, model.Name, StringComparison.OrdinalIgnoreCase)))
-        {
-            ModelState.AddModelError(nameof(LayerEditViewModel.Name), S["The layer name already exists."]);
         }
     }
 }

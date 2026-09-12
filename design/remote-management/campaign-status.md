@@ -28,7 +28,7 @@ The [schedule](pr-schedule.md) and [plan](coverage-plan.md) define the work and 
 | CI: disable automatic package/native publication | Merged | [PR #3](https://github.com/sebastienros/OrchardCore/pull/3), merge `053b0cd2e`; all CI checks passed. |
 | P00 Inventory, plan and schedule | Merged | [PR #4](https://github.com/sebastienros/OrchardCore/pull/4), merge `d81badf94`; all CI checks passed. |
 | P01 Shared-content/discovery baseline | Merged | [PR #5](https://github.com/sebastienros/OrchardCore/pull/5), merge `6332bce93`; all CI checks passed. See [baseline evidence](baseline.md). |
-| B03 Explicit-null content updates | In review | [PR #6](https://github.com/sebastienros/OrchardCore/pull/6); failing-before/passing-after integration and live CLI checks. |
+| B03 Explicit-null content updates | Merged | [PR #6](https://github.com/sebastienros/OrchardCore/pull/6); merged as `f727f9379`; failing-before/passing-after integration and live CLI checks. |
 | P02 Layer definitions/conditions | In review | Independent `codex/remote-layers` branch from merged target `d81badf94`; seven operations/commands/tools, rule validation, live rendering and feature gates verified. Widget placement remains P05. |
 | P03 Shortcode templates | Planned | B02. |
 | P04 Shape placements | Planned | B02. |
@@ -69,3 +69,7 @@ agreed slices are delivered and any remaining gaps have an explicit disposition.
   authentication/MCP 78 passed; server 3,092 passed with one CI-only skip.
 - CI PR local checks: actionlint, publication event matrix, strict documentation build passed.
   GitHub confirms package/native/publication jobs are skipped on push and PR events.
+
+- Shared-service requirement: API service extractions must also replace equivalent logic in
+  existing callers. P02 migrates layer admin mutations and JavaScript editor syntax validation;
+  regression checks cover metadata edits preserving rule identities and editor evaluation.

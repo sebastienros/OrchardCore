@@ -55,7 +55,7 @@ def request(path, method='GET', body=None, client='cli-fixture', status=200, raw
         return json.loads(text) if text else None
 
 
-def pomi(*args, body=None, client='cli-layers', status=None):
+def pomi(*args, body=None, client='cli-layers', status=None, failure=False):
     env = os.environ.copy()
     env.update(OC_FIXTURE_CONFIG_HOME=config_home, OC_FIXTURE_CLIENT_ID=client)
     command = [sys.executable, str(wrapper), str(state_path), *args, '--output', 'json']
@@ -63,6 +63,9 @@ def pomi(*args, body=None, client='cli-layers', status=None):
         command.append('--stdin')
     result = subprocess.run(command, input=json.dumps(body) if body is not None else None,
         capture_output=True, text=True, env=env, timeout=90)
+    if failure:
+        assert result.returncode != 0, args
+        return
     if status:
         assert result.returncode != 0, args
         assert json.loads(result.stderr or result.stdout)['error']['status'] == status, result.stderr[:600]
@@ -109,8 +112,16 @@ with tempfile.TemporaryDirectory(prefix='layers-cli-', dir=state_path.parent) as
             {'name': 'IsAnonymousCondition'}]}]}
     try:
         descriptors = pomi('layers', 'conditions')
+        assert pomi('layers', 'schema', '--operation', 'create')
         assert any(entry['name'] == 'AllConditionGroup' and entry['canWrite'] for entry in descriptors)
         assert pomi('layers', 'validate', body=definition)['isValid']
+        special = copy.deepcopy(definition)
+        special['name'] = name + '/space % name'
+        assert pomi('layers', 'create', body=special)['name'] == special['name']
+        assert pomi('layers', 'show', special['name'])['name'] == special['name']
+        assert tool('show', {'query': {'name': special['name']}})['name'] == special['name']
+        pomi('layers', 'delete', special['name'], '--force')
+        pomi('layers', 'show', special['name'], status=404)
         saved = pomi('layers', 'create', body=definition)
         assert saved == pomi('layers', 'create', body=definition)
         assert pomi('layers', 'list', '--search', name)['totalCount'] == 1
@@ -119,18 +130,20 @@ with tempfile.TemporaryDirectory(prefix='layers-cli-', dir=state_path.parent) as
         assert not pomi('layers', 'validate', body=invalid)['isValid']
         pomi('layers', 'update', name, body=invalid, status=400)
         assert saved == pomi('layers', 'show', name)
-        assert saved == tool('show', {'path': {'name': name}})
+        assert saved == tool('show', {'query': {'name': name}})
         saved['description'] = 'Updated through MCP'
-        updated = tool('update', {'path': {'name': name}, 'body': saved})
+        updated = tool('update', {'query': {'name': name}, 'body': saved})
+        assert updated == pomi('layers', 'show', name)
+        pomi('layers', 'delete', name, failure=True)
         assert updated == pomi('layers', 'show', name)
 
-        for path, method, body in [('api/layers', 'GET', None), ('api/layers/' + name, 'GET', None),
+        for path, method, body in [('api/layers', 'GET', None), ('api/layers/by-name?name=' + urllib.parse.quote(name, safe=''), 'GET', None),
                 ('api/layer-conditions', 'GET', None), ('api/layers/validate', 'POST', definition),
-                ('api/layers', 'POST', definition), ('api/layers/' + name, 'PUT', definition),
-                ('api/layers/' + name, 'DELETE', None)]:
+                ('api/layers', 'POST', definition), ('api/layers/by-name?name=' + urllib.parse.quote(name, safe=''), 'PUT', definition),
+                ('api/layers/by-name?name=' + urllib.parse.quote(name, safe=''), 'DELETE', None)]:
             request(path, method, body, client=None, status=401)
             request(path, method, body, client='cli-discovery', status=403)
-        tool('show', {'path': {'name': name}}, client='cli-discovery', status=403)
+        tool('show', {'query': {'name': name}}, client='cli-discovery', status=403)
         print('Layer CRUD, retries, validation, HTTP and MCP permissions: passed', flush=True)
 
         # Compose a public page and widget using the existing content APIs, then prove rule evaluation.
@@ -169,7 +182,7 @@ with tempfile.TemporaryDirectory(prefix='layers-cli-', dir=state_path.parent) as
         assert len([tool_name for tool_name in names if tool_name.startswith('layers_')]) == 7
         feature('OrchardCore.RemoteManagement.Cli', False)
         assert not catalog()[1]
-        assert tool('show', {'path': {'name': name}})['name'] == name
+        assert tool('show', {'query': {'name': name}})['name'] == name
         feature('OrchardCore.RemoteManagement.Cli', True)
         feature('OrchardCore.Layers', False)
         assert not any(tool_name.startswith('layers_') for tool_name in catalog()[2])
@@ -184,6 +197,7 @@ with tempfile.TemporaryDirectory(prefix='layers-cli-', dir=state_path.parent) as
             pomi('content', 'items', 'delete', item_id, '--force', client='cli-fixture')
         for type_name in reversed(types):
             pomi('content', 'types', 'delete', type_name, '--force', client='cli-fixture')
+        pomi('layers', 'delete', name + '/space % name', '--force')
         pomi('layers', 'delete', name, '--force')
         pomi('layers', 'delete', name, '--force')
 

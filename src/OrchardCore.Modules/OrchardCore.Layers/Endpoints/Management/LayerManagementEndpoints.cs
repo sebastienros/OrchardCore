@@ -20,7 +20,7 @@ internal static class LayerManagementEndpoints
     {
         Configure(routes.MapGet(RoutePrefix, ListAsync), "ApiListLayers", "Lists layer definitions.", "list")
             .Produces<LayerListResponse>();
-        Configure(routes.MapGet(RoutePrefix + "/{name}", GetAsync), "ApiGetLayer", "Shows a layer definition and its conditions.", "show", argument: true)
+        Configure(routes.MapGet(RoutePrefix + "/by-name", GetAsync), "ApiGetLayer", "Shows a layer definition and its conditions.", "show", argument: true)
             .Produces<LayerDefinitionDto>().ProducesProblem(404);
         Configure(routes.MapGet("api/layer-conditions", ConditionsAsync), "ApiListLayerConditions", "Lists registered conditions and their writable property schemas.", "conditions")
             .Produces<IReadOnlyList<RuleConditionDescriptor>>();
@@ -28,9 +28,9 @@ internal static class LayerManagementEndpoints
             .Accepts<LayerDefinitionDto>("application/json").Produces<RuleValidationResponse>();
         Configure(routes.MapPost(RoutePrefix, CreateAsync), "ApiCreateLayer", "Creates a complete layer definition; identical name retries return the stored definition.", "create", input: true)
             .Accepts<LayerDefinitionDto>("application/json").Produces<LayerDefinitionDto>(201).ProducesProblem(409);
-        Configure(routes.MapPut(RoutePrefix + "/{name}", UpdateAsync), "ApiUpdateLayer", "Replaces a layer definition and all its conditions. The name cannot change.", "update", argument: true, input: true)
+        Configure(routes.MapPut(RoutePrefix + "/by-name", UpdateAsync), "ApiUpdateLayer", "Replaces a layer definition and all its conditions. The name cannot change.", "update", argument: true, input: true)
             .Accepts<LayerDefinitionDto>("application/json").Produces<LayerDefinitionDto>().ProducesProblem(404);
-        Configure(routes.MapDelete(RoutePrefix + "/{name}", DeleteAsync), "ApiDeleteLayer", "Deletes an unreferenced layer; missing layers are a successful no-op.", "delete", argument: true, confirmation: true)
+        Configure(routes.MapDelete(RoutePrefix + "/by-name", DeleteAsync), "ApiDeleteLayer", "Deletes an unreferenced layer; missing layers are a successful no-op.", "delete", argument: true, confirmation: true)
             .Produces(204).ProducesProblem(409);
         return routes;
     }
@@ -84,13 +84,13 @@ internal static class LayerManagementEndpoints
     }
 
     internal static async Task<IResult> GetAsync(HttpContext context, [FromServices] IAuthorizationService authorization,
-        [FromServices] ILayerService layers, [FromServices] IRuleManagementService rules, string name)
+        [FromServices] ILayerService layers, [FromServices] IRuleManagementService rules, [FromQuery] string name)
     {
         if (!await AuthorizedAsync(context, authorization))
         {
             return context.ApiForbidProblem();
         }
-        var layer = Find(await layers.GetLayersAsync(), name);
+        var layer = await layers.GetLayerAsync(name);
         return layer is null ? context.ApiNotFoundProblem() : TypedResults.Ok(Describe(layer, rules));
     }
 
@@ -99,13 +99,13 @@ internal static class LayerManagementEndpoints
         ? context.ApiForbidProblem() : TypedResults.Ok(rules.GetDescriptors());
 
     internal static async Task<IResult> ValidateAsync(HttpContext context, [FromServices] IAuthorizationService authorization,
-        [FromServices] IRuleManagementService rules, [FromBody] LayerDefinitionDto definition)
+        [FromServices] IRuleManagementService rules, [FromServices] ILayerService layers, [FromBody] LayerDefinitionDto definition)
     {
         if (!await AuthorizedAsync(context, authorization))
         {
             return context.ApiForbidProblem();
         }
-        var result = Validate(definition, rules);
+        var result = Validate(definition, layers, rules);
         return TypedResults.Ok(new RuleValidationResponse { IsValid = result.IsValid, Errors = result.Errors });
     }
 
@@ -116,27 +116,24 @@ internal static class LayerManagementEndpoints
         {
             return context.ApiForbidProblem();
         }
-        var result = Validate(definition, rules);
+        var result = Validate(definition, layers, rules);
         if (!result.IsValid)
         {
             return TypedResults.ValidationProblem(result.Errors);
         }
-        var document = await layers.LoadLayersAsync();
-        var existing = Find(document, definition.Name);
-        if (existing is not null)
+        var mutation = await layers.CreateAsync(definition.Name, definition.Description, result.Rule);
+        if (mutation.Status == LayerMutationStatus.Conflict)
         {
+            var existing = mutation.Layer;
             return Equivalent(Describe(existing, rules), definition, rules.Describe(result.Rule))
                 ? TypedResults.Created(Location(context, existing.Name), Describe(existing, rules))
                 : TypedResults.Problem("A layer with this name already exists with a different definition.", statusCode: 409);
         }
-        var layer = new Layer { Name = definition.Name, Description = definition.Description, LayerRule = result.Rule };
-        document.Layers.Add(layer);
-        await layers.UpdateAsync(document);
-        return TypedResults.Created(Location(context, layer.Name), Describe(layer, rules));
+        return TypedResults.Created(Location(context, mutation.Layer.Name), Describe(mutation.Layer, rules));
     }
 
     internal static async Task<IResult> UpdateAsync(HttpContext context, [FromServices] IAuthorizationService authorization,
-        [FromServices] ILayerService layers, [FromServices] IRuleManagementService rules, string name, [FromBody] LayerDefinitionDto definition)
+        [FromServices] ILayerService layers, [FromServices] IRuleManagementService rules, [FromQuery] string name, [FromBody] LayerDefinitionDto definition)
     {
         if (!await AuthorizedAsync(context, authorization))
         {
@@ -144,15 +141,14 @@ internal static class LayerManagementEndpoints
         }
         if (definition is null || !string.Equals(name, definition.Name, StringComparison.Ordinal))
         {
-            return TypedResults.Problem("The body name must match the route name. Layer renames are not supported.", statusCode: 400);
+            return TypedResults.Problem("The body name must match the name query parameter. Layer renames are not supported.", statusCode: 400);
         }
-        var document = await layers.LoadLayersAsync();
-        var existing = Find(document, name);
+        var existing = await layers.GetLayerAsync(name);
         if (existing is null)
         {
             return context.ApiNotFoundProblem();
         }
-        var result = Validate(definition, rules, existing.LayerRule?.ConditionId);
+        var result = Validate(definition, layers, rules, existing.LayerRule?.ConditionId);
         if (!result.IsValid)
         {
             return TypedResults.ValidationProblem(result.Errors);
@@ -160,51 +156,40 @@ internal static class LayerManagementEndpoints
         // Preserve generated condition IDs and avoid a document mutation on an identical retry.
         if (!Equivalent(Describe(existing, rules), definition, rules.Describe(result.Rule)))
         {
-            existing.Description = definition.Description;
-            existing.LayerRule = result.Rule;
-            await layers.UpdateAsync(document);
+            var mutation = await layers.UpdateAsync(name, definition.Description, result.Rule);
+            if (mutation.Status == LayerMutationStatus.NotFound)
+            {
+                return context.ApiNotFoundProblem();
+            }
+            existing = mutation.Layer;
         }
         return TypedResults.Ok(Describe(existing, rules));
     }
 
     internal static async Task<IResult> DeleteAsync(HttpContext context, [FromServices] IAuthorizationService authorization,
-        [FromServices] ILayerService layers, string name)
+        [FromServices] ILayerService layers, [FromQuery] string name)
     {
         if (!await AuthorizedAsync(context, authorization))
         {
             return context.ApiForbidProblem();
         }
-        var document = await layers.LoadLayersAsync();
-        var layer = Find(document, name);
-        if (layer is null)
-        {
-            return TypedResults.NoContent();
-        }
-        var widgets = await layers.GetLayerWidgetsMetadataAsync(item => item.Latest);
-        if (widgets.Any(widget => string.Equals(widget.Layer, layer.Name, StringComparison.OrdinalIgnoreCase)))
-        {
-            return TypedResults.Problem("Remove or move the associated widgets before deleting this layer.", statusCode: 409);
-        }
-        document.Layers.Remove(layer);
-        await layers.UpdateAsync(document);
-        return TypedResults.NoContent();
+        var result = await layers.DeleteAsync(name);
+        return result.Status == LayerMutationStatus.Referenced
+            ? TypedResults.Problem("Remove or move the associated widgets before deleting this layer.", statusCode: 409)
+            : TypedResults.NoContent();
     }
 
     private static Task<bool> AuthorizedAsync(HttpContext context, IAuthorizationService authorization) =>
         authorization.AuthorizeAsync(context.User, Permissions.ManageLayers);
 
-    private static RuleManagementResult Validate(LayerDefinitionDto definition, IRuleManagementService rules, string ruleId = null)
+    private static RuleManagementResult Validate(LayerDefinitionDto definition, ILayerService layers, IRuleManagementService rules, string ruleId = null)
     {
-        if (definition is null || string.IsNullOrWhiteSpace(definition.Name) || definition.Name.Length > 256
-            || definition.Name != definition.Name.Trim() || definition.Name.Any(char.IsControl))
+        if (layers.ValidateName(definition?.Name) is { } error)
         {
-            return new RuleManagementResult { Errors = new Dictionary<string, string[]> { ["name"] = ["Provide a nonempty layer name of at most 256 characters without surrounding whitespace or control characters."] } };
+            return new RuleManagementResult { Errors = new Dictionary<string, string[]> { ["name"] = [error] } };
         }
         return rules.CreateRule(definition.Conditions, ruleId);
     }
-
-    private static Layer Find(LayersDocument document, string name) => document.Layers
-        .FirstOrDefault(layer => string.Equals(layer.Name, name, StringComparison.OrdinalIgnoreCase));
 
     private static LayerDefinitionDto Describe(Layer layer, IRuleManagementService rules) =>
         new() { Name = layer.Name, Description = layer.Description, Conditions = rules.Describe(layer.LayerRule) };
@@ -221,7 +206,7 @@ internal static class LayerManagementEndpoints
             && ConditionsEqual(existing[index].Conditions, requested[index].Conditions, normalized[index].Conditions));
 
     private static string Location(HttpContext context, string name) =>
-        $"{context.Request.PathBase}/{RoutePrefix}/{Uri.EscapeDataString(name)}";
+        $"{context.Request.PathBase}/{RoutePrefix}/by-name?name={Uri.EscapeDataString(name)}";
 }
 
 public sealed class RuleValidationResponse
