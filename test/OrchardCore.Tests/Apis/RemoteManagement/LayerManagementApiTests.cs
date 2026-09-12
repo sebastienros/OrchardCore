@@ -2,11 +2,14 @@ using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 using OrchardCore.ContentManagement;
 using OrchardCore.ContentManagement.Metadata;
 using OrchardCore.Layers.Endpoints.Management;
 using OrchardCore.Layers.Models;
 using OrchardCore.Layers.Services;
+using OrchardCore.Layers.ViewModels;
+using LayerAdminController = OrchardCore.Layers.Controllers.AdminController;
 using OrchardCore.Rules.Services;
 using OrchardCore.Tests.Apis.Context;
 using ISession = YesSql.ISession;
@@ -139,8 +142,15 @@ public class LayerManagementApiTests
         await context.UsingTenantScopeAsync(async scope =>
         {
             var service = scope.ServiceProvider.GetRequiredService<ILayerService>();
-            // The admin metadata editor deliberately supplies no replacement rule.
-            Assert.Equal(LayerMutationStatus.Success, (await service.UpdateAsync("SharedEdit", "Edited by admin")).Status);
+            var controller = ActivatorUtilities.CreateInstance<LayerAdminController>(scope.ServiceProvider, Authorize(true));
+            controller.ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext { RequestServices = scope.ServiceProvider },
+            };
+            controller.Url = Mock.Of<IUrlHelper>();
+            Assert.IsType<RedirectToActionResult>(await controller.EditPost(new LayerEditViewModel { Name = "SharedEdit", Description = "Edited by admin" }));
+            Assert.IsType<ViewResult>(await controller.CreatePost(new LayerEditViewModel { Name = "sharededit", Description = "Duplicate" }));
+            Assert.False(controller.ModelState.IsValid);
             Assert.Equal(LayerMutationStatus.Conflict, (await service.CreateAsync("sharededit", "Duplicate")).Status);
         });
         await context.UsingTenantScopeAsync(async scope =>
