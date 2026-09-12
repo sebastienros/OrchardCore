@@ -170,8 +170,6 @@ public sealed class FeatureProfilesController : Controller
     {
         return await ProcessSaveAsync(model, submit, false, async (profile) =>
         {
-            await _featureProfilesManager.RemoveFeatureProfileAsync(profile.Id);
-
             await _featureProfilesManager.UpdateFeatureProfileAsync(profile.Id, profile);
         });
     }

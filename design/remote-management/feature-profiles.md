@@ -44,3 +44,11 @@ Remaining gates: shared validation/admin/recipe regressions; feature-gated uniqu
 OpenAPI/Pomi/MCP catalog; anonymous/restricted/child-tenant denial; HTTP/Pomi CRUD and
 idempotence; live tenant assignment and feature eligibility; strict solution/full
 suites; canonical docs/Pomi skills; independent PR with green CI before merge.
+
+Baseline strict server build: zero warnings/errors. The three manager tests ran on
+unchanged production code: equivalent update and missing deletion failed because
+they persisted again; changed rule order passed. The shared manager now skips those
+no-op writes, and the existing admin edit no longer removes before updating.
+Passing-after strict server build has zero warnings/errors and all three manager
+regressions pass. API request/response models are drafted; endpoints, shared validation
+and the remaining integration/live/documentation/CI gates are not complete.

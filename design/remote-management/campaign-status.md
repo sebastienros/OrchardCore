@@ -45,7 +45,7 @@ The [schedule](pr-schedule.md) and [plan](coverage-plan.md) define the work and 
 | Scope administration | Merged | [PR #20](https://github.com/sebastienros/OrchardCore/pull/20), merge `1e1774933`; all CI checks passed. Shared admin/recipe editing and scope CRUD verified. |
 | Application administration | In verification | Independent `codex/remote-openid-applications`, integrated with merged scope commit `1e1774933`; [contract and existing-path audit](openid-applications.md). Local server/CLI/MCP and live checks passed. |
 | Application credential lifecycle | Planned | After application administration merges. |
-| Tenant feature-profile definitions | Planned | Independent B06 slice. |
+| Tenant feature-profile definitions | In development | Independent `codex/remote-tenant-feature-profiles` from merged `3ca2febc9`; [contract and baseline](feature-profiles.md). Shared manager no-op regressions fail before and pass after; admin edits reuse the update path. Endpoints and integrated verification remain. |
 | Common index definitions and lifecycle | Planned | B07 with local Lucene verification. |
 | Deployment plans, export and import | Planned | Separate B08 resource/execution PRs. |
 | Media profiles/cache/settings | Planned | Separate B09 PRs. |
