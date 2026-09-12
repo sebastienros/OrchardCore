@@ -32,6 +32,7 @@ python3 .scripts/remote-management/tenant-install-smoke.py <fixture.json>
 python3 .scripts/remote-management/graphql-smoke.py <fixture.json>
 python3 .scripts/remote-management/catalog-smoke.py <fixture.json>
 python3 .scripts/remote-management/layers-smoke.py <fixture.json>
+python3 .scripts/remote-management/shortcodes-smoke.py <fixture.json>
 ```
 
 `verify-fixture.py` checks discovery, command/operation ID uniqueness, every
@@ -387,3 +388,7 @@ to check that `--force` confirms destructive commands without prompting, that
 API `force` values use `--api-force` independently, and that context deletion
 uses the same flag. The test uses a synthetic loopback API and isolated context
 storage; it runs in every opt-in native build.
+
+`shortcodes-smoke.py` verifies restricted-principal CRUD, normalized retries, validation,
+usage sanitization, rendered Liquid shortcodes and cache updates, denied HTTP/MCP access,
+confirmation and schema discovery, unique catalogs and independent CLI/feature gates.

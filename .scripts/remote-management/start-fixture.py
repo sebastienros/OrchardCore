@@ -42,6 +42,7 @@ recipe["steps"] += [
 for suffix, permissions in [
     ("graphql-reader", ["ExecuteGraphQL"]),
     ("layers", ["ManageLayers"]),
+    ("shortcodes", ["ManageShortcodeTemplates"]),
     ("translator-fr", ["ViewDynamicTranslations", "ManageTranslations_fr"]),
     ("translation-reader", ["ViewDynamicTranslations"]),
     ("media", ["ManageMediaContent", "ManageMediaFolder"]),

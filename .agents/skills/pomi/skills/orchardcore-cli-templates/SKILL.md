@@ -1,6 +1,6 @@
 ---
 name: orchardcore-cli-templates
-description: Creates and manages Orchard Core custom Liquid templates and conditional layers through `pomi`. Use for content, summary, widget, field, and layout shape overrides; layer definitions and visibility rules; rendering content models; registering CSS/media; and validating output for remotely managed tenants.
+description: Creates and manages Orchard Core custom Liquid templates, shortcode templates and conditional layers through `pomi`. Use for content, summary, widget, field, and layout shape overrides; layer definitions and visibility rules; rendering content models; registering CSS/media; and validating output for remotely managed tenants.
 ---
 
 # Pomi CLI Templates
@@ -111,6 +111,37 @@ Create uses a stable case-insensitive name. An identical retry converges;
 different content under the same name conflicts. Update is a complete
 replacement and the route/body names must match exactly.
 
+## Shortcode templates
+
+Use `OrchardCore.Shortcodes.Templates` for named Liquid snippets inserted as bracketed shortcodes.
+Discover the live commands before use; code-defined providers are separate from stored templates.
+
+```bash
+pomi features enable OrchardCore.Shortcodes.Templates
+pomi api refresh --force
+pomi shortcodes templates --help
+pomi shortcodes templates schema --operation create
+pomi shortcodes templates list
+```
+
+Read a definition before replacing it. Save the complete JSON contract (`name`, `content`, `hint`,
+`usage`, `defaultValue`, `categories`) to a file. Names are shortcode identifiers without brackets,
+stored in invariant lowercase. `content` is Liquid; `usage` is sanitized HTML for the picker.
+
+```bash
+pomi shortcodes templates validate --body-file callout.json
+pomi shortcodes templates create --body-file callout.json
+pomi shortcodes templates show callout --output json
+pomi shortcodes templates update callout --body-file callout.json
+pomi shortcodes templates delete callout --force
+```
+
+Validation parses without rendering. Create retries accept equivalent definitions; a different
+existing definition conflicts. Update replaces all fields, so omitted metadata is cleared. The
+body name must match the update argument. Deletion preserves content and can reveal an underlying
+code-defined provider with the same name. Verify representative rendered pages after changes;
+CLI or MCP success alone does not prove the shortcode produces the intended HTML.
+
 ## Conditional layers
 
 Use `OrchardCore.Layers` for rules that control the visibility of widgets placed
@@ -218,6 +249,7 @@ URLs, missing shapes, stylesheet requests, and responsive behavior. Require:
 - layout works at approximately 375px, 768px, and 1440px viewport widths.
 
 Versioned references (live tenant schemas take precedence):
+[Shortcode templates API](https://github.com/sebastienros/OrchardCore/blob/b52b013b456dac853ff9a41f3fa23e2036a39c30/src/docs/reference/api/shortcode-templates/README.md),
 [Layers API](https://github.com/sebastienros/OrchardCore/blob/7f72e464016c79f39c108f9c746ab716bff9137b/src/docs/reference/api/layers/README.md),
 [templates API](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/api/templates/README.md),
 [Templates module](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/modules/Templates/README.md), and

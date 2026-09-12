@@ -4,6 +4,8 @@ Initial source audit of `sebros/remote-tenant-cli-plan` at **`befe0e93c`**, 2026
 Updated for P02 layer definitions/conditions; the campaign ledger records delivery state.
 Implementation order and decision criteria are in the [delivery plan](coverage-plan.md).
 
+P03 adds verified stored shortcode-template coverage after the Layers merge (`79edeff6d`).
+
 ## Scope and interpretation
 
 This inventory accounts for **100 module manifests and all 188 declared features** under
@@ -43,18 +45,18 @@ The categories are mutually exclusive planning classifications, not percentages 
 
 | Code | Classification | Feature count |
 | --- | --- | ---: |
-| D | Direct management OpenAPI and Pomi commands exist | 14 |
+| D | Direct management OpenAPI and Pomi commands exist | 15 |
 | P | Partial: important operations missing, or only helper/protocol/shared coverage | 27 |
 | A | Management OpenAPI exists; Pomi projection intentionally absent | 1 |
-| M | Dedicated management API and corresponding commands missing | 37 |
+| M | Dedicated management API and corresponding commands missing | 36 |
 | S | Shared API/commands or a built-in CLI workflow; validate the stated limits | 36 |
 | I | Infrastructure, rendering, protocol, provider or alias; no separate API proposed by default | 70 |
 | X | Sample; excluded from delivery priorities | 3 |
 
-There are **37 features with neither dedicated management APIs nor commands**, and **27 with
-partial coverage requiring a scope decision**. These are not 64 independent implementation tasks:
+There are **36 features with neither dedicated management APIs nor commands**, and **27 with
+partial coverage requiring a scope decision**. These are not 63 independent implementation tasks:
 the plan consolidates them into shared workflows. Another 36 features reuse existing transports
-or built-in commands. Seventeen production modules contribute direct `WithCliCommand` operation
+or built-in commands. Eighteen production modules contribute direct `WithCliCommand` operation
 registrations; this does not imply all features in those modules are covered.
 
 ## Important operation-level distinctions
@@ -91,6 +93,7 @@ Backlog IDs refer to [the delivery plan](coverage-plan.md#work-packages).
 | [Recipes](../../src/OrchardCore.Modules/OrchardCore.Recipes/Manifest.cs) / `OrchardCore.Recipes` | Yes | `recipes` | List/show/execute existing non-setup recipes. Not arbitrary recipe upload, plan editing or deployment import. | — |
 | [Roles](../../src/OrchardCore.Modules/OrchardCore.Roles/Manifest.cs) / `OrchardCore.Roles` | Yes | `roles` | Existing management surface; preserve regression coverage. | — |
 | [Settings](../../src/OrchardCore.Modules/OrchardCore.Settings/Manifest.cs) / `OrchardCore.Settings` | Yes | `settings show`, `update`, `schema` | Safe core properties only. Schema contributions currently include CustomSettings; there is no arbitrary module-section read/write endpoint. | — |
+| [Shortcodes](../../src/OrchardCore.Modules/OrchardCore.Shortcodes/Manifest.cs) / `OrchardCore.Shortcodes.Templates` | Yes | `shortcodes templates` | P03: stored template CRUD/validation and live schemas, shared admin/recipe services, normalized retries, sanitized usage, rendered output and feature gates verified. Code-defined providers remain separate. | B02 |
 | [Templates](../../src/OrchardCore.Modules/OrchardCore.Templates/Manifest.cs) / `OrchardCore.Templates` | Yes | `templates` | Frontend template document CRUD exists. It does not address the separate AdminTemplatesManager. | — |
 | [Tenants](../../src/OrchardCore.Modules/OrchardCore.Tenants/Manifest.cs) / `OrchardCore.Tenants` | Yes | `tenants` | Lifecycle/install and application provisioning exist; feature-profile definitions remain a separate gap. | — |
 | [Themes](../../src/OrchardCore.Modules/OrchardCore.Themes/Manifest.cs) / `OrchardCore.Themes` | Yes | `themes` | Theme discovery and activation exist; source-code/theme asset editing is not theme activation. | — |
@@ -171,7 +174,6 @@ Backlog IDs refer to [the delivery plan](coverage-plan.md#work-packages).
 | [ReCaptcha](../../src/OrchardCore.Modules/OrchardCore.ReCaptcha/Manifest.cs) / `OrchardCore.ReCaptcha` | No dedicated management API | None | Tenant validation settings lack a redacted section; do not expose challenge bypass/validation as an admin command. | B12 |
 | [Search](../../src/OrchardCore.Modules/OrchardCore.Search/Manifest.cs) / `OrchardCore.Search` | No dedicated management API | None | Frontend search settings/default index selection lack typed management; query execution does not manage indexes. | B07 |
 | [Security](../../src/OrchardCore.Modules/OrchardCore.Security/Manifest.cs) / `OrchardCore.Security` | No dedicated management API | None | Security header/CSP settings lack a typed management section. | B05 |
-| [Shortcodes](../../src/OrchardCore.Modules/OrchardCore.Shortcodes/Manifest.cs) / `OrchardCore.Shortcodes.Templates` | No dedicated management API | None | Shortcode template CRUD and descriptor/schema discovery are admin-only; reuse ShortcodeTemplatesManager. | B02 |
 | [Sms](../../src/OrchardCore.Modules/OrchardCore.Sms/Manifest.cs) / `OrchardCore.Sms` | No dedicated management API | None | SMS configuration and test-send lack a management contract; use redacted settings and bounded checks. | B12 |
 | [Templates](../../src/OrchardCore.Modules/OrchardCore.Templates/Manifest.cs) / `OrchardCore.AdminTemplates` | No dedicated management API | None | Separate admin template document is not exposed by the frontend templates API. | B02 |
 | [Twitter](../../src/OrchardCore.Modules/OrchardCore.Twitter/Manifest.cs) / `OrchardCore.Twitter.Signin` | No dedicated management API | None | Provider settings lack a redacted management contract; sign-in is an authentication protocol. | B12 |
