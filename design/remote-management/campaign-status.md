@@ -26,9 +26,10 @@ The [schedule](pr-schedule.md) and [plan](coverage-plan.md) define the work and 
 | Slice | State | PR / evidence |
 | --- | --- | --- |
 | CI: disable automatic package/native publication | Merged | [PR #3](https://github.com/sebastienros/OrchardCore/pull/3), merge `053b0cd2e`; all CI checks passed. |
-| P00 Inventory, plan and schedule | In review | Rebased onto merged target `053b0cd2e`; independent PR. |
-| P01 Shared-content/discovery baseline | In progress | Existing smokes verified; GraphQL isolation fix and CLI/MCP feature matrix verified locally. |
-| P02 Layer definitions/conditions | Planned | B01. |
+| P00 Inventory, plan and schedule | In review | [PR #4](https://github.com/sebastienros/OrchardCore/pull/4), rebased onto merged target `6332bce93`. |
+| P01 Shared-content/discovery baseline | Merged | [PR #5](https://github.com/sebastienros/OrchardCore/pull/5), merge `6332bce93`; all CI checks passed. See [baseline evidence](baseline.md). |
+| B03 Explicit-null content updates | In review | [PR #6](https://github.com/sebastienros/OrchardCore/pull/6); failing-before/passing-after integration and live CLI checks. |
+| P02 Layer definitions/conditions | In progress | B01; branch starts at merged baseline `6332bce93`. |
 | P03 Shortcode templates | Planned | B02. |
 | P04 Shape placements | Planned | B02. |
 | P05 Widget placement | Planned | After P02 merges. |
