@@ -35,6 +35,7 @@ working directory. Load only the specialist and references needed next.
 | Upload images, CSS, and other allowed assets | [Media](../skills/orchardcore-cli-media/SKILL.md) |
 | Build Liquid shapes and page presentation | [Templates](../skills/orchardcore-cli-templates/SKILL.md) |
 | Manage named Liquid shortcode snippets | [Shortcode templates](../skills/orchardcore-cli-templates/SKILL.md#shortcode-templates) |
+| Manage shape placement, filters and ordering | [Shape placements](../skills/orchardcore-cli-templates/SKILL.md#shape-placements) |
 | Configure conditional layers and verify widget visibility | [Conditional layers](../skills/orchardcore-cli-templates/SKILL.md#conditional-layers) |
 | Choose an installed theme | [Themes](../skills/orchardcore-cli-themes/SKILL.md) |
 | Build navigation | [Menus](../skills/orchardcore-cli-menus/SKILL.md) |

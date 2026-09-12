@@ -1,6 +1,6 @@
 ---
 name: orchardcore-cli-templates
-description: Creates and manages Orchard Core custom Liquid templates, shortcode templates and conditional layers through `pomi`. Use for content, summary, widget, field, and layout shape overrides; layer definitions and visibility rules; rendering content models; registering CSS/media; and validating output for remotely managed tenants.
+description: Creates and manages Orchard Core custom Liquid templates, shortcode templates, shape placements and conditional layers through `pomi`. Use for content, summary, widget, field, and layout shape overrides; layer definitions and visibility rules; rendering content models; registering CSS/media; and validating output for remotely managed tenants.
 ---
 
 # Pomi CLI Templates
@@ -142,6 +142,49 @@ body name must match the update argument. Deletion preserves content and can rev
 code-defined provider with the same name. Verify representative rendered pages after changes;
 CLI or MCP success alone does not prove the shortcode produces the intended HTML.
 
+## Shape placements
+
+Use `OrchardCore.Placements` to control where an existing shape renders, which alternate/wrapper
+it uses, or whether it is hidden. Inspect the actual shape and differentiator first; a content
+part type is not always its rendered shape name.
+
+```bash
+pomi features enable OrchardCore.Placements
+pomi api refresh --force
+pomi placements --help
+pomi placements schema --operation create
+pomi placements filters
+pomi placements list
+pomi placements show HtmlBodyPart --output json
+```
+
+Save a complete definition to a file, for example:
+
+```json
+{
+  "shapeType": "HtmlBodyPart",
+  "nodes": [{"place":"-","displayType":"Detail","contentType":"Article","path":"~/private*"}]
+}
+```
+
+```bash
+pomi placements validate --body-file placement.json
+pomi placements create --body-file placement.json
+pomi placements update HtmlBodyPart --body-file placement.json
+pomi placements delete HtmlBodyPart --force
+```
+
+Use only filter keys returned by the tenant. Rule order matters: later matching location/shape
+values replace earlier ones, while alternates/wrappers accumulate. Create retries accept equivalent
+rules; a different existing definition conflicts. Update replaces the complete ordered array;
+`nodes: []` removes the override. The body shape type must match the update argument.
+
+Read existing overrides before editing and preserve unrelated rules. Verify both matching and
+nonmatching pages after changes, including shape wrappers when editing admin placement. Removing
+an override exposes theme/module placement again. Database storage is the default; enabling
+`OrchardCore.Placements.FileStorage` selects a separate tenant file document, without migrating
+existing rules. The API never edits theme/module `placement.json` files.
+
 ## Conditional layers
 
 Use `OrchardCore.Layers` for rules that control the visibility of widgets placed
@@ -249,6 +292,7 @@ URLs, missing shapes, stylesheet requests, and responsive behavior. Require:
 - layout works at approximately 375px, 768px, and 1440px viewport widths.
 
 Versioned references (live tenant schemas take precedence):
+[Placements API](https://github.com/sebastienros/OrchardCore/blob/48e9565ed0507eca9891c249fe6bdbd95ecb9c3a/src/docs/reference/api/placements/README.md),
 [Shortcode templates API](https://github.com/sebastienros/OrchardCore/blob/b52b013b456dac853ff9a41f3fa23e2036a39c30/src/docs/reference/api/shortcode-templates/README.md),
 [Layers API](https://github.com/sebastienros/OrchardCore/blob/7f72e464016c79f39c108f9c746ab716bff9137b/src/docs/reference/api/layers/README.md),
 [templates API](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/api/templates/README.md),
