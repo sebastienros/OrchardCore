@@ -73,3 +73,21 @@ Real tenant scopes verify persistence, isolation from a second tenant, preservat
 of the obsolete provider property without exposing it in readback, section removal
 when Search is disabled, and retained settings after re-enabling Search. Frontend
 runtime, Pomi/MCP, package/docs and full-suite validation remain.
+
+## Live workflow verification
+
+The committed runtime at `f70b3ed3c` passes HTTP, Pomi and MCP partial updates,
+equivalent retries and atomic validation against a fresh tenant. A temporary real
+Lucene index is selected as the default. An authenticated browser session verifies
+that `/search` renders the configured title and placeholder without an explicit
+index in the URL; an anonymous visitor is still challenged for authentication.
+The same run verifies permission denials, null clearing, persistence across Search
+disable/re-enable and MCP access with the CLI feature disabled. Temporary resources
+and original settings are restored by the smoke script.
+
+The first login helper followed the blank fixture's missing homepage after login.
+Setting an explicit return URL to `/search` corrected that test setup without
+production changes. Pomi package 0.10.26 documents the workflow; the inventory moves
+Search from M to D (D26/P24/A1/M28/S36/I70/X3, 188 total). The number of modules
+contributing direct WithCliCommand metadata remains unchanged because this adapter
+uses the existing common settings operations.
