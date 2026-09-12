@@ -1,6 +1,11 @@
-name: Remote management CLI and packages
+name: Remote management CI and optional packages
 on:
   workflow_dispatch:
+    inputs:
+      publish_packages:
+        description: Build native binaries and publish the complete package set to Feedz
+        type: boolean
+        default: false
   push:
     branches: ['**']
   pull_request:
@@ -10,12 +15,29 @@ permissions:
 env:
   FEEDZ_SOURCE: https://f.feedz.io/sebastienros/orchardcore/nuget/index.json
 concurrency:
-  # Every pushed commit gets a release; only superseded PR builds are cancelled.
-  group: remote-cli-${{ github.event_name }}-${{ github.event.pull_request.number || github.sha }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  # Superseded checks can stop; an explicitly requested publication runs to completion.
+  group: remote-cli-${{ github.event_name }}-${{ inputs.publish_packages && github.run_id || github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ !inputs.publish_packages }}
 jobs:
+  checks:
+    # PR - CI builds the solution and runs these suites on Linux and Windows for PRs.
+    if: github.repository == 'sebastienros/OrchardCore' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-dotnet
+      - name: Build with analyzers
+        run: dotnet build OrchardCore.slnx -c Release -p:TreatWarningsAsErrors=true --warnaserror -p:RunAnalyzers=true -p:NuGetAudit=false
+      - name: Server tests
+        run: dotnet test --project test/OrchardCore.Tests -c Release --no-build
+      - name: CLI tests
+        run: dotnet test --project test/OrchardCore.Cli.Tests -c Release --no-build
+      - name: Remote management authentication and MCP tests
+        run: dotnet test --project test/OrchardCore.RemoteManagement.Tests -c Release --no-build
+
   version:
-    if: github.repository == 'sebastienros/OrchardCore'
+    if: github.repository == 'sebastienros/OrchardCore' && github.event_name == 'workflow_dispatch' && inputs.publish_packages
     runs-on: ubuntu-24.04
     outputs:
       package_version: ${{ steps.version.outputs.package_version }}
@@ -36,7 +58,7 @@ jobs:
 
   packages:
     needs: version
-    if: github.event_name != 'pull_request'
+    if: github.repository == 'sebastienros/OrchardCore' && github.event_name == 'workflow_dispatch' && inputs.publish_packages
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     env:
@@ -74,8 +96,8 @@ jobs:
     needs: version
     env:
       CLI_PACKAGE_VERSION: ${{ needs.version.outputs.package_version }}
-    # Keep builds and downloadable artifacts in the authorized fork.
-    if: github.repository == 'sebastienros/OrchardCore'
+    # Native builds and downloadable artifacts are manual opt-in only.
+    if: github.repository == 'sebastienros/OrchardCore' && github.event_name == 'workflow_dispatch' && inputs.publish_packages
     strategy:
       fail-fast: false
       matrix:
@@ -180,9 +202,9 @@ jobs:
           "@ | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
 
   publish:
-    needs: [version, packages, native]
+    needs: [checks, version, packages, native]
     # Never expose the publishing secret to PR runs or publish from upstream.
-    if: github.repository == 'sebastienros/OrchardCore' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    if: github.repository == 'sebastienros/OrchardCore' && github.event_name == 'workflow_dispatch' && inputs.publish_packages
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
