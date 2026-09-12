@@ -215,6 +215,7 @@ nav:
           - Content:
               - Content definitions: reference/api/content-definitions/README.md
               - Content items: reference/api/content-items/README.md
+              - Content localizations: reference/api/content-localizations/README.md
               - Media: reference/api/media/README.md
               - Placements: reference/api/placements/README.md
               - Queries: reference/api/queries/README.md

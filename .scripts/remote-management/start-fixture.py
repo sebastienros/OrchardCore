@@ -44,6 +44,9 @@ recipe["steps"] += [
 for suffix, permissions in [
     ("graphql-reader", ["ExecuteGraphQL"]),
     ("layers", ["ManageLayers"]),
+    ("content-localizer", ["LocalizeContent", "EditContent", "ViewContent", "PreviewContent"]),
+    ("content-localizer-no-edit", ["LocalizeContent", "ViewContent", "PreviewContent"]),
+    ("content-reader", ["ViewContent"]),
     ("widgets", ["ManageLayers", "EditContent", "PublishContent", "ViewContent", "PreviewContent"]),
     ("widgets-editor", ["ManageLayers", "EditContent", "ViewContent", "PreviewContent"]),
     ("shortcodes", ["ManageShortcodeTemplates"]),
