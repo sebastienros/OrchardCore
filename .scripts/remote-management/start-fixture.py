@@ -46,6 +46,7 @@ for suffix, permissions in [
     ("layers", ["ManageLayers"]),
     ("openid-applications", ["ManageApplications"]),
     ("openid-scopes", ["ManageScopes"]),
+    ("home-route", ["SetHomeRoute"]),
     ("culture-picker", ["ManageContentCulturePicker"]),
     ("content-localizer", ["LocalizeContent", "EditContent", "ViewContent", "PreviewContent"]),
     ("content-localizer-no-edit", ["LocalizeContent", "ViewContent", "PreviewContent"]),

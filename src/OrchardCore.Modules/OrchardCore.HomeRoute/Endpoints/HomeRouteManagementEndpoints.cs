@@ -43,7 +43,7 @@ internal static class HomeRouteManagementEndpoints
         string contentItemId,
         [FromServices] IAuthorizationService authorizationService,
         [FromServices] IContentManager contentManager,
-        [FromServices] ISiteService siteService)
+        [FromServices] IHomeRouteService homeRouteService)
     {
         if (!await authorizationService.AuthorizeAsync(httpContext.User, Permissions.SetHomeRoute))
         {
@@ -59,22 +59,14 @@ internal static class HomeRouteManagementEndpoints
                 statusCode: StatusCodes.Status404NotFound);
         }
 
-        var site = await siteService.LoadSiteSettingsAsync();
-        var existingContentItemId = site.HomeRoute?["ContentItemId"]?.ToString();
-        if (!string.Equals(existingContentItemId, contentItem.ContentItemId, StringComparison.Ordinal) ||
-            !string.Equals(site.HomeRoute?["Area"]?.ToString(), "OrchardCore.Contents", StringComparison.Ordinal) ||
-            !string.Equals(site.HomeRoute?["Controller"]?.ToString(), "Item", StringComparison.Ordinal) ||
-            !string.Equals(site.HomeRoute?["Action"]?.ToString(), "Display", StringComparison.Ordinal))
+        await homeRouteService.UpdateAsync(route =>
         {
-            site.HomeRoute = new RouteValueDictionary
-            {
-                ["Area"] = "OrchardCore.Contents",
-                ["Controller"] = "Item",
-                ["Action"] = "Display",
-                ["ContentItemId"] = contentItem.ContentItemId,
-            };
-            await siteService.UpdateSiteSettingsAsync(site);
-        }
+            route.Clear();
+            route["Area"] = "OrchardCore.Contents";
+            route["Controller"] = "Item";
+            route["Action"] = "Display";
+            route["ContentItemId"] = contentItem.ContentItemId;
+        });
 
         return TypedResults.Ok(new HomeRouteResponse
         {

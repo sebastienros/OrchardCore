@@ -32,6 +32,7 @@ python3 .scripts/remote-management/tenant-install-smoke.py <fixture.json>
 python3 .scripts/remote-management/graphql-smoke.py <fixture.json>
 python3 .scripts/remote-management/catalog-smoke.py <fixture.json>
 python3 .scripts/remote-management/openid-discovery-smoke.py <fixture.json>
+python3 .scripts/remote-management/home-route-smoke.py <fixture.json>
 python3 .scripts/remote-management/layers-smoke.py <fixture.json>
 python3 .scripts/remote-management/widgets-smoke.py <fixture.json>
 python3 .scripts/remote-management/shortcodes-smoke.py <fixture.json>
@@ -499,3 +500,9 @@ management principals, explicit response fields, missing resources, invalid pagi
 HTTP/Pomi/MCP equivalence, unique catalogs, and MCP with CLI disabled. The test suite
 also verifies that the OpenID Management feature controls endpoint registration
 without requiring the authorization-server feature.
+
+`home-route-smoke.py` exercises the existing `settings set-home-content` command
+with a restricted `SetHomeRoute` application. It verifies denied access, missing
+content, retries, public rendering, preserved unpublished drafts, unique discovery
+and MCP operation with the CLI feature disabled. Synthetic content remains in the
+disposable tenant. Culture-picker verification uses this same homepage command.
