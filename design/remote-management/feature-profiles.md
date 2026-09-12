@@ -98,3 +98,6 @@ production behavior was correct and the completed probe passed after that test f
 
 The resource smoke also passes against the fresh integrated fixture after the child
 runtime probe. Local verification is complete; independent PR review/CI remain.
+
+[PR #23](https://github.com/sebastienros/OrchardCore/pull/23) is open against the merged
+campaign target. Required CI must pass before merge.
