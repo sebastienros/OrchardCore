@@ -103,6 +103,26 @@ public class IndexMetadataUpdateTests
         store.Verify(value => value.UpdateAsync(It.IsAny<IndexProfile>()), Times.Never);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Update_QueryFieldsReplaceInsteadOfAppend_AndLegacyVersionIsPreserved(bool clear)
+    {
+        using var services = new ServiceCollection().BuildServiceProvider();
+        var profile = CreateProfile();
+        profile.Put(new LuceneIndexDefaultQueryMetadata { DefaultSearchFields = ["OldField", "OtherField"] });
+        var manager = CreateManager(Mock.Of<IIndexProfileStore>(), services);
+        var fields = clear ? new JsonArray() : new JsonArray("Title");
+        var data = new JsonObject { ["DefaultSearchFields"] = fields, ["DefaultVersion"] = "LUCENE_30" };
+
+        await manager.UpdateAsync(profile, data);
+        await manager.UpdateAsync(profile, data);
+
+        Assert.True(profile.TryGet<LuceneIndexDefaultQueryMetadata>(out var query));
+        Assert.Equal(clear ? [] : new[] { "Title" }, query.DefaultSearchFields);
+        Assert.Equal("LUCENE_30", query.DefaultVersion.ToString());
+    }
+
     private static ContentIndexMetadata ContentMetadata(IndexProfile profile)
     {
         Assert.True(profile.TryGet<ContentIndexMetadata>(out var metadata));

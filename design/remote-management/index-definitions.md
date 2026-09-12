@@ -118,3 +118,33 @@ endpoints and full slice validation remain; this is an implementation checkpoint
 
 Coordinator checkpoint `9d66ee241`: full server suite passes with 3,309 passed and
 one CI-only skip; strict documentation validation passes. No index PR is open yet.
+
+## Typed Lucene definition checkpoint
+
+The Lucene/content feature combination registers indexes-lucene, with show/create/
+update/delete/analyzer discovery endpoints, explicit public DTOs and API authentication
+plus AccessRemoteManagement/ManageIndexes checks. Provider names remain immutable;
+equivalent create/update retries avoid mutation. Creation/deletion use the shared
+coordinator, and top-level metadata updates use the shared profile handlers.
+
+A live HTTP/Pomi/MCP run found default search fields being concatenated by generic
+Properties merging. The Lucene handler now replaces incoming top-level query fields,
+including clearing and repeated updates. The first full suite also exposed the shipped
+Blog recipe's LUCENE_30 compatibility version; validation now preserves defined legacy
+versions, with a dedicated regression. The complete server suite then passed 3,332
+with one CI-only skip, and the strict full solution build passed zero warnings/errors.
+CLI 295 and MCP/authentication 78 tests pass. Live CRUD reached deletion and identified
+missing CLI confirmation metadata. After correction, the live HTTP/Pomi/MCP workflow
+passes, including create/show/update/delete, retries, invalid writes, anonymous/restricted
+permissions, and MCP access while the CLI feature is disabled.
+
+Shared filename validation covers both definitions and direct Lucene filesystem access.
+A real temporary-directory regression verifies a stored ../outside path cannot remove
+a sibling directory. Unknown indexing/query analyzers and duplicate provider names
+are rejected by a handler used by existing admin and recipe validation.
+
+Remaining before the PR: actual indexed content and
+named-query verification (including content updates), feature lifecycle/cross-tenant
+checks, finish the legacy recipe/editor caller audit, verify handler failures cannot
+produce misleading mutation success, update Pomi skills/inventory and run final checks.
+No claim of durable synchronization completion or later provider/lifecycle delivery.

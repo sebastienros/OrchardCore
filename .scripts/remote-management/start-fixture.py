@@ -55,6 +55,7 @@ for suffix, permissions in [
     ("content-reader", ["ViewContent"]),
     ("widgets", ["ManageLayers", "EditContent", "PublishContent", "ViewContent", "PreviewContent"]),
     ("widgets-editor", ["ManageLayers", "EditContent", "ViewContent", "PreviewContent"]),
+    ("indexes", ["ManageIndexes"]),
     ("shortcodes", ["ManageShortcodeTemplates"]),
     ("https", ["ManageHttps"]),
     ("url-rewriting", ["ManageUrlRewritingRules"]),

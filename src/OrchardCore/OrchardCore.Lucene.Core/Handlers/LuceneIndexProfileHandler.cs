@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using Lucene.Net.Util;
 using OrchardCore.ContentManagement;
 using OrchardCore.Entities;
 using OrchardCore.Indexing.Core.Handlers;
@@ -40,6 +41,26 @@ public sealed class LuceneIndexProfileHandler : IndexProfileHandlerBase
         }
 
         index.Put(LuceneMetadata);
+
+        var query = index.GetOrCreate<LuceneIndexDefaultQueryMetadata>();
+        if (data[nameof(query.QueryAnalyzerName)] is { } queryAnalyzer)
+        {
+            query.QueryAnalyzerName = queryAnalyzer.GetValue<string>();
+        }
+        if (data[nameof(query.AllowLuceneQueries)] is { } allowQueries)
+        {
+            query.AllowLuceneQueries = allowQueries.GetValue<bool>();
+        }
+        if (data[nameof(query.DefaultVersion)] is { } version)
+        {
+            query.DefaultVersion = version.ToObject<LuceneVersion>();
+        }
+        if (data[nameof(query.DefaultSearchFields)] is JsonArray fields)
+        {
+            // Definition updates replace selected fields; generic property merging appends arrays.
+            query.DefaultSearchFields = fields.Select(field => field.GetValue<string>()).ToArray();
+        }
+        index.Put(query);
 
         return Task.CompletedTask;
     }
