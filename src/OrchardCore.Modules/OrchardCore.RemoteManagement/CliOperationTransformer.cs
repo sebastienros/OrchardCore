@@ -83,6 +83,11 @@ internal sealed class CliOperationTransformer : IOpenApiOperationTransformer
                 .ToArray());
         }
 
+        if (metadata.FileResponse)
+        {
+            extension["fileResponse"] = true;
+        }
+
         if (metadata.SecretResponse)
         {
             extension["secretResponse"] = true;

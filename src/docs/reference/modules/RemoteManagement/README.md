@@ -536,6 +536,12 @@ endpoints.MapGet("/api/example/widgets", ListWidgetsAsync)
 
 The Remote Management OpenAPI transformer emits this metadata as `x-oc-cli`. Use `Arguments` for positional ordering, `InputMode` for complex bodies, `DefaultJsonBody` when a command should send a default body if none is supplied, `RequiresConfirmation` for destructive operations, aliases for compatibility, and `TableColumns` for optional table output.
 
+Set `FileResponse = true` for responses that Pomi must stream to disk. The transformer
+emits `fileResponse: true`; Pomi requires `--output-file` and reserves a new private
+file before sending the request. Existing files are never overwritten and failed
+transfers remove incomplete output. File-response operations are excluded from MCP
+tool discovery, including JSON files that must retain their original bytes.
+
 Set `SecretResponse = true` for a JSON response containing one-time credentials.
 The transformer emits `secretResponse: true`, and Pomi requires
 `--secret-output-file <new-path>`. It reserves an owner-only file before sending

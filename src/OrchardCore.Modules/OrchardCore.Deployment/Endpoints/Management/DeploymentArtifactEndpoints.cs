@@ -32,8 +32,12 @@ internal static class DeploymentArtifactEndpoints
             .Produces<DeploymentArtifactResponse>();
         Configure(routes.MapDelete("api/deployment/artifacts/{id}", DeleteAsync), "ApiDeleteDeploymentArtifact", "delete")
             .Produces<DeploymentArtifactDeleteResponse>().ProducesProblem(409);
-        // Binary download becomes a Pomi command when explicit file-output support is available.
         Secure(routes.MapGet("api/deployment/artifacts/{id}/content", DownloadAsync), "ApiDownloadDeploymentArtifact")
+            .WithCliCommand(new CliOperationMetadata(["deployment", "artifacts"], "download")
+            {
+                Capability = "deployment-plans", FileResponse = true,
+                Arguments = { new CliArgumentMetadata("id", 0) },
+            })
             .Produces(200, contentType: "application/zip").Produces(200, contentType: "application/json");
     }
 

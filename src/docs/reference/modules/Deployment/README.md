@@ -247,8 +247,10 @@ options are separate from package extraction limits in `DeploymentPackageOptions
 Artifact metadata is available from `GET api/deployment/artifacts/{id}` and deletion
 from `DELETE api/deployment/artifacts/{id}`, projected as `pomi deployment artifacts
 show` and `delete`. Authenticated bytes are served by
-`GET api/deployment/artifacts/{id}/content`. Binary download is not yet a Pomi
-command and is not exposed as an MCP tool.
+`GET api/deployment/artifacts/{id}/content`, projected as
+`pomi deployment artifacts download <id> --output-file ./package.zip`. The output
+file must not already exist. Download streams the original bytes to a private file
+and removes an incomplete download on failure. It is not exposed as an MCP tool.
 
 Artifact access requires `AccessRemoteManagement`, the artifact's Export or Import
 permission, and the same tenant, issuer, entity kind and subject that created it.
