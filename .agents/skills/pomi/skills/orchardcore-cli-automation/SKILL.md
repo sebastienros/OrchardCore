@@ -362,6 +362,13 @@ only on the destination. For Media, select existing relative media paths with `/
 separators. Enabling `includeAll` clears individual selections for definition and
 media exports. Use the live schema for exact property names and supported types.
 
+For query-based content export, use `QueryBasedContentDeploymentStep` with an
+existing content-returning `queryName`. `queryParameters` is an optional string
+containing a JSON object; JSON null clears it, while the string `"null"` is invalid
+configuration. `exportAsSetupRecipe` enables the existing source's setup identity
+rewriting. Create the query first, configure the step, then export the plan through
+the artifact/operation workflow below. Invalid patches leave the step unchanged.
+
 Ordering takes `{"stepIds":["readme","metadata"]}` with every existing ID exactly
 once. Unsupported factories are discoverable with `canConfigure:false`; do not
 invent schemas or serialize arbitrary CLR properties. Disabled-feature steps retain
