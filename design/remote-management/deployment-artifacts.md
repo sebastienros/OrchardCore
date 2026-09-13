@@ -102,3 +102,16 @@ and errors; strict documentation build also passes. Actual controller transport
 checks, full integration and the artifact/operation gates above remain before
 release. This checkpoint extracts existing archive mechanics and introduces no
 remote artifact management API yet.
+
+## Existing export controller verification
+
+All six archive/controller tests pass with a strict zero-warning/error build.
+The actual local admin action streams a ZIP through MVC, preserves recipe metadata
+and nested file bytes, and disposes its archive stream. Denied authorization stops
+before plan access or archive generation. The existing remote action is exercised
+with an in-memory HTTP handler: it sends the ZIP multipart part with its existing
+empty recipe metadata and closes the archive after successful delivery and after a
+simulated send exception. No external remote target is contacted by these tests.
+
+Private artifact storage, input validation/limits, operation persistence/workers,
+HTTP/Pomi download transport and cross-tenant export/import remain to implement.
