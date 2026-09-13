@@ -75,5 +75,6 @@ public class DeploymentStartup : StartupBase
     public override void ConfigureServices(IServiceCollection services)
     {
         services.AddDeployment<QueryBasedContentDeploymentSource, QueryBasedContentDeploymentStep, QueryBasedContentDeploymentStepDriver>();
+        services.AddScoped<IDeploymentStepDefinition, QueryBasedContentStepDefinition>();
     }
 }
