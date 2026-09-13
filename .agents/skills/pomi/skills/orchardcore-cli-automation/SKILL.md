@@ -1,6 +1,6 @@
 ---
 name: orchardcore-cli-automation
-description: Manages Orchard Core features, tenant feature profiles, recipes, queries, Lucene index definitions, workflows, users, roles, and OpenID applications, scopes and shared-secret credentials through `pomi`. Use for enabling module capabilities, executing recipes, defining/executing SQL or other queries, managing workflow types and instances, and provisioning tenant-local security principals and permissions.
+description: Manages Orchard Core features, tenant feature profiles, deployment plans and steps, recipes, queries, Lucene index definitions, workflows, users, roles, and OpenID applications, scopes and shared-secret credentials through `pomi`. Use for enabling module capabilities, executing recipes, defining/executing SQL or other queries, managing workflow types and instances, and provisioning tenant-local security principals and permissions.
 ---
 
 # Pomi CLI Automation
@@ -314,3 +314,46 @@ Versioned API references (live tenant schemas take precedence):
 - [Roles](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/api/roles/README.md)
 
 - [OpenID management](https://github.com/sebastienros/OrchardCore/blob/80579b862fb369b8366fe220ab2b6f4df80300fa/src/docs/reference/api/openid/README.md)
+
+## Deployment plans and steps
+
+Requires `OrchardCore.Deployment`, `AccessRemoteManagement` and
+`ManageDeploymentPlan` in the selected tenant. Refresh OpenAPI after enabling
+features. This manages persisted plans; exporting or importing artifacts is a
+separate workflow and is not provided by these commands.
+
+```bash
+pomi deployment plans list --search Release --take 50
+pomi deployment plans create --body-file plan.json
+pomi deployment plans show 42
+pomi deployment plans update 42 --body-file plan.json
+pomi deployment step-types list
+pomi deployment step-types schema CustomFileDeploymentStep
+pomi deployment plans steps list 42
+pomi deployment plans steps add 42 --body-file step.json
+pomi deployment plans steps show 42 readme
+pomi deployment plans steps update 42 readme --body-file patch.json
+pomi deployment plans steps order 42 --body-file order.json
+pomi deployment plans steps delete 42 readme --force
+pomi deployment plans delete 42 --force
+```
+
+Plan create/update bodies contain `name`. Use the returned numeric `plan.id` in
+subsequent commands; equivalent creates retain existing steps. Step creation takes
+`id`, `type` and `values`, for example:
+
+```json
+{"id":"readme","type":"CustomFileDeploymentStep","values":{"fileName":"readme.txt","fileContent":"Release notes"}}
+```
+
+Reuse the same step ID and values for a retry; conflicting values under an existing
+ID return conflict. Updates contain only `values`; omitted properties are retained.
+Read the live type schema before choosing fields or clearing values. Custom file
+contents and embedded recipe JSON are write-only and absent from readback: omission
+is not evidence they are empty. Paths must be relative package paths without
+traversal; `Recipe.json` is reserved.
+
+Ordering takes `{"stepIds":["readme","metadata"]}` with every existing ID exactly
+once. Unsupported factories are discoverable with `canConfigure:false`; do not
+invent schemas or serialize arbitrary CLR properties. Disabled-feature steps retain
+their stored configuration and identity. Plan/step deletion is repeatable.

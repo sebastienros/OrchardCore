@@ -53,17 +53,17 @@ The categories are mutually exclusive planning classifications, not percentages 
 | Code | Classification | Feature count |
 | --- | --- | ---: |
 | D | Direct management OpenAPI and Pomi commands exist | 26 |
-| P | Partial: important operations missing, or only helper/protocol/shared coverage | 24 |
+| P | Partial: important operations missing, or only helper/protocol/shared coverage | 25 |
 | A | Management OpenAPI exists; Pomi projection intentionally absent | 1 |
-| M | Dedicated management API and corresponding commands missing | 28 |
-| S | Shared API/commands or a built-in CLI workflow; validate the stated limits | 36 |
+| M | Dedicated management API and corresponding commands missing | 26 |
+| S | Shared API/commands or a built-in CLI workflow; validate the stated limits | 37 |
 | I | Infrastructure, rendering, protocol, provider or alias; no separate API proposed by default | 70 |
 | X | Sample; excluded from delivery priorities | 3 |
 
-There are **28 features with neither dedicated management APIs nor commands**, and **24 with
-partial coverage requiring a scope decision**. These are not 52 independent implementation tasks:
-the plan consolidates them into shared workflows. Another 36 features reuse existing transports
-or built-in commands. Twenty-four production modules contribute direct `WithCliCommand` operation
+There are **26 features with neither dedicated management APIs nor commands**, and **25 with
+partial coverage requiring a scope decision**. These are not 51 independent implementation tasks:
+the plan consolidates them into shared workflows. Another 37 features reuse existing transports
+or built-in commands. Twenty-five production modules contribute direct `WithCliCommand` operation
 registrations; this does not imply all features in those modules are covered.
 
 ## Important operation-level distinctions
@@ -79,7 +79,7 @@ registrations; this does not imply all features in those modules are covered.
 | Notifications | Mark-as-read AJAX endpoint | Still requires a management contract and principal semantics (B12). URL rewriting now has dedicated bearer management operations alongside its admin sorting helper. | [Notification helper](../../src/OrchardCore.Modules/OrchardCore.Notifications/Endpoints/Management/MarkAsReadEndpoints.cs), [rewrite management](../../src/OrchardCore.Modules/OrchardCore.UrlRewriting/Endpoints/Management/RewriteManagementEndpoints.cs) |
 | GraphQL | Built-in Pomi query/introspection commands | No OpenAPI projection is needed for the existing protocol workflow. | [CLI transport](../../src/OrchardCore.Cli/CliApplication.GraphQL.cs) |
 | Media | File/folder CRUD, metadata, constraints, labels and Tus upload-info | Profiles/cache/configuration and a complete resumable-transfer workflow are separate gaps (B09). | [API endpoints](../../src/OrchardCore.Modules/OrchardCore.Media/Endpoints/Api), [Tus registration](../../src/OrchardCore.Modules/OrchardCore.Media/Startup.cs) |
-| Deployment | Admin plans/steps/export/import plus a private API-key remote-import protocol | Recipe execution does not replace these management contracts (B08). | [Deployment controllers](../../src/OrchardCore.Modules/OrchardCore.Deployment/Controllers), [remote import](../../src/OrchardCore.Modules/OrchardCore.Deployment.Remote/Controllers/ImportRemoteInstanceController.cs) |
+| Deployment | Shared plan/step management APIs and commands; existing artifact and private API-key import paths | Export artifacts/import execution and remaining step adapters need separate B08 contracts. | [Deployment controllers](../../src/OrchardCore.Modules/OrchardCore.Deployment/Controllers), [remote import](../../src/OrchardCore.Modules/OrchardCore.Deployment.Remote/Controllers/ImportRemoteInstanceController.cs) |
 
 ## Complete feature ledger
 
@@ -125,6 +125,7 @@ Backlog IDs refer to [the delivery plan](coverage-plan.md#work-packages).
 
 | Module / feature ID | OpenAPI or HTTP surface | Existing Pomi coverage | Scope, gap and next action | Plan |
 | --- | --- | --- | --- | --- |
+| [Deployment](../../src/OrchardCore.Modules/OrchardCore.Deployment/Manifest.cs) / `OrchardCore.Deployment` | Plan/step CRUD, ordering and explicit factory schemas | `deployment plans`, `deployment plans steps`, `deployment step-types` | Shared admin/recipe services, typed configuration, identities and live transports verified. Export artifacts/import execution and additional factory adapters remain B08 work. | B08 |
 | [Deployment.Remote](../../src/OrchardCore.Modules/OrchardCore.Deployment.Remote/Manifest.cs) / `OrchardCore.Deployment.Remote` | Private API-key import protocol | None | Remote clients/instances/targets remain admin-only; existing import authentication is not the shared OAuth management contract. | B08 |
 | [Elasticsearch](../../src/OrchardCore.Modules/OrchardCore.Elasticsearch/Manifest.cs) / `OrchardCore.Elasticsearch` | Content/documents query API | Shared `queries` | Direct query endpoints lack CLI metadata; named-query execution is shared. Index lifecycle remains missing; avoid duplicating query transports. | B07 |
 | [Facebook](../../src/OrchardCore.Modules/OrchardCore.Facebook/Manifest.cs) / `OrchardCore.Facebook` | SDK helper; no management contract | None | Provider/widget/pixel settings are not managed through OpenAPI/Pomi. Authentication callbacks are not administration APIs. | B12 |
@@ -166,9 +167,7 @@ Backlog IDs refer to [the delivery plan](coverage-plan.md#work-packages).
 | [BackgroundTasks](../../src/OrchardCore.Modules/OrchardCore.BackgroundTasks/Manifest.cs) / `OrchardCore.BackgroundTasks` | No dedicated management API | None | Task listing, schedule/configuration and enable/disable are admin-only. Decide whether run-now has a supported service contract. | B11 |
 | [Contents](../../src/OrchardCore.Modules/OrchardCore.Contents/Manifest.cs) / `OrchardCore.Contents.VersionPruning` | No dedicated management API | None | Version list/delete exists in base Contents, but automated pruning policy/settings lack management. | B11 |
 | [Contents](../../src/OrchardCore.Modules/OrchardCore.Contents/Manifest.cs) / `OrchardCore.Contents.Deployment.ExportContentToDeploymentTarget` | No dedicated management API | None | Admin export/add-to-plan/download action; define shared deployment operations and artifact handling. | B08 |
-| [Contents](../../src/OrchardCore.Modules/OrchardCore.Contents/Manifest.cs) / `OrchardCore.Contents.Deployment.AddToDeploymentPlan` | No dedicated management API | None | Admin export/add-to-plan/download action; define shared deployment operations and artifact handling. | B08 |
 | [Contents](../../src/OrchardCore.Modules/OrchardCore.Contents/Manifest.cs) / `OrchardCore.Contents.Deployment.Download` | No dedicated management API | None | Admin export/add-to-plan/download action; define shared deployment operations and artifact handling. | B08 |
-| [Deployment](../../src/OrchardCore.Modules/OrchardCore.Deployment/Manifest.cs) / `OrchardCore.Deployment` | No dedicated management API | None | Plan/step CRUD, step schemas, export artifacts and import execution lack a management contract. Existing recipe execution does not cover plan editing or arbitrary archive import. | B08 |
 | [Email](../../src/OrchardCore.Modules/OrchardCore.Email/Manifest.cs) / `OrchardCore.Email` | No dedicated management API | None | Delivery configuration and test-send are admin-only; define redacted settings and bounded delivery checks. | B12 |
 | [Email.Smtp](../../src/OrchardCore.Modules/OrchardCore.Email.Smtp/Manifest.cs) / `OrchardCore.Email.Smtp` | No dedicated management API | None | Tenant SMTP settings need an explicit redacted read/write contract; core settings commands do not cover them. | B12 |
 | [Facebook](../../src/OrchardCore.Modules/OrchardCore.Facebook/Manifest.cs) / `OrchardCore.Facebook.Login` | No dedicated management API | None | External-login configuration lacks a management contract; OAuth callbacks and the core SDK helper do not administer it. | B12 |
@@ -193,6 +192,7 @@ Backlog IDs refer to [the delivery plan](coverage-plan.md#work-packages).
 
 | Module / feature ID | OpenAPI or HTTP surface | Existing Pomi coverage | Scope, gap and next action | Plan |
 | --- | --- | --- | --- | --- |
+| [Contents](../../src/OrchardCore.Modules/OrchardCore.Contents/Manifest.cs) / `OrchardCore.Contents.Deployment.AddToDeploymentPlan` | Shared typed deployment step management | `deployment plans steps` | Single-content selector uses shared validation; existing single/bulk admin additions use shared persistence, with bulk authorization before mutation. | B08 |
 | [AdminDashboard](../../src/OrchardCore.Modules/OrchardCore.AdminDashboard/Manifest.cs) / `OrchardCore.AdminDashboard` | Shared content API | Shared content commands | Dashboard widgets are content. Dashboard layout/position update remains an admin action; assess shared-content parity before adding layout commands. | B13 |
 | [Alias](../../src/OrchardCore.Modules/OrchardCore.Alias/Manifest.cs) / `OrchardCore.Alias` | Shared content API | Shared content commands | AliasPart travels with content; verify alias uniqueness and definition-setting discovery. | B03 |
 | [Apis.GraphQL](../../src/OrchardCore.Modules/OrchardCore.Apis.GraphQL/Manifest.cs) / `OrchardCore.Apis.GraphQL` | GraphQL protocol; no OpenAPI projection | Built-in `graphql` | Queries and introspection already have a dedicated CLI transport. GraphQL configuration is a separate settings candidate. | B05 |

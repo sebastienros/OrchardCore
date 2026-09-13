@@ -533,3 +533,11 @@ The probe removes its synthetic profile on completion. Run
 for child provisioning without login, private administrator handoff, assignment,
 rule-order/dependency enforcement and fresh-request definition changes. It removes
 the synthetic assignment/profile and retains the disposable child in the fixture.
+
+### Deployment plans
+
+Run `python3 .scripts/remote-management/deployment-plans-smoke.py <fixture.json>`
+against the isolated loopback fixture. This checks generated Pomi plan/step
+commands, explicit schemas, retries, invalid patch preservation, HTTP permissions,
+MCP creation/ordering and cleanup. It enables Deployment and MCP in the fixture
+and removes its temporary plan on completion.
