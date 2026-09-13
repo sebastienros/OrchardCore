@@ -23,7 +23,7 @@ internal static class SitemapEndpoints
     }
 
     internal static RouteHandlerBuilder Configure(RouteHandlerBuilder builder, string operation, string verb, string summary,
-        string argument = null, bool input = false, bool sources = false)
+        string argument = null, bool input = false, bool sources = false, string secondArgument = null)
     {
         var metadata = new CliOperationMetadata(sources ? ["sitemaps", "sources"] : ["sitemaps"], verb)
         {
@@ -31,6 +31,7 @@ internal static class SitemapEndpoints
             RequiresConfirmation = verb == "delete",
         };
         if (argument is not null) { metadata.Arguments.Add(new CliArgumentMetadata(argument, 0)); }
+        if (secondArgument is not null) { metadata.Arguments.Add(new CliArgumentMetadata(secondArgument, 1)); }
         return builder.WithName(operation).WithTags("Sitemaps").WithSummary(summary).WithCliCommand(metadata).DisableAntiforgery()
             .RequireAuthorization(policy => policy.AddAuthenticationSchemes(OrchardCoreConstants.AuthenticationSchemes.Api)
                 .RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(RemoteManagementPermissions.AccessRemoteManagement),

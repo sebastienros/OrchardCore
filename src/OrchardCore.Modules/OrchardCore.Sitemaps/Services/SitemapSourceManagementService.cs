@@ -80,8 +80,8 @@ internal sealed class SitemapSourceManagementService
     {
         JsonObject configuration = source switch
         {
-            CustomPathSitemapSource custom => JsonSerializer.SerializeToNode(custom, JsonOptions).AsObject(),
-            ContentTypesSitemapSource content => JsonSerializer.SerializeToNode(content, JsonOptions).AsObject(),
+            CustomPathSitemapSource custom when source.GetType() == typeof(CustomPathSitemapSource) => JsonSerializer.SerializeToNode(custom, JsonOptions).AsObject(),
+            ContentTypesSitemapSource content when source.GetType() == typeof(ContentTypesSitemapSource) => JsonSerializer.SerializeToNode(content, JsonOptions).AsObject(),
             _ => null,
         };
         configuration?.Remove("id");

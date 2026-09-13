@@ -177,8 +177,8 @@ pomi sitemaps sources types
 pomi sitemaps sources schema CustomPathSitemapSource
 pomi sitemaps sources list <id>
 pomi sitemaps sources create <id> --stdin < source.json
-pomi sitemaps sources update <id> --source-id <sourceId> --stdin < source.json
-pomi sitemaps sources delete <id> --source-id <sourceId> --force
+pomi sitemaps sources update <id> <sourceId> --stdin < source.json
+pomi sitemaps sources delete <id> <sourceId> --force
 ```
 
 A sitemap definition contains `name`, `path`, `kind` (`Sitemap` or `SitemapIndex`),

@@ -1,3 +1,13 @@
+using System.Linq.Expressions;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using OrchardCore.DisplayManagement;
+using OrchardCore.DisplayManagement.Handlers;
+using OrchardCore.DisplayManagement.ModelBinding;
+using OrchardCore.DisplayManagement.Shapes;
+using OrchardCore.DisplayManagement.Zones;
+using OrchardCore.Sitemaps.Drivers;
+using OrchardCore.Sitemaps.ViewModels;
+using OrchardCore.Contents.Sitemaps;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Localization;
@@ -18,6 +28,33 @@ namespace OrchardCore.Tests.Apis.RemoteManagement;
 
 public class RobotsSitemapManagementTests
 {
+    [Fact]
+    public async Task ExistingSourceEditorsRejectInvalidPriorityThroughSharedValidation()
+    {
+        var updater = new Mock<IUpdateModel>();
+        updater.SetupGet(value => value.ModelState).Returns(new ModelStateDictionary());
+        updater.Setup(value => value.TryUpdateModelAsync(It.IsAny<CustomPathSitemapSourceViewModel>(), It.IsAny<string>(),
+            It.IsAny<Expression<Func<CustomPathSitemapSourceViewModel, object>>[]>()))
+            .Callback((CustomPathSitemapSourceViewModel model, string _, Expression<Func<CustomPathSitemapSourceViewModel, object>>[] _) =>
+            {
+                model.Path = "/valid";
+                model.Priority = 11;
+            }).ReturnsAsync(true);
+        var context = new UpdateEditorContext(new Shape(), "", false, "", Mock.Of<IShapeFactory>(), Mock.Of<IZoneHolding>(), updater.Object);
+        var custom = new CustomPathSitemapSourceDriver(new StringLocalizer<CustomPathSitemapSourceDriver>(new NullStringLocalizerFactory()));
+        await custom.UpdateAsync(new CustomPathSitemapSource(), context);
+        Assert.False(updater.Object.ModelState.IsValid);
+        updater.Object.ModelState.Clear();
+        updater.Setup(value => value.TryUpdateModelAsync(It.IsAny<ContentTypesSitemapSourceViewModel>(), It.IsAny<string>(),
+            It.IsAny<Expression<Func<ContentTypesSitemapSourceViewModel, object>>[]>()))
+            .Callback((ContentTypesSitemapSourceViewModel model, string _, Expression<Func<ContentTypesSitemapSourceViewModel, object>>[] _) => model.Priority = -1)
+            .ReturnsAsync(true);
+        var coordinator = new Mock<IRouteableContentTypeCoordinator>();
+        coordinator.Setup(value => value.ListRoutableTypeDefinitionsAsync()).ReturnsAsync([]);
+        await new ContentTypesSitemapSourceDriver(coordinator.Object).UpdateAsync(new ContentTypesSitemapSource(), context);
+        Assert.False(updater.Object.ModelState.IsValid);
+    }
+
     [Fact]
     public async Task RobotsSettingsChangeExistingPublicProvider_AndRetryIsUnchanged()
     {
@@ -139,6 +176,17 @@ public class RobotsSitemapManagementTests
         Assert.Equal("/old", source.Path);
         fixture.Store.Verify(value => value.UpdateAsync(It.IsAny<SitemapDocument>(), null), Times.Never);
     }
+
+    [Fact]
+    public void ThirdPartySourceExtensionsExposeIdentityOnly()
+    {
+        var response = SitemapSourceManagementService.Describe(new ExtendedCustomSource { Id = "extension", Path = "/private" });
+        Assert.False(response.Supported);
+        Assert.Equal("extension", response.Id);
+        Assert.Null(response.Configuration);
+    }
+
+    private sealed class ExtendedCustomSource : CustomPathSitemapSource;
 
     [Fact]
     public async Task ValidSourceUpdateInvalidatesExistingSitemapCacheOnlyOnce()

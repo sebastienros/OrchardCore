@@ -129,11 +129,11 @@ with tempfile.TemporaryDirectory(prefix='sitemaps-cli-', dir=state_path.parent) 
             return [node.text for node in ET.fromstring(xml).iter('{http://www.sitemaps.org/schemas/sitemap/0.9}loc')]
         assert any(url.endswith('/' + name + '-first') for url in locations(definition['path']))
         changed_source = {'type': 'CustomPathSitemapSource', 'configuration': {'path': '/' + name + '-second', 'priority': 8, 'changeFrequency': 'Weekly'}}
-        updated = pomi('sitemaps', 'sources', 'update', sitemap_id, '--source-id', source_id, body=changed_source)
-        assert pomi('sitemaps', 'sources', 'update', sitemap_id, '--source-id', source_id, body=changed_source) == updated
+        updated = pomi('sitemaps', 'sources', 'update', sitemap_id, source_id, body=changed_source)
+        assert pomi('sitemaps', 'sources', 'update', sitemap_id, source_id, body=changed_source) == updated
         assert any(url.endswith('/' + name + '-second') for url in locations(definition['path']))
         assert not any(url.endswith('/' + name + '-first') for url in locations(definition['path']))
-        pomi('sitemaps', 'sources', 'update', sitemap_id, '--source-id', source_id,
+        pomi('sitemaps', 'sources', 'update', sitemap_id, source_id,
             body={'type': 'CustomPathSitemapSource', 'configuration': {'path': '/bad path'}}, status=400)
         pomi('content', 'types', 'create', body={'name': name + 'Page', 'displayName': name + 'Page',
             'settings': {'ContentTypeSettings': {'draftable': True, 'versionable': True}},

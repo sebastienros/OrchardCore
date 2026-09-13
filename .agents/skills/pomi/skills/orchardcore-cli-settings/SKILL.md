@@ -374,7 +374,7 @@ indexes. Complete definitions contain name/path/kind/enabled/containedSitemapIds
 Indexes may contain distinct regular maps, never other indexes. Source commands
 are `sitemaps sources types/schema/list/create/update/delete`; inspect the typed
 schema before writing `type` plus complete `configuration`. Update/delete source
-commands take sitemap ID plus `--source-id`. Built-in custom-path and content-type
+commands take sitemap ID followed by source ID. Built-in custom-path and content-type
 sources are supported only when registered; other extensions expose identity.
 
 Create generates an ID: read back after an uncertain result before retrying.

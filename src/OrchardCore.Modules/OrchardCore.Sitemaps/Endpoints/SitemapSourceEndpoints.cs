@@ -17,8 +17,8 @@ internal static class SitemapSourceEndpoints
         SitemapEndpoints.Configure(routes.MapGet("api/sitemap-source-types/{type}", SchemaAsync), "ApiGetSitemapSourceSchema", "schema", "Shows the complete writable source configuration schema.", "type", sources: true).Produces<JsonObject>();
         SitemapEndpoints.Configure(routes.MapGet("api/sitemaps/{id}/sources", ListAsync), "ApiListSitemapSources", "list", "Lists sources; unknown extensions expose identity only.", "id", sources: true).Produces<SitemapSourceResponse[]>();
         SitemapEndpoints.Configure(routes.MapPost("api/sitemaps/{id}/sources", CreateAsync), "ApiCreateSitemapSource", "create", "Adds a source. Read back its server-generated ID before retrying.", "id", true, true).Produces<SitemapSourceResponse>();
-        SitemapEndpoints.Configure(routes.MapPut("api/sitemaps/{id}/sources/{sourceId}", UpdateAsync), "ApiUpdateSitemapSource", "update", "Replaces the configuration of a built-in source.", "id", true, true).Produces<SitemapSourceResponse>();
-        SitemapEndpoints.Configure(routes.MapDelete("api/sitemaps/{id}/sources/{sourceId}", DeleteAsync), "ApiDeleteSitemapSource", "delete", "Deletes a source and invalidates its sitemap cache.", "id", sources: true).Produces(204);
+        SitemapEndpoints.Configure(routes.MapPut("api/sitemaps/{id}/sources/{sourceId}", UpdateAsync), "ApiUpdateSitemapSource", "update", "Replaces the configuration of a built-in source.", "id", true, true, "sourceId").Produces<SitemapSourceResponse>();
+        SitemapEndpoints.Configure(routes.MapDelete("api/sitemaps/{id}/sources/{sourceId}", DeleteAsync), "ApiDeleteSitemapSource", "delete", "Deletes a source and invalidates its sitemap cache.", "id", sources: true, secondArgument: "sourceId").Produces(204);
     }
     internal static IResult TypesAsync([FromServices] SitemapSourceManagementService service) => TypedResults.Ok(service.Types());
     internal static IResult SchemaAsync(HttpContext context, [FromServices] SitemapSourceManagementService service, string type)
