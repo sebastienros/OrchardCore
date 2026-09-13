@@ -38,7 +38,7 @@ second SMTP transport implementation.
 
 ## Validation
 
-- Strict test-project and web-host builds pass.
+- Strict full-solution, test-project and web-host builds pass with zero warnings/errors.
 - Fifteen focused tests cover invalid patch preservation, secrets, unchanged retries,
   enabling/disabling defaults, denied delivery, error redaction, the existing admin
   editor and the real signal-backed SMTP options refresh without tenant reload.
@@ -50,6 +50,6 @@ second SMTP transport implementation.
 - Strict documentation builds and package checks accompany the PR.
 
 The full solution initially failed on the unchanged base because Testcontainers
-brought in vulnerable SSH.NET 2025.1.0. Independent prerequisite PR #37 updates
-that test-only dependency to 2026.0.0; SMTP must integrate its merged base before
-its final full-solution/CI gate. No vulnerability auditing is suppressed.
+brought in vulnerable SSH.NET 2025.1.0. Independent prerequisite PR #37 merged as `a8f5aa242` and updates
+that test-only dependency to 2026.0.0. SMTP integrates the merged base and passes
+the strict full-solution build. No vulnerability auditing is suppressed.
