@@ -1056,3 +1056,15 @@ option under the `Settings -> Security -> User Login` page in the admin.
 <iframe width="560" height="315" src="https://www.youtube-nocookie.com/embed/bwFH-C18rrA" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
 <iframe width="560" height="315" src="https://www.youtube-nocookie.com/embed/pfPkPH7PN5w" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
+## Deployment step configuration through Pomi
+
+The `AllTemplatesDeploymentStep` and `AllAdminTemplatesDeploymentStep` factories
+expose the Boolean `exportAsFiles` option. The admin template factory is available
+only when `OrchardCore.AdminTemplates` is enabled.
+Use `pomi deployment step-types schema <factory>` to inspect the contract and
+`pomi deployment plans steps add <planId> --body-file step.json` to add a step with
+`id`, `type` and `values`. Updates contain only `values`; omitted options retain
+their existing setting. Unknown properties, nulls and non-Boolean values are
+rejected before the persisted step changes. This requires the Deployment feature
+and its plan-management permission.

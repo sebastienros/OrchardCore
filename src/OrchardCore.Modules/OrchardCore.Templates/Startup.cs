@@ -37,6 +37,8 @@ public sealed class Startup : StartupBase
         services.AddScoped<IContentTypePartDefinitionDisplayDriver, TemplateContentTypePartDefinitionDriver>();
 
         services.AddDeployment<AllTemplatesDeploymentSource, AllTemplatesDeploymentStep, AllTemplatesDeploymentStepDriver>();
+        services.AddSingleton<IDeploymentStepDefinition>(new BooleanDeploymentStepDefinition<AllTemplatesDeploymentStep>(
+            nameof(AllTemplatesDeploymentStep), "exportAsFiles", step => step.ExportAsFiles, (step, value) => step.ExportAsFiles = value));
 
         services.AddScoped<AdminTemplatesManager>();
         services.AddPermissionProvider<AdminTemplatesPermissions>();
@@ -58,5 +60,7 @@ public sealed class AdminTemplatesStartup : StartupBase
         services.AddNavigationProvider<AdminTemplatesAdminMenu>();
         services.AddRecipeExecutionStep<AdminTemplateStep>();
         services.AddDeployment<AllAdminTemplatesDeploymentSource, AllAdminTemplatesDeploymentStep, AllAdminTemplatesDeploymentStepDriver>();
+        services.AddSingleton<IDeploymentStepDefinition>(new BooleanDeploymentStepDefinition<AllAdminTemplatesDeploymentStep>(
+            nameof(AllAdminTemplatesDeploymentStep), "exportAsFiles", step => step.ExportAsFiles, (step, value) => step.ExportAsFiles = value));
     }
 }
