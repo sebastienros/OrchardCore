@@ -1,6 +1,6 @@
 ---
 name: orchardcore-cli-automation
-description: Manages Orchard Core features, tenant feature profiles, deployment plans and steps, recipes, queries, Lucene index definitions, workflows, users, roles, and OpenID applications, scopes and shared-secret credentials through `pomi`. Use for enabling module capabilities, executing recipes, defining/executing SQL or other queries, managing workflow types and instances, and provisioning tenant-local security principals and permissions.
+description: Manages Orchard Core features, tenant feature profiles, deployment plans, package exports/imports, recipes, queries, Lucene index definitions, workflows, users, roles, and OpenID applications, scopes and shared-secret credentials through `pomi`. Use for enabling module capabilities, executing recipes, defining/executing SQL or other queries, managing workflow types and instances, and provisioning tenant-local security principals and permissions.
 ---
 
 # Pomi CLI Automation
@@ -319,8 +319,8 @@ Versioned API references (live tenant schemas take precedence):
 
 Requires `OrchardCore.Deployment`, `AccessRemoteManagement` and
 `ManageDeploymentPlan` in the selected tenant. Refresh OpenAPI after enabling
-features. This manages persisted plans; exporting or importing artifacts is a
-separate workflow and is not provided by these commands.
+features. Plan configuration and package execution have separate permissions;
+`ManageDeploymentPlan` alone does not grant Export or Import.
 
 ```bash
 pomi deployment plans list --search Release --take 50
@@ -357,3 +357,38 @@ Ordering takes `{"stepIds":["readme","metadata"]}` with every existing ID exactl
 once. Unsupported factories are discoverable with `canConfigure:false`; do not
 invent schemas or serialize arbitrary CLR properties. Disabled-feature steps retain
 their stored configuration and identity. Plan/step deletion is repeatable.
+
+## Deployment packages and queued operations
+
+Use the selected source tenant to export, and select the intended destination
+context before uploading/importing. Operations and artifacts are private to their
+tenant and initiating OAuth user/application. Export requires Export permission;
+upload/import requires Import permission, plus AccessRemoteManagement.
+
+```bash
+pomi deployment operations export --request-id release-export-001 --plan-id 42
+pomi deployment operations show OPERATION_ID
+pomi deployment artifacts show ARTIFACT_ID
+pomi deployment artifacts download ARTIFACT_ID --output-file ./release.zip
+pomi deployment artifacts upload release.zip --file ./release.zip
+pomi deployment operations import --request-id release-import-001 --artifact-id ARTIFACT_ID --force
+pomi deployment artifacts delete ARTIFACT_ID --force
+```
+
+Submission returns an operation ID, not completion. Poll `operations show` with
+a bounded wait until succeeded, failed or uncertain. The background worker polls
+every minute; pending/running means work is still outstanding. On export success,
+use its returned artifact ID for download. Downloads require a new local file and
+never overwrite an existing file. Upload validates ZIP/JSON without executing it.
+Use the upload response's artifact ID for import and verify destination effects
+after success. Artifacts expire after 24 hours by default.
+
+Keep the request ID for retries of the same submission. Changed export snapshots
+or different import artifacts under the same ID conflict. Do not generate a new
+ID merely because polling timed out or an import failed: recipes can partially
+commit. Inspect the recorded state and target effects before deciding to submit
+new work. Uncertain operations are never automatically replayed. Keep exported
+packages private; they may contain application configuration or content.
+
+MCP exposes JSON operation and artifact metadata plus execution commands. Use Pomi
+for file upload/download; binary transfers are excluded from MCP tools.
