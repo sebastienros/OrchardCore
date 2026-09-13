@@ -1,5 +1,7 @@
 # Remote management campaign status
 
+> The [focused completion phase](focused-campaign.md) supersedes this broad backlog: finish rate limits, audit/tasks, media administration, and robots/sitemaps, then stop for review.
+
 The campaign is authorized to implement, verify, open and merge independent PRs into the fork's
 `sebros/remote-tenant-cli-plan`. **No stacked PRs.** Each branch starts at a merged target commit.
 The [schedule](pr-schedule.md) and [plan](coverage-plan.md) define the work and acceptance criteria.
