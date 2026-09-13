@@ -1,4 +1,7 @@
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Routing;
+using OrchardCore.Deployment.Endpoints.Management;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using OrchardCore.Data;
@@ -20,6 +23,9 @@ namespace OrchardCore.Deployment;
 
 public sealed class Startup : StartupBase
 {
+    public override void Configure(IApplicationBuilder app, IEndpointRouteBuilder routes, IServiceProvider serviceProvider)
+        => routes.AddDeploymentPlanEndpoints();
+
     public override void ConfigureServices(IServiceCollection services)
     {
         services.TryAddTransient<FileCreationService>();

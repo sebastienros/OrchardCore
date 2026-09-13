@@ -76,3 +76,24 @@ fix, including persisted step readback in a fresh tenant scope. The strict test
 project build passes with zero warnings/errors. Endpoints, admin/recipe mutation
 unification, typed step adapters, broader tests, live checks, docs/skills and PR/CI
 remain; these two regressions do not establish completion of the plan/step slice.
+
+## Plan metadata implementation
+
+Plan list/show/create/rename/delete now use IDeploymentPlanService. The existing
+DeploymentPlanController uses the same query, name validation and mutations,
+including bulk deletion. API retries and response projection remain at the endpoint
+boundary. Plan responses expose only Id, Name and StepCount. Renaming preserves all
+step data; API creation retries preserve an existing plan instead of replacing it.
+
+The strict test-project build passes with zero warnings/errors. Six focused tests
+pass: the two failing-before service regressions, actual admin/API mutations with
+real persistence, both permission denials before service access, and invalid request
+rejection. The workflow verifies conflict rejection, custom file data preservation
+without response disclosure, ordering, filtered listing and repeat delete behavior.
+Initial test fixture failures were missing MVC/localization dependencies; no runtime
+behavior was changed to accommodate them.
+
+Typed step schemas/discovery/mutations, StepController and Contents caller migration,
+recipe validation unification, feature/tenant gates, live Pomi/MCP, package docs and
+full integration/PR CI remain. Deployment still has the separate artifact execution
+gap. The canonical module page documents the implemented metadata commands.

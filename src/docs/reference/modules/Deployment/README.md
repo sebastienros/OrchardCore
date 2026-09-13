@@ -84,6 +84,42 @@ The module defines the following permissions:
 
 Administrators receive these permissions by default.
 
+## Remote plan management
+
+With Deployment and remote management enabled, an application context with
+`AccessRemoteManagement` and `ManageDeploymentPlan` can manage plan metadata:
+
+```sh
+pomi deployment plans list --take 50
+pomi deployment plans show 123
+pomi deployment plans create --body-file plan.json
+pomi deployment plans update 123 --body-file renamed-plan.json
+pomi deployment plans delete 123 --force
+```
+
+Both create and update accept a JSON object with a required `name` string:
+
+```json
+{ "name": "Website export" }
+```
+
+Creation makes an empty plan. Retrying an existing name returns its plan without
+changing its steps. Update renames the identified plan and preserves step order,
+identifiers and configuration. Duplicate rename targets are rejected. Equivalent
+updates and repeated deletes report `changed: false`. Plan identifiers are local
+to a tenant; use discovery in the target tenant instead of copying identifiers
+between sites.
+
+List accepts `search`, `skip` and `take` (1–200, default 50), with stable name and
+identifier ordering. List and show return only the plan identifier, name and step
+count; embedded recipe JSON and custom-file contents are not returned. The same
+operations are exposed through the tenant MCP catalog.
+
+The admin controller uses the same plan validation, query and mutation service.
+Admin presentation and its existing permissions remain in the controller. These
+operations do not execute plans or grant Export/Import permissions. Recipe-based
+plan replacement keeps its existing semantics of replacing the complete step list.
+
 ## Extending deployment
 
 A module can provide a custom deployment step by implementing an `IDeploymentSource`, deriving its step model from `DeploymentStep`, and optionally adding a display driver for its editor. Register the components together:
