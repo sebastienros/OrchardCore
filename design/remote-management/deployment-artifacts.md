@@ -132,3 +132,18 @@ Staging checkpoint validation: strict build and documentation pass; all 19
 archive/staging tests pass. Remaining gates include actual import-controller
 pipeline/cleanup tests, cancellation/symlink cases, durable artifacts and execution,
 Pomi binary transport and the cross-tenant round-trip.
+
+## Integrated import action and edge-case validation
+
+After integrating merged PR #28, strict build and the full server suite pass:
+3,495 successes, zero failures and one expected CI-only skip. Additional tests
+then cover the actual upload and JSON import actions, preserving file-pipeline
+rejection, denied permissions, malformed recipe rejection before execution and
+cleanup after execution failure. Cancellation leaves the caller's stream open and
+removes staging; ZIP symlink entries are rejected. The final focused run passes
+all 28 archive/staging/controller tests with zero build warnings/errors.
+
+The upload fixture initially lacked FormFile headers and failed before reaching
+its event pipeline; correcting the fixture verifies the intended controller paths.
+No production changes were needed for these additional scenarios. Durable owned
+artifact storage and operation orchestration are the next implementation gates.
