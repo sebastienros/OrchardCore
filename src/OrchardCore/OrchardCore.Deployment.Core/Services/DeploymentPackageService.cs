@@ -34,6 +34,7 @@ public sealed class DeploymentPackageService
         }
         var folder = _temporary.CreateTempSubdirectory();
         var archivePath = folder + ".upload";
+        var transferred = false;
         try
         {
             await using (var upload = new FileStream(archivePath, FileMode.CreateNew, FileAccess.Write))
@@ -85,7 +86,9 @@ public sealed class DeploymentPackageService
                     throw new InvalidDataException("A deployment recipe requires an array of named step objects.");
                 }
             }
-            return new StagedDeploymentPackage(folder);
+            var package = new StagedDeploymentPackage(folder, File.Exists(archivePath) ? archivePath : recipePath);
+            transferred = true;
+            return package;
         }
         catch
         {
@@ -94,7 +97,7 @@ public sealed class DeploymentPackageService
         }
         finally
         {
-            File.Delete(archivePath);
+            if (!transferred) { File.Delete(archivePath); }
         }
     }
 

@@ -72,6 +72,31 @@ public class DeploymentPackageTests
         });
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ValidatedOriginal_CanBePersistedWithoutRepackingAndIsRemovedOnDispose(bool zip)
+    {
+        await WithService(async (service, root) =>
+        {
+            using var input = zip ? Zip(("Recipe.json", "{\"steps\":[]}"), ("nested/file.txt", "payload"))
+                : new MemoryStream(Encoding.UTF8.GetBytes("{\"steps\":[]}"));
+            var expected = input.ToArray();
+            var package = await service.StageAsync(input, zip ? "package.zip" : "Recipe.json", TestContext.Current.CancellationToken);
+            using (var original = package.OpenRead())
+            {
+                using var copy = new MemoryStream();
+                await original.CopyToAsync(copy, TestContext.Current.CancellationToken);
+                Assert.Equal(expected, copy.ToArray());
+            }
+            package.Dispose();
+            package.Dispose();
+            Assert.Throws<ObjectDisposedException>(() => package.OpenRead());
+            Assert.Empty(Directory.GetFileSystemEntries(root));
+            Assert.True(input.CanRead);
+        });
+    }
+
     [Fact]
     public async Task CancelledStaging_CleansTemporaryFilesAndLeavesInputOwnedByCaller()
     {

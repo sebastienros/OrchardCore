@@ -40,6 +40,9 @@ validate input before executing it. ZIP uploads require a root `Recipe.json` wit
 an array of named recipe steps. Absolute/traversal paths, symlinks and duplicate
 normalized archive paths are rejected. Staged files are removed when import ends.
 The upload action continues to run the file-creation event pipeline before staging.
+`StagedDeploymentPackage.OpenRead()` opens the validated original ZIP or JSON bytes
+for persistence or transfer without repacking. Dispose that stream before disposing
+the staged package; disposing the package removes both the original and extracted files.
 
 Hosts can configure `DeploymentPackageOptions` through the options system. Defaults
 are 100 MiB input, 500 MiB expanded data, and 10,000 archive entries; all limits must
