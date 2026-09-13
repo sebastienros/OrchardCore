@@ -12,6 +12,41 @@ namespace OrchardCore.Tests.Apis.RemoteManagement;
 public class DeploymentPlanServiceTests
 {
     [Fact]
+    public async Task TenantScopedOperations_CannotReadOrMutateAnotherTenantsPlan()
+    {
+        using var owner = await CreateContextAsync();
+        using var other = await CreateContextAsync();
+        long id = 0;
+        await owner.UsingTenantScopeAsync(async scope =>
+        {
+            var plans = scope.ServiceProvider.GetRequiredService<IDeploymentPlanService>();
+            id = (await plans.CreateAsync("Owner only")).Plan.Id;
+            await plans.AddStepsAsync(id, [new RecipeFileDeploymentStep { Id = "original" }]);
+        });
+        await other.UsingTenantScopeAsync(async scope =>
+        {
+            var plans = scope.ServiceProvider.GetRequiredService<IDeploymentPlanService>();
+            Assert.Null(await plans.GetAsync(id));
+            Assert.Null(await plans.FindByNameAsync("Owner only"));
+            Assert.Empty((await plans.ListAsync("Owner only", 0, 20)).Items);
+            Assert.Equal(DeploymentPlanManagementError.NotFound, (await plans.RenameAsync(id, "Foreign edit")).Error);
+            Assert.False(await plans.DeleteAsync(id));
+            Assert.Equal(DeploymentStepManagementError.NotFound,
+                (await plans.AddStepsAsync(id, [new RecipeFileDeploymentStep { Id = "foreign" }])).Error);
+            Assert.Equal(DeploymentStepManagementError.NotFound,
+                (await plans.UpdateStepAsync(id, new RecipeFileDeploymentStep { Id = "original" })).Error);
+            Assert.Equal(DeploymentStepManagementError.NotFound, (await plans.DeleteStepAsync(id, "original")).Error);
+            Assert.Equal(DeploymentStepManagementError.NotFound, (await plans.ReorderStepsAsync(id, ["original"])).Error);
+        });
+        await owner.UsingTenantScopeAsync(async scope =>
+        {
+            var plan = await scope.ServiceProvider.GetRequiredService<IDeploymentPlanService>().GetAsync(id);
+            Assert.Equal("Owner only", plan.Name);
+            Assert.Equal("original", Assert.Single(plan.DeploymentSteps).Id);
+        });
+    }
+
+    [Fact]
     public async Task Migration_RepairsLegacyIds_PreservesDisabledStepPayloadAndIsRepeatable()
     {
         using var context = await CreateContextAsync();

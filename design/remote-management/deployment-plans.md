@@ -280,3 +280,22 @@ Validation: strict build has zero warnings/errors; all 12 targeted content-actio
 feature-lifecycle and resilient serializer tests pass. The full server suite passes
 with 3,475 successes, zero failures and one expected CI-only skip. Tenant isolation,
 live HTTP/Pomi/MCP, Pomi packaging and final solution/CLI/MCP/CI remain.
+
+## Tenant isolation and live transports
+
+Two real tenants verify that plan reads, name lookup/listing, rename/delete and
+step add/update/delete/reorder cannot affect the other tenant's plan. The owner
+plan retains its original name and step after all foreign operations. All 14 plan
+service/recipe/migration/isolation tests pass. The full solution strict build has
+zero warnings/errors; the full CLI and MCP suites pass (295 and 78 respectively).
+
+`deployment-plans-smoke.py` passes on an isolated loopback tenant using the current
+Debug build. It exercises unauthenticated/discovery-only/denied HTTP callers,
+generated Pomi type discovery and explicit write-only schema, plan and step CRUD,
+retry behavior, invalid patch rejection without mutation, MCP step add and order,
+safe readback, filtered listing, and cleanup/repeated deletion. The MCP tools list
+contains the expected deployment operations. The smoke removes its temporary plan.
+
+Pomi skills/package, distribution/help checks, inventory reconciliation, final
+review and independent PR CI remain before the plan/step slice is ready to merge.
+Export/import artifacts remain separate B08 work.
