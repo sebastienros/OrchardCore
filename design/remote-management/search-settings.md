@@ -104,3 +104,10 @@ Strict MkDocs, plugin links and reproducible Pomi distribution checks pass. All 
 skill examples across 244 generated help pages validate against the fresh tenant.
 The live smoke verifies actual frontend behavior as well as management transports.
 Independent PR CI, including Linux functional tests and Windows, remains the merge gate.
+
+## Merge result
+
+PR #27 passed all CI checks at exact head `6a2bb476940a59d0377faf94678c6be7f9c7cdcd`
+and merged as `2eaa672ce4e988d1802e69984ef213d08fb9d005`. Linux functional tests,
+Windows, CLI, documentation, frontend tests and assets all passed. Package/native
+publishing remained skipped.

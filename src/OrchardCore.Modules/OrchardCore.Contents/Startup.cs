@@ -252,6 +252,8 @@ public sealed class DeploymentStartup : StartupBase
     {
         services.AddDeployment<AllContentDeploymentSource, AllContentDeploymentStep, AllContentDeploymentStepDriver>();
         services.AddDeployment<ContentDeploymentSource, ContentDeploymentStep, ContentDeploymentStepDriver>();
+        services.AddSingleton<IDeploymentStepDefinition>(new ContentDeploymentStepDefinition(nameof(AllContentDeploymentStep)));
+        services.AddSingleton<IDeploymentStepDefinition>(new ContentDeploymentStepDefinition(nameof(ContentDeploymentStep)));
         services.AddSiteSettingsPropertyDeploymentStep<ContentAuditTrailSettings, DeploymentStartup>(S => S["Content Audit Trail settings"], S => S["Exports the content audit trail settings."]);
     }
 }

@@ -70,6 +70,10 @@ The `deployment` recipe step creates or updates deployment plans. Each entry req
 }
 ```
 
+Deployment steps have stable IDs. When upgrading an existing tenant, a migration assigns IDs to steps that lack them and replaces later duplicate IDs while preserving the first occurrence. Configuration from disabled features is preserved, including its original type information. Recipes can omit step IDs; replay retains an existing ID when the step at the same position has the same type and name. Supply explicit IDs when identities must survive changes to ordering.
+
+The complete replacement batch is validated before any plan is changed. Plan names must be nonempty and unique within the batch. Supplied step IDs must be unique within each plan. Invalid JSON recipe configuration, unsafe custom-file paths, and malformed or unavailable step types are reported as recipe errors. The recipe handler and direct replacement callers use `IDeploymentPlanService.ValidateReplacement`; JSON and file-path validation is also shared with the admin editors and remote configuration contracts.
+
 `Type` is the registered deployment step type. The properties under `Step` are specific to that type. All features that provide the referenced step types must be enabled when the recipe runs; otherwise, no plans from that recipe step are changed.
 
 ## Permissions
@@ -84,6 +88,96 @@ The module defines the following permissions:
 
 Administrators receive these permissions by default.
 
+## Remote plan management
+
+With Deployment and remote management enabled, an application context with
+`AccessRemoteManagement` and `ManageDeploymentPlan` can manage plan metadata:
+
+```sh
+pomi deployment step-types list
+pomi deployment step-types schema CustomFileDeploymentStep
+pomi deployment plans list --take 50
+pomi deployment plans show 123
+pomi deployment plans create --body-file plan.json
+pomi deployment plans update 123 --body-file renamed-plan.json
+pomi deployment plans delete 123 --force
+```
+
+Step-type discovery lists enabled factories and whether each has an explicit
+configuration contract. Schema requests return 501 for a registered factory without
+a contract and 404 for an unavailable factory. Discovery does not create steps or inspect embedded step data.
+
+Both create and update accept a JSON object with a required `name` string:
+
+```json
+{ "name": "Website export" }
+```
+
+Creation makes an empty plan. Retrying an existing name returns its plan without
+changing its steps. Update renames the identified plan and preserves step order,
+identifiers and configuration. Duplicate rename targets are rejected. Equivalent
+updates and repeated deletes report `changed: false`. Plan identifiers are local
+to a tenant; use discovery in the target tenant instead of copying identifiers
+between sites.
+
+List accepts `search`, `skip` and `take` (1–200, default 50), with stable name and
+identifier ordering. List and show return only the plan identifier, name and step
+count; embedded recipe JSON and custom-file contents are not returned. The same
+operations are exposed through the tenant MCP catalog.
+
+The admin controller uses the same plan validation, query and mutation service.
+Admin presentation and its existing permissions remain in the controller. Step
+editors apply validated detached copies, and reorder requests validate both positions
+before changing the plan. Content-to-plan actions share the same batch append
+operation; new steps receive identifiers and bulk content permissions are checked
+before the plan is changed. These
+operations do not execute plans or grant Export/Import permissions. Recipe-based
+plan replacement keeps its existing semantics of replacing the complete step list.
+
+## Remote step management
+
+Use factory discovery and its schema before adding or updating a step:
+
+```sh
+pomi deployment plans steps list 123
+pomi deployment plans steps show 123 site-css
+pomi deployment plans steps add 123 --body-file step.json
+pomi deployment plans steps update 123 site-css --body-file step-update.json
+pomi deployment plans steps order 123 --body-file step-order.json
+pomi deployment plans steps delete 123 site-css --force
+```
+
+An add request supplies a caller-selected identity, a factory type and typed values:
+
+```json
+{
+  "id": "site-css",
+  "type": "CustomFileDeploymentStep",
+  "values": {
+    "fileName": "assets/site.css",
+    "fileContent": "body { color: #222; }"
+  }
+}
+```
+
+Use a nonempty identity of at most 128 characters. Retrying the same identity with
+matching requested configuration reports unchanged; a different type or conflicting
+configuration returns 409. Update uses `{ "values": { "fileName": "assets/new.css" } }`
+and preserves omitted configuration, including write-only fields. Invalid patches
+are rejected before replacing the persisted step. Identity and type cannot be changed
+by a configuration patch.
+
+An order request contains `stepIds`, listing every current step identity exactly
+once. Invalid or incomplete orders leave the plan unchanged. List/show include
+position, factory type, explicit configuration support and allowlisted readable
+values. Unsupported step types retain their stored configuration and can be listed,
+ordered or deleted, but configuration changes require an enabled explicit contract.
+Deleting an already absent step is unchanged; an absent plan returns 404.
+
+These operations require the same management permissions as plan metadata and do
+not execute an export. Write-only custom-file contents and embedded recipe JSON
+are never included in step readback.
+
 ## Extending deployment
 
 A module can provide a custom deployment step by implementing an `IDeploymentSource`, deriving its step model from `DeploymentStep`, and optionally adding a display driver for its editor. Register the components together:
@@ -93,6 +187,28 @@ services.AddDeployment<MyDeploymentSource, MyDeploymentStep, MyDeploymentStepDis
 ```
 
 The source processes the configured step and adds recipe steps or files to the `DeploymentPlanResult`. Register a custom execution destination by implementing `IDeploymentTargetProvider`.
+
+Explicit configuration contracts implement `IDeploymentStepDefinition`. Each contract
+identifies one registered factory, supplies a patch schema, describes allowlisted
+configuration and updates a detached step candidate. Omitted properties preserve
+stored values; extensions must declare their supported fields instead of exposing
+arbitrary serialized CLR objects.
+
+The built-in contracts cover recipe metadata, custom files, JSON recipe steps,
+selected deployment plans, all published content, selected content types and a single
+content item. Content type selection uses `contentTypes` and `exportAsSetupRecipe`;
+all-content selection exposes only `exportAsSetupRecipe`. A single-item selector
+requires an existing tenant `contentItemId`, using the same lookup as its admin editor.
+
+Generic site-settings export factories register an empty configuration contract
+alongside their existing factory. Use their discovered factory name and `{}` values;
+this selects a settings section for export without reading or changing its values.
+Configuration contracts support asynchronous validation through `UpdateAsync`.
+ Custom-file content and embedded recipe JSON are
+write-only in contract readback. File paths must be relative package paths without
+traversal; `Recipe.json` is reserved for the generated recipe. A JSON recipe step
+must contain an object with a nonempty string `name`. The existing admin editors
+use the same validation, and selecting all deployment plans clears explicit names.
 
 To send packages directly to another Orchard Core site, see [Remote Deployment](../Deployment.Remote/README.md).
 
