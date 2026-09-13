@@ -116,7 +116,11 @@ count; embedded recipe JSON and custom-file contents are not returned. The same
 operations are exposed through the tenant MCP catalog.
 
 The admin controller uses the same plan validation, query and mutation service.
-Admin presentation and its existing permissions remain in the controller. These
+Admin presentation and its existing permissions remain in the controller. Step
+editors apply validated detached copies, and reorder requests validate both positions
+before changing the plan. Content-to-plan actions share the same batch append
+operation; new steps receive identifiers and bulk content permissions are checked
+before the plan is changed. These
 operations do not execute plans or grant Export/Import permissions. Recipe-based
 plan replacement keeps its existing semantics of replacing the complete step list.
 

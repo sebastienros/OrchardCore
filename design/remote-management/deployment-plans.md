@@ -97,3 +97,32 @@ Typed step schemas/discovery/mutations, StepController and Contents caller migra
 recipe validation unification, feature/tenant gates, live Pomi/MCP, package docs and
 full integration/PR CI remain. Deployment still has the separate artifact execution
 gap. The canonical module page documents the implemented metadata commands.
+
+## Shared step mutations and existing callers
+
+StepController now uses the plan service for append, replacement, deletion and
+movement. Edits bind a detached document-serialized candidate so validation failures
+do not mutate the tracked step. The content-to-plan single/bulk actions use the same
+batch append operation, with generated IDs for new steps. Bulk content authorization
+finishes before any plan mutation. Content queries and authorization remain in the
+content controller.
+
+The service validates all batch identities and complete order requests before
+mutation; repeated object references and duplicate IDs are rejected. Replacement
+retains type and identity, and equivalent updates/moves/orders report unchanged.
+Existing unknown or unaddressable legacy identities are not silently rewritten by
+metadata changes; their migration/remote editing contract must be resolved before
+closing typed step management.
+
+Two admin reorder regressions fail on integrated `503e9a414`: destinations -1 and
+Count remove the first tracked step before throwing. Both now return BadRequest
+without changing the list. All 11 focused plan/service/step tests pass, including
+accepted/rejected actual admin editors, detached clone preservation, invalid batch
+and order atomicity, no-op operations and fresh-scope persistence. Strict test-project
+build passes with zero warnings/errors. A remaining direct content query is intentional;
+there are no direct plan mutations in either migrated controller.
+
+Typed schemas and remote step operations, recipe validation unification, explicit
+legacy step identity handling, content-controller integration tests, live transport
+verification and final integration/CI remain. These checkpoints are not a completed
+B08 or completed plan/step PR.

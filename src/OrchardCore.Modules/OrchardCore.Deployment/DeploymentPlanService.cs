@@ -1,3 +1,6 @@
+using System.Text.Json;
+using Microsoft.Extensions.Options;
+using OrchardCore.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using OrchardCore.Deployment.Indexes;
@@ -12,15 +15,19 @@ public class DeploymentPlanService : IDeploymentPlanService
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IAuthorizationService _authorizationService;
     private Dictionary<string, DeploymentPlan> _deploymentPlans;
+    private readonly JsonSerializerOptions _jsonOptions;
 
+    /// <summary>Creates the tenant plan service with document serialization for detached editors.</summary>
     public DeploymentPlanService(
         YesSql.ISession session,
         IHttpContextAccessor httpContextAccessor,
-        IAuthorizationService authorizationService)
+        IAuthorizationService authorizationService,
+        IOptions<DocumentJsonSerializerOptions> jsonOptions)
     {
         _session = session;
         _httpContextAccessor = httpContextAccessor;
         _authorizationService = authorizationService;
+        _jsonOptions = jsonOptions.Value.SerializerOptions;
     }
 
     /// <inheritdoc />
@@ -112,6 +119,126 @@ public class DeploymentPlanService : IDeploymentPlanService
     {
         await _session.SaveAsync(plan);
         _deploymentPlans = null;
+    }
+
+    /// <inheritdoc />
+    public DeploymentStep CloneStep(DeploymentStep step) =>
+        JsonSerializer.Deserialize<DeploymentStep>(JsonSerializer.Serialize<DeploymentStep>(step, _jsonOptions), _jsonOptions);
+
+    /// <inheritdoc />
+    public async Task<DeploymentStepManagementResult> AddStepsAsync(long id, IEnumerable<DeploymentStep> steps)
+    {
+        var plan = await GetAsync(id);
+        if (plan is null) { return new() { Error = DeploymentStepManagementError.NotFound }; }
+        if (steps is null) { return new() { Error = DeploymentStepManagementError.InvalidStep }; }
+        var additions = steps.ToArray();
+        if (additions.Distinct(ReferenceEqualityComparer.Instance).Count() != additions.Length)
+        {
+            return new() { Error = DeploymentStepManagementError.InvalidStep };
+        }
+        var ids = plan.DeploymentSteps.Select(step => step.Id).Where(value => !string.IsNullOrEmpty(value)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var assignedIds = new List<string>();
+        foreach (var step in additions)
+        {
+            if (step is null) { return new() { Error = DeploymentStepManagementError.InvalidStep }; }
+            var stepId = string.IsNullOrWhiteSpace(step.Id) ? Guid.NewGuid().ToString("n") : step.Id;
+            if (!ids.Add(stepId)) { return new() { Error = DeploymentStepManagementError.InvalidStep }; }
+            assignedIds.Add(stepId);
+        }
+        if (additions.Length == 0) { return new(); }
+        for (var index = 0; index < additions.Length; index++)
+        {
+            additions[index].Id = assignedIds[index];
+        }
+        plan.DeploymentSteps.AddRange(additions);
+        await SaveAsync(plan);
+        return new() { Changed = true };
+    }
+
+    /// <inheritdoc />
+    public async Task<DeploymentStepManagementResult> UpdateStepAsync(long id, DeploymentStep step)
+    {
+        var plan = await GetAsync(id);
+        if (plan is null) { return new() { Error = DeploymentStepManagementError.NotFound }; }
+        if (step is null || string.IsNullOrWhiteSpace(step.Id)) { return new() { Error = DeploymentStepManagementError.InvalidStep }; }
+        var index = plan.DeploymentSteps.FindIndex(candidate => string.Equals(candidate.Id, step.Id, StringComparison.OrdinalIgnoreCase));
+        if (index < 0) { return new() { Error = DeploymentStepManagementError.NotFound }; }
+        var current = plan.DeploymentSteps[index];
+        if (current.GetType() != step.GetType() || current.Name != step.Name)
+        {
+            return new() { Error = DeploymentStepManagementError.InvalidStep };
+        }
+        step.Id = current.Id;
+        if (JsonSerializer.Serialize<DeploymentStep>(current, _jsonOptions) == JsonSerializer.Serialize<DeploymentStep>(step, _jsonOptions))
+        {
+            return new();
+        }
+        plan.DeploymentSteps[index] = step;
+        await SaveAsync(plan);
+        return new() { Changed = true };
+    }
+
+    /// <inheritdoc />
+    public async Task<DeploymentStepManagementResult> DeleteStepAsync(long id, string stepId)
+    {
+        if (string.IsNullOrWhiteSpace(stepId)) { return new() { Error = DeploymentStepManagementError.InvalidStep }; }
+        var plan = await GetAsync(id);
+        if (plan is null) { return new() { Error = DeploymentStepManagementError.NotFound }; }
+        var step = plan.DeploymentSteps.FirstOrDefault(candidate => string.Equals(candidate.Id, stepId, StringComparison.OrdinalIgnoreCase));
+        if (step is null) { return new() { Error = DeploymentStepManagementError.NotFound }; }
+        plan.DeploymentSteps.Remove(step);
+        await SaveAsync(plan);
+        return new() { Changed = true };
+    }
+
+    /// <inheritdoc />
+    public async Task<DeploymentStepManagementResult> MoveStepAsync(long id, int oldIndex, int newIndex)
+    {
+        var plan = await GetAsync(id);
+        if (plan is null || oldIndex < 0 || oldIndex >= plan.DeploymentSteps.Count)
+        {
+            return new() { Error = DeploymentStepManagementError.NotFound };
+        }
+        if (newIndex < 0 || newIndex >= plan.DeploymentSteps.Count)
+        {
+            return new() { Error = DeploymentStepManagementError.InvalidOrder };
+        }
+        if (oldIndex == newIndex) { return new(); }
+        var ordered = plan.DeploymentSteps.ToList();
+        var step = ordered[oldIndex];
+        ordered.RemoveAt(oldIndex);
+        ordered.Insert(newIndex, step);
+        await ApplyOrderAsync(plan, ordered);
+        return new() { Changed = true };
+    }
+
+    /// <inheritdoc />
+    public async Task<DeploymentStepManagementResult> ReorderStepsAsync(long id, IReadOnlyList<string> stepIds)
+    {
+        var plan = await GetAsync(id);
+        if (plan is null) { return new() { Error = DeploymentStepManagementError.NotFound }; }
+        if (stepIds is null || stepIds.Count != plan.DeploymentSteps.Count || stepIds.Any(string.IsNullOrWhiteSpace)
+            || stepIds.Distinct(StringComparer.OrdinalIgnoreCase).Count() != stepIds.Count)
+        {
+            return new() { Error = DeploymentStepManagementError.InvalidOrder };
+        }
+        var ordered = new List<DeploymentStep>();
+        foreach (var stepId in stepIds)
+        {
+            var matches = plan.DeploymentSteps.Where(step => string.Equals(step.Id, stepId, StringComparison.OrdinalIgnoreCase)).ToArray();
+            if (matches.Length != 1) { return new() { Error = DeploymentStepManagementError.InvalidOrder }; }
+            ordered.Add(matches[0]);
+        }
+        if (ordered.SequenceEqual(plan.DeploymentSteps)) { return new(); }
+        await ApplyOrderAsync(plan, ordered);
+        return new() { Changed = true };
+    }
+
+    private async Task ApplyOrderAsync(DeploymentPlan plan, List<DeploymentStep> ordered)
+    {
+        plan.DeploymentSteps.Clear();
+        plan.DeploymentSteps.AddRange(ordered);
+        await SaveAsync(plan);
     }
 
     private async Task<Dictionary<string, DeploymentPlan>> GetDeploymentPlans()

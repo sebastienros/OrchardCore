@@ -16,6 +16,19 @@ public interface IDeploymentPlanService
     /// <summary>Deletes a plan, returning false if it was already absent.</summary>
     Task<bool> DeleteAsync(long id);
 
+    /// <summary>Creates a detached editor copy using the tenant's deployment serialization contracts.</summary>
+    DeploymentStep CloneStep(DeploymentStep step);
+    /// <summary>Appends steps after validating all identities; missing identities are generated.</summary>
+    Task<DeploymentStepManagementResult> AddStepsAsync(long id, IEnumerable<DeploymentStep> steps);
+    /// <summary>Replaces a step with a validated editor candidate of the same type and identity.</summary>
+    Task<DeploymentStepManagementResult> UpdateStepAsync(long id, DeploymentStep step);
+    /// <summary>Removes the identified step without changing the remaining order.</summary>
+    Task<DeploymentStepManagementResult> DeleteStepAsync(long id, string stepId);
+    /// <summary>Moves an admin-selected step after validating both zero-based positions.</summary>
+    Task<DeploymentStepManagementResult> MoveStepAsync(long id, int oldIndex, int newIndex);
+    /// <summary>Applies a complete, unique list of existing step identities as the new order.</summary>
+    Task<DeploymentStepManagementResult> ReorderStepsAsync(long id, IReadOnlyList<string> stepIds);
+
     Task<bool> DoesUserHavePermissionsAsync();
     Task<bool> DoesUserHaveExportPermissionAsync();
     Task<IEnumerable<string>> GetAllDeploymentPlanNamesAsync();
