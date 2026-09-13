@@ -221,6 +221,42 @@ not reload the tenant. Turning off cookie writing does not delete visitors' exis
 cookies. Cookie lifetime remains host configuration. Verify actual redirect targets
 and response cookies after changing these settings.
 
+## Frontend search
+
+Enable `OrchardCore.Search` and discover `frontend-search`. Reads and writes require
+`ManageSearchSettings` and remote-management access; managing indexes alone is not
+sufficient. Discover the administrative index name before selecting the default.
+
+```bash
+pomi indexes list
+pomi settings sections show frontend-search
+pomi settings sections schema frontend-search
+pomi settings sections update frontend-search --body-file search-settings.json
+```
+
+```json
+{
+  "defaultIndexProfileName": "Articles",
+  "pageTitle": "Search articles",
+  "placeholder": "Search by keyword"
+}
+```
+
+Use the administrative profile name, not its opaque ID or provider resource name.
+New nonempty selections must exist in this tenant. Null/blank clears the default;
+null clears either text override. Omitted fields preserve their values, including
+an unchanged stale default while editing text. Unknown properties and non-string,
+non-null values are rejected atomically. Equivalent retries do not save settings.
+
+These updates share the existing admin editor's validation and assignment. They do
+not enable a search provider, rebuild an index or grant public query permissions.
+Verify the existing `/search` page with an identity authorized to query the index;
+a successful settings update alone does not prove that public search is available.
+For imports, generic Settings recipes retain their ordering behavior so an index
+can be defined later in the recipe.
+
+See the [frontend search contract](https://github.com/sebastienros/OrchardCore/blob/f70b3ed3c911750484f3d011990ab73b9ee0f52a/src/docs/reference/modules/Search/README.md#remote-frontend-search-settings).
+
 ## Custom Settings
 
 Discover only sections the current identity is authorized to manage:

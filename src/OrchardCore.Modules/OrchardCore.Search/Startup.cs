@@ -15,6 +15,7 @@ using OrchardCore.Search.Models;
 using OrchardCore.Search.Services;
 using OrchardCore.Search.ViewModels;
 using OrchardCore.Security.Permissions;
+using OrchardCore.Settings;
 
 namespace OrchardCore.Search;
 
@@ -25,6 +26,7 @@ public sealed class Startup : StartupBase
         services.AddPermissionProvider<Permissions>();
         services.AddNavigationProvider<AdminMenu>();
         services.AddSiteDisplayDriver<SearchSettingsDisplayDriver>();
+        services.AddScoped<ISiteSettingsSectionProvider, SearchSettingsSectionProvider>();
     }
 }
 
