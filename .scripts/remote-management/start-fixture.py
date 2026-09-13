@@ -62,6 +62,7 @@ for suffix, permissions in [
     ("cors", ["ManageCorsSettings"]),
     ("audit-trail", ["ViewAuditTrail"]),
     ("background-tasks", ["ManageBackgroundTasks"]),
+    ("rate-limits", ["ManageRateLimits"]),
     ("security-headers", ["ManageSecurityHeadersSettings"]),
     ("placements", ["ManagePlacements"]),
     ("translator-fr", ["ViewDynamicTranslations", "ManageTranslations_fr"]),

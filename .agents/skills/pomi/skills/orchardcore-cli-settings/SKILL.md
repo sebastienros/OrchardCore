@@ -14,6 +14,30 @@ Settings are named content-type-backed sections embedded in that document.
 Typed module sections have explicit providers and their own permissions; they are
 not arbitrary site properties or Custom Settings content types.
 
+## Rate limits
+
+Enable `OrchardCore.RateLimits`, refresh discovery, and use an application with
+`AccessRemoteManagement` and `ManageRateLimits`. Discover the four built-in
+contracts with `pomi rate-limits limiter-types list`. These tenant policies are
+separate from host-contributed rate limits configured in code.
+
+Use `rate-limits policies create --body-file policy.json` with a unique `name`,
+`scope` (`Global`, `Endpoint`, or `Group`), and the appropriate `path` or
+`groupName`. Creation is disabled; identical name/definition retries return its ID.
+Use `policies show <id>` and retain its `definition` for complete metadata updates.
+Configure children with `policies limiters add <id> --body-file limiter.json`:
+`{"id":"window","source":"FixedWindow","values":{"permitLimit":60,"windowSeconds":60,"queueLimit":0}}`.
+Use stable limiter IDs; discover each source schema instead of guessing fields.
+
+Enable with `policies enable <id>`. Disable before changing the policy target or
+limiter settings; `policies update <id>` replaces metadata/target, and
+`policies limiters update <id> <limiter-id>` replaces complete source settings.
+Read back, re-enable, and verify HTTP 429 plus recovery after disabling on a narrow
+test path. Never use a test prefix covering management/token endpoints. Active
+metadata edits remain permitted. Identical retries are unchanged; 409 indicates
+an active-policy edit or conflicting identity. Unknown limiter sources remain
+opaque. Delete using `--force` only within the requested cleanup scope.
+
 ## URL rewrite rules
 
 Enable `OrchardCore.UrlRewriting` and use an application with
