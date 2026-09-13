@@ -73,7 +73,7 @@ public sealed class RoleLoginSettingsDisplayDriver : SiteDisplayDriver<RoleLogin
         {
             proposed.Roles = model.Roles?.Where(role => role.IsSelected).Select(role => role.Role).ToArray() ?? [];
         }
-        foreach (var error in await UserPolicySettingsEditor.ValidateAsync(proposed, _roleService))
+        foreach (var error in await UserPolicySettingsEditor.ValidateAsync(proposed, _roleService, S))
         {
             context.Updater.ModelState.AddModelError(Prefix, error.Key, string.Join(' ', error.Value));
         }

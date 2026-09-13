@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Localization;
 using OrchardCore.Security.Services;
 using OrchardCore.Liquid;
 using Microsoft.Extensions.DependencyInjection;
@@ -196,6 +197,6 @@ public sealed class RoleLoginSettingsManagementStartup : StartupBase
                     (settings, value) => settings.RequireTwoFactorAuthenticationForSpecificRoles = value),
                 UserPolicyField<RoleLoginSettings>.Names("roles", settings => settings.Roles, (settings, value) => settings.Roles = value),
             ], UserPolicySettingsEditor.Clone, UserPolicySettingsEditor.Apply,
-            validate: settings => UserPolicySettingsEditor.ValidateAsync(settings, provider.GetRequiredService<IRoleService>())));
+            validate: settings => UserPolicySettingsEditor.ValidateAsync(settings, provider.GetRequiredService<IRoleService>(), provider.GetRequiredService<IStringLocalizer<RoleLoginSettingsManagementStartup>>())));
     }
 }

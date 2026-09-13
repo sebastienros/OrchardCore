@@ -24,13 +24,15 @@ through an authentication provider or MFA method. The smoke test enables an
 unconfigured GitHub provider solely to activate the existing external policy;
 it makes no external authentication request and does not add provider credentials.
 
-Local evidence so far: sixteen focused tests, strict module/web/test builds,
+Local evidence: sixteen focused tests, strict module/web/test builds,
 eleven HTTP/Pomi/MCP settings workflows, permission denials, invalid-value
 preservation, equivalent retries, independent child-tenant policies, and the real
 ForgotPassword route changing between HTTP 200 and 404. Both invalid-update regressions fail on the unchanged admin editors and pass
 with shared validation. Real options-monitor checks cover both the previous update
-path and the new management sections without a tenant reload. Final integration
-and CI remain required before merging.
+path and the new management sections without a tenant reload. The complete server suite passed (3,666 passed, one skipped), as did all 298 CLI
+and 78 remote-management/MCP tests. The final single-worker full solution build
+passed with warnings treated as errors; all sixteen focused tests and the live
+HTTPS smoke test passed again on the final source. CI is required before merging.
 
 This slice does not expose passwords, authenticator keys or recovery codes, enroll
 users, or perform password recovery. Custom user settings and OpenID configuration

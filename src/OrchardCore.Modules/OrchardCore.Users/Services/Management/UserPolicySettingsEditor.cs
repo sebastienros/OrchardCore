@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Localization;
 using OrchardCore.Security.Services;
 using OrchardCore.Liquid;
 using OrchardCore.Users.Models;
@@ -220,7 +221,7 @@ internal static class UserPolicySettingsEditor
         return changed;
     }
 
-    public static async Task<Dictionary<string, string[]>> ValidateAsync(RoleLoginSettings settings, IRoleService roles)
+    public static async Task<Dictionary<string, string[]>> ValidateAsync(RoleLoginSettings settings, IRoleService roles, IStringLocalizer localizer = null)
     {
         var errors = new Dictionary<string, string[]>();
         // Preserve inactive selections so a deleted role cannot prevent disabling MFA policy.
@@ -232,7 +233,7 @@ internal static class UserPolicySettingsEditor
         var selected = settings.Roles ?? [];
         if (selected.Any(name => !available.Contains(name, StringComparer.OrdinalIgnoreCase)))
         {
-            errors[nameof(settings.Roles)] = ["Select existing assignable roles."];
+            errors[nameof(settings.Roles)] = [localizer?["Select existing assignable roles."].Value ?? "Select existing assignable roles."];
         }
         else
         {
@@ -241,7 +242,7 @@ internal static class UserPolicySettingsEditor
         }
         if (settings.RequireTwoFactorAuthenticationForSpecificRoles && selected.Length == 0)
         {
-            errors[nameof(settings.Roles)] = ["Select at least one role."];
+            errors[nameof(settings.Roles)] = [localizer?["Select at least one role."].Value ?? "Select at least one role."];
         }
         return errors;
     }
