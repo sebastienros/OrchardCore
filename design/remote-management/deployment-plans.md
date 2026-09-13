@@ -241,3 +241,23 @@ duplicate names and duplicate IDs, and verify a valid configuration round-trip.
 
 Legacy step identities, content-to-plan controller integration, tenant/feature gates,
 live HTTP/Pomi/MCP, package updates and final integration/CI remain release gates.
+
+## Legacy step identities and recipe replay
+
+Deployment schema version 2 migrates missing and case-insensitive duplicate step
+IDs. Existing valid IDs and the first occurrence of a duplicate are retained; other
+steps receive unique IDs. Disabled-feature placeholders update only the identity
+field in their preserved JSON so the repair survives document serialization without
+losing unknown configuration. Migration is explicit, rather than a side effect of
+metadata reads.
+
+The same identity helper assigns IDs during recipe replacement. Recipes without
+explicit IDs reuse the same type/name at the same position when possible; explicit
+IDs are reserved first. Authors who reorder steps should supply IDs when they need
+identity continuity. Invalid duplicate IDs in new recipe batches remain rejected.
+
+Strict build: zero warnings/errors. All 47 focused tests pass, including persisted
+legacy repair, migration replay, unknown nested-payload preservation, and recipe
+replay across tenant scopes. The full server suite passes: 3,472 tests succeeded, zero failed, and one expected CI-only test skipped. Strict documentation build also passes.
+Content-to-plan controller integration, tenant/feature lifecycle, live HTTP/Pomi/MCP,
+package updates and final integration/CI remain release gates.

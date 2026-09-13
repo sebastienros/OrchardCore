@@ -70,6 +70,8 @@ The `deployment` recipe step creates or updates deployment plans. Each entry req
 }
 ```
 
+Deployment steps have stable IDs. When upgrading an existing tenant, a migration assigns IDs to steps that lack them and replaces later duplicate IDs while preserving the first occurrence. Configuration from disabled features is preserved, including its original type information. Recipes can omit step IDs; replay retains an existing ID when the step at the same position has the same type and name. Supply explicit IDs when identities must survive changes to ordering.
+
 The complete replacement batch is validated before any plan is changed. Plan names must be nonempty and unique within the batch. Supplied step IDs must be unique within each plan. Invalid JSON recipe configuration, unsafe custom-file paths, and malformed or unavailable step types are reported as recipe errors. The recipe handler and direct replacement callers use `IDeploymentPlanService.ValidateReplacement`; JSON and file-path validation is also shared with the admin editors and remote configuration contracts.
 
 `Type` is the registered deployment step type. The properties under `Step` are specific to that type. All features that provide the referenced step types must be enabled when the recipe runs; otherwise, no plans from that recipe step are changed.

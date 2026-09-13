@@ -388,6 +388,7 @@ public class DeploymentPlanService : IDeploymentPlanService
             foreach (var step in deploymentPlan.DeploymentSteps) { DeploymentStepValidation.Normalize(step); }
             if (existingDeploymentPlans.TryGetValue(deploymentPlan.Name, out var existingDeploymentPlan))
             {
+                DeploymentStepIdentities.EnsureUnique(deploymentPlan.DeploymentSteps, existingDeploymentPlan.DeploymentSteps);
                 var steps = deploymentPlan.DeploymentSteps.ToArray();
                 existingDeploymentPlan.Name = deploymentPlan.Name;
                 existingDeploymentPlan.DeploymentSteps.Clear();
@@ -397,6 +398,7 @@ public class DeploymentPlanService : IDeploymentPlanService
             }
             else
             {
+                DeploymentStepIdentities.EnsureUnique(deploymentPlan.DeploymentSteps);
                 await SaveAsync(deploymentPlan);
             }
         }

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using OrchardCore.Deployment;
 using OrchardCore.Deployment.Recipes;
@@ -10,6 +11,81 @@ namespace OrchardCore.Tests.Apis.RemoteManagement;
 
 public class DeploymentPlanServiceTests
 {
+    [Fact]
+    public async Task Migration_RepairsLegacyIds_PreservesDisabledStepPayloadAndIsRepeatable()
+    {
+        using var context = await CreateContextAsync();
+        await context.UsingTenantScopeAsync(async scope =>
+        {
+            var unknown = new UnknownDeploymentStep
+            {
+                Name = "Disabled", TypeDiscriminator = "DisabledStep",
+            };
+            unknown.RawData = JsonDocument.Parse("""
+                {"$type":"DisabledStep","Name":"Disabled","Nested":{"Values":[1,2,3]},"Enabled":false}
+                """).RootElement.Clone();
+            await scope.ServiceProvider.GetRequiredService<global::YesSql.ISession>().SaveAsync(new DeploymentPlan
+            {
+                Name = "Legacy",
+                DeploymentSteps = [new RecipeFileDeploymentStep { Id = "stable" },
+                    new CustomFileDeploymentStep { Id = "STABLE", FileName = "readme.txt", FileContent = "preserve" }, unknown],
+            });
+        });
+        string[] ids = null;
+        await context.UsingTenantScopeAsync(async scope =>
+        {
+            var migration = ActivatorUtilities.CreateInstance<global::OrchardCore.Deployment.Migrations>(scope.ServiceProvider);
+            Assert.Equal(2, await migration.UpdateFrom1Async());
+            var plan = Assert.Single(await scope.ServiceProvider.GetRequiredService<IDeploymentPlanService>().GetDeploymentPlansAsync("Legacy"));
+            ids = plan.DeploymentSteps.Select(step => step.Id).ToArray();
+            Assert.Equal("stable", ids[0]);
+            Assert.All(ids, id => Assert.False(string.IsNullOrWhiteSpace(id)));
+            Assert.Equal(3, ids.Distinct(StringComparer.OrdinalIgnoreCase).Count());
+        });
+        await context.UsingTenantScopeAsync(async scope =>
+        {
+            var migration = ActivatorUtilities.CreateInstance<global::OrchardCore.Deployment.Migrations>(scope.ServiceProvider);
+            Assert.Equal(2, await migration.UpdateFrom1Async());
+            var plan = Assert.Single(await scope.ServiceProvider.GetRequiredService<IDeploymentPlanService>().GetDeploymentPlansAsync("Legacy"));
+            Assert.Equal(ids, plan.DeploymentSteps.Select(step => step.Id));
+            Assert.Equal("preserve", Assert.IsType<CustomFileDeploymentStep>(plan.DeploymentSteps[1]).FileContent);
+            var unknown = Assert.IsType<UnknownDeploymentStep>(plan.DeploymentSteps[2]);
+            Assert.Equal("DisabledStep", unknown.TypeDiscriminator);
+            Assert.Equal(ids[2], unknown.RawData.GetProperty("Id").GetString());
+            Assert.Equal("[1,2,3]", unknown.RawData.GetProperty("Nested").GetProperty("Values").GetRawText());
+            Assert.False(unknown.RawData.GetProperty("Enabled").GetBoolean());
+        });
+    }
+
+    [Fact]
+    public async Task Recipe_WithoutIds_ReusesSameSlotIdentitiesOnReplay()
+    {
+        using var context = await CreateContextAsync();
+        string[] ids = null;
+        for (var run = 0; run < 2; run++)
+        {
+            await context.UsingTenantScopeAsync(async scope =>
+            {
+                var recipe = new RecipeExecutionContext
+                {
+                    Name = "deployment",
+                    Step = JsonNode.Parse("""
+                        {"Plans":[{"Name":"Replay","Steps":[{"Type":"RecipeFileDeploymentStep","Step":{}},
+                          {"Type":"CustomFileDeploymentStep","Step":{"FileName":"readme.txt","FileContent":"sample"}}]}]}
+                        """).AsObject(),
+                };
+                await ActivatorUtilities.CreateInstance<DeploymentPlansRecipeStep>(scope.ServiceProvider).ExecuteAsync(recipe);
+                Assert.Empty(recipe.Errors);
+                var plan = Assert.Single(await scope.ServiceProvider.GetRequiredService<IDeploymentPlanService>().GetDeploymentPlansAsync("Replay"));
+                var current = plan.DeploymentSteps.Select(step => step.Id).ToArray();
+                Assert.All(current, id => Assert.False(string.IsNullOrWhiteSpace(id)));
+                Assert.Equal(2, current.Distinct().Count());
+                if (ids is not null) { Assert.Equal(ids, current); }
+                ids = current;
+            });
+        }
+    }
+
     [Theory]
     [InlineData("{\"Plans\":{}}")]
     [InlineData("{\"Plans\":[null]}")]
