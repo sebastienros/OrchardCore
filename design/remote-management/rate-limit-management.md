@@ -8,9 +8,9 @@ all remaining deployment work in its checkpoint rather than treating it as done.
 
 Discover limiter types and their explicit schemas; list/show/create/update/delete
 policies; configure fixed-window, sliding-window, concurrency and token-bucket
-limiters; enable/disable policies and observe runtime HTTP 429 behavior. Policy
-edits remain limited to disabled policies, matching the existing administration
-workflow. Keep application-principal and per-tenant permission checks explicit.
+limiters; enable/disable policies and observe runtime HTTP 429 behavior. Target and child-limiter
+edits remain limited to disabled policies; existing enabled-policy metadata edits
+remain supported, matching the administration workflow. Keep application-principal and per-tenant permission checks explicit.
 
 ## Existing caller audit
 
