@@ -50,7 +50,16 @@ internal sealed class DeploymentOperationStore
         else { Directory.CreateDirectory(folder, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute); }
         var existing = await ReadAsync(id, cancellationToken);
         if (existing is not null) { return Match(existing, owner, kind, payload); }
-        using var guard = Guard(folder);
+        FileStream reservation;
+        try { reservation = Guard(folder); }
+        catch (IOException exception) when (exception.IsFileSharingViolation()
+            || !OperatingSystem.IsWindows() && exception.HResult is 11 or 35)
+        {
+            existing = await ReadAsync(id, cancellationToken);
+            if (existing is not null) { return Match(existing, owner, kind, payload); }
+            throw new DeploymentOperationBusyException();
+        }
+        using var guard = reservation;
         existing = await ReadAsync(id, cancellationToken);
         if (existing is not null)
         {
@@ -176,3 +185,5 @@ internal sealed class DeploymentOperationStore
 }
 
 internal sealed class DeploymentRequestConflictException : InvalidOperationException;
+
+internal sealed class DeploymentOperationBusyException : InvalidOperationException;

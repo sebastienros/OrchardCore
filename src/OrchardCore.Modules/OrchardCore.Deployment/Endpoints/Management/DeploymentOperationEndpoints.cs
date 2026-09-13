@@ -94,6 +94,10 @@ internal static class DeploymentOperationEndpoints
             var operation = await operations.CreateAsync(owner, requestId, kind, payload, context.RequestAborted);
             return TypedResults.Accepted(context.Request.PathBase + "/api/deployment/operations/" + operation.Id, Describe(operation));
         }
+        catch (DeploymentOperationBusyException)
+        {
+            return TypedResults.Problem("The request is being accepted. Retry with the same request ID.", statusCode: 409);
+        }
         catch (DeploymentRequestConflictException)
         {
             return TypedResults.Problem("The request ID already belongs to a different deployment request.", statusCode: 409);

@@ -82,6 +82,27 @@ public class DeploymentOperationStoreTests
     }
 
     [Fact]
+    public async Task ConcurrentAcceptance_PublishesOneOperationOrReturnsRetryableBusy()
+    {
+        var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("n"));
+        try
+        {
+            var token = TestContext.Current.CancellationToken;
+            var attempts = Enumerable.Range(0, 16).Select(async _ =>
+            {
+                try { return await Store(root, "one").CreateAsync("owner", "same", DeploymentOperationKind.Import, "artifact", token); }
+                catch (DeploymentOperationBusyException) { return null; }
+            });
+            var results = await Task.WhenAll(attempts);
+            var operation = await Store(root, "one").CreateAsync("owner", "same", DeploymentOperationKind.Import, "artifact", token);
+            Assert.Contains(results, result => result is not null);
+            Assert.All(results, result => Assert.True(result is null || result.Id == operation.Id));
+            Assert.Single(await Store(root, "one").PendingAsync(token));
+        }
+        finally { Directory.Delete(root, true); }
+    }
+
+    [Fact]
     public async Task ShutdownDuringExecution_RecoversAsUncertainAndDoesNotReplay()
     {
         var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("n"));
