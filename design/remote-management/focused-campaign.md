@@ -8,11 +8,11 @@ not start further deployment adapters as part of this phase.
 | Area | Included completion workflow | Current state |
 | --- | --- | --- |
 | Rate limits | Tenant policy and limiter discovery, CRUD, enable/disable, existing admin/recipe reuse, runtime 429 and recovery verification | Complete: PR #33, merged `85c42b146`, Linux/Windows CI green |
-| Audit/task administration | Bounded paged audit search/show with safe output; task list/show, schedule validation and enable/disable through existing services | Locally validated, including two tenants; preparing independent PR |
-| Media administration | Media profile CRUD and output verification; tenant-scoped media cache purge; supported tenant settings and file-policy enforcement | Pending |
+| Audit/task administration | Bounded paged audit search/show with safe output; task list/show, schedule validation and enable/disable through existing services | Complete: PR #34, merged `9bad63d5b`, Linux/Windows CI green |
+| Media administration | Media profile CRUD and output verification; tenant-scoped media cache purge; supported tenant settings and file-policy enforcement | Implementation and local validation in progress |
 | Robots/sitemaps | Typed robots settings; sitemap/source management; public robots/XML output and appropriate cache invalidation | Pending |
 
-Progress is **1 of 4 areas complete (25%)** for this narrowed phase. Report regular
+Progress is **2 of 4 areas complete (50%)** for this narrowed phase. Report regular
 updates with completed areas and approximate partial progress, making clear that
 this is a new denominator rather than the original campaign's approximately 55%.
 Count an area complete only after local validation, CI and merge. Do not count

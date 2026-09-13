@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """Verify media administration through Pomi/MCP and tenant isolation."""
 import json
+import zlib
+import html
+import re
+import struct
 import os
 from pathlib import Path
 import secrets
@@ -94,7 +98,7 @@ def tool(name, arguments):
 
 with tempfile.TemporaryDirectory(prefix='media-admin-cli-', dir=state_path.parent) as config_home:
     pomi('context', 'add', name, base, '--current')
-    for feature in ['OrchardCore.Media', 'OrchardCore.Media.Cache', 'OrchardCore.RemoteManagement.Mcp']:
+    for feature in ['OrchardCore.Media', 'OrchardCore.Media.Cache', 'OrchardCore.RemoteManagement.Mcp', 'OrchardCore.Liquid', 'OrchardCore.Autoroute']:
         request('api/features/' + feature + ':enable?force=true', 'POST')
     pomi('api', 'refresh', '--force')
     for path, client in [('api/media/profiles', 'cli-media-profiles'), ('api/media/cache', 'cli-media-cache')]:
@@ -107,6 +111,7 @@ with tempfile.TemporaryDirectory(prefix='media-admin-cli-', dir=state_path.paren
         'quality': 90, 'backgroundColor': '#fff', 'autoOrient': True, 'hint': 'live smoke'}
     upload_before = pomi('settings', 'sections', 'show', 'media-upload-policy')['values']
     api_before = pomi('settings', 'sections', 'show', 'media-api')['values']
+    secondary_name = None
     try:
         created = pomi('media', 'profiles', 'create', body=profile)
         assert created == profile
@@ -118,22 +123,95 @@ with tempfile.TemporaryDirectory(prefix='media-admin-cli-', dir=state_path.paren
         changed = {**profile, 'width': 80}
         assert tool('media_profiles_update', {'query': {'name': profile['name']}, 'body': changed}) == changed
         assert pomi('media', 'profiles', 'show', profile['name']) == changed
+        # Render an actual profile through the existing Liquid/media URL pipeline.
+        pomi('themes', 'set-current', 'TheTheme')
+        png = Path(config_home) / 'input.png'
+        def chunk(kind, data):
+            return struct.pack('>I', len(data)) + kind + data + struct.pack('>I', zlib.crc32(kind + data))
+        png.write_bytes(b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', 200, 100, 8, 2, 0, 0, 0))
+            + chunk(b'IDAT', zlib.compress((b'\0' + b'\xff\0\0' * 200) * 100)) + chunk(b'IEND', b''))
+        filename = profile['name'] + '.png'
+        pomi('media', 'files', 'upload', filename, '--file', str(png))
+        pomi('content', 'types', 'create', body={'name': name + 'Page', 'displayName': name + 'Page',
+            'settings': {'ContentTypeSettings': {'draftable': True, 'versionable': True}},
+            'parts': [{'name': part, 'partName': part} for part in ['TitlePart', 'LiquidPart', 'AutoroutePart']]})
+        liquid = '<img id="media-smoke" src="{{ \'%s\' | asset_url | resize_url: profile: \'%s\' }}">' % (filename, profile['name'])
+        page = pomi('content', 'items', 'save', body={'ContentType': name + 'Page', 'TitlePart': {'Title': name},
+            'LiquidPart': {'Liquid': liquid}, 'AutoroutePart': {'Path': profile['name']}})
+        pomi('content', 'items', 'publish', page['ContentItemId'])
+        def rendered_image():
+            with urllib.request.urlopen(base + profile['name'], timeout=30) as response:
+                page_html = response.read().decode()
+            match = re.search(r'<img id="media-smoke" src="([^"]+)"', page_html)
+            assert match, 'Rendered media profile image missing'
+            url = urllib.parse.urljoin(base, html.unescape(match.group(1)))
+            with urllib.request.urlopen(url, timeout=30) as response:
+                data = response.read()
+            assert data[:8] == b'\x89PNG\r\n\x1a\n'
+            assert struct.unpack('>II', data[16:24]) == (80, 50)
+            return data
+        image_before = rendered_image()
         cache = pomi('media', 'cache', 'show')
         assert cache['resizedConfigured'] and not cache['remoteConfigured']
         pomi('media', 'cache', 'purge', 'remote', '--force', status=503)
         pomi('media', 'cache', 'purge', 'resized', '--force')
-        patch = {'maxFileSize': 100, 'allowedFileExtensions': ['.png']}
+        assert rendered_image() == image_before
+        patch = {'maxFileSize': 1000, 'allowedFileExtensions': ['.png']}
         update = pomi('settings', 'sections', 'update', 'media-upload-policy', body=patch)
         assert update['changed'] and update['reloadRequested']
         assert not pomi('settings', 'sections', 'update', 'media-upload-policy', body=patch)['changed']
         readback = pomi('settings', 'sections', 'show', 'media-upload-policy')['values']
-        assert readback['effectiveMaxFileSize'] == 100 and readback['effectiveAllowedFileExtensions'] == ['.png']
+        assert readback['effectiveMaxFileSize'] == 1000 and readback['effectiveAllowedFileExtensions'] == ['.png']
         pomi('settings', 'sections', 'update', 'media-upload-policy', body={'maxFileSize': readback['hostMaxFileSize'] + 1}, status=400)
+        # The same options consumed by existing upload endpoints enforce tenant restrictions.
+        too_large = Path(config_home) / 'large.png'
+        too_large.write_bytes(png.read_bytes() * 20)
+        pomi('media', 'files', 'upload', 'blocked.png', '--file', str(too_large), failure=True)
+        pomi('media', 'files', 'upload', 'blocked.jpg', '--file', str(png), failure=True)
+        pomi('media', 'files', 'upload', profile['name'] + '-small.png', '--file', str(png))
         pomi('settings', 'sections', 'update', 'media-api', body={'authenticationScheme': 'Bearer'})
         assert pomi('settings', 'sections', 'show', 'media-api')['values']['authenticationScheme'] == 'Bearer'
         pomi('settings', 'sections', 'update', 'media-api', body={'authenticationScheme': 'invalid'}, status=400)
-        print('PASS: media profile CRUD/retries/validation, MCP update, cache availability/purge, permissions, settings limits/retries/authentication.', flush=True)
+        # A second tenant on this same host must have independent audit and task state.
+        secondary_name = name + 'Tenant'
+        installed = request('api/tenants/' + secondary_name + ':install', 'POST', {
+            'siteName': secondary_name, 'userName': 'admin', 'email': 'admin@example.test',
+            'password': secrets.token_urlsafe(32) + 'aA1!', 'recipeName': 'Blank',
+            'requestUrlPrefix': secondary_name.lower(), 'enableRemoteManagement': True}, status=201)
+        secondary_base = installed['primaryUrl'].rstrip('/') + '/'
+        credentials = installed['clientCredentials']
+        data = urllib.parse.urlencode({'grant_type': 'client_credentials', 'client_id': credentials['clientId'],
+            'client_secret': credentials['clientSecret'], 'scope': 'orchardcore.management'}).encode()
+        with urllib.request.urlopen(urllib.request.Request(secondary_base + 'connect/token', data=data,
+                headers={'Content-Type': 'application/x-www-form-urlencoded'}), timeout=60) as response:
+            secondary_token = json.load(response)['access_token']
+        def secondary(path, method='GET', body=None, status=200):
+            url = urllib.parse.urljoin(secondary_base, path)
+            assert urllib.parse.urlparse(url).netloc == urllib.parse.urlparse(base).netloc
+            req = urllib.request.Request(url, method=method,
+                headers={'Authorization': 'Bearer ' + secondary_token, 'Content-Type': 'application/json'},
+                data=json.dumps(body).encode() if body is not None else None)
+            try:
+                response = urllib.request.urlopen(req, timeout=60)
+            except urllib.error.HTTPError as error:
+                response = error
+            with response:
+                assert response.status == status, ('secondary', method, path, response.status)
+                text = response.read().decode()
+                return json.loads(text) if text else None
+        for feature in ['OrchardCore.Media', 'OrchardCore.Media.Cache']:
+            secondary('api/features/' + feature + ':enable?force=true', 'POST')
+        secondary('api/media/profiles/by-name?name=' + profile['name'], status=404)
+        independent = secondary('api/settings/sections/media-upload-policy')['values']
+        assert independent['maxFileSize'] is None and independent['allowedFileExtensions'] is None
+        secondary('api/media/profiles', 'POST', {**profile, 'width': 20})
+        assert pomi('media', 'profiles', 'show', profile['name'])['width'] == 80
+        secondary('api/media/cache/purge?cache=resized', 'POST', status=204)
+        assert rendered_image() == image_before
+        print('PASS: rendered images/cache regeneration, real upload policy enforcement, two-tenant isolation; media profile CRUD/retries/validation, MCP update, cache availability/purge, permissions, settings limits/retries/authentication.', flush=True)
     finally:
         pomi('settings', 'sections', 'update', 'media-upload-policy', body={key: upload_before[key] for key in ['maxFileSize', 'allowedFileExtensions']})
         pomi('settings', 'sections', 'update', 'media-api', body=api_before)
         pomi('media', 'profiles', 'delete', profile['name'], '--force')
+        if secondary_name:
+            request('api/tenants/' + secondary_name + ':stop', 'POST', status=(200, 204))

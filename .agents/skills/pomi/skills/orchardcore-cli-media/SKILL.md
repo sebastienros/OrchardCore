@@ -145,3 +145,25 @@ media fields, not public URLs.
 Versioned references (live tenant schemas take precedence):
 [media API](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/api/media/README.md) and
 [Media module](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/modules/Media/README.md).
+
+## Profiles, caches and tenant restrictions
+
+Discover `media profiles` for complete JSON profile create/update and named
+list/show/delete. Read before replacing a definition; update can rename, but
+409 means the destination already exists. An identical create retry is safe.
+Use the saved profile through existing Liquid/Razor image helpers and verify
+rendered output, not only API readback. Profile administration requires
+`ManageMediaProfiles` in addition to remote access.
+
+With `OrchardCore.Media.Cache`, `media cache show` reports provider availability.
+`media cache purge resized --force` and `media cache purge remote --force` require
+`ManageAssetCache`. Unconfigured remote caches return 503; do not retry as though
+purging succeeded.
+
+Use `settings sections schema/show/update media-upload-policy` for optional tenant
+size/extension restrictions bounded by host policy. Omission preserves, null
+inherits, and an empty extension list blocks uploads. Restricted extensions still
+need `UploadRestrictedMedia`. Verify an actual upload after changing the policy.
+The `media-api` section selects Cookie/Bearer for gallery/file endpoints without
+provisioning OpenID; management endpoints remain bearer protected. Both sections
+require `ManageMediaApiSettings`; changed settings request a tenant reload.

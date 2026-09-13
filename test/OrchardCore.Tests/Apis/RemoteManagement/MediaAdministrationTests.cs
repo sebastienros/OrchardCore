@@ -1,4 +1,7 @@
 using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Logging.Abstractions;
+using OrchardCore.Environment.Shell;
 using OrchardCore.Documents;
 using OrchardCore.Media;
 using OrchardCore.Media.Core.Processing;
@@ -75,6 +78,34 @@ public class MediaAdministrationTests
         Assert.Equal(100, options.MaxFileSize);
         Assert.Empty(options.AllowedFileExtensions);
         Assert.Empty(options.RestrictedFileExtensions);
+    }
+
+    [Fact]
+    public async Task PhysicalCachePurgeIsLimitedToItsTenant()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "media-cache-test-" + Guid.NewGuid().ToString("N"));
+        var environment = new Mock<IWebHostEnvironment>();
+        environment.SetupGet(value => value.WebRootPath).Returns(root);
+        var first = new PhysicalFileSystemResizedImageCache(environment.Object, new ShellSettings { Name = "First" },
+            NullLogger<PhysicalFileSystemResizedImageCache>.Instance);
+        var second = new PhysicalFileSystemResizedImageCache(environment.Object, new ShellSettings { Name = "Second" },
+            NullLogger<PhysicalFileSystemResizedImageCache>.Instance);
+        try
+        {
+            using var input = new MemoryStream([1, 2, 3]);
+            await first.SetAsync("abcdef", input, "image/png", TimeSpan.FromMinutes(1), TestContext.Current.CancellationToken);
+            input.Position = 0;
+            await second.SetAsync("abcdef", input, "image/png", TimeSpan.FromMinutes(1), TestContext.Current.CancellationToken);
+            await first.ClearAsync(TestContext.Current.CancellationToken);
+            Assert.Null(await first.GetAsync("abcdef", ".png", TestContext.Current.CancellationToken));
+            var retained = await second.GetAsync("abcdef", ".png", TestContext.Current.CancellationToken);
+            Assert.NotNull(retained);
+            await retained.Value.Content.DisposeAsync();
+        }
+        finally
+        {
+            if (Directory.Exists(root)) { Directory.Delete(root, recursive: true); }
+        }
     }
 
     [Fact]
