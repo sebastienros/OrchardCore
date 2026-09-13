@@ -1,4 +1,5 @@
 using Fluid;
+using OrchardCore.Media.Endpoints.Management;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
@@ -90,6 +91,9 @@ public sealed class Startup : StartupBase
         services.AddResourceConfiguration<ResourceManagementOptionsConfiguration>();
 
         services.AddTransient<IConfigureOptions<MediaOptions>, MediaOptionsConfiguration>();
+        services.AddTransient<IPostConfigureOptions<MediaOptions>, MediaUploadOptionsConfiguration>();
+        services.AddScoped<ISiteSettingsSectionProvider, MediaUploadSettingsSectionProvider>();
+        services.AddScoped<ISiteSettingsSectionProvider, MediaApiSettingsSectionProvider>();
         services.AddSingleton<IValidateOptions<MediaOptions>, MediaOptionsValidator>();
 
         // Builds the "MediaApi" authorization policy from MediaApiSettings (cookie default / bearer).
@@ -219,6 +223,7 @@ public sealed class Startup : StartupBase
 
         // Media Profiles
         services.AddScoped<MediaProfilesManager>();
+        services.AddScoped<MediaProfileManagementService>();
         services.AddScoped<IMediaProfileService, MediaProfileService>();
         services.AddRecipeExecutionStep<MediaProfileStep>();
 
@@ -235,6 +240,7 @@ public sealed class Startup : StartupBase
         IServiceProvider serviceProvider
     )
     {
+        routes.AddMediaProfileEndpoints();
         routes.AddGetLocalizationsEndpoint()
             .AddGetPermittedStorageEndpoint()
             .AddGetDirectoryTreeEndpoint()
@@ -292,8 +298,14 @@ public sealed class Startup : StartupBase
 [Feature("OrchardCore.Media.Cache")]
 public sealed class MediaCacheStartup : StartupBase
 {
+    public override void Configure(IApplicationBuilder app, IEndpointRouteBuilder routes, IServiceProvider serviceProvider)
+    {
+        routes.AddMediaCacheEndpoints();
+    }
+
     public override void ConfigureServices(IServiceCollection services)
     {
+        services.AddScoped<MediaCacheManagementService>();
         services.AddPermissionProvider<MediaCachePermissions>();
         services.AddNavigationProvider<MediaCacheAdminMenu>();
     }
