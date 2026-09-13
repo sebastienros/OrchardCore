@@ -235,6 +235,15 @@ use the same validation, and selecting all deployment plans clears explicit name
 
 To send packages directly to another Orchard Core site, see [Remote Deployment](../Deployment.Remote/README.md).
 
+## Private artifact storage
+
+`DeploymentArtifactOptions` provides host-owned limits for deployment artifact
+storage: `MaxBytes` defaults to 500 MiB and `Lifetime` to 24 hours. Storage uses a
+private `DeploymentArtifacts` directory under the tenant's App_Data folder. These
+options are separate from package extraction limits in `DeploymentPackageOptions`.
+The storage service is infrastructure for artifact workflows; it does not itself
+expose upload/download routes or grant Export/Import permissions.
+
 ## Videos
 
 <iframe width="560" height="315" src="https://www.youtube-nocookie.com/embed/wBWa28iHWHI" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>

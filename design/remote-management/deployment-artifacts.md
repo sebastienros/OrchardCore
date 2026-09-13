@@ -147,3 +147,30 @@ The upload fixture initially lacked FormFile headers and failed before reaching
 its event pipeline; correcting the fixture verifies the intended controller paths.
 No production changes were needed for these additional scenarios. Durable owned
 artifact storage and operation orchestration are the next implementation gates.
+
+## Durable artifact store in progress
+
+Private artifact directories live under the tenant App_Data container, outside
+static content. Opaque IDs select storage paths; metadata records owner identity,
+import/export purpose, display filename, media type, actual byte length, SHA-256,
+creation and expiry. Metadata is published last after a bounded copy completes.
+Failed copies clean up; input stream ownership stays with the caller.
+
+Store instances use shared read guards and exclusive write/delete guards. Open
+leases prevent deletion and expiry cleanup; releasing a lease allows expired data
+to be removed. Aged incomplete uploads are removable only after an exclusive guard
+confirms no writer is active and metadata has not appeared. This store requires a
+filesystem that honors .NET file-sharing locks across cooperating instances; verify
+the intended hosting filesystem before claiming multi-node support.
+
+Default retention is 24 hours and stored size is bounded at 500 MiB through
+DeploymentArtifactOptions. Endpoint DTOs still need to omit owner/storage details;
+principal extraction, permission checks, scheduled cleanup and durable operation
+claims are not yet exposed or wired. The store is an implementation checkpoint,
+not a completed upload/download workflow.
+
+Store checkpoint validation: strict build and docs pass, with all four store tests
+passing. Tests reopen persisted data with another store instance, verify tenant/
+owner isolation and checksums, protect open reads against deletion/expiry, clean
+up size-limit failures and skip active writers during orphan cleanup. Cross-process
+and hosting-filesystem behavior still need verification before multi-node claims.

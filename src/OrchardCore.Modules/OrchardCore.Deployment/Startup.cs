@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using OrchardCore.Data;
 using OrchardCore.Data.Migration;
 using OrchardCore.Deployment.Core;
+using OrchardCore.Deployment.Artifacts;
 using OrchardCore.Deployment.Deployment;
 using OrchardCore.Deployment.Drivers;
 using OrchardCore.Deployment.Indexes;
@@ -36,6 +37,8 @@ public sealed class Startup : StartupBase
     {
         services.TryAddTransient<FileCreationService>();
         services.AddDeploymentServices();
+        services.AddOptions<DeploymentArtifactOptions>();
+        services.AddScoped<DeploymentArtifactStore>();
 
         services.AddNavigationProvider<AdminMenu>();
         services.AddPermissionProvider<Permissions>();
