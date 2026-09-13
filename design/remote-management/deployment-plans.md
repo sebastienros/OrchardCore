@@ -261,3 +261,22 @@ legacy repair, migration replay, unknown nested-payload preservation, and recipe
 replay across tenant scopes. The full server suite passes: 3,472 tests succeeded, zero failed, and one expected CI-only test skipped. Strict documentation build also passes.
 Content-to-plan controller integration, tenant/feature lifecycle, live HTTP/Pomi/MCP,
 package updates and final integration/CI remain release gates.
+
+## Existing content actions and disabled-feature regression
+
+Real-tenant controller tests exercise single/bulk content additions using published
+content, the actual plan service and fresh-scope readback. Accepted additions receive
+unique persisted IDs. Denial of the second bulk item leaves the existing plan intact
+both in the tracked object and in storage.
+
+A feature-lifecycle test fails before the serializer fix: disabling the single-item
+deployment feature makes plan loading throw while reading LocalizedString category
+metadata. The generic unknown-type fallback discarded the document serializer
+options. Passing those options to fallback deserialization preserves the registered
+converters. The lifecycle test then checks rename while disabled and restoration of
+the same typed step, ID and reference when the feature is re-enabled.
+
+Validation: strict build has zero warnings/errors; all 12 targeted content-action,
+feature-lifecycle and resilient serializer tests pass. The full server suite passes
+with 3,475 successes, zero failures and one expected CI-only skip. Tenant isolation,
+live HTTP/Pomi/MCP, Pomi packaging and final solution/CLI/MCP/CI remain.
