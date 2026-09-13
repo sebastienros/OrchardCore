@@ -82,6 +82,9 @@ public class CustomUserSettingsService
         return contentItems;
     }
 
+    /// <summary>
+    /// Builds a detached settings item using the canonical current type definition and stored user values.
+    /// </summary>
     public async Task<ContentItem> GetSettingsAsync(User user, ContentTypeDefinition settingsType, Func<Task> factoryAsync = null)
     {
         ContentItem contentItem;
