@@ -1,3 +1,8 @@
+using System.Text.Json;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.Extensions.Options;
+using OrchardCore.Deployment.Core.Services;
+using OrchardCore.FileStorage;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -14,6 +19,15 @@ internal static class DeploymentArtifactEndpoints
 {
     public static void AddDeploymentArtifactEndpoints(this IEndpointRouteBuilder routes)
     {
+        Secure(routes.MapPost("api/deployment/artifacts", UploadAsync), "ApiUploadDeploymentArtifact")
+            .WithSummary("Uploads and validates a deployment package without executing it.")
+            .WithCliCommand(new CliOperationMetadata(["deployment", "artifacts"], "upload")
+            {
+                Capability = "deployment-plans", InputMode = CliInputMode.Stream,
+                Arguments = { new CliArgumentMetadata("fileName", 0) },
+            })
+            .Accepts<Stream>("application/octet-stream")
+            .Produces<DeploymentArtifactResponse>().ProducesProblem(400).ProducesProblem(413);
         Configure(routes.MapGet("api/deployment/artifacts/{id}", GetAsync), "ApiGetDeploymentArtifact", "show")
             .Produces<DeploymentArtifactResponse>();
         Configure(routes.MapDelete("api/deployment/artifacts/{id}", DeleteAsync), "ApiDeleteDeploymentArtifact", "delete")
@@ -35,6 +49,54 @@ internal static class DeploymentArtifactEndpoints
         .RequireAuthorization(policy => policy.AddAuthenticationSchemes(OrchardCoreConstants.AuthenticationSchemes.Api)
             .RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(RemoteManagementPermissions.AccessRemoteManagement)))
         .ProducesProblem(401).ProducesProblem(403).ProducesProblem(404);
+
+    internal static async Task<IResult> UploadAsync(HttpContext context, [FromServices] IAuthorizationService authorization,
+        [FromServices] DeploymentArtifactStore store, [FromServices] DeploymentPackageService packages,
+        [FromServices] FileCreationService files, [FromServices] IOptions<DeploymentPackageOptions> options,
+        [FromQuery] string fileName)
+    {
+        var owner = await OwnerAsync(context, authorization);
+        if (owner is null || !await authorization.AuthorizeAsync(context.User, DeploymentPermissions.Import))
+        {
+            return context.ApiForbidProblem();
+        }
+        var extension = Path.GetExtension(fileName);
+        if (string.IsNullOrWhiteSpace(fileName) || fileName.Any(character => char.IsControl(character) || character is '/' or '\\' or ':')
+            || !(string.Equals(extension, ".zip", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(extension, ".json", StringComparison.OrdinalIgnoreCase)))
+        {
+            return TypedResults.Problem("Provide a ZIP or JSON filename without a directory path.", statusCode: 400);
+        }
+        var limit = options.Value.MaxUploadBytes;
+        if (limit <= 0) { throw new InvalidOperationException("Deployment package limits must be positive."); }
+        if (context.Request.ContentLength > limit)
+        {
+            return TypedResults.Problem("The deployment package exceeds the upload size limit.", statusCode: 413);
+        }
+        if (context.Features.Get<IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } bodyLimit)
+        {
+            bodyLimit.MaxRequestBodySize = limit;
+        }
+        var contentType = string.Equals(extension, ".zip", StringComparison.OrdinalIgnoreCase) ? "application/zip" : "application/json";
+        try
+        {
+            await using var processed = await files.CreateAsync(new FileCreatingContext(fileName,
+                context.Request.ContentLength ?? 0, contentType), context.Request.Body, context.RequestAborted);
+            if (!processed.Succeeded)
+            {
+                return TypedResults.Problem("The deployment package was rejected by the file-creation pipeline.", statusCode: 400);
+            }
+            using var package = await packages.StageAsync(processed.Stream, fileName, context.RequestAborted);
+            await using var original = package.OpenRead();
+            var artifact = await store.CreateAsync(owner, DeploymentArtifactKind.Import, fileName, contentType,
+                original, context.RequestAborted);
+            return TypedResults.Ok(Describe(artifact));
+        }
+        catch (Exception exception) when (exception is InvalidDataException or JsonException)
+        {
+            return TypedResults.Problem("The deployment package is invalid or exceeds the configured package limits.", statusCode: 400);
+        }
+    }
 
     internal static async Task<IResult> GetAsync(HttpContext context, [FromServices] IAuthorizationService authorization,
         [FromServices] DeploymentArtifactStore store, string id)

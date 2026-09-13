@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Extensions.Options;
+using OrchardCore.FileStorage;
+using OrchardCore.Deployment.Core.Services;
 using OrchardCore.Deployment;
 using OrchardCore.Deployment.Artifacts;
 using OrchardCore.Deployment.Endpoints.Management;
@@ -63,6 +65,68 @@ public class DeploymentArtifactEndpointTests
         finally
         {
             if (Directory.Exists(root)) { Directory.Delete(root, recursive: true); }
+        }
+    }
+
+    [Theory]
+    [InlineData("valid", 200)]
+    [InlineData("transformed", 200)]
+    [InlineData("invalid", 400)]
+    [InlineData("pipeline-denied", 400)]
+    [InlineData("permission-denied", 403)]
+    [InlineData("oversized", 413)]
+    [InlineData("bad-name", 400)]
+    public async Task Upload_UsesPipelineAndValidationBeforePublishingArtifact(string scenario, int status)
+    {
+        var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("n"));
+        var staging = Path.Combine(root, "staging");
+        Directory.CreateDirectory(staging);
+        using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
+        var clock = new Mock<IClock>();
+        clock.SetupGet(value => value.UtcNow).Returns(DateTime.UtcNow);
+        var store = new DeploymentArtifactStore(Options.Create(new ShellOptions { ShellsApplicationDataPath = root, ShellsContainerName = "Sites" }),
+            new ShellSettings { Name = "Tenant" }, Options.Create(new DeploymentArtifactOptions()), clock.Object);
+        var temporary = new Mock<ITempDirectoryProvider>();
+        temporary.Setup(value => value.CreateTempSubdirectory()).Returns(() => Directory.CreateDirectory(Path.Combine(staging, Guid.NewGuid().ToString("n"))).FullName);
+        var options = Options.Create(new DeploymentPackageOptions());
+        var packages = new DeploymentPackageService(temporary.Object, options);
+        var handler = new Mock<IFileEventHandler>();
+        handler.Setup(value => value.CreatingAsync(It.IsAny<FileCreatingContext>(), It.IsAny<Stream>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((FileCreatingContext _, Stream stream, CancellationToken _) => scenario == "pipeline-denied"
+                ? FileCreatingResult.Failed(stream)
+                : FileCreatingResult.Success(scenario == "transformed" ? new MemoryStream(Encoding.UTF8.GetBytes("{\"steps\":[]}")) : stream));
+        try
+        {
+            using var input = new MemoryStream(Encoding.UTF8.GetBytes(scenario is "invalid" or "transformed" ? "invalid" : "{\"steps\":[]}"));
+            var context = new DefaultHttpContext { RequestServices = services, User = Principal("application", "uploader") };
+            context.Request.Body = input;
+            context.Request.ContentLength = scenario == "oversized" ? options.Value.MaxUploadBytes + 1 : input.Length;
+            var authorization = scenario == "permission-denied" ? Authorize(RemoteManagementPermissions.AccessRemoteManagement)
+                : Authorize(RemoteManagementPermissions.AccessRemoteManagement, DeploymentPermissions.Import);
+            var result = await DeploymentArtifactEndpoints.UploadAsync(context, authorization, store, packages,
+                new FileCreationService([handler.Object]), options, scenario == "bad-name" ? "../Recipe.json" : "Recipe.json");
+            Assert.Equal(status, Status(result));
+            Assert.Empty(Directory.GetFileSystemEntries(staging));
+            handler.Verify(value => value.CreatingAsync(It.IsAny<FileCreatingContext>(), It.IsAny<Stream>(), It.IsAny<CancellationToken>()),
+                scenario is "permission-denied" or "oversized" or "bad-name" ? Times.Never() : Times.Once());
+            if (status == 200)
+            {
+                var metadata = Assert.IsType<Ok<DeploymentArtifactResponse>>(result).Value;
+                Assert.Equal("import", metadata.Kind);
+                using var lease = await store.OpenAsync(metadata.Id, DeploymentArtifactOwner.Get(context.User));
+                Assert.NotNull(lease);
+                using var reader = new StreamReader(lease.Stream);
+                Assert.Equal("{\"steps\":[]}", await reader.ReadToEndAsync(TestContext.Current.CancellationToken));
+                Assert.Null(await store.FindAsync(metadata.Id, DeploymentArtifactOwner.Get(Principal("user", "uploader"))));
+            }
+            else
+            {
+                Assert.False(Directory.Exists(Path.Combine(root, "Sites")));
+            }
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
         }
     }
 

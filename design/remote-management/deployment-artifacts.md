@@ -191,3 +191,13 @@ actual response bytes, lease release and repeatable deletion. Metadata/delete ha
 Pomi/MCP JSON projection. Binary download deliberately has no CLI metadata until
 explicit Pomi file output is implemented; binary MCP remains excluded. Live OAuth
 transport checks, upload pipeline integration and operation orchestration remain.
+
+### Upload checkpoint
+
+The artifact upload route now runs FileCreationService and the shared
+DeploymentPackageService before persisting the validated original bytes. It
+authorizes Import and remote management before processing input; invalid names,
+oversized declared bodies, rejected pipeline results and malformed packages do not
+publish an artifact. Pomi stream-input metadata is present; live discovery and
+command verification remain pending with the transport workflow. Upload does not
+execute recipes.

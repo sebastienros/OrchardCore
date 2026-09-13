@@ -254,8 +254,13 @@ Artifact access requires `AccessRemoteManagement`, the artifact's Export or Impo
 permission, and the same tenant, issuer, entity kind and subject that created it.
 Metadata omits the owner identity and server paths. An active read prevents deletion
 with a conflict response; repeated deletion of an absent artifact is unchanged.
-These routes manage existing artifacts. Artifact creation/upload and execution
-workflows are implemented separately.
+Upload a ZIP or JSON package with `POST api/deployment/artifacts?fileName=package.zip`
+and an `application/octet-stream` request body, or use
+`pomi deployment artifacts upload package.zip --file ./package.zip`. Upload requires
+Import permission, runs the file-creation pipeline and the same bounded package
+validator as admin imports, and returns private artifact metadata without executing
+the recipe. Rejected packages are not persisted. Stream uploads are not exposed as
+MCP tools. Export creation and import execution workflows are implemented separately.
 
 ## Videos
 
