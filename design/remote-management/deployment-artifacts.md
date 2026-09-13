@@ -211,3 +211,16 @@ The test cleans its artifact and local command context. Cross-tenant execution,
 operation durability remain outstanding. Scheduled retention runs every 15 minutes
 through the shared lease-aware store, with at most 100 deletions per run and
 cancellation checks between candidates.
+
+### Operation persistence checkpoint
+
+Deployment operation records live independently of recipe transactions in private
+per-tenant storage beside artifacts. Acceptance IDs derive from the initiating
+owner and caller request ID; the same request returns the existing record, while
+changed operation kind or payload conflicts. Records are published by atomic
+replacement while holding an exclusive guard. A worker holds that guard for its
+entire execution. A later claim of an unguarded Running record marks it Uncertain
+with `execution_interrupted`, never Pending. This uses the same filesystem-lock
+hosting requirement as artifacts and does not claim multi-node portability beyond
+that requirement. Worker enumeration, API admission/status and execution adapters
+are not yet wired; this checkpoint cannot execute deployments on its own.
