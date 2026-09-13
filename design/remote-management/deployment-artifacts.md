@@ -237,3 +237,19 @@ the shared archive service and stores a private export artifact. Import holds an
 artifact read lease, uses shared package staging and calls the existing deployment
 manager. Admin export and queued export share recipe descriptor mapping.
 API admission/status and end-to-end execution remain to be implemented and tested.
+
+### Live queued execution round trip
+
+`.scripts/remote-management/deployment-execution-smoke.py` passes against two fresh
+isolated local tenant hosts with real OAuth. Pomi creates a plan with settings,
+content-definition/content and media recipe steps plus a custom SVG file. The
+source worker exports the captured plan, Pomi downloads it, and the target accepts
+an upload and queues import. Both operations reach Succeeded. Verification checks
+the target site name, imported content display text and exact public media bytes,
+as well as cross-tenant operation/artifact 404s and identical submission retries.
+The initial test encountered the existing media extension policy
+with a text file: the operation reported Failed after earlier recipe steps ran.
+The fixture was corrected to use a permitted SVG; no importer policy was relaxed.
+The test mutates only disposable fixtures and leaves results available for review.
+Strict documentation build passes. Full suites, additional interruption/concurrency
+coverage, skill/package/inventory updates and PR CI/review remain before release.
