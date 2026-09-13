@@ -2,12 +2,12 @@
 
 The user's latest scope supersedes the earlier whole-backlog completion campaign.
 Finish only the following four areas, then **stop the campaign and pause for review**.
-Finish and merge the already-open query deployment PR #32 if its checks pass; do
+Query deployment PR #32 passed all checks and merged as `91f3cf87b`; do
 not start further deployment adapters as part of this phase.
 
 | Area | Included completion workflow | Current state |
 | --- | --- | --- |
-| Rate limits | Tenant policy and limiter discovery, CRUD, enable/disable, existing admin/recipe reuse, runtime 429 and recovery verification | Caller audit and implementation underway |
+| Rate limits | Tenant policy and limiter discovery, CRUD, enable/disable, existing admin/recipe reuse, runtime 429 and recovery verification | API and shared admin logic implemented; local/runtime verification underway |
 | Audit/task administration | Bounded paged audit search/show with safe output; task list/show, schedule validation and enable/disable through existing services | Pending |
 | Media administration | Media profile CRUD and output verification; tenant-scoped media cache purge; supported tenant settings and file-policy enforcement | Pending |
 | Robots/sitemaps | Typed robots settings; sitemap/source management; public robots/XML output and appropriate cache invalidation | Pending |

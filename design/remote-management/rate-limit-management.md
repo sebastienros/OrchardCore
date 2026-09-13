@@ -39,4 +39,31 @@ invalid-patch preservation and enabled-policy editing rules. Use a narrowly scop
 fixture path for the real 429/recovery check. Keep host-owned built-in route
 configuration separate from tenant policy administration. Update canonical docs,
 Pomi skills, inventory, progress and CI evidence before an independent exact-green
-merge. No implementation or validation is claimed by this initial audit.
+merge. 
+
+## Implementation and local evidence
+
+The admin policy actions and API use `RateLimitPolicyMutations`, including one
+shell release per changed status batch. The existing child limiter controller and
+API use `RateLimitLimiterMutations`. All four display drivers use the same typed
+numeric validators as the remote configuration contracts. Recipe target validation
+uses the shared core helper; recipe identity and custom-source semantics remain.
+
+The prior merged query build, with RateLimits enabled, returned 404 for the new
+policy API. The final strict full solution build passed with zero warnings/errors. All 43
+rate-limit regressions, 298 CLI tests, and 78 MCP tests passed.
+
+The live smoke passed all four built-in configurations through Pomi, MCP reads and
+updates, permission separation, identical retries, invalid-update preservation,
+active-policy edit rejection, and actual 404 → 429 → 404 enforcement/recovery on a
+narrow disposable path. Its private application credential cache exercises the
+same token-reuse path as provisioned contexts. Environment credentials intentionally
+request fresh tokens, so repeated invocations can encounter the existing OpenID
+10/minute per-IP token limit. The independently seeded global policy is temporarily
+isolated only in the disposable fixture and restored afterward.
+
+Remote policy responses exclude ownership and arbitrary extension payloads. Unknown
+limiter sources remain visible but unconfigurable. Host-contributed route/group
+limits remain configured in code. This completes the chosen rate-limit workflow;
+it does not introduce arbitrary host configuration or additional limiter sources.
+
