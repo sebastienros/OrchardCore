@@ -9,6 +9,7 @@ using OrchardCore.Data;
 using OrchardCore.Data.Migration;
 using OrchardCore.Deployment.Core;
 using OrchardCore.Deployment.Artifacts;
+using OrchardCore.Deployment.Operations;
 using OrchardCore.Deployment.Deployment;
 using OrchardCore.Deployment.Drivers;
 using OrchardCore.Deployment.Indexes;
@@ -41,6 +42,10 @@ public sealed class Startup : StartupBase
         services.AddDeploymentServices();
         services.AddOptions<DeploymentArtifactOptions>();
         services.AddScoped<DeploymentArtifactStore>();
+        services.AddScoped<DeploymentOperationStore>();
+        services.AddScoped<IDeploymentOperationExecutor, DeploymentOperationExecutor>();
+        services.AddScoped<DeploymentOperationRunner>();
+        services.AddSingleton<IBackgroundTask, DeploymentOperationTask>();
         services.AddSingleton<IBackgroundTask, DeploymentArtifactCleanupTask>();
 
         services.AddNavigationProvider<AdminMenu>();

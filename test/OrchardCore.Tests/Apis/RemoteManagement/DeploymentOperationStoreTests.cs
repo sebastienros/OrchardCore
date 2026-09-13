@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Logging.Abstractions;
 using OrchardCore.Deployment.Operations;
 using OrchardCore.Environment.Shell;
 using OrchardCore.Modules;
@@ -52,6 +53,42 @@ public class DeploymentOperationStoreTests
             Assert.Null(await reopened.ClaimAsync(operation.Id, token));
         }
         finally { Directory.Delete(root, true); }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Runner_RecordsConfirmedOutcomeAndDoesNotRepeatExecution(bool fail)
+    {
+        var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("n"));
+        try
+        {
+            var token = TestContext.Current.CancellationToken;
+            var store = Store(root, "one");
+            var operation = await store.CreateAsync("owner", "request", DeploymentOperationKind.Export, "snapshot", token);
+            var executor = new Executor { Fail = fail };
+            var runner = new DeploymentOperationRunner(store, executor, NullLogger<DeploymentOperationRunner>.Instance);
+            await runner.RunAsync(operation.Id, token);
+            await runner.RunAsync(operation.Id, token);
+            Assert.Equal(1, executor.Calls);
+            var result = await store.FindAsync(operation.Id, "owner", token);
+            Assert.Equal(fail ? DeploymentOperationState.Failed : DeploymentOperationState.Succeeded, result.State);
+            Assert.Equal(fail ? "execution_failed" : null, result.ErrorCode);
+            Assert.Equal(fail ? null : "artifact-id", result.ArtifactId);
+            Assert.Empty(await store.PendingAsync(token));
+        }
+        finally { Directory.Delete(root, true); }
+    }
+
+    private sealed class Executor : IDeploymentOperationExecutor
+    {
+        public bool Fail { get; init; }
+        public int Calls { get; private set; }
+        public Task<string> ExecuteAsync(DeploymentOperation operation, CancellationToken cancellationToken)
+        {
+            Calls++;
+            return Fail ? Task.FromException<string>(new InvalidOperationException("private failure")) : Task.FromResult("artifact-id");
+        }
     }
 
     private static DeploymentOperationStore Store(string root, string tenant)

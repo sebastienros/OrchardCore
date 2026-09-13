@@ -3,9 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OrchardCore.Admin;
 using OrchardCore.Deployment.Services;
-using OrchardCore.Deployment.Steps;
 using OrchardCore.Mvc.Utilities;
-using OrchardCore.Recipes.Models;
 using YesSql;
 
 namespace OrchardCore.Deployment.Controllers;
@@ -45,21 +43,7 @@ public sealed class ExportFileController : Controller
 
         var filename = deploymentPlan.Name.ToSafeName() + ".zip";
 
-        var recipeDescriptor = new RecipeDescriptor();
-        var recipeFileDeploymentStep = deploymentPlan.DeploymentSteps.FirstOrDefault(ds => ds.Name == nameof(RecipeFileDeploymentStep)) as RecipeFileDeploymentStep;
-
-        if (recipeFileDeploymentStep != null)
-        {
-            recipeDescriptor.Name = recipeFileDeploymentStep.RecipeName;
-            recipeDescriptor.DisplayName = recipeFileDeploymentStep.DisplayName;
-            recipeDescriptor.Description = recipeFileDeploymentStep.Description;
-            recipeDescriptor.Author = recipeFileDeploymentStep.Author;
-            recipeDescriptor.WebSite = recipeFileDeploymentStep.WebSite;
-            recipeDescriptor.Version = recipeFileDeploymentStep.Version;
-            recipeDescriptor.IsSetupRecipe = recipeFileDeploymentStep.IsSetupRecipe;
-            recipeDescriptor.Categories = (recipeFileDeploymentStep.Categories ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries);
-            recipeDescriptor.Tags = (recipeFileDeploymentStep.Tags ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries);
-        }
+        var recipeDescriptor = DeploymentRecipeMetadata.Create(deploymentPlan);
 
         return new FileStreamResult(await _archives.CreateAsync(deploymentPlan, recipeDescriptor), MediaTypeNames.Application.Zip) { FileDownloadName = filename };
     }

@@ -96,6 +96,24 @@ internal sealed class DeploymentOperationStore
         finally { guard?.Dispose(); }
     }
 
+    public async Task<IReadOnlyList<string>> PendingAsync(CancellationToken cancellationToken)
+    {
+        var result = new List<string>();
+        if (!Directory.Exists(_root)) { return result; }
+        foreach (var folder in Directory.EnumerateDirectories(_root))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var id = Path.GetFileName(folder);
+            if (!ValidId(id)) { continue; }
+            var operation = await ReadAsync(id, cancellationToken);
+            if (operation?.State is DeploymentOperationState.Pending or DeploymentOperationState.Running)
+            {
+                result.Add(id);
+            }
+        }
+        return result;
+    }
+
     private static bool ValidId(string id) => id is { Length: 64 } && id.All(char.IsAsciiHexDigit);
     private string Folder(string id) => Path.Combine(_root, id);
     private static FileStream Guard(string folder) => new(Path.Combine(folder, "lease"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);

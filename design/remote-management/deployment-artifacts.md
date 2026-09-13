@@ -224,3 +224,16 @@ with `execution_interrupted`, never Pending. This uses the same filesystem-lock
 hosting requirement as artifacts and does not claim multi-node portability beyond
 that requirement. Worker enumeration, API admission/status and execution adapters
 are not yet wired; this checkpoint cannot execute deployments on its own.
+
+### Durable worker wiring
+
+A tenant background task scans Pending and Running records every minute. Claims
+serialize execution and recover abandoned Running records as Uncertain. The runner
+records success only after its child tenant scope has completed; failures expose
+`execution_failed` rather than exception text, and shutdown cancellation leaves
+recovery to the next claim. Export payloads are admitted plan snapshots serialized
+with the tenant document contract. Execution rejects unavailable step types, uses
+the shared archive service and stores a private export artifact. Import holds an
+artifact read lease, uses shared package staging and calls the existing deployment
+manager. Admin export and queued export share recipe descriptor mapping.
+API admission/status and end-to-end execution remain to be implemented and tested.
