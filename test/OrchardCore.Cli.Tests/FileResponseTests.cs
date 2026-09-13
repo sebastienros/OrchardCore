@@ -47,6 +47,28 @@ public class FileResponseTests
         }
     }
 
+    [Fact]
+    public async Task InterruptedDownload_RemovesPartiallyWrittenDestination()
+    {
+        var path = Path.Combine(TestPaths.CreateScratchDirectory(nameof(InterruptedDownload_RemovesPartiallyWrittenDestination)), "partial.zip");
+        await using (var file = SecretOutputFile.Create(new FileInfo(path)))
+        {
+            using var response = new InterruptedStream();
+            await Assert.ThrowsAsync<IOException>(() => file.WriteStreamAsync(response, TestContext.Current.CancellationToken));
+            Assert.True(File.Exists(path));
+        }
+        Assert.False(File.Exists(path));
+    }
+
+    private sealed class InterruptedStream : MemoryStream
+    {
+        public override async Task CopyToAsync(Stream destination, int bufferSize, CancellationToken cancellationToken)
+        {
+            await destination.WriteAsync(new byte[] { 0x50, 0x4b }, cancellationToken);
+            throw new IOException("Synthetic interrupted transfer");
+        }
+    }
+
     private sealed class DownloadHandler(bool failure) : HttpMessageHandler
     {
         public static readonly byte[] Bytes = [0x50, 0x4b, 0, 0xff, 0xfe, 0x80, 0x7b];

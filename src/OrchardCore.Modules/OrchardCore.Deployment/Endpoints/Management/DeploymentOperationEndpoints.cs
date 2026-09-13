@@ -64,7 +64,13 @@ internal static class DeploymentOperationEndpoints
     {
         var owner = await OwnerAsync(context, authorization, DeploymentPermissions.Import);
         if (owner is null) { return context.ApiForbidProblem(); }
-        if (!ValidRequestId(request.RequestId)) { return InvalidRequest(); }
+        if (!ValidRequestId(request.RequestId) || string.IsNullOrWhiteSpace(request.ArtifactId)) { return InvalidRequest(); }
+        // An accepted request survives artifact expiry/deletion. Return its durable
+        // outcome on a retry without admitting another execution.
+        if (await operations.FindRequestAsync(owner, request.RequestId, context.RequestAborted) is not null)
+        {
+            return await AcceptAsync(context, operations, owner, request.RequestId, DeploymentOperationKind.Import, request.ArtifactId);
+        }
         var artifact = await artifacts.FindAsync(request.ArtifactId, owner);
         if (artifact is null || artifact.Kind != DeploymentArtifactKind.Import) { return context.ApiNotFoundProblem(); }
         return await AcceptAsync(context, operations, owner, request.RequestId, DeploymentOperationKind.Import, artifact.Id);

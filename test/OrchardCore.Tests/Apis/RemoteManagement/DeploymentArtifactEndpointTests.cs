@@ -133,6 +133,42 @@ public class DeploymentArtifactEndpointTests
     }
 
     [Fact]
+    public async Task ImportRetry_AfterArtifactDeletion_ReturnsExistingOperationButRejectsChangedTarget()
+    {
+        var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("n"));
+        using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
+        var clock = new Mock<IClock>();
+        clock.SetupGet(value => value.UtcNow).Returns(() => DateTime.UtcNow);
+        var settings = Options.Create(new ShellOptions { ShellsApplicationDataPath = root, ShellsContainerName = "Sites" });
+        var tenant = new ShellSettings { Name = "Tenant" };
+        var operations = new DeploymentOperationStore(settings, tenant, clock.Object);
+        var artifacts = new DeploymentArtifactStore(settings, tenant, Options.Create(new DeploymentArtifactOptions()), clock.Object);
+        try
+        {
+            var context = new DefaultHttpContext { RequestServices = services, User = Principal("application", "importer") };
+            var owner = DeploymentArtifactOwner.Get(context.User);
+            using var input = new MemoryStream(Encoding.UTF8.GetBytes("{\"steps\":[]}"));
+            var artifact = await artifacts.CreateAsync(owner, DeploymentArtifactKind.Import, "Recipe.json", "application/json", input, TestContext.Current.CancellationToken);
+            var allowed = Authorize(RemoteManagementPermissions.AccessRemoteManagement, DeploymentPermissions.Import);
+            var request = new DeploymentImportRequest { RequestId = "retry", ArtifactId = artifact.Id };
+            var accepted = Assert.IsType<Accepted<DeploymentOperationResponse>>(await DeploymentOperationEndpoints.ImportAsync(context, allowed, artifacts, operations, request)).Value;
+            using (var claim = await operations.ClaimAsync(accepted.Id, TestContext.Current.CancellationToken))
+            {
+                await claim.CompleteAsync(DeploymentOperationState.Succeeded, null, null, TestContext.Current.CancellationToken);
+            }
+            Assert.Equal(ArtifactDeleteResult.Deleted, await artifacts.DeleteAsync(artifact.Id, owner));
+            var retry = Assert.IsType<Accepted<DeploymentOperationResponse>>(await DeploymentOperationEndpoints.ImportAsync(context, allowed, artifacts, operations, request)).Value;
+            Assert.Equal(accepted.Id, retry.Id);
+            Assert.Equal("succeeded", retry.State);
+            request.ArtifactId = Guid.NewGuid().ToString("n");
+            Assert.Equal(409, Status(await DeploymentOperationEndpoints.ImportAsync(context, allowed, artifacts, operations, request)));
+            request.RequestId = "new";
+            Assert.Equal(404, Status(await DeploymentOperationEndpoints.ImportAsync(context, allowed, artifacts, operations, request)));
+        }
+        finally { if (Directory.Exists(root)) { Directory.Delete(root, true); } }
+    }
+
+    [Fact]
     public async Task ExportSubmission_RequiresExportPermission_DeduplicatesAndSanitizesStatus()
     {
         var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("n"));

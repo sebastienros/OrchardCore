@@ -44,7 +44,7 @@ internal sealed class DeploymentOperationStore
         ArgumentException.ThrowIfNullOrWhiteSpace(requestId);
         ArgumentNullException.ThrowIfNull(payload);
         if (requestId.Length > 128 || !Enum.IsDefined(kind)) { throw new ArgumentException("Invalid deployment request."); }
-        var id = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new[] { owner, requestId }))));
+        var id = RequestIdentity(owner, requestId);
         var folder = Folder(id);
         if (OperatingSystem.IsWindows()) { Directory.CreateDirectory(folder); }
         else { Directory.CreateDirectory(folder, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute); }
@@ -70,6 +70,12 @@ internal sealed class DeploymentOperationStore
         await WriteAsync(operation, cancellationToken);
         return operation;
     }
+
+    public Task<DeploymentOperation> FindRequestAsync(string owner, string requestId, CancellationToken cancellationToken) =>
+        FindAsync(RequestIdentity(owner, requestId), owner, cancellationToken);
+
+    private static string RequestIdentity(string owner, string requestId) =>
+        Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new[] { owner, requestId }))));
 
     private static DeploymentOperation Match(DeploymentOperation existing, string owner, DeploymentOperationKind kind, string payload)
     {
