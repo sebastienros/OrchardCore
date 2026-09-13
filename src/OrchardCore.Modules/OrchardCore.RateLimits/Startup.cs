@@ -28,6 +28,7 @@ public sealed class Startup : StartupBase
         services.AddDataMigration<GlobalRateLimitsMigrations>();
         services.AddTransient<IConfigureOptions<RateLimiterOptions>, RateLimiterOptionsConfigurations>();
         services.AddSingleton<IRateLimitPolicyStore, RateLimitPolicyStore>();
+        services.AddScoped<RateLimitPolicyMutations>();
         services.AddDisplayDriver<RateLimitLimiter, RateLimitLimiterDisplayDriver>();
         services.AddDisplayDriver<RateLimitPolicy, RateLimitPolicyDisplayDriver>();
 
