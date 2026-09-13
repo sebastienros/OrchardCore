@@ -164,10 +164,9 @@ filesystem that honors .NET file-sharing locks across cooperating instances; ver
 the intended hosting filesystem before claiming multi-node support.
 
 Default retention is 24 hours and stored size is bounded at 500 MiB through
-DeploymentArtifactOptions. Endpoint DTOs still need to omit owner/storage details;
-principal extraction, permission checks, scheduled cleanup and durable operation
-claims are not yet exposed or wired. The store is an implementation checkpoint,
-not a completed upload/download workflow.
+DeploymentArtifactOptions. Endpoint DTOs omit owner/storage details and routes enforce principal ownership
+and current permissions. Scheduled cleanup and durable operation claims remain
+to be wired. The storage and transport workflow does not yet execute operations.
 
 Store checkpoint validation: strict build and docs pass, with all four store tests
 passing. Tests reopen persisted data with another store instance, verify tenant/
@@ -188,9 +187,8 @@ execution, including disposal; an in-use artifact cannot be deleted.
 All seven endpoint/store tests pass with a strict zero-warning/error build. Tests
 cover purpose permissions, same-subject entity separation, sanitized metadata,
 actual response bytes, lease release and repeatable deletion. Metadata/delete have
-Pomi/MCP JSON projection. Binary download deliberately has no CLI metadata until
-explicit Pomi file output is implemented; binary MCP remains excluded. Live OAuth
-transport checks, upload pipeline integration and operation orchestration remain.
+Pomi/MCP JSON projection. Binary download uses explicit Pomi file output; binary
+MCP remains excluded. Operation orchestration remains to be implemented.
 
 ### Upload checkpoint
 
@@ -198,6 +196,16 @@ The artifact upload route now runs FileCreationService and the shared
 DeploymentPackageService before persisting the validated original bytes. It
 authorizes Import and remote management before processing input; invalid names,
 oversized declared bodies, rejected pipeline results and malformed packages do not
-publish an artifact. Pomi stream-input metadata is present; live discovery and
-command verification remain pending with the transport workflow. Upload does not
-execute recipes.
+publish an artifact. Pomi stream-input metadata is present and live discovery and command verification
+pass. Upload does not execute recipes.
+
+### Verified artifact transport
+
+`.scripts/remote-management/deployment-artifacts-smoke.py` passes against a freshly
+built isolated tenant using real client-credentials OAuth. It verifies rejected
+anonymous/discovery-only uploads, malformed package rejection, Pomi ZIP upload,
+SHA-256 and byte length, HTTP and Pomi byte-exact downloads, refusal to overwrite
+a local destination, another application's inability to read artifact metadata,
+MCP metadata invocation and exclusion of binary transfer tools, and Pomi deletion.
+The test cleans its artifact and local command context. Cross-tenant execution,
+operation durability and scheduled retention cleanup remain outstanding.
