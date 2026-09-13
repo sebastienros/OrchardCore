@@ -408,3 +408,22 @@ packages private; they may contain application configuration or content.
 
 MCP exposes JSON operation and artifact metadata plus execution commands. Use Pomi
 for file upload/download; binary transfers are excluded from MCP tools.
+
+
+## Audit and scheduled task administration
+
+Use `pomi audit-trail events list --q 'category:User event:Created' --page-size 50`
+and `audit-trail events show <event-id>` with `ViewAuditTrail`. These operations
+return metadata rather than snapshots/payloads. Paginate with `page` and `pageSize`
+(maximum 200); `id:` filters by correlation ID. The existing admin filter syntax
+and enabled event producers still apply.
+
+Use `pomi background-tasks list` and `show <registered-name>` with
+`ManageBackgroundTasks`. Read `configuration`, validate the complete JSON through
+`background-tasks validate`, then `update <name>`. Configuration updates preserve
+enabled status; omitted numeric/Boolean values reset to zero/false. Cron expressions
+have five fields, and lock timeout/expiration are nonnegative milliseconds.
+Use separate `enable <name>` / `disable <name>` commands, then read back. These
+commands affect future scheduling; do not claim they immediately run or cancel a
+task. Existing settings signals notify the scheduler. Enabling invalid persisted
+settings is rejected; disabling remains available so they can be repaired.
