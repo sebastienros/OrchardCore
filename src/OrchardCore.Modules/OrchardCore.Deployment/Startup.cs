@@ -11,6 +11,7 @@ using OrchardCore.Deployment.Deployment;
 using OrchardCore.Deployment.Drivers;
 using OrchardCore.Deployment.Indexes;
 using OrchardCore.Deployment.Recipes;
+using OrchardCore.Deployment.Services;
 using OrchardCore.Deployment.Steps;
 using OrchardCore.DisplayManagement.Handlers;
 using OrchardCore.FileStorage;
@@ -50,6 +51,10 @@ public sealed class Startup : StartupBase
         services.AddDataMigration<Migrations>();
 
         services.AddScoped<IDeploymentPlanService, DeploymentPlanService>();
+        foreach (var type in new[] { nameof(RecipeFileDeploymentStep), nameof(CustomFileDeploymentStep), nameof(JsonRecipeDeploymentStep), nameof(DeploymentPlanDeploymentStep) })
+        {
+            services.AddSingleton<IDeploymentStepDefinition>(new BuiltInDeploymentStepDefinition(type));
+        }
 
         services.AddRecipeExecutionStep<DeploymentPlansRecipeStep>();
 

@@ -134,6 +134,19 @@ services.AddDeployment<MyDeploymentSource, MyDeploymentStep, MyDeploymentStepDis
 
 The source processes the configured step and adds recipe steps or files to the `DeploymentPlanResult`. Register a custom execution destination by implementing `IDeploymentTargetProvider`.
 
+Explicit configuration contracts implement `IDeploymentStepDefinition`. Each contract
+identifies one registered factory, supplies a patch schema, describes allowlisted
+configuration and updates a detached step candidate. Omitted properties preserve
+stored values; extensions must declare their supported fields instead of exposing
+arbitrary serialized CLR objects.
+
+The built-in contracts cover recipe metadata, custom files, JSON recipe steps and
+selected deployment plans. Custom-file content and embedded recipe JSON are
+write-only in contract readback. File paths must be relative package paths without
+traversal; `Recipe.json` is reserved for the generated recipe. A JSON recipe step
+must contain an object with a nonempty string `name`. The existing admin editors
+use the same validation, and selecting all deployment plans clears explicit names.
+
 To send packages directly to another Orchard Core site, see [Remote Deployment](../Deployment.Remote/README.md).
 
 ## Videos

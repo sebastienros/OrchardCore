@@ -126,3 +126,27 @@ Typed schemas and remote step operations, recipe validation unification, explici
 legacy step identity handling, content-controller integration tests, live transport
 verification and final integration/CI remain. These checkpoints are not a completed
 B08 or completed plan/step PR.
+
+## Explicit built-in configuration contracts
+
+IDeploymentStepDefinition now defines factory identity, patch schema, safe readback
+and detached-candidate updates. Four explicitly registered built-in adapters cover
+RecipeFileDeploymentStep, CustomFileDeploymentStep, JsonRecipeDeploymentStep and
+DeploymentPlanDeploymentStep. No arbitrary CLR property serialization supplies a
+configuration schema. JSON recipe bodies and custom-file contents are write-only;
+metadata remains readable, and omitted values preserve existing configuration.
+
+The JSON-recipe and custom-file admin drivers use the same validation as their
+contracts. Invalid editor values leave the supplied step unchanged. Relative package
+paths reject traversal and the reserved Recipe.json name; JSON recipe configuration
+requires an object with a nonempty name string. Include-all plan selection shares
+normalization with its existing admin driver. Recipe metadata uses explicit fields;
+its normal model binding remains in the admin driver because it contains no separate
+domain validation to extract.
+
+Strict test-project build passes with zero warnings/errors. All 27 focused tests
+pass, including actual admin-driver equivalence, write-only readback, omitted-value
+preservation, explicit clearing, incorrect types/unknown fields, identity preservation
+and the prior plan/step regressions. The contracts are a foundation; remote type/schema
+and step endpoints, generic settings/content adapters, recipe import validation,
+legacy identities, live Pomi/MCP and final integration/CI remain.
