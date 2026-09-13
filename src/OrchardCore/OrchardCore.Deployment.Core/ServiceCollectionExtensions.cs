@@ -9,6 +9,7 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddDeploymentServices(this IServiceCollection services)
     {
         services.AddScoped<IDeploymentManager, DeploymentManager>();
+        services.AddScoped<IDeploymentArchiveService, DeploymentArchiveService>();
 
         return services;
     }

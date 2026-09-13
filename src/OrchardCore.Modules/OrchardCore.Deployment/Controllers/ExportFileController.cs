@@ -1,13 +1,9 @@
-using System.IO.Compression;
 using System.Net.Mime;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OrchardCore.Admin;
-using OrchardCore.Deployment.Core.Mvc;
-using OrchardCore.Deployment.Core.Services;
 using OrchardCore.Deployment.Services;
 using OrchardCore.Deployment.Steps;
-using OrchardCore.FileStorage;
 using OrchardCore.Mvc.Utilities;
 using OrchardCore.Recipes.Models;
 using YesSql;
@@ -17,25 +13,22 @@ namespace OrchardCore.Deployment.Controllers;
 [Admin("DeploymentPlan/ExportFile/{action}/{id?}", "DeploymentPlanExportFile{action}")]
 public sealed class ExportFileController : Controller
 {
-    private readonly IDeploymentManager _deploymentManager;
+    private readonly IDeploymentArchiveService _archives;
     private readonly IAuthorizationService _authorizationService;
     private readonly ISession _session;
-    private readonly ITempDirectoryProvider _tempDirectoryProvider;
 
+    /// <summary>Creates the admin download action with shared archive generation.</summary>
     public ExportFileController(
         IAuthorizationService authorizationService,
         ISession session,
-        IDeploymentManager deploymentManager,
-        ITempDirectoryProvider tempDirectoryProvider)
+        IDeploymentArchiveService archives)
     {
         _authorizationService = authorizationService;
-        _deploymentManager = deploymentManager;
+        _archives = archives;
         _session = session;
-        _tempDirectoryProvider = tempDirectoryProvider;
     }
 
     [HttpPost]
-    [DeleteFileResultFilter]
     public async Task<IActionResult> Execute(long id)
     {
         if (!await _authorizationService.AuthorizeAsync(User, DeploymentPermissions.Export))
@@ -50,34 +43,24 @@ public sealed class ExportFileController : Controller
             return NotFound();
         }
 
-        string archiveFileName;
         var filename = deploymentPlan.Name.ToSafeName() + ".zip";
 
-        using (var fileBuilder = new TemporaryFileBuilder(_tempDirectoryProvider.GetRootDirectory()))
+        var recipeDescriptor = new RecipeDescriptor();
+        var recipeFileDeploymentStep = deploymentPlan.DeploymentSteps.FirstOrDefault(ds => ds.Name == nameof(RecipeFileDeploymentStep)) as RecipeFileDeploymentStep;
+
+        if (recipeFileDeploymentStep != null)
         {
-            archiveFileName = fileBuilder.Folder + ".zip";
-
-            var recipeDescriptor = new RecipeDescriptor();
-            var recipeFileDeploymentStep = deploymentPlan.DeploymentSteps.FirstOrDefault(ds => ds.Name == nameof(RecipeFileDeploymentStep)) as RecipeFileDeploymentStep;
-
-            if (recipeFileDeploymentStep != null)
-            {
-                recipeDescriptor.Name = recipeFileDeploymentStep.RecipeName;
-                recipeDescriptor.DisplayName = recipeFileDeploymentStep.DisplayName;
-                recipeDescriptor.Description = recipeFileDeploymentStep.Description;
-                recipeDescriptor.Author = recipeFileDeploymentStep.Author;
-                recipeDescriptor.WebSite = recipeFileDeploymentStep.WebSite;
-                recipeDescriptor.Version = recipeFileDeploymentStep.Version;
-                recipeDescriptor.IsSetupRecipe = recipeFileDeploymentStep.IsSetupRecipe;
-                recipeDescriptor.Categories = (recipeFileDeploymentStep.Categories ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries);
-                recipeDescriptor.Tags = (recipeFileDeploymentStep.Tags ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries);
-            }
-
-            var deploymentPlanResult = new DeploymentPlanResult(fileBuilder, recipeDescriptor);
-            await _deploymentManager.ExecuteDeploymentPlanAsync(deploymentPlan, deploymentPlanResult);
-            ZipFile.CreateFromDirectory(fileBuilder.Folder, archiveFileName);
+            recipeDescriptor.Name = recipeFileDeploymentStep.RecipeName;
+            recipeDescriptor.DisplayName = recipeFileDeploymentStep.DisplayName;
+            recipeDescriptor.Description = recipeFileDeploymentStep.Description;
+            recipeDescriptor.Author = recipeFileDeploymentStep.Author;
+            recipeDescriptor.WebSite = recipeFileDeploymentStep.WebSite;
+            recipeDescriptor.Version = recipeFileDeploymentStep.Version;
+            recipeDescriptor.IsSetupRecipe = recipeFileDeploymentStep.IsSetupRecipe;
+            recipeDescriptor.Categories = (recipeFileDeploymentStep.Categories ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries);
+            recipeDescriptor.Tags = (recipeFileDeploymentStep.Tags ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries);
         }
 
-        return new PhysicalFileResult(archiveFileName, MediaTypeNames.Application.Zip) { FileDownloadName = filename };
+        return new FileStreamResult(await _archives.CreateAsync(deploymentPlan, recipeDescriptor), MediaTypeNames.Application.Zip) { FileDownloadName = filename };
     }
 }

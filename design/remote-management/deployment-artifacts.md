@@ -86,3 +86,19 @@ new binary MCP transfer stays within its existing demand gate.
 Plan configuration support does not imply every feature's export step has a typed
 remote editor. Audit remaining built-in adapters separately. Private remote target
 and API-key protocols retain their documented demand gate.
+
+## Shared archive extraction in progress
+
+`IDeploymentArchiveService` now owns source execution, ZIP creation and temporary
+staging cleanup. Its returned stream deletes the private ZIP when disposed. Local
+admin download and the existing remote multipart export both use it. Local recipe
+metadata mapping and the remote protocol's empty descriptor remain unchanged.
+Each export gets an independent random archive path, avoiding collisions between
+concurrent exports of plans with the same name. No new remote target API is added.
+
+Two archive tests pass, covering recipe metadata/file bytes with two open exports
+and cleanup after source failure. The strict test-project build has zero warnings
+and errors; strict documentation build also passes. Actual controller transport
+checks, full integration and the artifact/operation gates above remain before
+release. This checkpoint extracts existing archive mechanics and introduces no
+remote artifact management API yet.

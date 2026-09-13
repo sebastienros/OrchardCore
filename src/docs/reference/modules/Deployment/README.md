@@ -94,6 +94,18 @@ services.AddDeployment<MyDeploymentSource, MyDeploymentStep, MyDeploymentStepDis
 
 The source processes the configured step and adds recipe steps or files to the `DeploymentPlanResult`. Register a custom execution destination by implementing `IDeploymentTargetProvider`.
 
+`IDeploymentArchiveService.CreateAsync(plan, recipeDescriptor)` runs the registered
+sources through `IDeploymentManager` and returns a readable ZIP stream. The caller
+owns that stream and must dispose it; disposal removes the temporary archive.
+Staged source files are removed before the stream is returned, and failed archive
+creation removes its temporary files. Each export has a separate temporary path,
+including simultaneous exports of plans with the same name. Authorize the caller
+before invoking the service; it does not grant export permission itself.
+
+The local download and remote multipart export actions use this shared service.
+Each action supplies its existing recipe metadata and owns the returned stream
+through response or request disposal.
+
 To send packages directly to another Orchard Core site, see [Remote Deployment](../Deployment.Remote/README.md).
 
 ## Videos
