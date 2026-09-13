@@ -23,3 +23,8 @@ Tests exercise actual admin update methods, the actual export source's execution
 call, and the feature-owned factory/adapter registrations. The strict test-project build passes with zero warnings/errors, all 15 focused
 tests pass, and strict documentation builds successfully. Live transport/export
 verification and the independent PR gates remain pending.
+
+The live `deployment-query-smoke.py` check now passes on a disposable tenant:
+feature discovery, Pomi configuration, MCP parameter clearing, invalid-patch
+preservation, and queued export through the existing SQL query source. The
+privately downloaded ZIP contains the expected published content item and title.
