@@ -60,6 +60,8 @@ for suffix, permissions in [
     ("https", ["ManageHttps"]),
     ("url-rewriting", ["ManageUrlRewritingRules"]),
     ("cors", ["ManageCorsSettings"]),
+    ("sitemaps", ["ManageSitemaps"]),
+    ("seo", ["ManageSeoSettings"]),
     ("audit-trail", ["ViewAuditTrail"]),
     ("background-tasks", ["ManageBackgroundTasks"]),
     ("rate-limits", ["ManageRateLimits"]),
