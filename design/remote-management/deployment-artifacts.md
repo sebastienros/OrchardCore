@@ -115,3 +115,20 @@ simulated send exception. No external remote target is contacted by these tests.
 
 Private artifact storage, input validation/limits, operation persistence/workers,
 HTTP/Pomi download transport and cross-tenant export/import remain to implement.
+
+## Shared import staging
+
+DeploymentPackageService stages ZIP/JSON input and validates paths, unique archive
+entries, upload/expanded sizes, entry count and named recipe-step structure. It
+returns an owned file provider with deterministic cleanup. Input stream ownership
+stays with the caller. The existing local upload and JSON import actions now call
+this service before DeploymentManager; upload file-event handlers are preserved.
+
+PR #28 merged as `c037e583568fcf87155e6c984329e66919f2f1dc` after all required CI
+passed at exact head `fbcc29684c0254587a5f41d818a14723a7bb3ef9`. Integrate that
+merged target after this staging checkpoint; the artifact branch began independently.
+
+Staging checkpoint validation: strict build and documentation pass; all 19
+archive/staging tests pass. Remaining gates include actual import-controller
+pipeline/cleanup tests, cancellation/symlink cases, durable artifacts and execution,
+Pomi binary transport and the cross-tenant round-trip.

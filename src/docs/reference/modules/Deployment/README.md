@@ -35,6 +35,17 @@ In the admin, go to **Tools** > **Deployments** and use one of these options:
 - **Package Import** accepts a `.zip` deployment package or a `.json` recipe file.
 - **JSON Import** accepts recipe JSON entered directly in the editor.
 
+Local package uploads and JSON imports use `DeploymentPackageService` to stage and
+validate input before executing it. ZIP uploads require a root `Recipe.json` with
+an array of named recipe steps. Absolute/traversal paths, symlinks and duplicate
+normalized archive paths are rejected. Staged files are removed when import ends.
+The upload action continues to run the file-creation event pipeline before staging.
+
+Hosts can configure `DeploymentPackageOptions` through the options system. Defaults
+are 100 MiB input, 500 MiB expanded data, and 10,000 archive entries; all limits must
+be positive. Byte limits are enforced while copying streams. These checks do not
+make recipe execution transactional or guarantee that each recipe step succeeds.
+
 Importing a package executes its recipe immediately. The steps run in the order in which they appear in `Recipe.json`.
 
 !!! warning

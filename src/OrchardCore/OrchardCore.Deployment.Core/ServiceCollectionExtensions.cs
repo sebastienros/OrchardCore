@@ -10,6 +10,8 @@ public static class ServiceCollectionExtensions
     {
         services.AddScoped<IDeploymentManager, DeploymentManager>();
         services.AddScoped<IDeploymentArchiveService, DeploymentArchiveService>();
+        services.AddOptions<DeploymentPackageOptions>();
+        services.AddScoped<DeploymentPackageService>();
 
         return services;
     }
