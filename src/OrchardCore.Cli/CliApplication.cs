@@ -964,6 +964,10 @@ internal sealed partial class CliApplication
         var bodyFileOption = new Option<FileInfo?>("--body-file") { Description = "Read the JSON request body from a file" };
         var stdinOption = new Option<bool>("--stdin") { Description = "Read the request body from standard input" };
         var fileOption = new Option<FileInfo?>("--file") { Description = "Read the binary request body from a file" };
+        var downloadOption = operation.CliMetadata.FileResponse
+            ? new Option<FileInfo?>("--output-file") { Description = "Save response bytes to a new private file; existing files are never overwritten", Required = true }
+            : null;
+        if (downloadOption is not null) { command.Options.Add(downloadOption); }
         var secretOutputOption = operation.CliMetadata.SecretResponse
             ? new Option<FileInfo?>("--secret-output-file") { Description = "Save the one-time JSON response to a new private file", Required = true }
             : null;
@@ -1112,10 +1116,12 @@ internal sealed partial class CliApplication
                 }
             }
 
+            await using var download = downloadOption is null ? null : SecretOutputFile.Create(
+                parseResult.GetValue(downloadOption) ?? throw new CliException("An output file is required."));
             await using var secretOutput = secretOutputOption is null ? null : SecretOutputFile.Create(
                 parseResult.GetValue(secretOutputOption) ?? throw new CliException("A secret output file is required."));
             var accessToken = await ResolveAccessTokenAsync(context, null, null, false, cancellationToken);
-            var response = await SendApiRequestAsync(context, operation.Method, routePath, query, headers, body, accessToken, cancellationToken);
+            var response = await SendApiRequestAsync(context, operation.Method, routePath, query, headers, body, accessToken, cancellationToken, download);
             var outputJson = secretOutput is not null ? await secretOutput.WriteAsync(response.Json, cancellationToken)
                 : provisioningSupported ? await CaptureProvisionedContextAsync(response.Json, cancellationToken) : response.Json;
             IReadOnlyList<CliTableColumnMetadata>? tableColumns = secretOutput is null && operation.CliMetadata.TableColumns.Count > 0 ? [.. operation.CliMetadata.TableColumns] : null;
@@ -1309,7 +1315,8 @@ internal sealed partial class CliApplication
         IReadOnlyDictionary<string, string> headers,
         HttpContent? body,
         string? accessToken,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        SecretOutputFile? download = null)
     {
         using var request = new HttpRequestMessage(new HttpMethod(method.ToUpperInvariant()), BuildRequestUri(new Uri(context.TenantUrl, UriKind.Absolute), path, query))
         {
@@ -1325,9 +1332,15 @@ internal sealed partial class CliApplication
             }
         }
 
-        using var response = await _httpClient.SendAsync(request, cancellationToken);
+        using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
         await _cacheService.ObserveApiRevisionAsync(context.TenantUrl, response, cancellationToken);
         var contentType = response.Content.Headers.ContentType?.MediaType;
+        if (download is not null && response.IsSuccessStatusCode)
+        {
+            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            var saved = await download.WriteStreamAsync(stream, cancellationToken);
+            return new CommandOutput { Json = saved, HttpMethod = request.Method.Method, StatusCode = (int)response.StatusCode };
+        }
         var payload = response.Content is null ? string.Empty : await response.Content.ReadAsStringAsync(cancellationToken);
 
         if (!response.IsSuccessStatusCode)

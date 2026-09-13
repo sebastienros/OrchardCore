@@ -4,9 +4,12 @@ using Microsoft.AspNetCore.Routing;
 using OrchardCore.Deployment.Endpoints.Management;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using OrchardCore.BackgroundTasks;
 using OrchardCore.Data;
 using OrchardCore.Data.Migration;
 using OrchardCore.Deployment.Core;
+using OrchardCore.Deployment.Artifacts;
+using OrchardCore.Deployment.Operations;
 using OrchardCore.Deployment.Deployment;
 using OrchardCore.Deployment.Drivers;
 using OrchardCore.Deployment.Indexes;
@@ -28,6 +31,8 @@ public sealed class Startup : StartupBase
     public override void Configure(IApplicationBuilder app, IEndpointRouteBuilder routes, IServiceProvider serviceProvider)
     {
         routes.AddDeploymentPlanEndpoints();
+        routes.AddDeploymentArtifactEndpoints();
+        routes.AddDeploymentOperationEndpoints();
         routes.AddDeploymentStepTypeEndpoints();
         routes.AddDeploymentStepEndpoints();
     }
@@ -36,6 +41,13 @@ public sealed class Startup : StartupBase
     {
         services.TryAddTransient<FileCreationService>();
         services.AddDeploymentServices();
+        services.AddOptions<DeploymentArtifactOptions>();
+        services.AddScoped<DeploymentArtifactStore>();
+        services.AddScoped<DeploymentOperationStore>();
+        services.AddScoped<IDeploymentOperationExecutor, DeploymentOperationExecutor>();
+        services.AddScoped<DeploymentOperationRunner>();
+        services.AddSingleton<IBackgroundTask, DeploymentOperationTask>();
+        services.AddSingleton<IBackgroundTask, DeploymentArtifactCleanupTask>();
 
         services.AddNavigationProvider<AdminMenu>();
         services.AddPermissionProvider<Permissions>();

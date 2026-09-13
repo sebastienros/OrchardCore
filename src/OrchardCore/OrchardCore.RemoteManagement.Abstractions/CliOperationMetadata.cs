@@ -66,6 +66,9 @@ public sealed class CliOperationMetadata
     /// </summary>
     public bool SecretResponse { get; set; }
 
+    /// <summary>Gets or sets whether the response must be streamed to an explicit new file.</summary>
+    public bool FileResponse { get; set; }
+
     /// <summary>
     /// Gets or sets how the request body is supplied.
     /// </summary>

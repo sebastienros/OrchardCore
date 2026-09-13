@@ -78,6 +78,14 @@ internal sealed class SecretOutputFile : IAsyncDisposable
         return JsonSerializer.SerializeToElement(new JsonObject { ["secretOutputFile"] = _path }, CliJsonContext.Default.JsonObject);
     }
 
+    public async Task<JsonElement> WriteStreamAsync(Stream response, CancellationToken cancellationToken)
+    {
+        await response.CopyToAsync(_stream, cancellationToken);
+        await _stream.FlushAsync(cancellationToken);
+        _hasResponse = true;
+        return JsonSerializer.SerializeToElement(new JsonObject { ["outputFile"] = _path, ["length"] = _stream.Length }, CliJsonContext.Default.JsonObject);
+    }
+
     public async ValueTask DisposeAsync()
     {
         await _stream.DisposeAsync();

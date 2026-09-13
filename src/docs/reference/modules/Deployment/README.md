@@ -35,6 +35,20 @@ In the admin, go to **Tools** > **Deployments** and use one of these options:
 - **Package Import** accepts a `.zip` deployment package or a `.json` recipe file.
 - **JSON Import** accepts recipe JSON entered directly in the editor.
 
+Local package uploads and JSON imports use `DeploymentPackageService` to stage and
+validate input before executing it. ZIP uploads require a root `Recipe.json` with
+an array of named recipe steps. Absolute/traversal paths, symlinks and duplicate
+normalized archive paths are rejected. Staged files are removed when import ends.
+The upload action continues to run the file-creation event pipeline before staging.
+`StagedDeploymentPackage.OpenRead()` opens the validated original ZIP or JSON bytes
+for persistence or transfer without repacking. Dispose that stream before disposing
+the staged package; disposing the package removes both the original and extracted files.
+
+Hosts can configure `DeploymentPackageOptions` through the options system. Defaults
+are 100 MiB input, 500 MiB expanded data, and 10,000 archive entries; all limits must
+be positive. Byte limits are enforced while copying streams. These checks do not
+make recipe execution transactional or guarantee that each recipe step succeeds.
+
 Importing a package executes its recipe immediately. The steps run in the order in which they appear in `Recipe.json`.
 
 !!! warning
@@ -188,6 +202,18 @@ services.AddDeployment<MyDeploymentSource, MyDeploymentStep, MyDeploymentStepDis
 
 The source processes the configured step and adds recipe steps or files to the `DeploymentPlanResult`. Register a custom execution destination by implementing `IDeploymentTargetProvider`.
 
+`IDeploymentArchiveService.CreateAsync(plan, recipeDescriptor)` runs the registered
+sources through `IDeploymentManager` and returns a readable ZIP stream. The caller
+owns that stream and must dispose it; disposal removes the temporary archive.
+Staged source files are removed before the stream is returned, and failed archive
+creation removes its temporary files. Each export has a separate temporary path,
+including simultaneous exports of plans with the same name. Authorize the caller
+before invoking the service; it does not grant export permission itself.
+
+The local download and remote multipart export actions use this shared service.
+Each action supplies its existing recipe metadata and owns the returned stream
+through response or request disposal.
+
 Explicit configuration contracts implement `IDeploymentStepDefinition`. Each contract
 identifies one registered factory, supplies a patch schema, describes allowlisted
 configuration and updates a detached step candidate. Omitted properties preserve
@@ -212,8 +238,59 @@ use the same validation, and selecting all deployment plans clears explicit name
 
 To send packages directly to another Orchard Core site, see [Remote Deployment](../Deployment.Remote/README.md).
 
+## Private artifact storage
+
+`DeploymentArtifactOptions` provides host-owned limits for deployment artifact
+storage: `MaxBytes` defaults to 500 MiB and `Lifetime` to 24 hours. Storage uses a
+private `DeploymentArtifacts` directory under the tenant's App_Data folder. These
+options are separate from package extraction limits in `DeploymentPackageOptions`.
+A tenant background task runs every 15 minutes and removes up to 100 expired
+artifacts or abandoned uploads per run. Active read/write leases prevent removal;
+cleanup retries them on a later run. The Background Tasks administration feature
+can manage the task schedule.
+Artifact metadata is available from `GET api/deployment/artifacts/{id}` and deletion
+from `DELETE api/deployment/artifacts/{id}`, projected as `pomi deployment artifacts
+show` and `delete`. Authenticated bytes are served by
+`GET api/deployment/artifacts/{id}/content`, projected as
+`pomi deployment artifacts download <id> --output-file ./package.zip`. The output
+file must not already exist. Download streams the original bytes to a private file
+and removes an incomplete download on failure. It is not exposed as an MCP tool.
+
+Artifact access requires `AccessRemoteManagement`, the artifact's Export or Import
+permission, and the same tenant, issuer, entity kind and subject that created it.
+Metadata omits the owner identity and server paths. An active read prevents deletion
+with a conflict response; repeated deletion of an absent artifact is unchanged.
+Upload a ZIP or JSON package with `POST api/deployment/artifacts?fileName=package.zip`
+and an `application/octet-stream` request body, or use
+`pomi deployment artifacts upload package.zip --file ./package.zip`. Upload requires
+Import permission, runs the file-creation pipeline and the same bounded package
+validator as admin imports, and returns private artifact metadata without executing
+the recipe. Rejected packages are not persisted. Stream uploads are not exposed as
+MCP tools. Export creation and import execution workflows are implemented separately.
+
 ## Videos
 
 <iframe width="560" height="315" src="https://www.youtube-nocookie.com/embed/wBWa28iHWHI" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
 <iframe width="560" height="315" src="https://www.youtube-nocookie.com/embed/2c5pbXuJJb0" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
+## Queued deployment operations
+
+`POST api/deployment/operations/export` accepts `requestId` and `planId`;
+`POST api/deployment/operations/import` accepts `requestId` and `artifactId`.
+Both return HTTP 202 with an operation ID and status location. Use
+`pomi deployment operations export --request-id <id> --plan-id <plan>` or
+`pomi deployment operations import --request-id <id> --artifact-id <artifact> --force`.
+Use `pomi deployment operations show <id>` to observe progress. These JSON
+operations are also available through MCP.
+
+The worker polls every minute. Exports capture the plan configuration at submission;
+imports use an owned, validated upload. Reusing a request ID for identical kind and
+payload returns the existing operation; a different payload conflicts. A successful
+export reports its artifact ID for download. Status requires the same owner and
+current Export or Import permission. It does not reveal the captured configuration.
+
+States are `pending`, `running`, `succeeded`, `failed` and `uncertain`. An abandoned
+execution becomes uncertain and is never automatically replayed. Imports can
+partially commit before failure or interruption; review the target site before
+submitting a new request ID.
