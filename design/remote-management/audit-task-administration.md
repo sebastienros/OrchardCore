@@ -25,8 +25,21 @@ status changes. It does not invent run/cancel or execution-history lifecycle.
 
 ## Verification
 
-Initial strict build and 15 regressions passed, including actual admin editor and
-status actions, cron/lock validation, preservation of cached settings and enabled
-status, retry behavior, audit payload omission, pagination bounds, and authorization.
-Live Pomi/MCP, a real audit-producing action, two-tenant isolation, complete solution
-and compatibility checks, canonical docs, and package validation remain in progress.
+The baseline host had both features enabled and returned 404 for both management
+routes. The final integrated strict solution build passed with zero warnings and
+errors, followed by 18 focused regressions, 298 CLI tests and 78 MCP tests.
+
+The live Pomi/MCP smoke passed with actual User.Created audit production, filtered
+search/paging/show, metadata-only output, denied access and separate resource
+permissions, task schedule validation, configuration/status retries, and two tenants
+on one host. The second tenant could not retrieve the first event or affect its
+task settings. Original task configuration/status were restored; the disposable
+user was deleted and the secondary tenant stopped.
+
+The live test found an update-response issue: rereading immutable settings before
+deferred cache invalidation returned old values after a successful write. The API
+now returns the settings it wrote, with a regression using separate immutable and
+mutable documents. The rebuilt host passed the complete live workflow afterward.
+
+Canonical docs and Pomi 0.10.32 describe the workflow. CI/package validation and
+merge evidence are tracked with the independent PR.
