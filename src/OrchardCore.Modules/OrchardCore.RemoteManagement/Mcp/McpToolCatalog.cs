@@ -33,7 +33,7 @@ internal sealed class McpToolCatalog
         foreach (var endpoint in endpoints)
         {
             var metadata = endpoint.Metadata.GetMetadata<CliOperationMetadata>();
-            if (metadata is null || metadata.Hidden || metadata.InputMode == CliInputMode.Stream)
+            if (metadata is null || metadata.Hidden || metadata.FileResponse || metadata.InputMode == CliInputMode.Stream)
             {
                 continue;
             }
