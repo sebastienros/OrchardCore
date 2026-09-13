@@ -158,7 +158,17 @@ internal sealed class DeploymentOperationStore
         var folder = Folder(operation.Id);
         var temporary = Path.Combine(folder, "pending.json");
         await File.WriteAllTextAsync(temporary, JsonSerializer.Serialize(operation), cancellationToken);
-        File.Move(temporary, Path.Combine(folder, "operation.json"), overwrite: true);
+        var destination = Path.Combine(folder, "operation.json");
+        if (File.Exists(destination))
+        {
+            // ReplaceFile permits existing readers with delete sharing on Windows;
+            // MoveFileEx overwrite can fail while the destination is open.
+            File.Replace(temporary, destination, destinationBackupFileName: null);
+        }
+        else
+        {
+            File.Move(temporary, destination);
+        }
     }
 
     internal sealed class DeploymentOperationClaim : IDisposable
