@@ -150,3 +150,23 @@ preservation, explicit clearing, incorrect types/unknown fields, identity preser
 and the prior plan/step regressions. The contracts are a foundation; remote type/schema
 and step endpoints, generic settings/content adapters, recipe import validation,
 legacy identities, live Pomi/MCP and final integration/CI remain.
+
+## Step type discovery and schemas
+
+The deployment capability now includes `deployment step-types list` and `schema`.
+Both routes use the same API authentication and permission requirements as plan
+CRUD. Enabled factories are listed in stable ordinal order, with explicit
+CanConfigure support. A known factory without a definition returns 501 for schema;
+an unavailable factory returns 404. Listing does not call factories to create steps
+or read stored configuration.
+
+The existing DeploymentPlanDeploymentSource now calls the shared
+DeploymentStepTypeResolver. Generic settings factories retain their registered name;
+other steps retain the existing concrete type-name behavior. Schema descriptors use
+registered contracts, never reflected CLR property lists.
+
+Strict test-project build passes with zero warnings/errors. All 29 focused tests
+pass, including actual tenant registrations, schema write-only metadata, denied
+permissions, unsupported/unavailable distinctions and generic factory identity.
+Persisted step list/show/mutations, remaining adapters, recipe/legacy identity work,
+content-caller integration, live Pomi/MCP and full-suite/CI validation remain.

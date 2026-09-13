@@ -90,12 +90,18 @@ With Deployment and remote management enabled, an application context with
 `AccessRemoteManagement` and `ManageDeploymentPlan` can manage plan metadata:
 
 ```sh
+pomi deployment step-types list
+pomi deployment step-types schema CustomFileDeploymentStep
 pomi deployment plans list --take 50
 pomi deployment plans show 123
 pomi deployment plans create --body-file plan.json
 pomi deployment plans update 123 --body-file renamed-plan.json
 pomi deployment plans delete 123 --force
 ```
+
+Step-type discovery lists enabled factories and whether each has an explicit
+configuration contract. Schema requests return 501 for a registered factory without
+a contract and 404 for an unavailable factory. Discovery does not create steps or inspect embedded step data.
 
 Both create and update accept a JSON object with a required `name` string:
 

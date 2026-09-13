@@ -18,29 +18,29 @@ internal static class DeploymentPlanEndpoints
             "Lists deployment plans without step configuration.")
             .Produces<DeploymentPlanListResponse>();
         Configure(routes.MapGet("api/deployment/plans/by-id", GetAsync), "ApiGetDeploymentPlan", "show",
-            "Shows a deployment plan without embedded step data.", true)
+            "Shows a deployment plan without embedded step data.", "id")
             .Produces<DeploymentPlanResponse>().ProducesProblem(404);
         Configure(routes.MapPost("api/deployment/plans", CreateAsync), "ApiCreateDeploymentPlan", "create",
             "Creates an empty plan; retrying an existing name leaves its steps unchanged.")
             .Produces<DeploymentPlanWriteResponse>().ProducesProblem(409);
         Configure(routes.MapPut("api/deployment/plans/by-id", UpdateAsync), "ApiUpdateDeploymentPlan", "update",
-            "Renames a plan while preserving all steps and their order.", true)
+            "Renames a plan while preserving all steps and their order.", "id")
             .Produces<DeploymentPlanWriteResponse>().ProducesProblem(404).ProducesProblem(409);
         Configure(routes.MapDelete("api/deployment/plans/by-id", DeleteAsync), "ApiDeleteDeploymentPlan", "delete",
-            "Deletes a plan; an already absent plan is unchanged.", true)
+            "Deletes a plan; an already absent plan is unchanged.", "id")
             .Produces<DeploymentPlanWriteResponse>();
     }
 
-    private static RouteHandlerBuilder Configure(RouteHandlerBuilder builder, string name, string verb, string summary, bool id = false)
+    internal static RouteHandlerBuilder Configure(RouteHandlerBuilder builder, string name, string verb, string summary, string argument = null, string resource = "plans")
     {
-        var metadata = new CliOperationMetadata(["deployment", "plans"], verb)
+        var metadata = new CliOperationMetadata(["deployment", resource], verb)
         {
             Capability = "deployment-plans",
             RequiresConfirmation = verb == "delete",
         };
-        if (id)
+        if (argument is not null)
         {
-            metadata.Arguments.Add(new CliArgumentMetadata("id", 0));
+            metadata.Arguments.Add(new CliArgumentMetadata(argument, 0));
         }
         return builder.WithName(name).WithTags("Deployment Management").WithSummary(summary).WithCliCommand(metadata)
             .RequireAuthorization(policy => policy.AddAuthenticationSchemes(OrchardCoreConstants.AuthenticationSchemes.Api)
@@ -49,7 +49,7 @@ internal static class DeploymentPlanEndpoints
             .ProducesProblem(400).ProducesProblem(401).ProducesProblem(403);
     }
 
-    private static async Task<bool> AuthorizedAsync(HttpContext context, IAuthorizationService authorization) =>
+    internal static async Task<bool> AuthorizedAsync(HttpContext context, IAuthorizationService authorization) =>
         await authorization.AuthorizeAsync(context.User, RemoteManagementPermissions.AccessRemoteManagement) &&
         await authorization.AuthorizeAsync(context.User, DeploymentPermissions.ManageDeploymentPlan);
 

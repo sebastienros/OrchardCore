@@ -12,6 +12,8 @@ using OrchardCore.Deployment;
 using OrchardCore.Deployment.Controllers;
 using OrchardCore.Deployment.Endpoints.Management;
 using OrchardCore.Deployment.Steps;
+using OrchardCore.Deployment.Services;
+using System.Text.Json.Nodes;
 using OrchardCore.Deployment.ViewModels;
 using OrchardCore.DisplayManagement.Notify;
 using OrchardCore.Environment.Shell;
@@ -29,6 +31,46 @@ public class DeploymentPlanManagementTests : IDisposable
     private readonly ServiceProvider _services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
 
     public void Dispose() => _services.Dispose();
+
+    [Fact]
+    public async Task StepSchemas_DistinguishUnsupportedAndUnavailableFactories()
+    {
+        var known = new Mock<IDeploymentStepFactory>();
+        known.SetupGet(factory => factory.Name).Returns(nameof(CustomFileDeploymentStep));
+        var extension = new Mock<IDeploymentStepFactory>();
+        extension.SetupGet(factory => factory.Name).Returns("ExtensionStep");
+        var registry = new DeploymentStepRegistry([known.Object, extension.Object],
+            [new BuiltInDeploymentStepDefinition(nameof(CustomFileDeploymentStep))]);
+        var list = Assert.IsType<Ok<IReadOnlyList<DeploymentStepTypeDescriptor>>>(await DeploymentStepTypeEndpoints.ListAsync(Http(), Authorized(), registry)).Value;
+        Assert.True(Assert.Single(list, item => item.Type == nameof(CustomFileDeploymentStep)).CanConfigure);
+        Assert.False(Assert.Single(list, item => item.Type == "ExtensionStep").CanConfigure);
+        var schema = Assert.IsType<Ok<JsonObject>>(await DeploymentStepTypeEndpoints.SchemaAsync(Http(), Authorized(), registry, nameof(CustomFileDeploymentStep))).Value;
+        Assert.True(schema["properties"]["fileContent"]["writeOnly"].GetValue<bool>());
+        Assert.Equal(501, Status(await DeploymentStepTypeEndpoints.SchemaAsync(Http(), Authorized(), registry, "ExtensionStep")));
+        Assert.Equal(404, Status(await DeploymentStepTypeEndpoints.SchemaAsync(Http(), Authorized(), registry, "DisabledStep")));
+        Assert.Equal(400, Status(await DeploymentStepTypeEndpoints.SchemaAsync(Http(), Authorized(), registry, "")));
+        Assert.Equal(403, Status(await DeploymentStepTypeEndpoints.ListAsync(Http(), Authorize(DeploymentPermissions.ManageDeploymentPlan), registry)));
+        Assert.Equal(403, Status(await DeploymentStepTypeEndpoints.SchemaAsync(Http(), Authorize(RemoteManagementPermissions.AccessRemoteManagement), registry, nameof(CustomFileDeploymentStep))));
+        known.Verify(factory => factory.Create(), Times.Never);
+        extension.Verify(factory => factory.Create(), Times.Never);
+    }
+
+    [Fact]
+    public async Task TenantRegistry_ContainsBuiltInContracts_AndPreservesGenericFactoryIdentity()
+    {
+        using var site = await CreateContextAsync();
+        await site.UsingTenantScopeAsync(scope =>
+        {
+            var registry = scope.ServiceProvider.GetRequiredService<DeploymentStepRegistry>();
+            Assert.True(Assert.Single(registry.List(), item => item.Type == nameof(CustomFileDeploymentStep)).CanConfigure);
+            Assert.True(Assert.Single(registry.List(), item => item.Type == nameof(JsonRecipeDeploymentStep)).CanConfigure);
+            var factory = new global::OrchardCore.Settings.Deployment.SiteSettingsPropertyDeploymentStepFactory<global::OrchardCore.Search.Models.SearchSettings>();
+            var step = factory.Create();
+            Assert.Equal(factory.Name, DeploymentStepTypeResolver.Resolve(step, new Dictionary<string, IDeploymentStepFactory> { [factory.Name] = factory }));
+            Assert.Equal(nameof(JsonRecipeDeploymentStep), DeploymentStepTypeResolver.Resolve(new JsonRecipeDeploymentStep(), new Dictionary<string, IDeploymentStepFactory>()));
+            return Task.CompletedTask;
+        });
+    }
 
     [Fact]
     public async Task AdminAndApi_EditSamePlan_PreserveStepsAndRejectConflicts()

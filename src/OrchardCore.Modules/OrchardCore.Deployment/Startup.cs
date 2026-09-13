@@ -18,6 +18,7 @@ using OrchardCore.FileStorage;
 using OrchardCore.Modules;
 using OrchardCore.Navigation;
 using OrchardCore.Recipes;
+using OrchardCore.RemoteManagement;
 using OrchardCore.Security.Permissions;
 
 namespace OrchardCore.Deployment;
@@ -25,7 +26,10 @@ namespace OrchardCore.Deployment;
 public sealed class Startup : StartupBase
 {
     public override void Configure(IApplicationBuilder app, IEndpointRouteBuilder routes, IServiceProvider serviceProvider)
-        => routes.AddDeploymentPlanEndpoints();
+    {
+        routes.AddDeploymentPlanEndpoints();
+        routes.AddDeploymentStepTypeEndpoints();
+    }
 
     public override void ConfigureServices(IServiceCollection services)
     {
@@ -51,6 +55,8 @@ public sealed class Startup : StartupBase
         services.AddDataMigration<Migrations>();
 
         services.AddScoped<IDeploymentPlanService, DeploymentPlanService>();
+        services.AddScoped<DeploymentStepRegistry>();
+        services.AddSingleton<IRemoteManagementCapabilityProvider, DeploymentManagementCapabilityProvider>();
         foreach (var type in new[] { nameof(RecipeFileDeploymentStep), nameof(CustomFileDeploymentStep), nameof(JsonRecipeDeploymentStep), nameof(DeploymentPlanDeploymentStep) })
         {
             services.AddSingleton<IDeploymentStepDefinition>(new BuiltInDeploymentStepDefinition(type));
