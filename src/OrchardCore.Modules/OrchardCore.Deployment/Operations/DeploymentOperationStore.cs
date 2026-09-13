@@ -127,7 +127,13 @@ internal sealed class DeploymentOperationStore
 
     private async Task<DeploymentOperation> ReadAsync(string id, CancellationToken cancellationToken)
     {
-        try { return JsonSerializer.Deserialize<DeploymentOperation>(await File.ReadAllTextAsync(Path.Combine(Folder(id), "operation.json"), cancellationToken)); }
+        try
+        {
+            // Readers must permit atomic replacement on Windows as well as Unix.
+            await using var stream = new FileStream(Path.Combine(Folder(id), "operation.json"), FileMode.Open,
+                FileAccess.Read, FileShare.ReadWrite | FileShare.Delete, 4096, FileOptions.Asynchronous);
+            return await JsonSerializer.DeserializeAsync<DeploymentOperation>(stream, cancellationToken: cancellationToken);
+        }
         catch (FileNotFoundException) { return null; }
         catch (DirectoryNotFoundException) { return null; }
     }

@@ -253,3 +253,12 @@ The fixture was corrected to use a permitted SVG; no importer policy was relaxed
 The test mutates only disposable fixtures and leaves results available for review.
 Strict documentation build passes. Full suites, additional interruption/concurrency
 coverage, skill/package/inventory updates and PR CI/review remain before release.
+
+### Recovery review and full server validation
+
+Operation status reads explicitly allow file replacement while open, preventing
+Windows read handles from blocking atomic state transitions. Regression coverage
+checks concurrent status reads during completion and runner shutdown after a claim:
+the next runner marks the abandoned operation Uncertain and does not invoke the
+executor again. Strict build passes with no warnings or errors. The full local
+server suite passes 3,529 tests with one existing CI-only integrity test skipped.

@@ -81,6 +81,63 @@ public class DeploymentOperationStoreTests
         finally { Directory.Delete(root, true); }
     }
 
+    [Fact]
+    public async Task ShutdownDuringExecution_RecoversAsUncertainAndDoesNotReplay()
+    {
+        var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("n"));
+        try
+        {
+            var token = TestContext.Current.CancellationToken;
+            var store = Store(root, "one");
+            var operation = await store.CreateAsync("owner", "request", DeploymentOperationKind.Import, "artifact", token);
+            using var shutdown = new CancellationTokenSource();
+            var executor = new CancelledExecutor(shutdown);
+            var runner = new DeploymentOperationRunner(store, executor, NullLogger<DeploymentOperationRunner>.Instance);
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => runner.RunAsync(operation.Id, shutdown.Token));
+            Assert.Equal(DeploymentOperationState.Running, (await store.FindAsync(operation.Id, "owner", token)).State);
+            var recovered = Store(root, "one");
+            await new DeploymentOperationRunner(recovered, executor, NullLogger<DeploymentOperationRunner>.Instance).RunAsync(operation.Id, token);
+            Assert.Equal(1, executor.Calls);
+            Assert.Equal(DeploymentOperationState.Uncertain, (await recovered.FindAsync(operation.Id, "owner", token)).State);
+        }
+        finally { Directory.Delete(root, true); }
+    }
+
+    [Fact]
+    public async Task StatusReads_CanObserveAtomicTransitionsWhileExecutorOwnsClaim()
+    {
+        var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("n"));
+        try
+        {
+            var token = TestContext.Current.CancellationToken;
+            var store = Store(root, "one");
+            var operation = await store.CreateAsync("owner", "request", DeploymentOperationKind.Export, "snapshot", token);
+            using var claim = await store.ClaimAsync(operation.Id, token);
+            var reads = Enumerable.Range(0, 50).Select(async _ =>
+            {
+                var status = await store.FindAsync(operation.Id, "owner", token);
+                Assert.Contains(status.State, new[] { DeploymentOperationState.Running, DeploymentOperationState.Succeeded });
+            }).ToArray();
+            await claim.CompleteAsync(DeploymentOperationState.Succeeded, "artifact", null, token);
+            await Task.WhenAll(reads);
+        }
+        finally { Directory.Delete(root, true); }
+    }
+
+    private sealed class CancelledExecutor : IDeploymentOperationExecutor
+    {
+        private readonly CancellationTokenSource _shutdown;
+        public int Calls { get; private set; }
+        public CancelledExecutor(CancellationTokenSource shutdown) => _shutdown = shutdown;
+        public async Task<string> ExecuteAsync(DeploymentOperation operation, CancellationToken cancellationToken)
+        {
+            Calls++;
+            await _shutdown.CancelAsync();
+            cancellationToken.ThrowIfCancellationRequested();
+            return null;
+        }
+    }
+
     private sealed class Executor : IDeploymentOperationExecutor
     {
         public bool Fail { get; init; }
