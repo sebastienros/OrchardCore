@@ -70,6 +70,8 @@ The `deployment` recipe step creates or updates deployment plans. Each entry req
 }
 ```
 
+The complete replacement batch is validated before any plan is changed. Plan names must be nonempty and unique within the batch. Supplied step IDs must be unique within each plan. Invalid JSON recipe configuration, unsafe custom-file paths, and malformed or unavailable step types are reported as recipe errors. The recipe handler and direct replacement callers use `IDeploymentPlanService.ValidateReplacement`; JSON and file-path validation is also shared with the admin editors and remote configuration contracts.
+
 `Type` is the registered deployment step type. The properties under `Step` are specific to that type. All features that provide the referenced step types must be enabled when the recipe runs; otherwise, no plans from that recipe step are changed.
 
 ## Permissions

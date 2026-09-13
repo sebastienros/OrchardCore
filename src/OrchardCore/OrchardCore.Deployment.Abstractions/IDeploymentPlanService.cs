@@ -36,5 +36,8 @@ public interface IDeploymentPlanService
     Task<IEnumerable<string>> GetAllDeploymentPlanNamesAsync();
     Task<IEnumerable<DeploymentPlan>> GetAllDeploymentPlansAsync();
     Task<IEnumerable<DeploymentPlan>> GetDeploymentPlansAsync(params string[] deploymentPlanNames);
+    /// <summary>Validates the complete replacement batch without changing any plan.</summary>
+    IReadOnlyDictionary<string, string[]> ValidateReplacement(IReadOnlyList<DeploymentPlan> deploymentPlans);
+    /// <summary>Validates then creates or replaces all plans; invalid input throws before mutation.</summary>
     Task CreateOrUpdateDeploymentPlansAsync(IEnumerable<DeploymentPlan> deploymentPlans);
 }

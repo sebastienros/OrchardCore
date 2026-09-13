@@ -222,3 +222,22 @@ remain. Additional registered factories remain explicitly discoverable with thei
 configuration support reported; review the remaining built-in adapter coverage in
 the B08 completion audit instead of equating these initial adapters with every
 possible extension contract.
+
+## Recipe replacement preflight
+
+The existing recipe handler now delegates batch validation to the deployment plan
+service before invoking replacement. Direct replacement callers have the same
+preflight guard. Invalid names, duplicate names/step IDs, malformed steps and the
+shared built-in JSON/file-path rules reject the whole batch before mutation. The
+handler reports recipe errors and preserves canonical factory names on deserialized
+steps. Content reference validation remains outside replacement preflight because
+recipe ordering can create those references later.
+
+A real-tenant regression test failed against the preceding implementation because
+a later empty plan name was accepted. The corrected strict build has zero warnings
+and errors; all 45 focused tests pass. Recipe handler tests verify persisted plans
+remain unchanged after malformed structures, unavailable factories, unsafe paths,
+duplicate names and duplicate IDs, and verify a valid configuration round-trip.
+
+Legacy step identities, content-to-plan controller integration, tenant/feature gates,
+live HTTP/Pomi/MCP, package updates and final integration/CI remain release gates.

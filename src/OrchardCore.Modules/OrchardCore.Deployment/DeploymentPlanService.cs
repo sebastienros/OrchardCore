@@ -4,6 +4,7 @@ using OrchardCore.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using OrchardCore.Deployment.Indexes;
+using OrchardCore.Deployment.Services;
 using YesSql;
 using YesSql.Services;
 
@@ -107,7 +108,7 @@ public class DeploymentPlanService : IDeploymentPlanService
 
     private async Task<DeploymentPlanManagementError> ValidateNameAsync(string name, long id)
     {
-        if (string.IsNullOrWhiteSpace(name))
+        if (!ValidName(name))
         {
             return DeploymentPlanManagementError.MissingName;
         }
@@ -313,6 +314,57 @@ public class DeploymentPlanService : IDeploymentPlanService
         }
     }
 
+    private static bool ValidName(string name) => !string.IsNullOrWhiteSpace(name);
+
+    /// <inheritdoc />
+    public IReadOnlyDictionary<string, string[]> ValidateReplacement(IReadOnlyList<DeploymentPlan> deploymentPlans)
+    {
+        var errors = new Dictionary<string, string[]>();
+        if (deploymentPlans is null)
+        {
+            errors["plans"] = ["A plan array is required."];
+            return errors;
+        }
+        var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        for (var planIndex = 0; planIndex < deploymentPlans.Count; planIndex++)
+        {
+            var plan = deploymentPlans[planIndex];
+            var prefix = $"plans[{planIndex}]";
+            if (plan is null || !ValidName(plan.Name))
+            {
+                errors[prefix] = ["Every plan requires a nonempty name."];
+                continue;
+            }
+            if (!names.Add(plan.Name)) { errors[prefix + ".name"] = ["Plan names must be unique within the replacement batch."]; }
+            if (plan.DeploymentSteps is null)
+            {
+                errors[prefix + ".steps"] = ["A step collection is required."];
+                continue;
+            }
+            var identities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var instances = new HashSet<DeploymentStep>(ReferenceEqualityComparer.Instance);
+            for (var stepIndex = 0; stepIndex < plan.DeploymentSteps.Count; stepIndex++)
+            {
+                var step = plan.DeploymentSteps[stepIndex];
+                var stepPrefix = prefix + $".steps[{stepIndex}]";
+                if (step is null || !instances.Add(step))
+                {
+                    errors[stepPrefix] = ["Every step must be a distinct non-null instance."];
+                    continue;
+                }
+                if (!string.IsNullOrWhiteSpace(step.Id) && !identities.Add(step.Id))
+                {
+                    errors[stepPrefix + ".id"] = ["Step identities must be unique within a plan."];
+                }
+                foreach (var (field, messages) in DeploymentStepValidation.Validate(step))
+                {
+                    errors[stepPrefix + "." + field] = messages;
+                }
+            }
+        }
+        return errors;
+    }
+
     /// <summary>
     /// Creates or replaces plans while preserving steps when a caller passes a tracked plan.
     /// Invalidates request-local discovery after writes so subsequent callers see the changes.
@@ -320,7 +372,11 @@ public class DeploymentPlanService : IDeploymentPlanService
     /// <param name="deploymentPlans">The plans whose names and steps should be saved.</param>
     public async Task CreateOrUpdateDeploymentPlansAsync(IEnumerable<DeploymentPlan> deploymentPlans)
     {
-        var plans = deploymentPlans.ToArray();
+        var plans = deploymentPlans?.ToArray();
+        if (ValidateReplacement(plans).Count != 0)
+        {
+            throw new ArgumentException("The deployment plan replacement batch is invalid.", nameof(deploymentPlans));
+        }
         var names = plans.Select(x => x.Name);
 
         var existingDeploymentPlans = (await _session.Query<DeploymentPlan, DeploymentPlanIndex>(x => x.Name.IsIn(names))
@@ -329,6 +385,7 @@ public class DeploymentPlanService : IDeploymentPlanService
 
         foreach (var deploymentPlan in plans)
         {
+            foreach (var step in deploymentPlan.DeploymentSteps) { DeploymentStepValidation.Normalize(step); }
             if (existingDeploymentPlans.TryGetValue(deploymentPlan.Name, out var existingDeploymentPlan))
             {
                 var steps = deploymentPlan.DeploymentSteps.ToArray();
