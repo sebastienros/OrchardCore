@@ -803,3 +803,12 @@ The base `Media Indexing` feature indexes media text stored by media fields. Add
 
 To index PDF files the [PdfPig library](https://github.com/UglyToad/PdfPig/) is used.
 To index Microsoft Office files (i.e., .docx, .ppts) the [Open-XML-SDK](https://github.com/dotnet/Open-XML-SDK) is used.
+
+## Deployment step configuration
+
+The media deployment step exposes `includeAll`, `filePaths` and `directoryPaths`
+through the deployment plan API, Pomi and MCP. Paths are arrays of existing,
+relative media-store paths, using `/` separators without traversal segments.
+Enabling `includeAll` clears explicit selections through the same normalization
+used by the administration editor. Omitted properties preserve current values;
+empty arrays clear selections. Invalid patches leave the step unchanged.
