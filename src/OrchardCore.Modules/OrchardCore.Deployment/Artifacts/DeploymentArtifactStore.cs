@@ -100,13 +100,15 @@ internal sealed class DeploymentArtifactStore
 
     public Task<ArtifactDeleteResult> DeleteAsync(string id, string owner) => DeleteAsync(id, owner, expiredOnly: false);
 
-    public async Task<int> CleanupAsync(int take = 100)
+    public async Task<int> CleanupAsync(int take = 100, CancellationToken cancellationToken = default)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(take);
+        cancellationToken.ThrowIfCancellationRequested();
         if (!Directory.Exists(_root)) { return 0; }
         var deleted = 0;
         foreach (var folder in Directory.EnumerateDirectories(_root))
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var id = Path.GetFileName(folder);
             if (!ValidId(id)) { continue; }
             if (await DeleteAsync(id, null, expiredOnly: true) == ArtifactDeleteResult.Deleted || await CleanupOrphanAsync(id))

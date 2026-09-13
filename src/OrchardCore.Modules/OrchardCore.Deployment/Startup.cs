@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Routing;
 using OrchardCore.Deployment.Endpoints.Management;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using OrchardCore.BackgroundTasks;
 using OrchardCore.Data;
 using OrchardCore.Data.Migration;
 using OrchardCore.Deployment.Core;
@@ -40,6 +41,7 @@ public sealed class Startup : StartupBase
         services.AddDeploymentServices();
         services.AddOptions<DeploymentArtifactOptions>();
         services.AddScoped<DeploymentArtifactStore>();
+        services.AddSingleton<IBackgroundTask, DeploymentArtifactCleanupTask>();
 
         services.AddNavigationProvider<AdminMenu>();
         services.AddPermissionProvider<Permissions>();

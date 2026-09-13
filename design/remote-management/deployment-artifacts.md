@@ -165,8 +165,8 @@ the intended hosting filesystem before claiming multi-node support.
 
 Default retention is 24 hours and stored size is bounded at 500 MiB through
 DeploymentArtifactOptions. Endpoint DTOs omit owner/storage details and routes enforce principal ownership
-and current permissions. Scheduled cleanup and durable operation claims remain
-to be wired. The storage and transport workflow does not yet execute operations.
+and current permissions. Scheduled tenant cleanup is wired; durable operation claims remain
+to be implemented. The storage and transport workflow does not yet execute operations.
 
 Store checkpoint validation: strict build and docs pass, with all four store tests
 passing. Tests reopen persisted data with another store instance, verify tenant/
@@ -208,4 +208,6 @@ SHA-256 and byte length, HTTP and Pomi byte-exact downloads, refusal to overwrit
 a local destination, another application's inability to read artifact metadata,
 MCP metadata invocation and exclusion of binary transfer tools, and Pomi deletion.
 The test cleans its artifact and local command context. Cross-tenant execution,
-operation durability and scheduled retention cleanup remain outstanding.
+operation durability remain outstanding. Scheduled retention runs every 15 minutes
+through the shared lease-aware store, with at most 100 deletions per run and
+cancellation checks between candidates.

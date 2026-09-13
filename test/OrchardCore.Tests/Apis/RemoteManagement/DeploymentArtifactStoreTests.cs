@@ -62,11 +62,41 @@ public class DeploymentArtifactStoreTests
                 now += TimeSpan.FromDays(2);
                 Assert.Null(await store.FindAsync(artifact.Id, "user:one"));
                 Assert.Null(await store.OpenAsync(artifact.Id, "user:one"));
-                Assert.Equal(0, await Store(root, "one", () => now).CleanupAsync());
+                Assert.Equal(0, await Store(root, "one", () => now).CleanupAsync(cancellationToken: TestContext.Current.CancellationToken));
                 Assert.True(lease.Stream.CanRead);
             }
-            Assert.Equal(1, await store.CleanupAsync());
-            Assert.Equal(0, await store.CleanupAsync());
+            Assert.Equal(1, await store.CleanupAsync(cancellationToken: TestContext.Current.CancellationToken));
+            Assert.Equal(0, await store.CleanupAsync(cancellationToken: TestContext.Current.CancellationToken));
+        }
+        finally
+        {
+            if (Directory.Exists(root)) { Directory.Delete(root, recursive: true); }
+        }
+    }
+
+    [Fact]
+    public async Task ScheduledCleanup_UsesTenantScopeAndHonorsCancellation()
+    {
+        var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("n"));
+        try
+        {
+            var now = DateTime.UtcNow;
+            var one = Store(root, "one", () => now);
+            var two = Store(root, "two", () => now);
+            using var firstInput = new MemoryStream([1]);
+            using var secondInput = new MemoryStream([2]);
+            var first = await one.CreateAsync("owner", DeploymentArtifactKind.Import, "recipe.json", "application/json", firstInput, TestContext.Current.CancellationToken);
+            var second = await two.CreateAsync("owner", DeploymentArtifactKind.Import, "recipe.json", "application/json", secondInput, TestContext.Current.CancellationToken);
+            now += TimeSpan.FromDays(2);
+            using var services = new ServiceCollection().AddSingleton(one).BuildServiceProvider();
+            var task = new DeploymentArtifactCleanupTask();
+            using var cancelled = new CancellationTokenSource();
+            await cancelled.CancelAsync();
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => task.DoWorkAsync(services, cancelled.Token));
+            Assert.NotNull(await one.FindAsync(first.Id, "owner", includeExpired: true));
+            await task.DoWorkAsync(services, TestContext.Current.CancellationToken);
+            Assert.Null(await one.FindAsync(first.Id, "owner", includeExpired: true));
+            Assert.NotNull(await two.FindAsync(second.Id, "owner", includeExpired: true));
         }
         finally
         {
@@ -105,10 +135,10 @@ public class DeploymentArtifactStoreTests
             using (var guard = new FileStream(Path.Combine(folder, "lease"), FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None))
             {
                 Directory.SetLastWriteTimeUtc(folder, now - TimeSpan.FromDays(2));
-                Assert.Equal(0, await store.CleanupAsync());
+                Assert.Equal(0, await store.CleanupAsync(cancellationToken: TestContext.Current.CancellationToken));
                 Assert.True(File.Exists(Path.Combine(folder, "content")));
             }
-            Assert.Equal(1, await store.CleanupAsync());
+            Assert.Equal(1, await store.CleanupAsync(cancellationToken: TestContext.Current.CancellationToken));
             Assert.False(Directory.Exists(folder));
         }
         finally

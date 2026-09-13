@@ -244,6 +244,10 @@ To send packages directly to another Orchard Core site, see [Remote Deployment](
 storage: `MaxBytes` defaults to 500 MiB and `Lifetime` to 24 hours. Storage uses a
 private `DeploymentArtifacts` directory under the tenant's App_Data folder. These
 options are separate from package extraction limits in `DeploymentPackageOptions`.
+A tenant background task runs every 15 minutes and removes up to 100 expired
+artifacts or abandoned uploads per run. Active read/write leases prevent removal;
+cleanup retries them on a later run. The Background Tasks administration feature
+can manage the task schedule.
 Artifact metadata is available from `GET api/deployment/artifacts/{id}` and deletion
 from `DELETE api/deployment/artifacts/{id}`, projected as `pomi deployment artifacts
 show` and `delete`. Authenticated bytes are served by
