@@ -19,7 +19,7 @@ public class DeploymentOperationStoreTests
             var operation = await store.CreateAsync("owner", "request", DeploymentOperationKind.Import, "artifact", token);
             var reopened = Store(root, "one");
             Assert.Equal(operation, await reopened.CreateAsync("owner", "request", DeploymentOperationKind.Import, "artifact", token));
-            await Assert.ThrowsAsync<InvalidOperationException>(() => reopened.CreateAsync("owner", "request", DeploymentOperationKind.Import, "different", token));
+            await Assert.ThrowsAsync<DeploymentRequestConflictException>(() => reopened.CreateAsync("owner", "request", DeploymentOperationKind.Import, "different", token));
             Assert.Null(await reopened.FindAsync(operation.Id, "another", token));
             Assert.Null(await Store(root, "two").FindAsync(operation.Id, "owner", token));
             Assert.Null(await reopened.FindAsync("../operation.json", "owner", token));
@@ -41,6 +41,7 @@ public class DeploymentOperationStoreTests
             using (var claim = await store.ClaimAsync(operation.Id, token))
             {
                 Assert.NotNull(claim);
+                Assert.Equal(operation.Id, (await store.CreateAsync("owner", "request", DeploymentOperationKind.Import, "artifact", token)).Id);
                 Assert.Equal(DeploymentOperationState.Running, (await store.FindAsync(operation.Id, "owner", token)).State);
                 Assert.Null(await Store(root, "one").ClaimAsync(operation.Id, token));
                 if (complete) { await claim.CompleteAsync(DeploymentOperationState.Succeeded, null, null, token); }

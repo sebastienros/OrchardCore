@@ -273,3 +273,24 @@ MCP tools. Export creation and import execution workflows are implemented separa
 <iframe width="560" height="315" src="https://www.youtube-nocookie.com/embed/wBWa28iHWHI" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
 <iframe width="560" height="315" src="https://www.youtube-nocookie.com/embed/2c5pbXuJJb0" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
+## Queued deployment operations
+
+`POST api/deployment/operations/export` accepts `requestId` and `planId`;
+`POST api/deployment/operations/import` accepts `requestId` and `artifactId`.
+Both return HTTP 202 with an operation ID and status location. Use
+`pomi deployment operations export --request-id <id> --plan-id <plan>` or
+`pomi deployment operations import --request-id <id> --artifact-id <artifact> --force`.
+Use `pomi deployment operations show <id>` to observe progress. These JSON
+operations are also available through MCP.
+
+The worker polls every minute. Exports capture the plan configuration at submission;
+imports use an owned, validated upload. Reusing a request ID for identical kind and
+payload returns the existing operation; a different payload conflicts. A successful
+export reports its artifact ID for download. Status requires the same owner and
+current Export or Import permission. It does not reveal the captured configuration.
+
+States are `pending`, `running`, `succeeded`, `failed` and `uncertain`. An abandoned
+execution becomes uncertain and is never automatically replayed. Imports can
+partially commit before failure or interruption; review the target site before
+submitting a new request ID.

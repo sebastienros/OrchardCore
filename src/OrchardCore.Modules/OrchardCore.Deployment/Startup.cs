@@ -32,6 +32,7 @@ public sealed class Startup : StartupBase
     {
         routes.AddDeploymentPlanEndpoints();
         routes.AddDeploymentArtifactEndpoints();
+        routes.AddDeploymentOperationEndpoints();
         routes.AddDeploymentStepTypeEndpoints();
         routes.AddDeploymentStepEndpoints();
     }

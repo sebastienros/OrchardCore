@@ -48,20 +48,27 @@ internal sealed class DeploymentOperationStore
         var folder = Folder(id);
         if (OperatingSystem.IsWindows()) { Directory.CreateDirectory(folder); }
         else { Directory.CreateDirectory(folder, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute); }
-        using var guard = Guard(folder);
         var existing = await ReadAsync(id, cancellationToken);
+        if (existing is not null) { return Match(existing, owner, kind, payload); }
+        using var guard = Guard(folder);
+        existing = await ReadAsync(id, cancellationToken);
         if (existing is not null)
         {
-            if (existing.Owner != owner || existing.Kind != kind || existing.Payload != payload)
-            {
-                throw new InvalidOperationException("The request ID already belongs to a different deployment request.");
-            }
-            return existing;
+            return Match(existing, owner, kind, payload);
         }
         var operation = new DeploymentOperation { Id = id, Owner = owner, Kind = kind, Payload = payload,
             State = DeploymentOperationState.Pending, CreatedUtc = _clock.UtcNow, UpdatedUtc = _clock.UtcNow, };
         await WriteAsync(operation, cancellationToken);
         return operation;
+    }
+
+    private static DeploymentOperation Match(DeploymentOperation existing, string owner, DeploymentOperationKind kind, string payload)
+    {
+        if (existing.Owner != owner || existing.Kind != kind || existing.Payload != payload)
+        {
+            throw new DeploymentRequestConflictException();
+        }
+        return existing;
     }
 
     public async Task<DeploymentOperation> FindAsync(string id, string owner, CancellationToken cancellationToken)
@@ -161,3 +168,5 @@ internal sealed class DeploymentOperationStore
         public void Dispose() { _disposed = true; _guard.Dispose(); }
     }
 }
+
+internal sealed class DeploymentRequestConflictException : InvalidOperationException;

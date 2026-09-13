@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Extensions.Options;
 using OrchardCore.FileStorage;
 using OrchardCore.Deployment.Core.Services;
+using OrchardCore.Deployment.Operations;
+using OrchardCore.Json;
 using OrchardCore.Deployment;
 using OrchardCore.Deployment.Artifacts;
 using OrchardCore.Deployment.Endpoints.Management;
@@ -128,6 +130,44 @@ public class DeploymentArtifactEndpointTests
         {
             Directory.Delete(root, recursive: true);
         }
+    }
+
+    [Fact]
+    public async Task ExportSubmission_RequiresExportPermission_DeduplicatesAndSanitizesStatus()
+    {
+        var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("n"));
+        using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
+        var clock = new Mock<IClock>();
+        clock.SetupGet(value => value.UtcNow).Returns(() => DateTime.UtcNow);
+        var operations = new DeploymentOperationStore(Options.Create(new ShellOptions { ShellsApplicationDataPath = root, ShellsContainerName = "Sites" }),
+            new ShellSettings { Name = "Tenant" }, clock.Object);
+        try
+        {
+            var context = new DefaultHttpContext { RequestServices = services, User = Principal("application", "submitter") };
+            var plans = new Mock<IDeploymentPlanService>();
+            plans.Setup(value => value.GetAsync(1)).ReturnsAsync(new DeploymentPlan { Id = 1, Name = "private plan" });
+            var options = Options.Create(new DocumentJsonSerializerOptions());
+            var denied = Authorize(RemoteManagementPermissions.AccessRemoteManagement, DeploymentPermissions.ManageDeploymentPlan);
+            var allowed = Authorize(RemoteManagementPermissions.AccessRemoteManagement, DeploymentPermissions.Export);
+            var request = new DeploymentExportRequest { RequestId = "retry", PlanId = 1 };
+            Assert.Equal(403, Status(await DeploymentOperationEndpoints.ExportAsync(context, denied, plans.Object, operations, options, request)));
+            plans.Verify(value => value.GetAsync(It.IsAny<long>()), Times.Never());
+            var accepted = Assert.IsType<Accepted<DeploymentOperationResponse>>(await DeploymentOperationEndpoints.ExportAsync(context, allowed, plans.Object, operations, options, request)).Value;
+            Assert.Equal("pending", accepted.State);
+            var retry = Assert.IsType<Accepted<DeploymentOperationResponse>>(await DeploymentOperationEndpoints.ExportAsync(context, allowed, plans.Object, operations, options, request)).Value;
+            Assert.Equal(accepted.Id, retry.Id);
+            plans.Setup(value => value.GetAsync(1)).ReturnsAsync(new DeploymentPlan { Id = 1, Name = "changed" });
+            Assert.Equal(409, Status(await DeploymentOperationEndpoints.ExportAsync(context, allowed, plans.Object, operations, options, request)));
+            Assert.Equal(403, Status(await DeploymentOperationEndpoints.GetAsync(context, denied, operations, accepted.Id)));
+            var status = Assert.IsType<Ok<DeploymentOperationResponse>>(await DeploymentOperationEndpoints.GetAsync(context, allowed, operations, accepted.Id)).Value;
+            var json = JsonSerializer.Serialize(status);
+            Assert.DoesNotContain("submitter", json);
+            Assert.DoesNotContain("private plan", json);
+            Assert.DoesNotContain("payload", json, StringComparison.OrdinalIgnoreCase);
+            context.User = Principal("user", "submitter");
+            Assert.Equal(404, Status(await DeploymentOperationEndpoints.GetAsync(context, allowed, operations, accepted.Id)));
+        }
+        finally { if (Directory.Exists(root)) { Directory.Delete(root, true); } }
     }
 
     [Fact]
