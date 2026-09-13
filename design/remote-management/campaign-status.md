@@ -4,6 +4,22 @@ The campaign is authorized to implement, verify, open and merge independent PRs 
 `sebros/remote-tenant-cli-plan`. **No stacked PRs.** Each branch starts at a merged target commit.
 The [schedule](pr-schedule.md) and [plan](coverage-plan.md) define the work and acceptance criteria.
 
+## Progress reporting
+
+Provide regular user-facing progress updates with an approximate overall percentage
+and the active slice's state. Current overall estimate: **55%**. This is a delivery
+estimate across 13 non-deferred work packages, not a time estimate or a count of PRs.
+Treat each package equally, give partial credit to merged slices, and round the
+average to the nearest five percentage points. B14 and documented demand-gated
+extensions are excluded; their dispositions still require a final audit.
+
+Current package estimates: B01 100%, B02 67%, B03 100%, B04 100%, B05 75%,
+B06 80%, B07 100%, B08 75%, B09 0%, B10 25%, B11 0%, B12 0%, B13 0%.
+These estimates distinguish remaining AdminTemplates, rate limits and user policy,
+deployment adapters, media profiles/cache/settings, robots/sitemaps, audit/tasks,
+SMTP, admin menus and dashboard work. Update the estimates as these slices merge;
+do not increase the percentage merely because CI is running.
+
 ## Campaign decisions
 
 - Regular CI does not build/publish native binaries or packages. Retain managed build/test coverage;
@@ -50,7 +66,7 @@ The [schedule](pr-schedule.md) and [plan](coverage-plan.md) define the work and 
 | Common index definitions and lifecycle | Definitions and lifecycle merged | [PR #24](https://github.com/sebastienros/OrchardCore/pull/24), merge `d26b9888b`; all CI green, including Linux/Windows. Common discovery, typed Lucene definitions, shared admin/recipe coordination, runtime indexing and tenant isolation verified. Observable lifecycle operations merged separately in PR #26. See [contract and evidence](index-definitions.md). |
 | Observable index lifecycle | Merged | [PR #26](https://github.com/sebastienros/OrchardCore/pull/26), merge `8bb1ff436`; all CI green including Linux functional tests and Windows. Shared admin/recipe execution, callbacks, legacy sources, persisted outcomes and lease expiry verified. Fresh HTTP/Pomi/MCP, docs/distribution and 315 examples across 244 help pages pass. See [contract and evidence](index-lifecycle.md). |
 | Frontend search settings | Merged | [PR #27](https://github.com/sebastienros/OrchardCore/pull/27), merge `2eaa672ce`; all CI green including Linux functional tests and Windows. [Contract and caller audit](search-settings.md). Shared admin/API editing and page-title field implemented; strict full solution build passes, server 3,425 passed (one CI-only skip), CLI 295 and MCP 78 passed. Live HTTP/Pomi/MCP/frontend, permission/feature/isolation, strict docs/distribution and 319 skill examples pass. |
-| Deployment plans, export and import | Plans and artifacts merged; remaining adapters in progress | [PR #28](https://github.com/sebastienros/OrchardCore/pull/28) merged plan/step management. [PR #30](https://github.com/sebastienros/OrchardCore/pull/30), merge `e92d895b6`, adds owned artifacts, queued export/import, shared legacy archive/package callers and private Pomi downloads. All CI passed, including the Windows concurrent-read regression after atomic replacement. The independent adapter branch integrates that merged base and adds seven feature-owned contracts with shared admin normalization. Focused tests, strict solution build and live Pomi/MCP checks pass before integration; integrated verification and PR CI remain. [Adapter caller audit](deployment-step-adapters.md). Additional query/translation/custom-settings and no-configuration adapters remain in B08. |
+| Deployment plans, export and import | Plans and artifacts merged; remaining adapters in progress | [PR #28](https://github.com/sebastienros/OrchardCore/pull/28) merged plan/step management. [PR #30](https://github.com/sebastienros/OrchardCore/pull/30), merge `e92d895b6`, adds owned artifacts, queued export/import, shared legacy archive/package callers and private Pomi downloads. All CI passed, including the Windows concurrent-read regression after atomic replacement. [PR #31](https://github.com/sebastienros/OrchardCore/pull/31), merge `83bdcb470`, adds seven feature-owned contracts with shared admin normalization. Integrated strict solution build, 3,550 server tests (one CI-only skip), 298 CLI and 78 MCP tests, live checks and final package verification passed; all CI passed. The independent query adapter now integrates this merged base; shared admin/source parsing, 15 focused tests and a live query-to-ZIP export pass, with final integration/package/CI gates remaining. [Adapter caller audit](deployment-step-adapters.md). Additional query/translation/custom-settings and no-configuration adapters remain in B08. |
 | Media profiles/cache/settings | Planned | Separate B09 PRs. |
 | Robots and sitemap/source management | Planned | Separate B10 PRs. |
 | Audit reads and task administration | Planned | Separate B11 PRs. |
