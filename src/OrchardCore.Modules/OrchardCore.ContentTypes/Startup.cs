@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using OrchardCore.ContentTypes.Services;
 using OrchardCore.ContentManagement;
+using OrchardCore.ContentManagement.Metadata;
 using OrchardCore.ContentTypes.Deployment;
 using OrchardCore.ContentTypes.Editors;
 using OrchardCore.ContentTypes.RecipeSteps;
@@ -81,5 +82,9 @@ public sealed class DeploymentStartup : StartupBase
         services.AddDeployment<ContentDefinitionDeploymentSource, ContentDefinitionDeploymentStep, ContentDefinitionDeploymentStepDriver>();
         services.AddDeployment<ReplaceContentDefinitionDeploymentSource, ReplaceContentDefinitionDeploymentStep, ReplaceContentDefinitionDeploymentStepDriver>();
         services.AddDeployment<DeleteContentDefinitionDeploymentSource, DeleteContentDefinitionDeploymentStep, DeleteContentDefinitionDeploymentStepDriver>();
+        foreach (var type in new[] { nameof(ContentDefinitionDeploymentStep), nameof(ReplaceContentDefinitionDeploymentStep), nameof(DeleteContentDefinitionDeploymentStep) })
+        {
+            services.AddScoped<IDeploymentStepDefinition>(provider => new ContentDefinitionStepDefinition(type, provider.GetRequiredService<IContentDefinitionManager>()));
+        }
     }
 }

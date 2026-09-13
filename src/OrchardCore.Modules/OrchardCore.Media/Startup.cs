@@ -321,6 +321,7 @@ public sealed class DeploymentStartup : StartupBase
             MediaDeploymentStep,
             MediaDeploymentStepDriver
         >();
+        services.AddScoped<IDeploymentStepDefinition, MediaDeploymentStepDefinition>();
         services.AddDeployment<
             AllMediaProfilesDeploymentSource,
             AllMediaProfilesDeploymentStep,

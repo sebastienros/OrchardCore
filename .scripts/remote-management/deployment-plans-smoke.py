@@ -93,7 +93,9 @@ def tool(name, arguments):
 
 with tempfile.TemporaryDirectory(prefix='deployment-cli-', dir=state_path.parent) as config_home:
     pomi('context', 'add', name, base, '--current')
-    for feature in ['OrchardCore.Deployment', 'OrchardCore.RemoteManagement.Mcp']:
+    for feature in ['OrchardCore.Deployment', 'OrchardCore.RemoteManagement.Mcp',
+                    'OrchardCore.Features', 'OrchardCore.Templates', 'OrchardCore.AdminTemplates',
+                    'OrchardCore.ContentTypes', 'OrchardCore.Media']:
         request('api/features/' + feature + ':enable?force=true', 'POST')
     pomi('api', 'refresh', '--force')
     route = 'api/deployment/plans'
@@ -132,6 +134,31 @@ with tempfile.TemporaryDirectory(prefix='deployment-cli-', dir=state_path.parent
         assert pomi('deployment', 'plans', 'update', plan_id, body={'name': name + 'Renamed'})['changed']
         assert pomi('deployment', 'plans', 'show', plan_id)['stepCount'] == 2
         assert request(route + '?search=' + name)['totalCount'] == 1
+        configurations = {
+            'AllFeaturesDeploymentStep': {'ignoreDisabledFeatures': True},
+            'AllTemplatesDeploymentStep': {'exportAsFiles': True},
+            'AllAdminTemplatesDeploymentStep': {'exportAsFiles': True},
+            'ContentDefinitionDeploymentStep': {'includeAll': True},
+            'ReplaceContentDefinitionDeploymentStep': {'includeAll': True},
+            'DeleteContentDefinitionDeploymentStep': {'contentTypes': ['DestinationOnly']},
+            'MediaDeploymentStep': {'includeAll': True},
+        }
+        for index, (step_type, configuration) in enumerate(configurations.items()):
+            assert any(value['type'] == step_type and value['canConfigure'] for value in types), step_type
+            schema = pomi('deployment', 'step-types', 'schema', step_type)
+            assert not schema['additionalProperties']
+            step_id = 'adapter' + str(index)
+            added = pomi('deployment', 'plans', 'steps', 'add', plan_id,
+                body={'id': step_id, 'type': step_type, 'values': configuration})
+            assert added['changed']
+            before = next(value for value in request(steps_route) if value['id'] == step_id)
+            for key, value in configuration.items():
+                assert before['values'][key] == value
+            pomi('deployment', 'plans', 'steps', 'update', plan_id, step_id,
+                body={'values': {'unknown': True}}, status=400)
+            assert next(value for value in request(steps_route) if value['id'] == step_id) == before
+        assert len(tool('deployment_plans_steps_list', {'query': {'planId': int(plan_id)}})) == 9
+        print('PASS: seven feature-owned adapters discovered and configured through Pomi, MCP readback, invalid patches preserved', flush=True)
         assert pomi('deployment', 'plans', 'steps', 'delete', plan_id, 'recipe', '--force')['changed']
         assert not pomi('deployment', 'plans', 'steps', 'delete', plan_id, 'recipe', '--force')['changed']
         print('PASS: HTTP permissions, CLI discovery/CRUD/retries, MCP add/order, safe readback and invalid-patch preservation', flush=True)

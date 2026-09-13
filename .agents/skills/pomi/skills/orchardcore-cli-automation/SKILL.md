@@ -353,6 +353,15 @@ contents and embedded recipe JSON are write-only and absent from readback: omiss
 is not evidence they are empty. Paths must be relative package paths without
 traversal; `Recipe.json` is reserved.
 
+Feature-owned schemas include the AllFeatures `ignoreDisabledFeatures` switch,
+Templates/AdminTemplates `exportAsFiles`, content-definition export/replacement/
+deletion selectors, and Media `includeAll`/`filePaths`/`directoryPaths`. Enable the
+owning feature and refresh discovery before using its type. For definition exports
+and replacement, select existing source type/part names; deletion names may exist
+only on the destination. For Media, select existing relative media paths with `/`
+separators. Enabling `includeAll` clears individual selections for definition and
+media exports. Use the live schema for exact property names and supported types.
+
 Ordering takes `{"stepIds":["readme","metadata"]}` with every existing ID exactly
 once. Unsupported factories are discoverable with `canConfigure:false`; do not
 invent schemas or serialize arbitrary CLR properties. Disabled-feature steps retain

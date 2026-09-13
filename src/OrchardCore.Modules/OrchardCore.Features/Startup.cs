@@ -29,6 +29,8 @@ public sealed class Startup : StartupBase
         services.AddNavigationProvider<AdminMenu>();
 
         services.AddDeployment<AllFeaturesDeploymentSource, AllFeaturesDeploymentStep, AllFeaturesDeploymentStepDriver>();
+        services.AddSingleton<IDeploymentStepDefinition>(new BooleanDeploymentStepDefinition<AllFeaturesDeploymentStep>(
+            nameof(AllFeaturesDeploymentStep), "ignoreDisabledFeatures", step => step.IgnoreDisabledFeatures, (step, value) => step.IgnoreDisabledFeatures = value));
     }
 
     public override void Configure(IApplicationBuilder app, IEndpointRouteBuilder routes, IServiceProvider serviceProvider)
