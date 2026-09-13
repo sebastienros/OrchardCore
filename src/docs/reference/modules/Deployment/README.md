@@ -241,8 +241,18 @@ To send packages directly to another Orchard Core site, see [Remote Deployment](
 storage: `MaxBytes` defaults to 500 MiB and `Lifetime` to 24 hours. Storage uses a
 private `DeploymentArtifacts` directory under the tenant's App_Data folder. These
 options are separate from package extraction limits in `DeploymentPackageOptions`.
-The storage service is infrastructure for artifact workflows; it does not itself
-expose upload/download routes or grant Export/Import permissions.
+Artifact metadata is available from `GET api/deployment/artifacts/{id}` and deletion
+from `DELETE api/deployment/artifacts/{id}`, projected as `pomi deployment artifacts
+show` and `delete`. Authenticated bytes are served by
+`GET api/deployment/artifacts/{id}/content`. Binary download is not yet a Pomi
+command and is not exposed as an MCP tool.
+
+Artifact access requires `AccessRemoteManagement`, the artifact's Export or Import
+permission, and the same tenant, issuer, entity kind and subject that created it.
+Metadata omits the owner identity and server paths. An active read prevents deletion
+with a conflict response; repeated deletion of an absent artifact is unchanged.
+These routes manage existing artifacts. Artifact creation/upload and execution
+workflows are implemented separately.
 
 ## Videos
 

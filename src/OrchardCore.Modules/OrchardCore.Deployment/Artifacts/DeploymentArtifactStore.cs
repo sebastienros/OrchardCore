@@ -71,11 +71,11 @@ internal sealed class DeploymentArtifactStore
         }
     }
 
-    public async Task<DeploymentArtifact> FindAsync(string id, string owner)
+    public async Task<DeploymentArtifact> FindAsync(string id, string owner, bool includeExpired = false)
     {
         if (!ValidId(id) || string.IsNullOrEmpty(owner)) { return null; }
         var artifact = await ReadAsync(id);
-        return artifact?.Owner == owner && artifact.ExpiresUtc > _clock.UtcNow ? artifact : null;
+        return artifact?.Owner == owner && (includeExpired || artifact.ExpiresUtc > _clock.UtcNow) ? artifact : null;
     }
 
     public async Task<DeploymentArtifactLease> OpenAsync(string id, string owner)

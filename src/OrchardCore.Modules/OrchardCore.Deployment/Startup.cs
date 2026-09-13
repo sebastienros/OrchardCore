@@ -29,6 +29,7 @@ public sealed class Startup : StartupBase
     public override void Configure(IApplicationBuilder app, IEndpointRouteBuilder routes, IServiceProvider serviceProvider)
     {
         routes.AddDeploymentPlanEndpoints();
+        routes.AddDeploymentArtifactEndpoints();
         routes.AddDeploymentStepTypeEndpoints();
         routes.AddDeploymentStepEndpoints();
     }

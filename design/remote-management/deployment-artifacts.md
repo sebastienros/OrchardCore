@@ -174,3 +174,20 @@ passing. Tests reopen persisted data with another store instance, verify tenant/
 owner isolation and checksums, protect open reads against deletion/expiry, clean
 up size-limit failures and skip active writers during orphan cleanup. Cross-process
 and hosting-filesystem behavior still need verification before multi-node claims.
+
+## Owned artifact metadata and download endpoints
+
+Metadata show, repeatable delete and authenticated HTTP byte download are mapped
+under `api/deployment/artifacts`. Owner keys combine issuer, Orchard OpenID entity
+kind and subject so application/user IDs cannot collide; unauthenticated or
+incomplete principals are rejected. Each access checks current purpose-specific
+Export/Import permission in addition to AccessRemoteManagement. Public DTOs omit
+owner and filesystem information. Download owns the read lease through response
+execution, including disposal; an in-use artifact cannot be deleted.
+
+All seven endpoint/store tests pass with a strict zero-warning/error build. Tests
+cover purpose permissions, same-subject entity separation, sanitized metadata,
+actual response bytes, lease release and repeatable deletion. Metadata/delete have
+Pomi/MCP JSON projection. Binary download deliberately has no CLI metadata until
+explicit Pomi file output is implemented; binary MCP remains excluded. Live OAuth
+transport checks, upload pipeline integration and operation orchestration remain.
