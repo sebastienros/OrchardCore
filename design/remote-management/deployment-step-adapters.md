@@ -32,3 +32,44 @@ contracts actually implemented and verified.
 
 This is the initial source-audit work order, not proof that every factory has been
 audited or that these groups are complete.
+
+## First adapter group: verified implementation
+
+Seven additional factories now have explicit contracts: AllFeatures, Templates,
+AdminTemplates, content-definition export/replacement/deletion, and Media. Their
+registrations live in the feature startup that owns the corresponding factory.
+The content-definition and media adapters validate source references before
+mutating the step. Deletion names may exist only on the destination tenant.
+
+Existing callers and reused behavior:
+
+- `ContentDefinitionDeploymentStepDriver.UpdateAsync` and
+  `ReplaceContentDefinitionDeploymentStepDriver.UpdateAsync` now call
+  `ContentDefinitionSelection.Normalize`, also called by the configuration adapter.
+  This retains type-name duplicates, deduplicates part names, and clears both
+  selections for `includeAll`. Admin binding clears absent checkbox selections;
+  API patches retain omitted properties. Both call paths have regression coverage.
+- `DeleteContentDefinitionDeploymentStepDriver.UpdateAsync` parses its text fields
+  with the extracted deletion-name parser. The API accepts arrays directly; it
+  preserves duplicate names and does not require source definitions to exist.
+- `MediaDeploymentStepDriver.UpdateAsync` and its adapter share
+  `MediaDeploymentSelection.Normalize`. Admin binding still clears absent selections;
+  API omissions retain them. The API additionally validates relative path shape and
+  file/directory existence before assignment. Both call paths have regression coverage.
+- Feature/template drivers directly bind one Boolean without domain validation;
+  their adapters use the explicit Boolean contract. No duplicated service logic
+  was introduced. Sources and recipe behavior remain unchanged.
+
+Strict test-project builds pass without warnings. The switch/definition group has
+26 passing focused tests; media plus content-definition tests have 16 passing cases.
+Strict documentation builds pass. The expanded `deployment-plans-smoke.py` passes
+against a disposable tenant: seven contracts discovered and configured through
+Pomi, MCP readback, invalid-patch preservation, existing permissions, plan retries,
+ordering, and cleanup. Full-solution and CI gates remain before merging this slice.
+
+The remaining groups are separate work, not claimed complete. In particular,
+query-based content currently duplicates JSON parameter parsing in its admin
+editor and deployment source; the source accepts JSON `null` as empty parameters
+while the editor rejects it. Extract shared parsing while preserving that caller
+policy, then use it in the query adapter. Translation and custom-settings selectors
+and the no-configuration factory audit remain. Provider demand gates still apply.
