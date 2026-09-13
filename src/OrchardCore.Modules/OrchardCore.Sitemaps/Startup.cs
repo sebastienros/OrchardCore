@@ -23,6 +23,9 @@ using OrchardCore.Sitemaps.Models;
 using OrchardCore.Sitemaps.Recipes;
 using OrchardCore.Sitemaps.Routing;
 using OrchardCore.Sitemaps.Services;
+using OrchardCore.Sitemaps.Endpoints;
+using OrchardCore.RemoteManagement;
+using OrchardCore.Settings;
 
 namespace OrchardCore.Sitemaps;
 
@@ -51,6 +54,9 @@ public sealed class Startup : StartupBase
 
         services.AddSingleton<SitemapEntries>();
         services.AddSingleton<ISitemapManager, SitemapManager>();
+        services.AddScoped<SitemapManagementService>();
+        services.AddScoped<SitemapSourceManagementService>();
+        services.AddScoped<IRemoteManagementCapabilityProvider, SitemapsCapabilityProvider>();
         services.AddSingleton<IShellRouteValuesAddressScheme, SitemapValuesAddressScheme>();
         services.AddSingleton<SitemapRouteTransformer>();
 
@@ -92,6 +98,8 @@ public sealed class Startup : StartupBase
 
     public override void Configure(IApplicationBuilder app, IEndpointRouteBuilder routes, IServiceProvider serviceProvider)
     {
+        routes.AddSitemapEndpoints();
+        routes.AddSitemapSourceEndpoints();
         routes.MapDynamicControllerRoute<SitemapRouteTransformer>("/{**sitemap}");
     }
 }
@@ -131,5 +139,6 @@ public sealed class SeoStartup : StartupBase
     {
         services.AddTransient<IRobotsProvider, SitemapsRobotsProvider>();
         services.AddSiteDisplayDriver<SitemapsRobotsSettingsDisplayDriver>();
+        services.AddScoped<ISiteSettingsSectionProvider, SitemapsRobotsSettingsSectionProvider>();
     }
 }

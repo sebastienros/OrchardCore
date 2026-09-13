@@ -115,6 +115,10 @@ public sealed class ContentTypesSitemapSourceDriver : DisplayDriver<SitemapSourc
             sitemap.LimitedContentType = new LimitedContentTypeSitemapEntry();
         }
 
+        foreach (var error in SitemapSourceValidation.Validate(sitemap))
+        {
+            foreach (var message in error.Value) { context.Updater.ModelState.AddModelError(error.Key, message); }
+        }
         return await EditAsync(sitemap, context);
     }
 }

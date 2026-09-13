@@ -359,3 +359,26 @@ Versioned references (live tenant schemas take precedence):
 [Security module](https://github.com/sebastienros/OrchardCore/blob/5bb6c301c6fa9b795717d6a7906d7cb8626fe33c/src/docs/reference/modules/Security/README.md),
 [Settings module](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/modules/Settings/README.md), and
 [CustomSettings module](https://github.com/sebastienros/OrchardCore/blob/4d4fc0fb66a5d789dff6d8057bbc074107918533/src/docs/reference/modules/CustomSettings/README.md).
+
+## Robots and sitemaps
+
+The `robots` section exposes `allowAllAgents`, `disallowAdmin`, and
+`additionalRules` with `ManageSeoSettings`. Omission preserves values; null clears
+additional rules. A physical robots.txt is reported as read-only configuration
+ownership. Verify public `/robots.txt` after a change. `sitemaps-robots` controls
+`includeSitemaps` when both SEO and Sitemaps are enabled; configure site `baseUrl`
+for generated sitemap links.
+
+Use `sitemaps list/show/create/update/enable/disable/delete` for regular maps and
+indexes. Complete definitions contain name/path/kind/enabled/containedSitemapIds.
+Indexes may contain distinct regular maps, never other indexes. Source commands
+are `sitemaps sources types/schema/list/create/update/delete`; inspect the typed
+schema before writing `type` plus complete `configuration`. Update/delete source
+commands take sitemap ID plus `--source-id`. Built-in custom-path and content-type
+sources are supported only when registered; other extensions expose identity.
+
+Create generates an ID: read back after an uncertain result before retrying.
+Updates/status changes and absent deletes can be retried without unnecessary
+writes. Verify public XML, including indexes after changing child paths/status.
+All sitemap operations require `ManageSitemaps` and remote access. Follow the
+existing mutation confirmation policy; deletion commands require `--force`.
