@@ -64,7 +64,7 @@ internal static class DeploymentStepEndpoints
         var definition = candidate is null ? null : registry.Definition(candidate);
         if (definition is null) { return Unsupported(); }
         candidate.Id = existing?.Id ?? request.Id;
-        var errors = definition.Update(candidate, request.Values);
+        var errors = await definition.UpdateAsync(candidate, request.Values);
         if (errors.Count > 0) { return TypedResults.ValidationProblem(errors.ToDictionary(pair => pair.Key, pair => pair.Value)); }
         if (existing is not null)
         {
@@ -88,7 +88,7 @@ internal static class DeploymentStepEndpoints
         var definition = registry.Definition(plan.DeploymentSteps[index]);
         if (definition is null) { return Unsupported(); }
         var candidate = plans.CloneStep(plan.DeploymentSteps[index]);
-        var errors = definition.Update(candidate, request.Values);
+        var errors = await definition.UpdateAsync(candidate, request.Values);
         if (errors.Count > 0) { return TypedResults.ValidationProblem(errors.ToDictionary(pair => pair.Key, pair => pair.Value)); }
         var result = await plans.UpdateStepAsync(planId, candidate);
         return result.Error == DeploymentStepManagementError.None

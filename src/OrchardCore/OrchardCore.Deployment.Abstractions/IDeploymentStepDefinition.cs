@@ -12,5 +12,5 @@ public interface IDeploymentStepDefinition
     /// <summary>Describes allowlisted configuration, omitting write-only fields.</summary>
     JsonObject Describe(DeploymentStep step);
     /// <summary>Applies a patch to a detached candidate and validates it before persistence.</summary>
-    IReadOnlyDictionary<string, string[]> Update(DeploymentStep step, JsonObject values);
+    ValueTask<IReadOnlyDictionary<string, string[]>> UpdateAsync(DeploymentStep step, JsonObject values);
 }

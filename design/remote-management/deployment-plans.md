@@ -197,3 +197,28 @@ Remaining release gates include generic settings/content contracts, recipe valid
 and legacy step identities, content-controller integration and tenant/feature tests,
 live HTTP/Pomi/MCP, Pomi skills/package, full integration and independent PR CI. No
 artifact execution or remote target support is claimed by these step operations.
+
+## Content and settings adapters
+
+Generic settings factories now register an explicit empty configuration contract
+alongside the existing factory/source. The contract exposes no settings values.
+Content adapters cover all published content, selected types with setup-recipe
+options, and one existing content item. The definition update interface is asynchronous
+so reference validation uses the tenant's real content manager.
+
+The single-item admin driver shares its existence check and assignment with the
+adapter; invalid selections preserve its original ID. The selected-content driver
+and adapter share assignment, preserving the editor's empty-selection semantics and
+API omitted-field semantics. Existing export sources and permissions are unchanged.
+
+Strict build passes with zero warnings/errors. All 36 focused tests pass. Tests
+exercise actual driver equivalence, rejected references, invalid patch atomicity,
+generic settings discovery without value disclosure and a real tenant plan whose
+content/settings steps produce recipe data through the existing export sources.
+
+Recipe validation/legacy identities, content-to-plan controller integration,
+tenant/feature gates, live HTTP/Pomi/MCP, package updates and full integration/CI
+remain. Additional registered factories remain explicitly discoverable with their
+configuration support reported; review the remaining built-in adapter coverage in
+the B08 completion audit instead of equating these initial adapters with every
+possible extension contract.

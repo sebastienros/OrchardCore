@@ -190,8 +190,17 @@ configuration and updates a detached step candidate. Omitted properties preserve
 stored values; extensions must declare their supported fields instead of exposing
 arbitrary serialized CLR objects.
 
-The built-in contracts cover recipe metadata, custom files, JSON recipe steps and
-selected deployment plans. Custom-file content and embedded recipe JSON are
+The built-in contracts cover recipe metadata, custom files, JSON recipe steps,
+selected deployment plans, all published content, selected content types and a single
+content item. Content type selection uses `contentTypes` and `exportAsSetupRecipe`;
+all-content selection exposes only `exportAsSetupRecipe`. A single-item selector
+requires an existing tenant `contentItemId`, using the same lookup as its admin editor.
+
+Generic site-settings export factories register an empty configuration contract
+alongside their existing factory. Use their discovered factory name and `{}` values;
+this selects a settings section for export without reading or changing its values.
+Configuration contracts support asynchronous validation through `UpdateAsync`.
+ Custom-file content and embedded recipe JSON are
 write-only in contract readback. File paths must be relative package paths without
 traversal; `Recipe.json` is reserved for the generated recipe. A JSON recipe step
 must contain an object with a nonempty string `name`. The existing admin editors

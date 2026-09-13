@@ -61,6 +61,8 @@ internal sealed class BuiltInDeploymentStepDefinition : IDeploymentStepDefinitio
         _ => throw new ArgumentException("The step does not match this configuration contract.", nameof(step)),
     };
 
+    public ValueTask<IReadOnlyDictionary<string, string[]>> UpdateAsync(DeploymentStep step, JsonObject values) => ValueTask.FromResult(Update(step, values));
+
     public IReadOnlyDictionary<string, string[]> Update(DeploymentStep step, JsonObject values)
     {
         var errors = ValidatePatch(values);
