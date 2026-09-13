@@ -10,13 +10,20 @@ not start further deployment adapters as part of this phase.
 | Rate limits | Tenant policy and limiter discovery, CRUD, enable/disable, existing admin/recipe reuse, runtime 429 and recovery verification | Complete: PR #33, merged `85c42b146`, Linux/Windows CI green |
 | Audit/task administration | Bounded paged audit search/show with safe output; task list/show, schedule validation and enable/disable through existing services | Complete: PR #34, merged `9bad63d5b`, Linux/Windows CI green |
 | Media administration | Media profile CRUD and output verification; tenant-scoped media cache purge; supported tenant settings and file-policy enforcement | Complete: PR #35, merged `a7638cda9`, Linux/Windows CI green |
-| Robots/sitemaps | Typed robots settings; sitemap/source management; public robots/XML output and appropriate cache invalidation | Locally verified, including public text/XML and two tenants; final independent PR pending CI/merge |
+| Robots/sitemaps | Typed robots settings; sitemap/source management; public robots/XML output and appropriate cache invalidation | Final PR #36: public text/XML, two-tenant isolation and local regressions verified |
 
-Progress is **3 of 4 areas complete (75%)** for this narrowed phase. Report regular
-updates with completed areas and approximate partial progress, making clear that
-this is a new denominator rather than the original campaign's approximately 55%.
-Count an area complete only after local validation, CI and merge. Do not count
-queued checks as additional completion.
+## Completion and pause
+
+This completion record takes effect when final PR #36 merges after green CI.
+At that point the narrowed phase is **4 of 4 areas complete (100%)** and the
+campaign is **paused**. No further feature slices are scheduled or authorized by
+this phase. While #36 remains open, three areas are merged and the final merge
+is still required; local validation alone does not satisfy the completion gate.
+
+The four areas have dedicated local regressions and live Pomi/MCP checks. The
+final robots/sitemaps workflow covers real text/XML output and two-tenant
+isolation; its cached-index regression was reproduced on the unchanged base
+manager before fixing the shared manager. CLI 298 and MCP 78 regressions pass.
 
 Keep existing demand gates: no new cloud providers, resumable/binary MCP transfer,
 generic remote logs, or speculative task run/cancel lifecycle. Retention/pruning
