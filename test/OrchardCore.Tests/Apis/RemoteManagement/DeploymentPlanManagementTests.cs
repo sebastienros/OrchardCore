@@ -33,6 +33,82 @@ public class DeploymentPlanManagementTests : IDisposable
     public void Dispose() => _services.Dispose();
 
     [Fact]
+    public async Task RemoteSteps_PersistTypedEdits_WithoutLeakingOrPartiallyMutatingConfiguration()
+    {
+        using var site = await CreateContextAsync();
+        long id = 0;
+        await site.UsingTenantScopeAsync(async scope =>
+        {
+            var plans = scope.ServiceProvider.GetRequiredService<IDeploymentPlanService>();
+            var registry = scope.ServiceProvider.GetRequiredService<DeploymentStepRegistry>();
+            id = (await plans.CreateAsync("Remote steps")).Plan.Id;
+            var request = new DeploymentStepCreateRequest
+            {
+                Id = "file", Type = nameof(CustomFileDeploymentStep),
+                Values = new() { ["fileName"] = "one.txt", ["fileContent"] = "private-content" },
+            };
+            var added = StepWrite(await DeploymentStepEndpoints.AddAsync(Http(), Authorized(), plans, registry, id, request));
+            Assert.True(added.Changed);
+            Assert.DoesNotContain("private-content", JsonSerializer.Serialize(added));
+            Assert.False(StepWrite(await DeploymentStepEndpoints.AddAsync(Http(), Authorized(), plans, registry, id, request)).Changed);
+            Assert.Equal(409, Status(await DeploymentStepEndpoints.AddAsync(Http(), Authorized(), plans, registry, id,
+                new() { Id = "file", Type = nameof(CustomFileDeploymentStep), Values = new() { ["fileContent"] = "conflict" } })));
+            var plan = await plans.GetAsync(id);
+            Assert.Equal("private-content", Assert.IsType<CustomFileDeploymentStep>(Assert.Single(plan.DeploymentSteps)).FileContent);
+            Assert.Equal(400, Status(await DeploymentStepEndpoints.UpdateAsync(Http(), Authorized(), plans, registry, id, "file",
+                new() { Values = new() { ["fileName"] = "../invalid", ["fileContent"] = "rejected" } })));
+            Assert.Equal("one.txt", Assert.IsType<CustomFileDeploymentStep>(Assert.Single(plan.DeploymentSteps)).FileName);
+            Assert.Equal("private-content", Assert.IsType<CustomFileDeploymentStep>(Assert.Single(plan.DeploymentSteps)).FileContent);
+            Assert.True(StepWrite(await DeploymentStepEndpoints.UpdateAsync(Http(), Authorized(), plans, registry, id, "file",
+                new() { Values = new() { ["fileName"] = "two.txt" } })).Changed);
+            Assert.Equal("private-content", Assert.IsType<CustomFileDeploymentStep>(Assert.Single(plan.DeploymentSteps)).FileContent);
+            Assert.True(StepWrite(await DeploymentStepEndpoints.UpdateAsync(Http(), Authorized(), plans, registry, id, "file",
+                new() { Values = new() { ["fileContent"] = null } })).Changed);
+            Assert.False(StepWrite(await DeploymentStepEndpoints.UpdateAsync(Http(), Authorized(), plans, registry, id, "file",
+                new() { Values = new() { ["fileContent"] = null } })).Changed);
+            Assert.True(StepWrite(await DeploymentStepEndpoints.AddAsync(Http(), Authorized(), plans, registry, id,
+                new() { Id = "recipe", Type = nameof(RecipeFileDeploymentStep), Values = new() { ["recipeName"] = "Export" } })).Changed);
+            Assert.Equal(400, Status(await DeploymentStepEndpoints.OrderAsync(Http(), Authorized(), plans, id, new() { StepIds = ["file", "file"] })));
+            Assert.Equal(new[] { "file", "recipe" }, plan.DeploymentSteps.Select(step => step.Id));
+            Assert.True(StepWrite(await DeploymentStepEndpoints.OrderAsync(Http(), Authorized(), plans, id, new() { StepIds = ["recipe", "file"] })).Changed);
+            Assert.False(StepWrite(await DeploymentStepEndpoints.OrderAsync(Http(), Authorized(), plans, id, new() { StepIds = ["recipe", "file"] })).Changed);
+            var listed = Assert.IsType<Ok<IReadOnlyList<DeploymentStepResponse>>>(await DeploymentStepEndpoints.ListAsync(Http(), Authorized(), plans, registry, id)).Value;
+            Assert.Equal(new[] { "recipe", "file" }, listed.Select(step => step.Id));
+            var shown = Assert.IsType<Ok<DeploymentStepResponse>>(await DeploymentStepEndpoints.GetAsync(Http(), Authorized(), plans, registry, id, "file")).Value;
+            Assert.Equal(1, shown.Position);
+            Assert.Equal("two.txt", shown.Values["fileName"].GetValue<string>());
+            Assert.False(shown.Values.ContainsKey("fileContent"));
+        });
+        await site.UsingTenantScopeAsync(async scope =>
+        {
+            var plans = scope.ServiceProvider.GetRequiredService<IDeploymentPlanService>();
+            var plan = await plans.GetAsync(id);
+            Assert.Equal(new[] { "recipe", "file" }, plan.DeploymentSteps.Select(step => step.Id));
+            Assert.Equal(string.Empty, Assert.IsType<CustomFileDeploymentStep>(plan.DeploymentSteps[1]).FileContent);
+            Assert.True(StepWrite(await DeploymentStepEndpoints.DeleteAsync(Http(), Authorized(), plans, id, "file")).Changed);
+            Assert.False(StepWrite(await DeploymentStepEndpoints.DeleteAsync(Http(), Authorized(), plans, id, "file")).Changed);
+            Assert.Equal("recipe", Assert.Single(plan.DeploymentSteps).Id);
+        });
+    }
+
+    [Fact]
+    public async Task RemoteSteps_DenyBeforeStoreAccess()
+    {
+        var plans = new Mock<IDeploymentPlanService>(MockBehavior.Strict);
+        var registry = new DeploymentStepRegistry([], []);
+        var denied = Authorize(DeploymentPermissions.ManageDeploymentPlan);
+        Assert.Equal(403, Status(await DeploymentStepEndpoints.ListAsync(Http(), denied, plans.Object, registry, 1)));
+        Assert.Equal(403, Status(await DeploymentStepEndpoints.GetAsync(Http(), denied, plans.Object, registry, 1, "step")));
+        Assert.Equal(403, Status(await DeploymentStepEndpoints.AddAsync(Http(), denied, plans.Object, registry, 1, new())));
+        Assert.Equal(403, Status(await DeploymentStepEndpoints.UpdateAsync(Http(), denied, plans.Object, registry, 1, "step", new())));
+        Assert.Equal(403, Status(await DeploymentStepEndpoints.DeleteAsync(Http(), denied, plans.Object, 1, "step")));
+        Assert.Equal(403, Status(await DeploymentStepEndpoints.OrderAsync(Http(), denied, plans.Object, 1, new())));
+        plans.VerifyNoOtherCalls();
+    }
+
+    private static DeploymentStepWriteResponse StepWrite(IResult result) => Assert.IsType<Ok<DeploymentStepWriteResponse>>(result).Value;
+
+    [Fact]
     public async Task StepSchemas_DistinguishUnsupportedAndUnavailableFactories()
     {
         var known = new Mock<IDeploymentStepFactory>();

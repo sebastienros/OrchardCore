@@ -18,6 +18,8 @@ public interface IDeploymentPlanService
 
     /// <summary>Creates a detached editor copy using the tenant's deployment serialization contracts.</summary>
     DeploymentStep CloneStep(DeploymentStep step);
+    /// <summary>Compares persisted step configuration using the tenant document contract.</summary>
+    bool StepEquals(DeploymentStep left, DeploymentStep right);
     /// <summary>Appends steps after validating all identities; missing identities are generated.</summary>
     Task<DeploymentStepManagementResult> AddStepsAsync(long id, IEnumerable<DeploymentStep> steps);
     /// <summary>Replaces a step with a validated editor candidate of the same type and identity.</summary>

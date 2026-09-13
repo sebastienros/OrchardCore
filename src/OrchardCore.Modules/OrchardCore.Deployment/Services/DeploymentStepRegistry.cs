@@ -20,6 +20,15 @@ internal sealed class DeploymentStepRegistry
     internal JsonObject GetSchema(string type) => IsAvailable(type) && _definitions.TryGetValue(type, out var definition)
         ? definition.GetSchema() : null;
 
+    internal DeploymentStep Create(string type) => IsAvailable(type) && _definitions.ContainsKey(type) ? _factories[type].Create() : null;
+
+    internal IDeploymentStepDefinition Definition(DeploymentStep step)
+    {
+        var type = Resolve(step);
+        return _definitions.TryGetValue(type, out var definition) && _factories.TryGetValue(type, out var factory)
+            && factory.Create().GetType() == step.GetType() ? definition : null;
+    }
+
     internal string Resolve(DeploymentStep step) => DeploymentStepTypeResolver.Resolve(step, _factories);
 }
 

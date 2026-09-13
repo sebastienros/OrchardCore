@@ -122,8 +122,17 @@ public class DeploymentPlanService : IDeploymentPlanService
     }
 
     /// <inheritdoc />
-    public DeploymentStep CloneStep(DeploymentStep step) =>
-        JsonSerializer.Deserialize<DeploymentStep>(JsonSerializer.Serialize<DeploymentStep>(step, _jsonOptions), _jsonOptions);
+    public DeploymentStep CloneStep(DeploymentStep step)
+    {
+        var clone = JsonSerializer.Deserialize<DeploymentStep>(JsonSerializer.Serialize<DeploymentStep>(step, _jsonOptions), _jsonOptions);
+        // LocalizedString is immutable presentation metadata and does not round-trip all of its constructor state.
+        clone.Category = step.Category;
+        return clone;
+    }
+
+    /// <inheritdoc />
+    public bool StepEquals(DeploymentStep left, DeploymentStep right) =>
+        JsonSerializer.Serialize<DeploymentStep>(left, _jsonOptions) == JsonSerializer.Serialize<DeploymentStep>(right, _jsonOptions);
 
     /// <inheritdoc />
     public async Task<DeploymentStepManagementResult> AddStepsAsync(long id, IEnumerable<DeploymentStep> steps)
@@ -169,7 +178,7 @@ public class DeploymentPlanService : IDeploymentPlanService
             return new() { Error = DeploymentStepManagementError.InvalidStep };
         }
         step.Id = current.Id;
-        if (JsonSerializer.Serialize<DeploymentStep>(current, _jsonOptions) == JsonSerializer.Serialize<DeploymentStep>(step, _jsonOptions))
+        if (StepEquals(current, step))
         {
             return new();
         }

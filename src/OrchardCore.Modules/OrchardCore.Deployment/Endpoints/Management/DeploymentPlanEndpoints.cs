@@ -31,9 +31,9 @@ internal static class DeploymentPlanEndpoints
             .Produces<DeploymentPlanWriteResponse>();
     }
 
-    internal static RouteHandlerBuilder Configure(RouteHandlerBuilder builder, string name, string verb, string summary, string argument = null, string resource = "plans")
+    internal static RouteHandlerBuilder Configure(RouteHandlerBuilder builder, string name, string verb, string summary, string argument = null, string resource = "plans", string[] group = null, string secondArgument = null)
     {
-        var metadata = new CliOperationMetadata(["deployment", resource], verb)
+        var metadata = new CliOperationMetadata(group ?? ["deployment", resource], verb)
         {
             Capability = "deployment-plans",
             RequiresConfirmation = verb == "delete",
@@ -42,6 +42,7 @@ internal static class DeploymentPlanEndpoints
         {
             metadata.Arguments.Add(new CliArgumentMetadata(argument, 0));
         }
+        if (secondArgument is not null) { metadata.Arguments.Add(new CliArgumentMetadata(secondArgument, 1)); }
         return builder.WithName(name).WithTags("Deployment Management").WithSummary(summary).WithCliCommand(metadata)
             .RequireAuthorization(policy => policy.AddAuthenticationSchemes(OrchardCoreConstants.AuthenticationSchemes.Api)
                 .RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(RemoteManagementPermissions.AccessRemoteManagement),

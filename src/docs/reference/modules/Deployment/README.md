@@ -130,6 +130,50 @@ before the plan is changed. These
 operations do not execute plans or grant Export/Import permissions. Recipe-based
 plan replacement keeps its existing semantics of replacing the complete step list.
 
+## Remote step management
+
+Use factory discovery and its schema before adding or updating a step:
+
+```sh
+pomi deployment plans steps list 123
+pomi deployment plans steps show 123 site-css
+pomi deployment plans steps add 123 --body-file step.json
+pomi deployment plans steps update 123 site-css --body-file step-update.json
+pomi deployment plans steps order 123 --body-file step-order.json
+pomi deployment plans steps delete 123 site-css --force
+```
+
+An add request supplies a caller-selected identity, a factory type and typed values:
+
+```json
+{
+  "id": "site-css",
+  "type": "CustomFileDeploymentStep",
+  "values": {
+    "fileName": "assets/site.css",
+    "fileContent": "body { color: #222; }"
+  }
+}
+```
+
+Use a nonempty identity of at most 128 characters. Retrying the same identity with
+matching requested configuration reports unchanged; a different type or conflicting
+configuration returns 409. Update uses `{ "values": { "fileName": "assets/new.css" } }`
+and preserves omitted configuration, including write-only fields. Invalid patches
+are rejected before replacing the persisted step. Identity and type cannot be changed
+by a configuration patch.
+
+An order request contains `stepIds`, listing every current step identity exactly
+once. Invalid or incomplete orders leave the plan unchanged. List/show include
+position, factory type, explicit configuration support and allowlisted readable
+values. Unsupported step types retain their stored configuration and can be listed,
+ordered or deleted, but configuration changes require an enabled explicit contract.
+Deleting an already absent step is unchanged; an absent plan returns 404.
+
+These operations require the same management permissions as plan metadata and do
+not execute an export. Write-only custom-file contents and embedded recipe JSON
+are never included in step readback.
+
 ## Extending deployment
 
 A module can provide a custom deployment step by implementing an `IDeploymentSource`, deriving its step model from `DeploymentStep`, and optionally adding a display driver for its editor. Register the components together:

@@ -170,3 +170,30 @@ pass, including actual tenant registrations, schema write-only metadata, denied
 permissions, unsupported/unavailable distinctions and generic factory identity.
 Persisted step list/show/mutations, remaining adapters, recipe/legacy identity work,
 content-caller integration, live Pomi/MCP and full-suite/CI validation remain.
+
+## Persisted step endpoints
+
+The shared deployment capability now maps `deployment plans steps` list/show/add/
+update/delete/order to the existing plan service and explicit configuration contracts.
+Adds require a caller-selected nonempty ID of at most 128 characters. Matching
+retries report unchanged; conflicting type or requested configuration returns 409.
+Updates apply only to detached candidates, with identity and order preserved. Complete
+reorder requests validate before mutation. Unsupported configuration remains unreadable
+and uneditable through these contracts while its step identity can be listed/deleted.
+
+All 31 focused tests pass with a strict zero-warning/error build. The real persisted
+workflow verifies retry/conflict behavior, invalid patch atomicity, write-only data
+preservation and clearing, ordering, safe responses, fresh-scope persistence and
+repeated deletion. Every new handler denies missing remote permission before accessing
+the plan service.
+
+The first factory-created retry incorrectly returned conflict because immutable
+LocalizedString category metadata lost constructor state during document cloning.
+Preserving that metadata on the detached copy corrects the retry and passes the full
+focused suite. The shared service also uses the same step comparison for normal
+updates.
+
+Remaining release gates include generic settings/content contracts, recipe validation
+and legacy step identities, content-controller integration and tenant/feature tests,
+live HTTP/Pomi/MCP, Pomi skills/package, full integration and independent PR CI. No
+artifact execution or remote target support is claimed by these step operations.

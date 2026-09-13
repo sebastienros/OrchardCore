@@ -29,6 +29,7 @@ public sealed class Startup : StartupBase
     {
         routes.AddDeploymentPlanEndpoints();
         routes.AddDeploymentStepTypeEndpoints();
+        routes.AddDeploymentStepEndpoints();
     }
 
     public override void ConfigureServices(IServiceCollection services)
